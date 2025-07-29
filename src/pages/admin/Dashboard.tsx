@@ -35,14 +35,23 @@ export default function AdminDashboard() {
   }, []);
 
   const loadDashboardData = async () => {
+    console.log('Loading dashboard data...');
     try {
       // Load clients
-      const { data: clients } = await supabase
+      console.log('Loading clients...');
+      const { data: clients, error: clientsError } = await supabase
         .from('clients')
         .select('*');
+      
+      if (clientsError) {
+        console.error('Clients error:', clientsError);
+      } else {
+        console.log('Clients loaded:', clients);
+      }
 
       // Load recent services
-      const { data: services } = await supabase
+      console.log('Loading services...');
+      const { data: services, error: servicesError } = await supabase
         .from('services')
         .select(`
           *,
@@ -52,13 +61,26 @@ export default function AdminDashboard() {
         .order('service_date', { ascending: false })
         .limit(5);
 
+      if (servicesError) {
+        console.error('Services error:', servicesError);
+      } else {
+        console.log('Services loaded:', services);
+      }
+
       // Load pending service requests
-      const { data: requests } = await supabase
+      console.log('Loading service requests...');
+      const { data: requests, error: requestsError } = await supabase
         .from('service_requests')
         .select('*')
         .eq('status', 'pending');
 
-      setStats({
+      if (requestsError) {
+        console.error('Requests error:', requestsError);
+      } else {
+        console.log('Requests loaded:', requests);
+      }
+
+      const statsData = {
         totalClients: clients?.length || 0,
         activeServices: services?.filter(s => s.status === 'completed').length || 0,
         pendingRequests: requests?.length || 0,
@@ -70,10 +92,14 @@ export default function AdminDashboard() {
           weekAgo.setDate(weekAgo.getDate() - 7);
           return lastService < weekAgo;
         }) || []
-      });
+      };
+
+      console.log('Final stats:', statsData);
+      setStats(statsData);
     } catch (error) {
       console.error('Error loading dashboard data:', error);
     } finally {
+      console.log('Setting loading to false');
       setLoading(false);
     }
   };

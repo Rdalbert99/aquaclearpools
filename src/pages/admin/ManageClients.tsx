@@ -70,27 +70,52 @@ export default function ManageClients() {
   const loadClients = async () => {
     try {
       console.log('Loading clients...');
+      
+      // First try a simple query to test access
+      const { data: simpleClients, error: simpleError } = await supabase
+        .from('clients')
+        .select('*')
+        .limit(1);
+      
+      console.log('Simple clients test:', simpleClients, simpleError);
+      
+      // Now try the full query with join
       const { data, error } = await supabase
         .from('clients')
         .select(`
-          *,
-          users(email, phone, name)
+          id,
+          customer,
+          pool_size,
+          pool_type,
+          liner_type,
+          status,
+          last_service_date,
+          created_at,
+          user_id,
+          users!inner(email, phone, name)
         `)
         .order('customer');
+
+      console.log('Full clients query result:', { data, error });
 
       if (error) {
         console.error('Error loading clients:', error);
         toast({
           title: "Error",
-          description: "Failed to load clients",
+          description: `Failed to load clients: ${error.message}`,
           variant: "destructive",
         });
       } else {
-        console.log('Clients loaded:', data);
+        console.log('Clients loaded successfully:', data?.length || 0);
         setClients(data || []);
       }
     } catch (error) {
       console.error('Error loading clients:', error);
+      toast({
+        title: "Error",
+        description: "Failed to load clients",
+        variant: "destructive",
+      });
     } finally {
       setLoading(false);
     }

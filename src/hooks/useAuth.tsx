@@ -36,21 +36,32 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    console.log('Auth useEffect starting...');
+    
     // Set up auth state listener FIRST
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
+        console.log('Auth state change:', event, session?.user?.email);
         setSession(session);
         
         if (session?.user) {
+          console.log('User found, fetching profile...');
           // Fetch user details from our users table
-          const { data: userData } = await supabase
+          const { data: userData, error } = await supabase
             .from('users')
             .select('role, name')
             .eq('id', session.user.id)
             .single();
           
+          if (error) {
+            console.error('Error fetching user profile:', error);
+          } else {
+            console.log('User profile loaded:', userData);
+          }
+          
           setUser({ ...session.user, ...userData });
         } else {
+          console.log('No user, clearing state');
           setUser(null);
         }
         setLoading(false);
@@ -59,6 +70,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
     // THEN check for existing session
     supabase.auth.getSession().then(({ data: { session } }) => {
+      console.log('Initial session check:', session?.user?.email);
       setSession(session);
       if (session?.user) {
         supabase
@@ -67,6 +79,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           .eq('id', session.user.id)
           .single()
           .then(({ data: userData }) => {
+            console.log('Initial user profile:', userData);
             setUser({ ...session.user, ...userData });
             setLoading(false);
           });

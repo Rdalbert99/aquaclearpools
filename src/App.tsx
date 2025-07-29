@@ -37,13 +37,15 @@ const AppRoutes = () => {
         <Route 
           path="/" 
           element={
-            <ProtectedRoute>
-              {user?.role === 'client' ? (
+            isAuthenticated ? (
+              user?.role === 'client' ? (
                 <Navigate to="/client" replace />
               ) : (
                 <Navigate to="/admin" replace />
-              )}
-            </ProtectedRoute>
+              )
+            ) : (
+              <Navigate to="/auth/login" replace />
+            )
           } 
         />
         

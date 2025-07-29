@@ -14,6 +14,7 @@ import NotFound from "./pages/NotFound";
 import Login from "./pages/auth/Login";
 import Signup from "./pages/auth/Signup";
 import AdminDashboard from "./pages/admin/Dashboard";
+import ManageClients from "./pages/admin/ManageClients";
 import ClientDashboard from "./pages/client/Dashboard";
 
 const queryClient = new QueryClient();
@@ -55,6 +56,14 @@ const AppRoutes = () => {
           element={
             <ProtectedRoute allowedRoles={['admin', 'tech']}>
               <AdminDashboard />
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/admin/clients" 
+          element={
+            <ProtectedRoute allowedRoles={['admin', 'tech']}>
+              <ManageClients />
             </ProtectedRoute>
           } 
         />

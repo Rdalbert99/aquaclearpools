@@ -7,12 +7,14 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Eye, EyeOff, Droplets } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { initializeDemoUsers } from '@/lib/demo-users';
 
 export default function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [isInitializing, setIsInitializing] = useState(false);
   const { signIn, isAuthenticated, user } = useAuth();
   const { toast } = useToast();
 
@@ -49,6 +51,25 @@ export default function Login() {
   const handleDemoLogin = (demoEmail: string, demoPassword: string = 'password') => {
     setEmail(demoEmail);
     setPassword(demoPassword);
+  };
+
+  const handleInitializeDemoUsers = async () => {
+    setIsInitializing(true);
+    try {
+      await initializeDemoUsers();
+      toast({
+        title: "Demo users created!",
+        description: "You can now login with admin@poolcleaning.com / password",
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to create demo users",
+        variant: "destructive",
+      });
+    } finally {
+      setIsInitializing(false);
+    }
   };
 
   return (
@@ -134,9 +155,17 @@ export default function Login() {
             <Button
               variant="outline"
               size="sm"
-              onClick={() => handleDemoLogin('client1@example.com')}
+              onClick={() => handleDemoLogin('client1@poolcleaning.com')}
             >
               🏊‍♀️ Client Demo
+            </Button>
+            <Button
+              variant="destructive"
+              size="sm"
+              onClick={handleInitializeDemoUsers}
+              disabled={isInitializing}
+            >
+              {isInitializing ? 'Creating...' : '🔧 Initialize Demo Users'}
             </Button>
           </div>
 

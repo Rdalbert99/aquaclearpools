@@ -32,6 +32,14 @@ export default function AdminDashboard() {
 
   useEffect(() => {
     loadDashboardData();
+    
+    // Force loading to false after 5 seconds to prevent infinite loading
+    const timeout = setTimeout(() => {
+      console.log('Dashboard loading timeout - forcing loading to false');
+      setLoading(false);
+    }, 5000);
+    
+    return () => clearTimeout(timeout);
   }, []);
 
   const loadDashboardData = async () => {
@@ -105,7 +113,13 @@ export default function AdminDashboard() {
   };
 
   if (loading) {
-    return <LoadingSpinner />;
+    return (
+      <div className="p-6">
+        <div className="flex items-center justify-center min-h-[400px]">
+          <LoadingSpinner />
+        </div>
+      </div>
+    );
   }
 
   return (

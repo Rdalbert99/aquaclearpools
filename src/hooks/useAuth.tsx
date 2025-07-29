@@ -46,46 +46,63 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         
         if (session?.user) {
           console.log('User found, fetching profile...');
-          // Fetch user details from our users table
-          const { data: userData, error } = await supabase
-            .from('users')
-            .select('role, name')
-            .eq('id', session.user.id)
-            .single();
-          
-          if (error) {
-            console.error('Error fetching user profile:', error);
-          } else {
-            console.log('User profile loaded:', userData);
+          try {
+            // Fetch user details from our users table
+            const { data: userData, error } = await supabase
+              .from('users')
+              .select('role, name')
+              .eq('id', session.user.id)
+              .single();
+            
+            if (error) {
+              console.error('Error fetching user profile:', error);
+              // If profile doesn't exist, create a basic user object
+              setUser({ 
+                ...session.user, 
+                role: 'client', // default role
+                name: session.user.email?.split('@')[0] || 'User'
+              });
+            } else {
+              console.log('User profile loaded:', userData);
+              setUser({ ...session.user, ...userData });
+            }
+          } catch (err) {
+            console.error('Profile fetch failed:', err);
+            // Fallback to basic user
+            setUser({ 
+              ...session.user, 
+              role: 'client',
+              name: session.user.email?.split('@')[0] || 'User'
+            });
           }
-          
-          setUser({ ...session.user, ...userData });
         } else {
           console.log('No user, clearing state');
           setUser(null);
         }
+        console.log('Setting loading false from auth state change');
         setLoading(false);
       }
     );
 
     // THEN check for existing session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      console.log('Initial session check:', session?.user?.email);
-      setSession(session);
-      if (session?.user) {
-        supabase
-          .from('users')
-          .select('role, name')
-          .eq('id', session.user.id)
-          .single()
-          .then(({ data: userData }) => {
-            console.log('Initial user profile:', userData);
-            setUser({ ...session.user, ...userData });
-            setLoading(false);
-          });
-      } else {
+    console.log('Checking for existing session...');
+    supabase.auth.getSession().then(({ data: { session }, error }) => {
+      console.log('Initial session check:', session?.user?.email, error);
+      
+      if (error) {
+        console.error('Session check error:', error);
+        setLoading(false);
+        return;
+      }
+      
+      // Don't duplicate the profile fetch here since onAuthStateChange will handle it
+      if (!session?.user) {
+        console.log('No initial session found, setting loading false');
         setLoading(false);
       }
+    }).catch(err => {
+      console.error('Session check failed:', err);
+      setLoading(false);
     });
 
     return () => subscription.unsubscribe();

@@ -104,21 +104,28 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
       if (error) throw error;
 
-      // Create user profile
+      // Create user profile - use upsert to handle existing records
       if (data.user) {
         const { error: userError } = await supabase
           .from('users')
-          .insert([
+          .upsert([
             {
               id: data.user.id,
               email,
               password: 'password', // This is just for compatibility with existing schema
               name,
               role,
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString(),
             },
-          ]);
+          ], {
+            onConflict: 'id'
+          });
 
-        if (userError) throw userError;
+        if (userError) {
+          console.error('User profile creation error:', userError);
+          // Don't throw here - the auth user was created successfully
+        }
       }
 
       return {};

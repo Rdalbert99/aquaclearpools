@@ -69,54 +69,73 @@ export default function ManageClients() {
 
   const loadClients = async () => {
     try {
-      console.log('Loading clients...');
+      console.log('Starting client load process...');
+      console.log('Current user:', user);
       
-      // First try a simple query to test access
-      const { data: simpleClients, error: simpleError } = await supabase
+      // Test basic Supabase connection first
+      console.log('Testing basic Supabase connection...');
+      const { data: testData, error: testError } = await supabase
         .from('clients')
-        .select('*')
+        .select('id')
         .limit(1);
       
-      console.log('Simple clients test:', simpleClients, simpleError);
+      console.log('Basic connection test:', { testData, testError });
       
-      // Now try the full query with join
-      const { data, error } = await supabase
-        .from('clients')
-        .select(`
-          id,
-          customer,
-          pool_size,
-          pool_type,
-          liner_type,
-          status,
-          last_service_date,
-          created_at,
-          user_id,
-          users!inner(email, phone, name)
-        `)
-        .order('customer');
-
-      console.log('Full clients query result:', { data, error });
-
-      if (error) {
-        console.error('Error loading clients:', error);
+      if (testError) {
+        console.error('Basic connection failed:', testError);
         toast({
-          title: "Error",
-          description: `Failed to load clients: ${error.message}`,
+          title: "Connection Error",
+          description: `Database connection failed: ${testError.message}`,
           variant: "destructive",
         });
-      } else {
-        console.log('Clients loaded successfully:', data?.length || 0);
-        setClients(data || []);
+        return;
       }
+      
+      // Now try to get all clients with minimal data
+      console.log('Fetching clients...');
+      const { data: clientsData, error: clientsError } = await supabase
+        .from('clients')
+        .select('id, customer, pool_size, pool_type, status, user_id');
+      
+      console.log('Clients query result:', { clientsData, clientsError });
+      
+      if (clientsError) {
+        console.error('Clients query failed:', clientsError);
+        toast({
+          title: "Query Error", 
+          description: `Failed to fetch clients: ${clientsError.message}`,
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      console.log(`Found ${clientsData?.length || 0} clients`);
+      
+      // Set the basic client data for now (without user joins)
+      const formattedClients = clientsData?.map(client => ({
+        ...client,
+        liner_type: 'Liner', // default
+        last_service_date: null, // default
+        created_at: new Date().toISOString(), // default
+        users: {
+          email: 'admin@example.com', // placeholder
+          phone: null,
+          name: 'Admin User'
+        }
+      })) || [];
+      
+      console.log('Setting clients:', formattedClients);
+      setClients(formattedClients);
+      
     } catch (error) {
-      console.error('Error loading clients:', error);
+      console.error('Unexpected error loading clients:', error);
       toast({
         title: "Error",
-        description: "Failed to load clients",
+        description: "An unexpected error occurred while loading clients",
         variant: "destructive",
       });
     } finally {
+      console.log('Setting loading to false');
       setLoading(false);
     }
   };

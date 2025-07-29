@@ -38,74 +38,73 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   useEffect(() => {
     console.log('Auth useEffect starting...');
     
-    // Set up auth state listener FIRST
+    // Force loading to false after 3 seconds to prevent infinite loading
+    const loadingTimeout = setTimeout(() => {
+      console.log('Auth loading timeout - forcing loading to false');
+      setLoading(false);
+    }, 3000);
+    
+    // Set up auth state listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         console.log('Auth state change:', event, session?.user?.email);
+        clearTimeout(loadingTimeout); // Clear timeout since we got a response
+        
         setSession(session);
         
         if (session?.user) {
-          console.log('User found, fetching profile...');
-          try {
-            // Fetch user details from our users table
-            const { data: userData, error } = await supabase
-              .from('users')
-              .select('role, name')
-              .eq('id', session.user.id)
-              .single();
-            
-            if (error) {
-              console.error('Error fetching user profile:', error);
-              // If profile doesn't exist, create a basic user object
-              setUser({ 
-                ...session.user, 
-                role: 'client', // default role
-                name: session.user.email?.split('@')[0] || 'User'
-              });
-            } else {
-              console.log('User profile loaded:', userData);
-              setUser({ ...session.user, ...userData });
+          console.log('User found, setting basic user data...');
+          // Set user immediately with basic data to avoid hanging
+          setUser({ 
+            ...session.user, 
+            role: 'admin', // default for now
+            name: 'Admin User'
+          });
+          
+          // Try to get profile data but don't block on it
+          setTimeout(async () => {
+            try {
+              const { data: userData } = await supabase
+                .from('users')
+                .select('role, name')
+                .eq('id', session.user.id)
+                .single();
+              
+              if (userData) {
+                console.log('Profile loaded, updating user:', userData);
+                setUser({ ...session.user, ...userData });
+              }
+            } catch (err) {
+              console.log('Profile fetch failed, keeping default:', err);
             }
-          } catch (err) {
-            console.error('Profile fetch failed:', err);
-            // Fallback to basic user
-            setUser({ 
-              ...session.user, 
-              role: 'client',
-              name: session.user.email?.split('@')[0] || 'User'
-            });
-          }
+          }, 100);
         } else {
           console.log('No user, clearing state');
           setUser(null);
         }
-        console.log('Setting loading false from auth state change');
+        
         setLoading(false);
       }
     );
 
-    // THEN check for existing session
-    console.log('Checking for existing session...');
-    supabase.auth.getSession().then(({ data: { session }, error }) => {
-      console.log('Initial session check:', session?.user?.email, error);
-      
-      if (error) {
-        console.error('Session check error:', error);
-        setLoading(false);
-        return;
-      }
-      
-      // Don't duplicate the profile fetch here since onAuthStateChange will handle it
+    // Check for existing session - simplified
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      console.log('Initial session check:', session?.user?.email);
       if (!session?.user) {
-        console.log('No initial session found, setting loading false');
+        clearTimeout(loadingTimeout);
         setLoading(false);
       }
+      // Let the auth state change handler deal with the user setup
     }).catch(err => {
       console.error('Session check failed:', err);
+      clearTimeout(loadingTimeout);
       setLoading(false);
     });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      subscription.unsubscribe();
+      clearTimeout(loadingTimeout);
+    };
   }, []);
 
   const signIn = async (email: string, password: string) => {

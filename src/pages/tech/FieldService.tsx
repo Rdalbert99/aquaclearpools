@@ -44,6 +44,13 @@ interface ServiceData {
   services_performed: string[];
 }
 
+interface ChemicalRecommendation {
+  chemical: string;
+  amount: number;
+  unit: string;
+  reason: string;
+}
+
 const serviceOptions = [
   'Skimmed surface',
   'Emptied skimmer baskets',
@@ -66,6 +73,8 @@ export default function FieldService() {
   const [client, setClient] = useState<Client | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [calculating, setCalculating] = useState(false);
+  const [recommendations, setRecommendations] = useState<ChemicalRecommendation[]>([]);
   const [startTime] = useState(new Date());
   const [serviceData, setServiceData] = useState<ServiceData>({
     client_id: clientId || '',
@@ -128,6 +137,109 @@ export default function FieldService() {
     const endTime = new Date();
     const duration = Math.round((endTime.getTime() - startTime.getTime()) / (1000 * 60));
     setServiceData(prev => ({ ...prev, duration }));
+  };
+
+  const calculateChemicals = async () => {
+    if (!client || !serviceData.ph_level || !serviceData.chlorine_level) {
+      toast({
+        title: "Error",
+        description: "Please enter at least pH and chlorine levels",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setCalculating(true);
+    try {
+      const testResults = {
+        ph_level: serviceData.ph_level,
+        chlorine_level: serviceData.chlorine_level,
+        alkalinity_level: serviceData.alkalinity_level,
+        cyanuric_acid_level: serviceData.cyanuric_acid_level,
+        calcium_hardness_level: serviceData.calcium_hardness_level
+      };
+
+      // Calculate chemical recommendations
+      const recommendations: ChemicalRecommendation[] = [];
+      
+      // pH adjustments
+      if (serviceData.ph_level < 7.2) {
+        const amount = Math.round((7.4 - serviceData.ph_level) * client.pool_size * 0.0012);
+        recommendations.push({
+          chemical: "pH Up (Sodium Carbonate)",
+          amount,
+          unit: "oz",
+          reason: `pH is ${serviceData.ph_level}, target is 7.2-7.6`
+        });
+      } else if (serviceData.ph_level > 7.6) {
+        const amount = Math.round((serviceData.ph_level - 7.4) * client.pool_size * 0.001);
+        recommendations.push({
+          chemical: "pH Down (Muriatic Acid)",
+          amount,
+          unit: "oz",
+          reason: `pH is ${serviceData.ph_level}, target is 7.2-7.6`
+        });
+      }
+
+      // Chlorine adjustments
+      if (serviceData.chlorine_level < 1.0) {
+        const amount = Math.round((3.0 - serviceData.chlorine_level) * client.pool_size * 0.0013);
+        recommendations.push({
+          chemical: "Liquid Chlorine",
+          amount,
+          unit: "oz",
+          reason: `Chlorine is ${serviceData.chlorine_level} ppm, target is 1.0-3.0 ppm`
+        });
+      }
+
+      // Alkalinity adjustments
+      if (serviceData.alkalinity_level && serviceData.alkalinity_level < 80) {
+        const amount = Math.round((100 - serviceData.alkalinity_level) * client.pool_size * 0.0015);
+        recommendations.push({
+          chemical: "Alkalinity Up (Sodium Bicarbonate)",
+          amount,
+          unit: "oz",
+          reason: `Alkalinity is ${serviceData.alkalinity_level} ppm, target is 80-120 ppm`
+        });
+      }
+
+      setRecommendations(recommendations);
+
+      // Save calculation to database
+      const { error } = await supabase
+        .from('chemical_calculations')
+        .insert({
+          client_id: client.id,
+          technician_id: user?.id,
+          pool_type: client.pool_type,
+          pool_size: client.pool_size,
+          test_results: testResults as any,
+          chemical_recommendations: recommendations as any
+        });
+
+      if (error) {
+        console.error('Error saving calculation:', error);
+        toast({
+          title: "Warning",
+          description: "Calculation completed but couldn't save to history",
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: "Success",
+          description: "Chemical calculation completed and saved",
+        });
+      }
+    } catch (error) {
+      console.error('Error calculating chemicals:', error);
+      toast({
+        title: "Error",
+        description: "Failed to calculate chemical recommendations",
+        variant: "destructive",
+      });
+    } finally {
+      setCalculating(false);
+    }
   };
 
   const handleComplete = async () => {
@@ -239,12 +351,6 @@ export default function FieldService() {
             Service for {client.customer} - {client.pool_size?.toLocaleString()} gal {client.pool_type} pool
           </p>
         </div>
-        <div className="flex space-x-2">
-          <Button variant="outline" onClick={() => navigate('/tech/calculator')}>
-            <Calculator className="mr-2 h-4 w-4" />
-            Chemical Calculator
-          </Button>
-        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -344,6 +450,37 @@ export default function FieldService() {
                   placeholder="200"
                 />
               </div>
+            </div>
+            
+            <div className="mt-4 space-y-4">
+              <Button 
+                onClick={calculateChemicals}
+                disabled={calculating || !serviceData.ph_level || !serviceData.chlorine_level}
+                className="w-full"
+              >
+                {calculating ? (
+                  <LoadingSpinner />
+                ) : (
+                  <>
+                    <Calculator className="mr-2 h-4 w-4" />
+                    Calculate Chemical Recommendations
+                  </>
+                )}
+              </Button>
+              
+              {recommendations.length > 0 && (
+                <div className="mt-4 p-4 bg-muted/50 rounded-lg">
+                  <h4 className="font-semibold mb-3 text-sm">Chemical Recommendations:</h4>
+                  <div className="space-y-2">
+                    {recommendations.map((rec, index) => (
+                      <div key={index} className="text-sm p-2 bg-background rounded border">
+                        <div className="font-medium">{rec.chemical}: {rec.amount} {rec.unit}</div>
+                        <div className="text-muted-foreground text-xs">{rec.reason}</div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           </CardContent>
         </Card>

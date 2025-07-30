@@ -19,6 +19,7 @@ import ChemicalCalculator from "./pages/admin/ChemicalCalculator";
 import ServiceHistory from "./pages/admin/ServiceHistory";
 import ClientView from "./pages/admin/ClientView";
 import ClientEdit from "./pages/admin/ClientEdit";
+import NewService from "./pages/admin/NewService";
 import ClientDashboard from "./pages/client/Dashboard";
 
 const queryClient = new QueryClient();
@@ -100,6 +101,14 @@ const AppRoutes = () => {
           element={
             <ProtectedRoute allowedRoles={['admin', 'tech']}>
               <ServiceHistory />
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/admin/services/new" 
+          element={
+            <ProtectedRoute allowedRoles={['admin', 'tech']}>
+              <NewService />
             </ProtectedRoute>
           } 
         />

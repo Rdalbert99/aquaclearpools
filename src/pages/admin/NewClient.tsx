@@ -96,6 +96,8 @@ export default function NewClient() {
   };
 
   const handleSave = async () => {
+    console.log('🚀 Starting handleSave, client data:', client);
+    
     if (!client.customer.trim()) {
       toast({
         title: "Error",
@@ -116,6 +118,7 @@ export default function NewClient() {
 
     // Validate new user creation fields
     if (client.account_type === 'new') {
+      console.log('🔍 Validating new user creation fields...');
       if (!client.new_user_email.trim()) {
         toast({
           title: "Error",
@@ -140,27 +143,48 @@ export default function NewClient() {
 
       // Create new user if requested
       if (client.account_type === 'new') {
+        console.log('👤 Creating new user account...');
+        console.log('📧 User email:', client.new_user_email);
+        console.log('👤 User name:', client.customer);
+        console.log('🔐 User password length:', client.new_user_password.length);
+        
+        const userInsertData = {
+          email: client.new_user_email,
+          password: client.new_user_password,
+          name: client.customer,
+          role: 'client'
+        };
+        
+        console.log('📝 Inserting user data:', userInsertData);
+        
         const { data: userData, error: userError } = await supabase
           .from('users')
-          .insert({
-            email: client.new_user_email,
-            password: client.new_user_password,
-            name: client.customer,
-            role: 'client'
-          })
+          .insert(userInsertData)
           .select()
           .single();
 
-        if (userError) throw userError;
+        console.log('✅ User creation result:', { userData, userError });
+
+        if (userError) {
+          console.error('❌ User creation failed:', userError);
+          throw userError;
+        }
+        
         finalUserId = userData.id;
+        console.log('✅ User created successfully with ID:', finalUserId);
 
         // TODO: Send login email if requested (requires edge function)
         if (client.send_login_email) {
-          console.log('Email sending not implemented yet');
+          console.log('📧 Email sending not implemented yet');
         }
       } else if (client.account_type === 'existing' && client.user_id) {
+        console.log('👤 Using existing user ID:', client.user_id);
         finalUserId = client.user_id;
+      } else {
+        console.log('👤 No user account associated');
       }
+
+      console.log('🏢 Creating client with user ID:', finalUserId);
 
       const insertData: any = {
         customer: client.customer,
@@ -185,11 +209,15 @@ export default function NewClient() {
         insertData.last_service_date = client.last_service_date;
       }
 
+      console.log('📝 Inserting client data:', insertData);
+
       const { data, error } = await supabase
         .from('clients')
         .insert(insertData)
         .select()
         .single();
+
+      console.log('✅ Client creation result:', { data, error });
 
       if (error) throw error;
 
@@ -201,7 +229,13 @@ export default function NewClient() {
       navigate(`/admin/clients/${data.id}`);
 
     } catch (error) {
-      console.error('Error creating client:', error);
+      console.error('❌ Error creating client:', error);
+      console.error('❌ Error details:', {
+        message: error.message,
+        code: error.code,
+        details: error.details,
+        hint: error.hint
+      });
       toast({
         title: "Error",
         description: "Failed to create client",

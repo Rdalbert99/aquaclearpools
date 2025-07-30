@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -52,6 +52,7 @@ interface ChemicalRecommendation {
 
 export default function NewService() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { user } = useAuth();
   const { toast } = useToast();
   
@@ -82,6 +83,14 @@ export default function NewService() {
   useEffect(() => {
     loadInitialData();
   }, []);
+
+  useEffect(() => {
+    // Check for pre-selected client from URL parameters
+    const clientId = searchParams.get('client');
+    if (clientId && clients.length > 0) {
+      setFormData(prev => ({ ...prev, client_id: clientId }));
+    }
+  }, [searchParams, clients]);
 
   const loadInitialData = async () => {
     try {

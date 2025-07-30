@@ -12,7 +12,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Trash2 } from 'lucide-react';
+import { Trash2, Plus } from 'lucide-react';
 import { 
   ArrowLeft,
   Edit,
@@ -741,8 +741,19 @@ export default function ClientView() {
       {/* Service History */}
       <Card>
         <CardHeader>
-          <CardTitle>Service History</CardTitle>
-          <CardDescription>Complete history of pool services</CardDescription>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle>Service History</CardTitle>
+              <CardDescription>Complete history of pool services</CardDescription>
+            </div>
+            <Button 
+              onClick={() => navigate(`/admin/services/new?client=${client.id}`)}
+              className="flex items-center space-x-2"
+            >
+              <Plus className="h-4 w-4" />
+              <span>Add Service</span>
+            </Button>
+          </div>
         </CardHeader>
         <CardContent>
           <div className="space-y-4">

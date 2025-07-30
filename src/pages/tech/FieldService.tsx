@@ -474,8 +474,24 @@ export default function FieldService() {
                   <div className="space-y-2">
                     {recommendations.map((rec, index) => (
                       <div key={index} className="text-sm p-2 bg-background rounded border">
-                        <div className="font-medium">{rec.chemical}: {rec.amount} {rec.unit}</div>
-                        <div className="text-muted-foreground text-xs">{rec.reason}</div>
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <div className="font-medium">{rec.chemical}: {rec.amount} {rec.unit}</div>
+                            <div className="text-muted-foreground text-xs">{rec.reason}</div>
+                          </div>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => {
+                              const addition = `${rec.chemical}: ${rec.amount} ${rec.unit}`;
+                              const current = serviceData.chemicals_added;
+                              const newValue = current ? `${current}\n${addition}` : addition;
+                              handleInputChange('chemicals_added', newValue);
+                            }}
+                          >
+                            Add
+                          </Button>
+                        </div>
                       </div>
                     ))}
                   </div>

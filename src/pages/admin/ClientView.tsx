@@ -260,13 +260,36 @@ export default function ClientView() {
                 {client.users.email && (
                   <div className="flex items-center space-x-2">
                     <Mail className="h-4 w-4 text-muted-foreground" />
-                    <p>{client.users.email}</p>
+                    <a
+                      href={`mailto:${client.users.email}`}
+                      className="text-blue-600 hover:text-blue-800 hover:underline transition-colors"
+                    >
+                      {client.users.email}
+                    </a>
                   </div>
                 )}
                 {client.users.phone && (
                   <div className="flex items-center space-x-2">
                     <Phone className="h-4 w-4 text-muted-foreground" />
-                    <p>{client.users.phone}</p>
+                    <div className="flex items-center space-x-2">
+                      <span className="text-gray-900">{client.users.phone}</span>
+                      <div className="flex space-x-1">
+                        <a
+                          href={`tel:${client.users.phone}`}
+                          className="inline-flex items-center px-2 py-1 text-xs bg-green-100 text-green-800 rounded hover:bg-green-200 transition-colors"
+                          title="Call"
+                        >
+                          📞 Call
+                        </a>
+                        <a
+                          href={`sms:${client.users.phone}`}
+                          className="inline-flex items-center px-2 py-1 text-xs bg-blue-100 text-blue-800 rounded hover:bg-blue-200 transition-colors"
+                          title="Text Message"
+                        >
+                          💬 Text
+                        </a>
+                      </div>
+                    </div>
                   </div>
                 )}
                 {client.users.address && (

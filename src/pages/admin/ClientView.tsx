@@ -590,18 +590,24 @@ export default function ClientView() {
               ))}
 
               {/* Login History */}
-              {client.user_id && loginHistory.length > 0 && (
+              {client.user_id && (
                 <div className="mt-4 pt-4 border-t">
                   <h6 className="text-sm font-medium mb-2 flex items-center">
                     <Shield className="h-4 w-4 mr-2" />
                     Recent Logins
                   </h6>
                   <div className="space-y-2">
-                    {loginHistory.slice(0, 3).map((login) => (
-                      <div key={login.id} className="text-xs text-muted-foreground">
-                        {new Date(login.login_time).toLocaleString()}
+                    {loginHistory.length > 0 ? (
+                      loginHistory.slice(0, 3).map((login) => (
+                        <div key={login.id} className="text-xs text-muted-foreground">
+                          {new Date(login.login_time).toLocaleString()}
+                        </div>
+                      ))
+                    ) : (
+                      <div className="text-xs text-muted-foreground">
+                        No login records yet. Login tracking started recently.
                       </div>
-                    ))}
+                    )}
                   </div>
                 </div>
               )}

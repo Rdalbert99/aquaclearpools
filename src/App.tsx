@@ -22,6 +22,9 @@ import ClientEdit from "./pages/admin/ClientEdit";
 import NewClient from "./pages/admin/NewClient";
 import NewService from "./pages/admin/NewService";
 import ClientDashboard from "./pages/client/Dashboard";
+import ClientServices from "./pages/client/Services";
+import RequestService from "./pages/client/RequestService";
+import ClientProfile from "./pages/client/Profile";
 
 const queryClient = new QueryClient();
 
@@ -128,6 +131,30 @@ const AppRoutes = () => {
           element={
             <ProtectedRoute allowedRoles={['client']}>
               <ClientDashboard />
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/client/services" 
+          element={
+            <ProtectedRoute allowedRoles={['client']}>
+              <ClientServices />
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/client/request-service" 
+          element={
+            <ProtectedRoute allowedRoles={['client']}>
+              <RequestService />
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/client/profile" 
+          element={
+            <ProtectedRoute allowedRoles={['client']}>
+              <ClientProfile />
             </ProtectedRoute>
           } 
         />

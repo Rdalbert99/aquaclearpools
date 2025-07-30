@@ -17,10 +17,8 @@ import {
 } from 'lucide-react';
 
 interface ClientDashboardData {
-  client: any;
+  clients: any[];
   recentServices: any[];
-  nextService: any;
-  poolStatus: string;
   serviceRequests: any[];
 }
 
@@ -37,54 +35,50 @@ export default function ClientDashboard() {
     if (!user?.id) return;
 
     try {
-      // Load client profile
-      const { data: client } = await supabase
+      // Load client profiles (user can have multiple pools)
+      const { data: clients, error: clientError } = await supabase
         .from('clients')
         .select('*')
         .eq('user_id', user.id)
-        .single();
+        .order('customer');
 
-      if (!client) {
+      if (clientError) {
+        console.error('Error loading clients:', clientError);
         setLoading(false);
         return;
       }
 
-      // Load recent services
+      if (!clients || clients.length === 0) {
+        setLoading(false);
+        return;
+      }
+
+      // Load recent services for all client pools
+      const clientIds = clients.map(c => c.id);
       const { data: services } = await supabase
         .from('services')
         .select(`
           *,
-          users(name)
+          users(name),
+          clients(customer)
         `)
-        .eq('client_id', client.id)
+        .in('client_id', clientIds)
         .order('service_date', { ascending: false })
-        .limit(5);
+        .limit(10);
 
-      // Load service requests
+      // Load service requests for all client pools
       const { data: requests } = await supabase
         .from('service_requests')
-        .select('*')
-        .eq('client_id', client.id)
+        .select(`
+          *,
+          clients(customer)
+        `)
+        .in('client_id', clientIds)
         .order('requested_date', { ascending: false });
 
-      // Determine pool status
-      let poolStatus = 'good';
-      if (!client.last_service_date) {
-        poolStatus = 'needs_service';
-      } else {
-        const lastService = new Date(client.last_service_date);
-        const weekAgo = new Date();
-        weekAgo.setDate(weekAgo.getDate() - 7);
-        if (lastService < weekAgo) {
-          poolStatus = 'needs_service';
-        }
-      }
-
       setDashboardData({
-        client,
+        clients: clients || [],
         recentServices: services || [],
-        nextService: null, // Could be calculated based on schedule
-        poolStatus,
         serviceRequests: requests || []
       });
     } catch (error) {
@@ -98,7 +92,7 @@ export default function ClientDashboard() {
     return <LoadingSpinner />;
   }
 
-  if (!dashboardData?.client) {
+  if (!dashboardData?.clients || dashboardData.clients.length === 0) {
     return (
       <div className="p-6">
         <Card>
@@ -113,7 +107,7 @@ export default function ClientDashboard() {
     );
   }
 
-  const { client, recentServices, poolStatus, serviceRequests } = dashboardData;
+  const { clients, recentServices, serviceRequests } = dashboardData;
 
   return (
     <div className="p-6 space-y-6">
@@ -132,54 +126,76 @@ export default function ClientDashboard() {
         </div>
       </div>
 
-      {/* Pool Status Card */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center space-x-2">
-            <Droplets className="h-5 w-5" />
-            <span>Pool Status</span>
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div>
-              <p className="text-sm text-muted-foreground">Pool Size</p>
-              <p className="text-2xl font-bold">{client.pool_size?.toLocaleString()} gal</p>
-            </div>
-            <div>
-              <p className="text-sm text-muted-foreground">Pool Type</p>
-              <p className="text-2xl font-bold">{client.pool_type}</p>
-            </div>
-            <div>
-              <p className="text-sm text-muted-foreground">Status</p>
-              <div className="flex items-center space-x-2">
-                {poolStatus === 'good' ? (
-                  <CheckCircle className="h-5 w-5 text-green-500" />
-                ) : (
-                  <AlertCircle className="h-5 w-5 text-orange-500" />
-                )}
-                <Badge variant={poolStatus === 'good' ? 'default' : 'secondary'}>
-                  {poolStatus === 'good' ? 'Up to Date' : 'Needs Service'}
-                </Badge>
-              </div>
-            </div>
-          </div>
-          <div className="mt-4 pt-4 border-t">
-            <p className="text-sm text-muted-foreground">Last Service</p>
-            <p className="font-medium">
-              {client.last_service_date 
-                ? new Date(client.last_service_date).toLocaleDateString('en-US', {
-                    weekday: 'long',
-                    year: 'numeric',
-                    month: 'long',
-                    day: 'numeric'
-                  })
-                : 'No services on record'
+      {/* Pool Properties */}
+      <div className="space-y-4">
+        <h2 className="text-xl font-semibold">Your Pool Properties</h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {clients.map((client: any) => {
+            // Determine pool status
+            let poolStatus = 'good';
+            let statusText = 'Up to Date';
+            if (!client.last_service_date) {
+              poolStatus = 'needs_service';
+              statusText = 'Needs Service';
+            } else {
+              const lastService = new Date(client.last_service_date);
+              const weekAgo = new Date();
+              weekAgo.setDate(weekAgo.getDate() - 7);
+              if (lastService < weekAgo) {
+                poolStatus = 'needs_service';
+                statusText = 'Needs Service';
               }
-            </p>
-          </div>
-        </CardContent>
-      </Card>
+            }
+
+            return (
+              <Card key={client.id}>
+                <CardHeader>
+                  <CardTitle className="flex items-center space-x-2">
+                    <Droplets className="h-5 w-5" />
+                    <span>{client.customer}</span>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-3">
+                    <div className="grid grid-cols-2 gap-2 text-sm">
+                      <div>
+                        <p className="text-muted-foreground">Size</p>
+                        <p className="font-medium">{client.pool_size?.toLocaleString()} gal</p>
+                      </div>
+                      <div>
+                        <p className="text-muted-foreground">Type</p>
+                        <p className="font-medium">{client.pool_type}</p>
+                      </div>
+                    </div>
+                    <div>
+                      <p className="text-muted-foreground text-sm">Status</p>
+                      <div className="flex items-center space-x-2">
+                        {poolStatus === 'good' ? (
+                          <CheckCircle className="h-4 w-4 text-green-500" />
+                        ) : (
+                          <AlertCircle className="h-4 w-4 text-orange-500" />
+                        )}
+                        <Badge variant={poolStatus === 'good' ? 'default' : 'secondary'}>
+                          {statusText}
+                        </Badge>
+                      </div>
+                    </div>
+                    <div>
+                      <p className="text-muted-foreground text-sm">Last Service</p>
+                      <p className="text-sm font-medium">
+                        {client.last_service_date 
+                          ? new Date(client.last_service_date).toLocaleDateString()
+                          : 'No services on record'
+                        }
+                      </p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
+      </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Recent Services */}
@@ -200,7 +216,7 @@ export default function ClientDashboard() {
               {recentServices.map((service: any) => (
                 <div key={service.id} className="flex items-center justify-between p-3 border rounded-lg">
                   <div>
-                    <p className="font-medium">{new Date(service.service_date).toLocaleDateString()}</p>
+                    <p className="font-medium">{service.clients?.customer} - {new Date(service.service_date).toLocaleDateString()}</p>
                     <p className="text-sm text-muted-foreground">
                       Technician: {service.users?.name || 'Unknown'}
                     </p>
@@ -238,7 +254,7 @@ export default function ClientDashboard() {
               {serviceRequests.slice(0, 3).map((request: any) => (
                 <div key={request.id} className="flex items-center justify-between p-3 border rounded-lg">
                   <div>
-                    <p className="font-medium">{request.request_type}</p>
+                    <p className="font-medium">{request.clients?.customer} - {request.request_type}</p>
                     <p className="text-sm text-muted-foreground">{request.description}</p>
                     <p className="text-sm text-muted-foreground">
                       {new Date(request.requested_date).toLocaleDateString()}

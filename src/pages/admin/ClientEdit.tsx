@@ -15,8 +15,11 @@ import {
   Save,
   User,
   Droplets,
-  Calendar
+  Calendar,
+  DollarSign
 } from 'lucide-react';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Textarea } from '@/components/ui/textarea';
 
 interface ClientFormData {
   customer: string;
@@ -27,6 +30,11 @@ interface ClientFormData {
   in_balance: boolean;
   last_service_date: string;
   user_id: string;
+  service_rate: number;
+  service_frequency: string;
+  next_service_date: string;
+  included_services: string[];
+  service_notes: string;
 }
 
 export default function ClientEdit() {
@@ -64,7 +72,12 @@ export default function ClientEdit() {
         status: data.status || 'Active',
         in_balance: data.in_balance || false,
         last_service_date: data.last_service_date ? data.last_service_date.split('T')[0] : '',
-        user_id: data.user_id || ''
+        user_id: data.user_id || '',
+        service_rate: data.service_rate || 0,
+        service_frequency: data.service_frequency || 'weekly',
+        next_service_date: data.next_service_date ? data.next_service_date.split('T')[0] : '',
+        included_services: data.included_services || [],
+        service_notes: data.service_notes || ''
       });
 
     } catch (error) {
@@ -106,6 +119,11 @@ export default function ClientEdit() {
         status: client.status,
         in_balance: client.in_balance,
         user_id: client.user_id && client.user_id !== "none" ? client.user_id : null,
+        service_rate: client.service_rate,
+        service_frequency: client.service_frequency,
+        next_service_date: client.next_service_date || null,
+        included_services: client.included_services,
+        service_notes: client.service_notes,
         updated_at: new Date().toISOString()
       };
 
@@ -144,6 +162,32 @@ export default function ClientEdit() {
     if (!client) return;
     setClient({ ...client, [field]: value });
   };
+
+  const handleServiceToggle = (service: string, checked: boolean) => {
+    if (!client) return;
+    const updatedServices = checked 
+      ? [...client.included_services, service]
+      : client.included_services.filter(s => s !== service);
+    setClient({ ...client, included_services: updatedServices });
+  };
+
+  const commonPoolServices = [
+    'Chemical Testing & Balancing',
+    'Skimming Surface Debris',
+    'Emptying Skimmer Baskets',
+    'Brushing Pool Walls & Steps',
+    'Vacuuming Pool Floor',
+    'Cleaning Waterline Tile',
+    'Backwashing Filter',
+    'Equipment Inspection',
+    'Pool Equipment Cleaning',
+    'Adding Chlorine/Chemicals',
+    'Shock Treatment',
+    'Algae Prevention',
+    'pH Adjustment',
+    'Filter Cleaning',
+    'Pump Maintenance'
+  ];
 
   if (loading) {
     return (
@@ -321,6 +365,90 @@ export default function ClientEdit() {
                 onCheckedChange={(checked) => handleInputChange('in_balance', checked)}
               />
               <Label htmlFor="inBalance">Pool is currently in chemical balance</Label>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Service Configuration */}
+        <Card className="lg:col-span-2">
+          <CardHeader>
+            <CardTitle className="flex items-center space-x-2">
+              <DollarSign className="h-5 w-5" />
+              <span>Service Configuration</span>
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="serviceRate">Service Rate ($)</Label>
+                <Input
+                  id="serviceRate"
+                  type="number"
+                  step="0.01"
+                  value={client.service_rate || ''}
+                  onChange={(e) => handleInputChange('service_rate', parseFloat(e.target.value) || 0)}
+                  placeholder="0.00"
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="serviceFrequency">Service Frequency</Label>
+                <Select value={client.service_frequency} onValueChange={(value) => handleInputChange('service_frequency', value)}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select frequency..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="weekly">Weekly</SelectItem>
+                    <SelectItem value="bi-weekly">Bi-weekly</SelectItem>
+                    <SelectItem value="monthly">Monthly</SelectItem>
+                    <SelectItem value="quarterly">Quarterly</SelectItem>
+                    <SelectItem value="seasonal">Seasonal</SelectItem>
+                    <SelectItem value="as-needed">As Needed</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="nextServiceDate">Next Service Date</Label>
+                <Input
+                  id="nextServiceDate"
+                  type="date"
+                  value={client.next_service_date}
+                  onChange={(e) => handleInputChange('next_service_date', e.target.value)}
+                />
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              <Label className="text-base font-semibold">Included Services</Label>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                {commonPoolServices.map((service) => (
+                  <div key={service} className="flex items-center space-x-2">
+                    <Checkbox
+                      id={service}
+                      checked={client.included_services.includes(service)}
+                      onCheckedChange={(checked) => handleServiceToggle(service, checked as boolean)}
+                    />
+                    <Label 
+                      htmlFor={service} 
+                      className="text-sm font-normal cursor-pointer"
+                    >
+                      {service}
+                    </Label>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="serviceNotes">Service Notes</Label>
+              <Textarea
+                id="serviceNotes"
+                value={client.service_notes}
+                onChange={(e) => handleInputChange('service_notes', e.target.value)}
+                placeholder="Additional notes about service requirements, special instructions, or client preferences..."
+                rows={3}
+              />
             </div>
           </CardContent>
         </Card>

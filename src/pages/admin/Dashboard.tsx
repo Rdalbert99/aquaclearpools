@@ -79,7 +79,10 @@ export default function AdminDashboard() {
       console.log('Loading service requests...');
       const { data: requests, error: requestsError } = await supabase
         .from('service_requests')
-        .select('*')
+        .select(`
+          *,
+          clients(*)
+        `)
         .eq('status', 'pending');
 
       if (requestsError) {
@@ -88,18 +91,32 @@ export default function AdminDashboard() {
         console.log('Requests loaded:', requests);
       }
 
+      // Map clients needing service with their latest service request dates
+      const clientsWithRequests = clients?.filter(c => {
+        if (!c.last_service_date) return true;
+        const lastService = new Date(c.last_service_date);
+        const weekAgo = new Date();
+        weekAgo.setDate(weekAgo.getDate() - 7);
+        return lastService < weekAgo;
+      }).map(client => {
+        // Find the most recent service request for this client
+        const clientRequests = requests?.filter(r => r.client_id === client.id) || [];
+        const latestRequest = clientRequests.sort((a, b) => 
+          new Date(b.requested_date).getTime() - new Date(a.requested_date).getTime()
+        )[0];
+        
+        return {
+          ...client,
+          latest_request_date: latestRequest?.requested_date || null
+        };
+      }) || [];
+
       const statsData = {
         totalClients: clients?.length || 0,
         activeServices: services?.filter(s => s.status === 'completed').length || 0,
         pendingRequests: requests?.length || 0,
         recentServices: services || [],
-        clientsNeedingService: clients?.filter(c => {
-          if (!c.last_service_date) return true;
-          const lastService = new Date(c.last_service_date);
-          const weekAgo = new Date();
-          weekAgo.setDate(weekAgo.getDate() - 7);
-          return lastService < weekAgo;
-        }) || []
+        clientsNeedingService: clientsWithRequests
       };
 
       console.log('Final stats:', statsData);
@@ -236,6 +253,11 @@ export default function AdminDashboard() {
                         : 'Never'
                       }
                     </p>
+                    {client.latest_request_date && (
+                      <p className="text-sm text-orange-600 font-medium">
+                        Requested: {new Date(client.latest_request_date).toLocaleDateString()}
+                      </p>
+                    )}
                   </div>
                   <div>
                     <Button size="sm" asChild>

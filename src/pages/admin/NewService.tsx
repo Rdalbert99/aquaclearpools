@@ -10,7 +10,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
 import { useToast } from '@/hooks/use-toast';
-import { ArrowLeft, Calendar, DollarSign, Clock, TestTube, FlaskConical } from 'lucide-react';
+import { ArrowLeft, Calendar, DollarSign, Clock, TestTube, FlaskConical, Calculator } from 'lucide-react';
 
 interface Client {
   id: string;
@@ -41,6 +41,13 @@ interface ServiceFormData {
   notes: string;
 }
 
+interface ChemicalRecommendation {
+  chemical: string;
+  amount: number;
+  unit: string;
+  reason: string;
+}
+
 export default function NewService() {
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -50,6 +57,8 @@ export default function NewService() {
   const [technicians, setTechnicians] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [calculating, setCalculating] = useState(false);
+  const [recommendations, setRecommendations] = useState<ChemicalRecommendation[]>([]);
   
   const [formData, setFormData] = useState<ServiceFormData>({
     client_id: '',
@@ -110,6 +119,110 @@ export default function NewService() {
       ...prev,
       [field]: value
     }));
+  };
+
+  const calculateChemicals = async () => {
+    const selectedClient = clients.find(c => c.id === formData.client_id);
+    if (!selectedClient || !formData.ph_level || !formData.chlorine_level) {
+      toast({
+        title: "Error",
+        description: "Please select a client and enter at least pH and chlorine levels",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setCalculating(true);
+    try {
+      const testResults = {
+        ph_level: formData.ph_level,
+        chlorine_level: formData.chlorine_level,
+        alkalinity_level: formData.alkalinity_level,
+        cyanuric_acid_level: formData.cyanuric_acid_level,
+        calcium_hardness_level: formData.calcium_hardness_level
+      };
+
+      // Calculate chemical recommendations
+      const recommendations: ChemicalRecommendation[] = [];
+      
+      // pH adjustments
+      if (formData.ph_level < 7.2) {
+        const amount = Math.round((7.4 - formData.ph_level) * selectedClient.pool_size * 0.0012);
+        recommendations.push({
+          chemical: "pH Up (Sodium Carbonate)",
+          amount,
+          unit: "oz",
+          reason: `pH is ${formData.ph_level}, target is 7.2-7.6`
+        });
+      } else if (formData.ph_level > 7.6) {
+        const amount = Math.round((formData.ph_level - 7.4) * selectedClient.pool_size * 0.001);
+        recommendations.push({
+          chemical: "pH Down (Muriatic Acid)",
+          amount,
+          unit: "oz",
+          reason: `pH is ${formData.ph_level}, target is 7.2-7.6`
+        });
+      }
+
+      // Chlorine adjustments
+      if (formData.chlorine_level < 1.0) {
+        const amount = Math.round((3.0 - formData.chlorine_level) * selectedClient.pool_size * 0.0013);
+        recommendations.push({
+          chemical: "Liquid Chlorine",
+          amount,
+          unit: "oz",
+          reason: `Chlorine is ${formData.chlorine_level} ppm, target is 1.0-3.0 ppm`
+        });
+      }
+
+      // Alkalinity adjustments
+      if (formData.alkalinity_level && formData.alkalinity_level < 80) {
+        const amount = Math.round((100 - formData.alkalinity_level) * selectedClient.pool_size * 0.0015);
+        recommendations.push({
+          chemical: "Alkalinity Up (Sodium Bicarbonate)",
+          amount,
+          unit: "oz",
+          reason: `Alkalinity is ${formData.alkalinity_level} ppm, target is 80-120 ppm`
+        });
+      }
+
+      setRecommendations(recommendations);
+
+      // Save calculation to database
+      const { error } = await supabase
+        .from('chemical_calculations')
+        .insert({
+          client_id: selectedClient.id,
+          technician_id: user?.id,
+          pool_type: selectedClient.pool_type,
+          pool_size: selectedClient.pool_size,
+          test_results: testResults as any,
+          chemical_recommendations: recommendations as any
+        });
+
+      if (error) {
+        console.error('Error saving calculation:', error);
+        toast({
+          title: "Warning",
+          description: "Calculation completed but couldn't save to history",
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: "Success",
+          description: "Chemical calculation completed and saved",
+        });
+      }
+    } catch (error) {
+      console.error('Error calculating chemicals:', error);
+      toast({
+        title: "Error",
+        description: "Failed to calculate chemical recommendations",
+        variant: "destructive",
+      });
+    } finally {
+      setCalculating(false);
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -374,6 +487,55 @@ export default function NewService() {
                   onChange={(e) => handleInputChange('calcium_hardness_level', e.target.value || null)}
                   placeholder="200"
                 />
+              </div>
+              
+              <div className="mt-4 space-y-4">
+                <Button 
+                  type="button"
+                  onClick={calculateChemicals}
+                  disabled={calculating || !formData.ph_level || !formData.chlorine_level || !formData.client_id}
+                  className="w-full"
+                >
+                  {calculating ? (
+                    <LoadingSpinner />
+                  ) : (
+                    <>
+                      <Calculator className="mr-2 h-4 w-4" />
+                      Calculate Chemical Recommendations
+                    </>
+                  )}
+                </Button>
+                
+                {recommendations.length > 0 && (
+                  <div className="mt-4 p-4 bg-muted/50 rounded-lg">
+                    <h4 className="font-semibold mb-3 text-sm">Chemical Recommendations:</h4>
+                    <div className="space-y-2">
+                      {recommendations.map((rec, index) => (
+                        <div key={index} className="text-sm p-2 bg-background rounded border">
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <div className="font-medium">{rec.chemical}: {rec.amount} {rec.unit}</div>
+                              <div className="text-muted-foreground text-xs">{rec.reason}</div>
+                            </div>
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="outline"
+                              onClick={() => {
+                                const addition = `${rec.chemical}: ${rec.amount} ${rec.unit}`;
+                                const current = formData.chemicals_added;
+                                const newValue = current ? `${current}\n${addition}` : addition;
+                                handleInputChange('chemicals_added', newValue);
+                              }}
+                            >
+                              Add
+                            </Button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             </CardContent>
           </Card>

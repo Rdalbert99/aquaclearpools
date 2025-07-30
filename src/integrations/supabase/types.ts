@@ -109,11 +109,16 @@ export type Database = {
           customer: string
           id: string
           in_balance: boolean | null
+          included_services: string[] | null
           join_date: string | null
           last_service_date: string | null
           liner_type: string | null
+          next_service_date: string | null
           pool_size: number
           pool_type: string
+          service_frequency: string | null
+          service_notes: string | null
+          service_rate: number | null
           status: string | null
           updated_at: string | null
           user_id: string | null
@@ -123,11 +128,16 @@ export type Database = {
           customer: string
           id?: string
           in_balance?: boolean | null
+          included_services?: string[] | null
           join_date?: string | null
           last_service_date?: string | null
           liner_type?: string | null
+          next_service_date?: string | null
           pool_size: number
           pool_type: string
+          service_frequency?: string | null
+          service_notes?: string | null
+          service_rate?: number | null
           status?: string | null
           updated_at?: string | null
           user_id?: string | null
@@ -137,11 +147,16 @@ export type Database = {
           customer?: string
           id?: string
           in_balance?: boolean | null
+          included_services?: string[] | null
           join_date?: string | null
           last_service_date?: string | null
           liner_type?: string | null
+          next_service_date?: string | null
           pool_size?: number
           pool_type?: string
+          service_frequency?: string | null
+          service_notes?: string | null
+          service_rate?: number | null
           status?: string | null
           updated_at?: string | null
           user_id?: string | null

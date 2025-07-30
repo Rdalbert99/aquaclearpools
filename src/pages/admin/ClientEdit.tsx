@@ -73,11 +73,11 @@ export default function ClientEdit() {
         in_balance: data.in_balance || false,
         last_service_date: data.last_service_date ? data.last_service_date.split('T')[0] : '',
         user_id: data.user_id || '',
-        service_rate: data.service_rate || 0,
-        service_frequency: data.service_frequency || 'weekly',
-        next_service_date: data.next_service_date ? data.next_service_date.split('T')[0] : '',
-        included_services: data.included_services || [],
-        service_notes: data.service_notes || ''
+        service_rate: (data as any).service_rate || 0,
+        service_frequency: (data as any).service_frequency || 'weekly',
+        next_service_date: (data as any).next_service_date ? (data as any).next_service_date.split('T')[0] : '',
+        included_services: (data as any).included_services || [],
+        service_notes: (data as any).service_notes || ''
       });
 
     } catch (error) {

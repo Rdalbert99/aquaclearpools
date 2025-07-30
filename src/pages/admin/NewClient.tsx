@@ -145,6 +145,31 @@ export default function NewClient() {
       if (client.account_type === 'new') {
         console.log('👤 Creating new user account...');
         console.log('📧 User email:', client.new_user_email);
+        
+        // First check if email already exists
+        const { data: existingUser, error: checkError } = await supabase
+          .from('users')
+          .select('id, email')
+          .eq('email', client.new_user_email)
+          .maybeSingle();
+          
+        console.log('🔍 Email check result:', { existingUser, checkError });
+        
+        if (checkError) {
+          console.error('❌ Error checking existing email:', checkError);
+          throw checkError;
+        }
+        
+        if (existingUser) {
+          console.log('⚠️ Email already exists for user:', existingUser);
+          toast({
+            title: "Error",
+            description: `Email ${client.new_user_email} is already in use. Please use a different email or select the existing user.`,
+            variant: "destructive"
+          });
+          return;
+        }
+        
         console.log('👤 User name:', client.customer);
         console.log('🔐 User password length:', client.new_user_password.length);
         

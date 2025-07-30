@@ -19,6 +19,7 @@ import ChemicalCalculator from "./pages/admin/ChemicalCalculator";
 import ServiceHistory from "./pages/admin/ServiceHistory";
 import ClientView from "./pages/admin/ClientView";
 import ClientEdit from "./pages/admin/ClientEdit";
+import NewClient from "./pages/admin/NewClient";
 import NewService from "./pages/admin/NewService";
 import ClientDashboard from "./pages/client/Dashboard";
 
@@ -77,6 +78,14 @@ const AppRoutes = () => {
           element={
             <ProtectedRoute allowedRoles={['admin', 'tech']}>
               <ChemicalCalculator />
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/admin/clients/new" 
+          element={
+            <ProtectedRoute allowedRoles={['admin', 'tech']}>
+              <NewClient />
             </ProtectedRoute>
           } 
         />

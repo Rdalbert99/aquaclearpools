@@ -57,7 +57,7 @@ export default function NewService() {
     service_date: new Date().toISOString().split('T')[0],
     duration: 60,
     cost: 0,
-    status: 'completed',
+    status: 'pending',
     ph_level: null,
     chlorine_level: null,
     alkalinity_level: null,

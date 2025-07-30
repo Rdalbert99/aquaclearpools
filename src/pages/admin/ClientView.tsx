@@ -272,7 +272,14 @@ export default function ClientView() {
                 {client.users.address && (
                   <div className="flex items-start space-x-2">
                     <MapPin className="h-4 w-4 text-muted-foreground mt-1" />
-                    <p>{client.users.address}</p>
+                    <a
+                      href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(client.users.address)}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-blue-600 hover:text-blue-800 hover:underline transition-colors"
+                    >
+                      {client.users.address}
+                    </a>
                   </div>
                 )}
               </>

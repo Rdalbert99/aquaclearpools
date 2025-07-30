@@ -105,11 +105,13 @@ export type Database = {
       }
       clients: {
         Row: {
+          company_name: string | null
           created_at: string | null
           customer: string
           id: string
           in_balance: boolean | null
           included_services: string[] | null
+          is_multi_property: boolean | null
           join_date: string | null
           last_service_date: string | null
           liner_type: string | null
@@ -124,11 +126,13 @@ export type Database = {
           user_id: string | null
         }
         Insert: {
+          company_name?: string | null
           created_at?: string | null
           customer: string
           id?: string
           in_balance?: boolean | null
           included_services?: string[] | null
+          is_multi_property?: boolean | null
           join_date?: string | null
           last_service_date?: string | null
           liner_type?: string | null
@@ -143,11 +147,13 @@ export type Database = {
           user_id?: string | null
         }
         Update: {
+          company_name?: string | null
           created_at?: string | null
           customer?: string
           id?: string
           in_balance?: boolean | null
           included_services?: string[] | null
+          is_multi_property?: boolean | null
           join_date?: string | null
           last_service_date?: string | null
           liner_type?: string | null

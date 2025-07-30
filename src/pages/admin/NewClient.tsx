@@ -34,6 +34,8 @@ interface ClientFormData {
   next_service_date: string;
   included_services: string[];
   service_notes: string;
+  company_name: string;
+  is_multi_property: boolean;
   // New user creation fields
   account_type: 'existing' | 'new' | 'none';
   new_user_email: string;
@@ -61,6 +63,8 @@ export default function NewClient() {
     next_service_date: '',
     included_services: [],
     service_notes: '',
+    company_name: '',
+    is_multi_property: false,
     account_type: 'none',
     new_user_email: '',
     new_user_password: '',
@@ -224,6 +228,8 @@ export default function NewClient() {
         next_service_date: client.next_service_date || null,
         included_services: client.included_services,
         service_notes: client.service_notes,
+        company_name: client.company_name || null,
+        is_multi_property: client.is_multi_property,
         join_date: new Date().toISOString(),
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
@@ -336,14 +342,38 @@ export default function NewClient() {
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="customer">Customer Name *</Label>
+              <Label htmlFor="customer">Customer/Property Name *</Label>
               <Input
                 id="customer"
                 value={client.customer}
                 onChange={(e) => handleInputChange('customer', e.target.value)}
-                placeholder="Enter customer name"
+                placeholder="Enter customer/property name"
                 required
               />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="companyName">Company/Organization</Label>
+              <Input
+                id="companyName"
+                value={client.company_name}
+                onChange={(e) => handleInputChange('company_name', e.target.value)}
+                placeholder="e.g. ABC Property Management"
+              />
+              <p className="text-sm text-muted-foreground">
+                Group multiple properties under one organization
+              </p>
+            </div>
+
+            <div className="flex items-center space-x-2">
+              <Switch
+                id="isMultiProperty"
+                checked={client.is_multi_property}
+                onCheckedChange={(checked) => handleInputChange('is_multi_property', checked)}
+              />
+              <Label htmlFor="isMultiProperty" className="text-sm">
+                Multi-property client (manages multiple pool properties)
+              </Label>
             </div>
 
             <div className="space-y-4">

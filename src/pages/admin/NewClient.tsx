@@ -16,7 +16,8 @@ import {
   Save,
   User,
   Droplets,
-  DollarSign
+  DollarSign,
+  Shuffle
 } from 'lucide-react';
 
 interface ClientFormData {
@@ -33,6 +34,11 @@ interface ClientFormData {
   next_service_date: string;
   included_services: string[];
   service_notes: string;
+  // New user creation fields
+  account_type: 'existing' | 'new' | 'none';
+  new_user_email: string;
+  new_user_password: string;
+  send_login_email: boolean;
 }
 
 export default function NewClient() {
@@ -54,7 +60,11 @@ export default function NewClient() {
     service_frequency: 'weekly',
     next_service_date: '',
     included_services: [],
-    service_notes: ''
+    service_notes: '',
+    account_type: 'none',
+    new_user_email: '',
+    new_user_password: '',
+    send_login_email: true
   });
 
   useEffect(() => {
@@ -73,6 +83,16 @@ export default function NewClient() {
     } catch (error) {
       console.error('Error loading users:', error);
     }
+  };
+
+  const generateRandomPassword = () => {
+    const length = 12;
+    const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*";
+    let password = "";
+    for (let i = 0; i < length; i++) {
+      password += charset.charAt(Math.floor(Math.random() * charset.length));
+    }
+    setClient({ ...client, new_user_password: password });
   };
 
   const handleSave = async () => {
@@ -94,8 +114,54 @@ export default function NewClient() {
       return;
     }
 
+    // Validate new user creation fields
+    if (client.account_type === 'new') {
+      if (!client.new_user_email.trim()) {
+        toast({
+          title: "Error",
+          description: "Email is required for new user account",
+          variant: "destructive"
+        });
+        return;
+      }
+      if (!client.new_user_password.trim()) {
+        toast({
+          title: "Error",
+          description: "Password is required for new user account",
+          variant: "destructive"
+        });
+        return;
+      }
+    }
+
     setSaving(true);
     try {
+      let finalUserId = null;
+
+      // Create new user if requested
+      if (client.account_type === 'new') {
+        const { data: userData, error: userError } = await supabase
+          .from('users')
+          .insert({
+            email: client.new_user_email,
+            password: client.new_user_password,
+            name: client.customer,
+            role: 'client'
+          })
+          .select()
+          .single();
+
+        if (userError) throw userError;
+        finalUserId = userData.id;
+
+        // TODO: Send login email if requested (requires edge function)
+        if (client.send_login_email) {
+          console.log('Email sending not implemented yet');
+        }
+      } else if (client.account_type === 'existing' && client.user_id) {
+        finalUserId = client.user_id;
+      }
+
       const insertData: any = {
         customer: client.customer,
         pool_size: client.pool_size,
@@ -103,7 +169,7 @@ export default function NewClient() {
         liner_type: client.liner_type,
         status: client.status,
         in_balance: client.in_balance,
-        user_id: client.user_id && client.user_id !== "none" ? client.user_id : null,
+        user_id: finalUserId,
         service_rate: client.service_rate,
         service_frequency: client.service_frequency,
         next_service_date: client.next_service_date || null,
@@ -221,21 +287,91 @@ export default function NewClient() {
               />
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="user">Associated User Account</Label>
-              <Select value={client.user_id || "none"} onValueChange={(value) => handleInputChange('user_id', value === "none" ? "" : value)}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select user account..." />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">No associated user</SelectItem>
-                  {users.map((user) => (
-                    <SelectItem key={user.id} value={user.id}>
-                      {user.name} ({user.email})
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+            <div className="space-y-4">
+              <Label>Associated User Account</Label>
+              <div className="space-y-3">
+                <Select value={client.account_type} onValueChange={(value: 'existing' | 'new' | 'none') => {
+                  setClient({ 
+                    ...client, 
+                    account_type: value,
+                    user_id: value === 'existing' ? client.user_id : '',
+                    new_user_email: value === 'new' ? client.new_user_email : '',
+                    new_user_password: value === 'new' ? client.new_user_password : ''
+                  });
+                }}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Choose account option..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">No associated user</SelectItem>
+                    <SelectItem value="existing">Select existing user</SelectItem>
+                    <SelectItem value="new">Create new user account</SelectItem>
+                  </SelectContent>
+                </Select>
+
+                {client.account_type === 'existing' && (
+                  <Select value={client.user_id || ""} onValueChange={(value) => handleInputChange('user_id', value)}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select user account..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {users.map((user) => (
+                        <SelectItem key={user.id} value={user.id}>
+                          {user.name} ({user.email})
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+
+                {client.account_type === 'new' && (
+                  <div className="space-y-3 p-4 border rounded-lg bg-muted/50">
+                    <div className="space-y-2">
+                      <Label htmlFor="newUserEmail">Client Email *</Label>
+                      <Input
+                        id="newUserEmail"
+                        type="email"
+                        value={client.new_user_email}
+                        onChange={(e) => handleInputChange('new_user_email', e.target.value)}
+                        placeholder="Enter client's email"
+                      />
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <Label htmlFor="newUserPassword">Password *</Label>
+                      <div className="flex space-x-2">
+                        <Input
+                          id="newUserPassword"
+                          type="password"
+                          value={client.new_user_password}
+                          onChange={(e) => handleInputChange('new_user_password', e.target.value)}
+                          placeholder="Enter password"
+                        />
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={generateRandomPassword}
+                        >
+                          <Shuffle className="h-4 w-4 mr-1" />
+                          Generate
+                        </Button>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center space-x-2">
+                      <Checkbox
+                        id="sendLoginEmail"
+                        checked={client.send_login_email}
+                        onCheckedChange={(checked) => handleInputChange('send_login_email', checked)}
+                      />
+                      <Label htmlFor="sendLoginEmail" className="text-sm">
+                        Automatically send customer email to change password and login
+                      </Label>
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
 
             <div className="space-y-2">

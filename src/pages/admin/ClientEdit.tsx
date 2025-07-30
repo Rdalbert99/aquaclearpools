@@ -105,7 +105,7 @@ export default function ClientEdit() {
         liner_type: client.liner_type,
         status: client.status,
         in_balance: client.in_balance,
-        user_id: client.user_id || null,
+        user_id: client.user_id && client.user_id !== "none" ? client.user_id : null,
         updated_at: new Date().toISOString()
       };
 
@@ -221,12 +221,12 @@ export default function ClientEdit() {
 
             <div className="space-y-2">
               <Label htmlFor="user">Associated User Account</Label>
-              <Select value={client.user_id} onValueChange={(value) => handleInputChange('user_id', value)}>
+              <Select value={client.user_id || "none"} onValueChange={(value) => handleInputChange('user_id', value === "none" ? "" : value)}>
                 <SelectTrigger>
                   <SelectValue placeholder="Select user account..." />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">No associated user</SelectItem>
+                  <SelectItem value="none">No associated user</SelectItem>
                   {users.map((user) => (
                     <SelectItem key={user.id} value={user.id}>
                       {user.name} ({user.email})

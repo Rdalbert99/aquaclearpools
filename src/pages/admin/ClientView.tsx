@@ -11,6 +11,8 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Trash2 } from 'lucide-react';
 import { 
   ArrowLeft,
   Edit,
@@ -38,6 +40,7 @@ interface ClientData {
   totalRevenue: number;
   lastServiceDate: string | null;
   loginHistory: any[];
+  clientUsers: any[];
 }
 
 export default function ClientView() {
@@ -48,8 +51,10 @@ export default function ClientView() {
   const [clientData, setClientData] = useState<ClientData | null>(null);
   const [loading, setLoading] = useState(true);
   const [showCreateUser, setShowCreateUser] = useState(false);
-  const [newUserData, setNewUserData] = useState({ email: '', name: '', password: '' });
+  const [showManageUsers, setShowManageUsers] = useState(false);
+  const [newUserData, setNewUserData] = useState({ email: '', name: '', password: '', role: 'member' });
   const [userLoading, setUserLoading] = useState(false);
+  const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
 
   useEffect(() => {
     if (id) {
@@ -105,15 +110,26 @@ export default function ClientView() {
         ? services[0].service_date 
         : null;
 
-      // Load login history if client has a user
+      // Load client users
+      const { data: clientUsers } = await supabase
+        .from('client_users')
+        .select(`
+          *,
+          users(id, name, email, phone, address)
+        `)
+        .eq('client_id', clientId)
+        .order('is_primary', { ascending: false });
+
+      // Load login history for all client users
       let loginHistory = [];
-      if (client.user_id) {
+      if (clientUsers && clientUsers.length > 0) {
+        const userIds = clientUsers.map(cu => cu.user_id);
         const { data: logins } = await supabase
           .from('user_logins')
-          .select('*')
-          .eq('user_id', client.user_id)
+          .select('*, users(name)')
+          .in('user_id', userIds)
           .order('login_time', { ascending: false })
-          .limit(10);
+          .limit(20);
         loginHistory = logins || [];
       }
 
@@ -123,7 +139,8 @@ export default function ClientView() {
         serviceRequests: serviceRequests || [],
         totalRevenue,
         lastServiceDate,
-        loginHistory
+        loginHistory,
+        clientUsers: clientUsers || []
       });
 
     } catch (error) {
@@ -181,21 +198,25 @@ export default function ClientView() {
 
       if (profileError) throw profileError;
 
-      // Link user to client
-      const { error: clientError } = await supabase
-        .from('clients')
-        .update({ user_id: authData.user.id })
-        .eq('id', id);
+      // Link user to client in junction table
+      const { error: clientUserError } = await supabase
+        .from('client_users')
+        .insert({
+          client_id: id,
+          user_id: authData.user.id,
+          role: newUserData.role,
+          is_primary: false
+        });
 
-      if (clientError) throw clientError;
+      if (clientUserError) throw clientUserError;
 
       toast({
         title: "Success",
-        description: "User account created and linked to client"
+        description: `User account created and linked to client as ${newUserData.role}`
       });
 
       setShowCreateUser(false);
-      setNewUserData({ email: '', name: '', password: '' });
+      setNewUserData({ email: '', name: '', password: '', role: 'member' });
       if (id) loadClientData(id);
 
     } catch (error: any) {
@@ -209,8 +230,10 @@ export default function ClientView() {
     }
   };
 
-  const handleResetPassword = async () => {
-    if (!clientData?.client.users?.email) {
+  const handleResetPassword = async (userEmail?: string) => {
+    const emailToReset = userEmail || clientData?.clientUsers?.find(cu => cu.is_primary)?.users?.email;
+    
+    if (!emailToReset) {
       toast({
         title: "Error",
         description: "No email found for this user",
@@ -221,7 +244,7 @@ export default function ClientView() {
 
     try {
       const { error } = await supabase.auth.resetPasswordForEmail(
-        clientData.client.users.email,
+        emailToReset,
         { redirectTo: `${window.location.origin}/reset-password` }
       );
 
@@ -229,13 +252,38 @@ export default function ClientView() {
 
       toast({
         title: "Success",
-        description: "Password reset email sent"
+        description: `Password reset email sent to ${emailToReset}`
       });
 
     } catch (error: any) {
       toast({
         title: "Error",
         description: error.message || "Failed to send reset email",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const handleRemoveUser = async (clientUserId: string) => {
+    try {
+      const { error } = await supabase
+        .from('client_users')
+        .delete()
+        .eq('id', clientUserId);
+
+      if (error) throw error;
+
+      toast({
+        title: "Success",
+        description: "User removed from client"
+      });
+
+      if (id) loadClientData(id);
+
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to remove user",
         variant: "destructive"
       });
     }
@@ -270,7 +318,7 @@ export default function ClientView() {
     );
   }
 
-  const { client, services, serviceRequests, totalRevenue, loginHistory } = clientData;
+  const { client, services, serviceRequests, totalRevenue, loginHistory, clientUsers } = clientData;
   const poolStatus = getPoolStatus();
 
   return (
@@ -296,17 +344,14 @@ export default function ClientView() {
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent>
-              {!client.user_id ? (
-                <DropdownMenuItem onClick={() => setShowCreateUser(true)}>
-                  <UserPlus className="mr-2 h-4 w-4" />
-                  Create User Account
-                </DropdownMenuItem>
-              ) : (
-                <DropdownMenuItem onClick={handleResetPassword}>
-                  <Shield className="mr-2 h-4 w-4" />
-                  Reset Password
-                </DropdownMenuItem>
-              )}
+              <DropdownMenuItem onClick={() => setShowCreateUser(true)}>
+                <UserPlus className="mr-2 h-4 w-4" />
+                Add New User
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setShowManageUsers(true)}>
+                <User className="mr-2 h-4 w-4" />
+                Manage Users ({clientUsers.length})
+              </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
           <Button onClick={() => navigate(`/admin/clients/${client.id}/edit`)}>
@@ -407,6 +452,19 @@ export default function ClientView() {
                   placeholder="Enter temporary password"
                 />
               </div>
+              <div>
+                <Label htmlFor="role">User Role</Label>
+                <Select value={newUserData.role} onValueChange={(value) => setNewUserData({ ...newUserData, role: value })}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select role" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="primary">Primary Contact</SelectItem>
+                    <SelectItem value="member">Member</SelectItem>
+                    <SelectItem value="admin">Admin</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
               <div className="flex justify-end space-x-2">
                 <Button variant="outline" onClick={() => setShowCreateUser(false)}>
                   Cancel
@@ -421,6 +479,66 @@ export default function ClientView() {
             </div>
           </DialogContent>
         </Dialog>
+
+        {/* Manage Users Dialog */}
+        <Dialog open={showManageUsers} onOpenChange={setShowManageUsers}>
+          <DialogContent className="max-w-4xl">
+            <DialogHeader>
+              <DialogTitle>Manage Client Users</DialogTitle>
+              <DialogDescription>
+                View and manage all users associated with this client
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div className="grid gap-4">
+                {clientUsers.map((clientUser) => (
+                  <div key={clientUser.id} className="flex items-center justify-between p-4 border rounded-lg">
+                    <div className="flex items-center space-x-4">
+                      <div>
+                        <h4 className="font-medium">{clientUser.users?.name}</h4>
+                        <p className="text-sm text-muted-foreground">{clientUser.users?.email}</p>
+                        <div className="flex items-center space-x-2 mt-1">
+                          <Badge variant={clientUser.is_primary ? 'default' : 'secondary'}>
+                            {clientUser.role}
+                          </Badge>
+                          {clientUser.is_primary && (
+                            <Badge variant="outline">Primary</Badge>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleResetPassword(clientUser.users?.email)}
+                      >
+                        <Shield className="h-4 w-4 mr-1" />
+                        Reset Password
+                      </Button>
+                      {!clientUser.is_primary && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleRemoveUser(clientUser.id)}
+                        >
+                          <Trash2 className="h-4 w-4 mr-1" />
+                          Remove
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                ))}
+                {clientUsers.length === 0 && (
+                  <div className="text-center py-8 text-muted-foreground">
+                    No users found for this client
+                  </div>
+                )}
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+
         {/* Client Information */}
         <Card>
           <CardHeader>
@@ -590,17 +708,17 @@ export default function ClientView() {
               ))}
 
               {/* Login History */}
-              {client.user_id && (
+              {clientUsers.length > 0 && (
                 <div className="mt-4 pt-4 border-t">
                   <h6 className="text-sm font-medium mb-2 flex items-center">
                     <Shield className="h-4 w-4 mr-2" />
-                    Recent Logins
+                    Recent Logins ({clientUsers.length} user{clientUsers.length !== 1 ? 's' : ''})
                   </h6>
                   <div className="space-y-2">
                     {loginHistory.length > 0 ? (
-                      loginHistory.slice(0, 3).map((login) => (
+                      loginHistory.slice(0, 5).map((login) => (
                         <div key={login.id} className="text-xs text-muted-foreground">
-                          {new Date(login.login_time).toLocaleString()}
+                          <span className="font-medium">{login.users?.name}:</span> {new Date(login.login_time).toLocaleString()}
                         </div>
                       ))
                     ) : (

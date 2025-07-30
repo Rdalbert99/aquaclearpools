@@ -487,7 +487,6 @@ export default function NewClient() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="Chlorine">Chlorine</SelectItem>
-                  <SelectItem value="Saltwater">Saltwater</SelectItem>
                   <SelectItem value="Salt">Salt</SelectItem>
                   <SelectItem value="Mineral">Mineral</SelectItem>
                   <SelectItem value="Natural">Natural</SelectItem>

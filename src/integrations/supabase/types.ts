@@ -249,6 +249,7 @@ export type Database = {
           notes: string | null
           ph_level: number | null
           service_date: string
+          services_performed: string | null
           status: string | null
           technician_id: string | null
           updated_at: string | null
@@ -267,6 +268,7 @@ export type Database = {
           notes?: string | null
           ph_level?: number | null
           service_date: string
+          services_performed?: string | null
           status?: string | null
           technician_id?: string | null
           updated_at?: string | null
@@ -285,6 +287,7 @@ export type Database = {
           notes?: string | null
           ph_level?: number | null
           service_date?: string
+          services_performed?: string | null
           status?: string | null
           technician_id?: string | null
           updated_at?: string | null

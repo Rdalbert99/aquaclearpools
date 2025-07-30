@@ -10,7 +10,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
 import { useToast } from '@/hooks/use-toast';
-import { ArrowLeft, Calendar, DollarSign, Clock, TestTube, FlaskConical, Calculator } from 'lucide-react';
+import { ArrowLeft, Calendar, DollarSign, Clock, TestTube, FlaskConical, Calculator, Wrench } from 'lucide-react';
+import { Checkbox } from '@/components/ui/checkbox';
 
 interface Client {
   id: string;
@@ -38,6 +39,7 @@ interface ServiceFormData {
   cyanuric_acid_level: number | null;
   calcium_hardness_level: number | null;
   chemicals_added: string;
+  services_performed: string[];
   notes: string;
 }
 
@@ -73,6 +75,7 @@ export default function NewService() {
     cyanuric_acid_level: null,
     calcium_hardness_level: null,
     chemicals_added: '',
+    services_performed: [],
     notes: ''
   });
 
@@ -248,6 +251,7 @@ export default function NewService() {
         alkalinity_level: formData.alkalinity_level ? Number(formData.alkalinity_level) : null,
         cyanuric_acid_level: formData.cyanuric_acid_level ? Number(formData.cyanuric_acid_level) : null,
         calcium_hardness_level: formData.calcium_hardness_level ? Number(formData.calcium_hardness_level) : null,
+        services_performed: formData.services_performed.join(', ') || null,
       };
 
       const { error } = await supabase
@@ -540,6 +544,57 @@ export default function NewService() {
             </CardContent>
           </Card>
         </div>
+
+        {/* Services Performed */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center space-x-2">
+              <Wrench className="h-5 w-5" />
+              <span>Services Performed</span>
+            </CardTitle>
+            <CardDescription>Check the services that were performed during this visit</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+              {[
+                'Chemical Testing & Balancing',
+                'Skimming Surface Debris',
+                'Emptying Skimmer Baskets',
+                'Brushing Pool Walls & Steps',
+                'Vacuuming Pool Floor',
+                'Cleaning Waterline Tile',
+                'Backwashing Filter',
+                'Equipment Inspection',
+                'Pool Equipment Cleaning',
+                'Adding Chlorine/Chemicals',
+                'Shock Treatment',
+                'Algae Prevention',
+                'pH Adjustment',
+                'Filter Cleaning',
+                'Pump Maintenance'
+              ].map((service) => (
+                <div key={service} className="flex items-center space-x-2">
+                  <Checkbox
+                    id={service}
+                    checked={formData.services_performed.includes(service)}
+                    onCheckedChange={(checked) => {
+                      const updatedServices = checked 
+                        ? [...formData.services_performed, service]
+                        : formData.services_performed.filter(s => s !== service);
+                      handleInputChange('services_performed', updatedServices);
+                    }}
+                  />
+                  <Label 
+                    htmlFor={service} 
+                    className="text-sm font-normal cursor-pointer"
+                  >
+                    {service}
+                  </Label>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
 
         {/* Additional Information */}
         <Card>

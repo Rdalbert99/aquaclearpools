@@ -14,6 +14,8 @@ import NotFound from "./pages/NotFound";
 import Login from "./pages/auth/Login";
 import Signup from "./pages/auth/Signup";
 import AdminDashboard from "./pages/admin/Dashboard";
+import TechDashboard from "./pages/tech/Dashboard";
+import FieldService from "./pages/tech/FieldService";
 import ManageClients from "./pages/admin/ManageClients";
 import ChemicalCalculator from "./pages/admin/ChemicalCalculator";
 import ServiceHistory from "./pages/admin/ServiceHistory";
@@ -50,8 +52,10 @@ const AppRoutes = () => {
             isAuthenticated ? (
               user?.role === 'client' ? (
                 <Navigate to="/client" replace />
-              ) : (
+              ) : user?.role === 'admin' ? (
                 <Navigate to="/admin" replace />
+              ) : (
+                <Navigate to="/tech" replace />
               )
             ) : (
               <Navigate to="/auth/login" replace />
@@ -59,12 +63,46 @@ const AppRoutes = () => {
           } 
         />
         
-        {/* Admin/Tech routes */}
+        {/* Admin routes */}
         <Route 
           path="/admin" 
           element={
-            <ProtectedRoute allowedRoles={['admin', 'tech']}>
+            <ProtectedRoute allowedRoles={['admin']}>
               <AdminDashboard />
+            </ProtectedRoute>
+          } 
+        />
+        
+        {/* Tech routes */}
+        <Route 
+          path="/tech" 
+          element={
+            <ProtectedRoute allowedRoles={['tech']}>
+              <TechDashboard />
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/tech/service/:clientId" 
+          element={
+            <ProtectedRoute allowedRoles={['tech']}>
+              <FieldService />
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/tech/calculator" 
+          element={
+            <ProtectedRoute allowedRoles={['admin', 'tech']}>
+              <ChemicalCalculator />
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/tech/services/new" 
+          element={
+            <ProtectedRoute allowedRoles={['admin', 'tech']}>
+              <NewService />
             </ProtectedRoute>
           } 
         />

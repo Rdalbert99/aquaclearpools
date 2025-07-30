@@ -46,7 +46,7 @@ export const Navbar = () => {
           <div className="flex items-center space-x-4">
             {/* Navigation Links */}
             <div className="hidden md:flex items-center space-x-1">
-              {(isAdmin || isTech) && (
+              {isAdmin && (
                 <>
                   <Button variant="ghost" size="sm" asChild>
                     <Link to="/admin" className="flex items-center space-x-1">
@@ -62,6 +62,23 @@ export const Navbar = () => {
                   </Button>
                   <Button variant="ghost" size="sm" asChild>
                     <Link to="/admin/calculator" className="flex items-center space-x-1">
+                      <Calculator className="h-4 w-4" />
+                      <span>Calculator</span>
+                    </Link>
+                  </Button>
+                </>
+              )}
+
+              {isTech && (
+                <>
+                  <Button variant="ghost" size="sm" asChild>
+                    <Link to="/tech" className="flex items-center space-x-1">
+                      <Home className="h-4 w-4" />
+                      <span>Dashboard</span>
+                    </Link>
+                  </Button>
+                  <Button variant="ghost" size="sm" asChild>
+                    <Link to="/tech/calculator" className="flex items-center space-x-1">
                       <Calculator className="h-4 w-4" />
                       <span>Calculator</span>
                     </Link>

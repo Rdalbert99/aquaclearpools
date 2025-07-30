@@ -22,8 +22,10 @@ export const ProtectedRoute = ({ children, allowedRoles }: ProtectedRouteProps) 
     // Redirect based on user role
     if (user.role === 'client') {
       return <Navigate to="/client" replace />;
-    } else {
+    } else if (user.role === 'admin') {
       return <Navigate to="/admin" replace />;
+    } else {
+      return <Navigate to="/tech" replace />;
     }
   }
 

@@ -247,6 +247,33 @@ export type Database = {
           },
         ]
       }
+      user_logins: {
+        Row: {
+          created_at: string
+          id: string
+          ip_address: string | null
+          login_time: string
+          user_agent: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          ip_address?: string | null
+          login_time?: string
+          user_agent?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          ip_address?: string | null
+          login_time?: string
+          user_agent?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       users: {
         Row: {
           address: string | null

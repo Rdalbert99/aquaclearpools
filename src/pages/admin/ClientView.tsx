@@ -7,6 +7,10 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
 import { useToast } from '@/hooks/use-toast';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { 
   ArrowLeft,
   Edit,
@@ -20,7 +24,11 @@ import {
   AlertTriangle,
   Clock,
   DollarSign,
-  TestTube
+  TestTube,
+  UserPlus,
+  Shield,
+  Activity,
+  MoreVertical
 } from 'lucide-react';
 
 interface ClientData {
@@ -29,6 +37,7 @@ interface ClientData {
   serviceRequests: any[];
   totalRevenue: number;
   lastServiceDate: string | null;
+  loginHistory: any[];
 }
 
 export default function ClientView() {
@@ -38,6 +47,9 @@ export default function ClientView() {
   const { toast } = useToast();
   const [clientData, setClientData] = useState<ClientData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [showCreateUser, setShowCreateUser] = useState(false);
+  const [newUserData, setNewUserData] = useState({ email: '', name: '', password: '' });
+  const [userLoading, setUserLoading] = useState(false);
 
   useEffect(() => {
     if (id) {
@@ -93,12 +105,25 @@ export default function ClientView() {
         ? services[0].service_date 
         : null;
 
+      // Load login history if client has a user
+      let loginHistory = [];
+      if (client.user_id) {
+        const { data: logins } = await supabase
+          .from('user_logins')
+          .select('*')
+          .eq('user_id', client.user_id)
+          .order('login_time', { ascending: false })
+          .limit(10);
+        loginHistory = logins || [];
+      }
+
       setClientData({
         client,
         services: services || [],
         serviceRequests: serviceRequests || [],
         totalRevenue,
-        lastServiceDate
+        lastServiceDate,
+        loginHistory
       });
 
     } catch (error) {
@@ -131,6 +156,91 @@ export default function ClientView() {
     return lastService < weekAgo ? 'needs_service' : 'good';
   };
 
+  const handleCreateUser = async () => {
+    setUserLoading(true);
+    try {
+      // Create user account
+      const { data: authData, error: signUpError } = await supabase.auth.admin.createUser({
+        email: newUserData.email,
+        password: newUserData.password,
+        email_confirm: true
+      });
+
+      if (signUpError) throw signUpError;
+
+      // Create user profile
+      const { error: profileError } = await supabase
+        .from('users')
+        .insert({
+          id: authData.user.id,
+          email: newUserData.email,
+          name: newUserData.name,
+          password: 'temp', // Required field, but not used since auth is handled separately
+          role: 'client'
+        });
+
+      if (profileError) throw profileError;
+
+      // Link user to client
+      const { error: clientError } = await supabase
+        .from('clients')
+        .update({ user_id: authData.user.id })
+        .eq('id', id);
+
+      if (clientError) throw clientError;
+
+      toast({
+        title: "Success",
+        description: "User account created and linked to client"
+      });
+
+      setShowCreateUser(false);
+      setNewUserData({ email: '', name: '', password: '' });
+      if (id) loadClientData(id);
+
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to create user",
+        variant: "destructive"
+      });
+    } finally {
+      setUserLoading(false);
+    }
+  };
+
+  const handleResetPassword = async () => {
+    if (!clientData?.client.users?.email) {
+      toast({
+        title: "Error",
+        description: "No email found for this user",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(
+        clientData.client.users.email,
+        { redirectTo: `${window.location.origin}/reset-password` }
+      );
+
+      if (error) throw error;
+
+      toast({
+        title: "Success",
+        description: "Password reset email sent"
+      });
+
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to send reset email",
+        variant: "destructive"
+      });
+    }
+  };
+
   if (loading) {
     return (
       <div className="p-6">
@@ -160,7 +270,7 @@ export default function ClientView() {
     );
   }
 
-  const { client, services, serviceRequests, totalRevenue } = clientData;
+  const { client, services, serviceRequests, totalRevenue, loginHistory } = clientData;
   const poolStatus = getPoolStatus();
 
   return (
@@ -178,6 +288,27 @@ export default function ClientView() {
           </div>
         </div>
         <div className="flex space-x-2">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline">
+                <MoreVertical className="mr-2 h-4 w-4" />
+                User Management
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent>
+              {!client.user_id ? (
+                <DropdownMenuItem onClick={() => setShowCreateUser(true)}>
+                  <UserPlus className="mr-2 h-4 w-4" />
+                  Create User Account
+                </DropdownMenuItem>
+              ) : (
+                <DropdownMenuItem onClick={handleResetPassword}>
+                  <Shield className="mr-2 h-4 w-4" />
+                  Reset Password
+                </DropdownMenuItem>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
           <Button onClick={() => navigate(`/admin/clients/${client.id}/edit`)}>
             <Edit className="mr-2 h-4 w-4" />
             Edit Client
@@ -237,6 +368,59 @@ export default function ClientView() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Create User Dialog */}
+        <Dialog open={showCreateUser} onOpenChange={setShowCreateUser}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Create User Account</DialogTitle>
+              <DialogDescription>
+                Create a user account for this client to access the portal
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div>
+                <Label htmlFor="email">Email Address</Label>
+                <Input
+                  id="email"
+                  type="email"
+                  value={newUserData.email}
+                  onChange={(e) => setNewUserData({ ...newUserData, email: e.target.value })}
+                  placeholder="client@example.com"
+                />
+              </div>
+              <div>
+                <Label htmlFor="name">Full Name</Label>
+                <Input
+                  id="name"
+                  value={newUserData.name}
+                  onChange={(e) => setNewUserData({ ...newUserData, name: e.target.value })}
+                  placeholder="John Doe"
+                />
+              </div>
+              <div>
+                <Label htmlFor="password">Temporary Password</Label>
+                <Input
+                  id="password"
+                  type="password"
+                  value={newUserData.password}
+                  onChange={(e) => setNewUserData({ ...newUserData, password: e.target.value })}
+                  placeholder="Enter temporary password"
+                />
+              </div>
+              <div className="flex justify-end space-x-2">
+                <Button variant="outline" onClick={() => setShowCreateUser(false)}>
+                  Cancel
+                </Button>
+                <Button 
+                  onClick={handleCreateUser} 
+                  disabled={userLoading || !newUserData.email || !newUserData.name || !newUserData.password}
+                >
+                  {userLoading ? <LoadingSpinner /> : 'Create Account'}
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
         {/* Client Information */}
         <Card>
           <CardHeader>
@@ -366,7 +550,10 @@ export default function ClientView() {
         {/* Recent Activity */}
         <Card>
           <CardHeader>
-            <CardTitle>Recent Activity</CardTitle>
+            <CardTitle className="flex items-center space-x-2">
+              <Activity className="h-5 w-5" />
+              <span>Recent Activity</span>
+            </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
@@ -401,6 +588,23 @@ export default function ClientView() {
                   </Badge>
                 </div>
               ))}
+
+              {/* Login History */}
+              {client.user_id && loginHistory.length > 0 && (
+                <div className="mt-4 pt-4 border-t">
+                  <h6 className="text-sm font-medium mb-2 flex items-center">
+                    <Shield className="h-4 w-4 mr-2" />
+                    Recent Logins
+                  </h6>
+                  <div className="space-y-2">
+                    {loginHistory.slice(0, 3).map((login) => (
+                      <div key={login.id} className="text-xs text-muted-foreground">
+                        {new Date(login.login_time).toLocaleString()}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               {services.length === 0 && serviceRequests.length === 0 && (
                 <p className="text-center text-muted-foreground py-4">No recent activity</p>

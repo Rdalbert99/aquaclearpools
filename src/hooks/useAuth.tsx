@@ -109,12 +109,27 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   const signIn = async (email: string, password: string) => {
     try {
-      const { error } = await supabase.auth.signInWithPassword({
+      const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
       
       if (error) throw error;
+
+      // Track login
+      if (data.user) {
+        try {
+          await supabase.from('user_logins').insert({
+            user_id: data.user.id,
+            ip_address: null, // Could be populated with user's IP if needed
+            user_agent: navigator.userAgent
+          });
+        } catch (loginError) {
+          console.error('Failed to track login:', loginError);
+          // Don't fail the login if tracking fails
+        }
+      }
+
       return {};
     } catch (error: any) {
       return { error: error.message };

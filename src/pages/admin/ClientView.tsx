@@ -1,0 +1,461 @@
+import { useState, useEffect } from 'react';
+import { useParams, Link, useNavigate } from 'react-router-dom';
+import { useAuth } from '@/hooks/useAuth';
+import { supabase } from '@/integrations/supabase/client';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { LoadingSpinner } from '@/components/ui/loading-spinner';
+import { useToast } from '@/hooks/use-toast';
+import { 
+  ArrowLeft,
+  Edit,
+  MapPin,
+  Droplets,
+  Calendar,
+  User,
+  Phone,
+  Mail,
+  CheckCircle,
+  AlertTriangle,
+  Clock,
+  DollarSign,
+  TestTube
+} from 'lucide-react';
+
+interface ClientData {
+  client: any;
+  services: any[];
+  serviceRequests: any[];
+  totalRevenue: number;
+  lastServiceDate: string | null;
+}
+
+export default function ClientView() {
+  const { id } = useParams();
+  const navigate = useNavigate();
+  const { user } = useAuth();
+  const { toast } = useToast();
+  const [clientData, setClientData] = useState<ClientData | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (id) {
+      loadClientData(id);
+    }
+  }, [id]);
+
+  const loadClientData = async (clientId: string) => {
+    try {
+      // Load client details
+      const { data: client, error: clientError } = await supabase
+        .from('clients')
+        .select(`
+          *,
+          users(id, name, email, phone, address)
+        `)
+        .eq('id', clientId)
+        .single();
+
+      if (clientError) throw clientError;
+
+      // Load services for this client
+      const { data: services, error: servicesError } = await supabase
+        .from('services')
+        .select(`
+          *,
+          users(name)
+        `)
+        .eq('client_id', clientId)
+        .order('service_date', { ascending: false });
+
+      if (servicesError) throw servicesError;
+
+      // Load service requests
+      const { data: serviceRequests, error: requestsError } = await supabase
+        .from('service_requests')
+        .select(`
+          *,
+          users(name)
+        `)
+        .eq('client_id', clientId)
+        .order('requested_date', { ascending: false });
+
+      if (requestsError) throw requestsError;
+
+      // Calculate total revenue
+      const totalRevenue = services
+        ?.filter(s => s.status === 'completed')
+        .reduce((sum, s) => sum + (s.cost || 0), 0) || 0;
+
+      // Get last service date
+      const lastServiceDate = services && services.length > 0 
+        ? services[0].service_date 
+        : null;
+
+      setClientData({
+        client,
+        services: services || [],
+        serviceRequests: serviceRequests || [],
+        totalRevenue,
+        lastServiceDate
+      });
+
+    } catch (error) {
+      console.error('Error loading client data:', error);
+      toast({
+        title: "Error",
+        description: "Failed to load client information",
+        variant: "destructive"
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'completed': return 'bg-green-100 text-green-800 border-green-200';
+      case 'pending': return 'bg-yellow-100 text-yellow-800 border-yellow-200';
+      case 'cancelled': return 'bg-red-100 text-red-800 border-red-200';
+      case 'in_progress': return 'bg-blue-100 text-blue-800 border-blue-200';
+      default: return 'bg-gray-100 text-gray-800 border-gray-200';
+    }
+  };
+
+  const getPoolStatus = () => {
+    if (!clientData?.lastServiceDate) return 'needs_service';
+    const lastService = new Date(clientData.lastServiceDate);
+    const weekAgo = new Date();
+    weekAgo.setDate(weekAgo.getDate() - 7);
+    return lastService < weekAgo ? 'needs_service' : 'good';
+  };
+
+  if (loading) {
+    return (
+      <div className="p-6">
+        <div className="flex items-center justify-center min-h-[400px]">
+          <LoadingSpinner />
+        </div>
+      </div>
+    );
+  }
+
+  if (!clientData) {
+    return (
+      <div className="p-6">
+        <div className="flex items-center space-x-4 mb-6">
+          <Button variant="outline" onClick={() => navigate('/admin/clients')}>
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            Back to Clients
+          </Button>
+        </div>
+        <Card>
+          <CardContent className="text-center py-8">
+            <h3 className="text-lg font-semibold mb-2">Client not found</h3>
+            <p className="text-muted-foreground">The requested client could not be found.</p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  const { client, services, serviceRequests, totalRevenue } = clientData;
+  const poolStatus = getPoolStatus();
+
+  return (
+    <div className="p-6 space-y-6">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center space-x-4">
+          <Button variant="outline" onClick={() => navigate('/admin/clients')}>
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            Back to Clients
+          </Button>
+          <div>
+            <h1 className="text-3xl font-bold">{client.customer}</h1>
+            <p className="text-muted-foreground">Client Details & Service History</p>
+          </div>
+        </div>
+        <div className="flex space-x-2">
+          <Button onClick={() => navigate(`/admin/clients/${client.id}/edit`)}>
+            <Edit className="mr-2 h-4 w-4" />
+            Edit Client
+          </Button>
+        </div>
+      </div>
+
+      {/* Overview Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Pool Status</CardTitle>
+            {poolStatus === 'good' ? (
+              <CheckCircle className="h-4 w-4 text-green-600" />
+            ) : (
+              <AlertTriangle className="h-4 w-4 text-orange-600" />
+            )}
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              {poolStatus === 'good' ? 'Current' : 'Needs Service'}
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Total Services</CardTitle>
+            <Calendar className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{services.length}</div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Total Revenue</CardTitle>
+            <DollarSign className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">${totalRevenue.toFixed(2)}</div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Open Requests</CardTitle>
+            <Clock className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              {serviceRequests.filter(r => r.status === 'pending').length}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Client Information */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center space-x-2">
+              <User className="h-5 w-5" />
+              <span>Client Information</span>
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div>
+              <p className="text-sm font-medium text-muted-foreground">Customer Name</p>
+              <p className="text-lg">{client.customer}</p>
+            </div>
+            
+            {client.users && (
+              <>
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">Contact Person</p>
+                  <p>{client.users.name}</p>
+                </div>
+                {client.users.email && (
+                  <div className="flex items-center space-x-2">
+                    <Mail className="h-4 w-4 text-muted-foreground" />
+                    <p>{client.users.email}</p>
+                  </div>
+                )}
+                {client.users.phone && (
+                  <div className="flex items-center space-x-2">
+                    <Phone className="h-4 w-4 text-muted-foreground" />
+                    <p>{client.users.phone}</p>
+                  </div>
+                )}
+                {client.users.address && (
+                  <div className="flex items-start space-x-2">
+                    <MapPin className="h-4 w-4 text-muted-foreground mt-1" />
+                    <p>{client.users.address}</p>
+                  </div>
+                )}
+              </>
+            )}
+
+            <div className="pt-4 border-t">
+              <p className="text-sm font-medium text-muted-foreground">Member Since</p>
+              <p>{new Date(client.join_date).toLocaleDateString()}</p>
+            </div>
+
+            <div>
+              <p className="text-sm font-medium text-muted-foreground">Status</p>
+              <Badge variant={client.status === 'Active' ? 'default' : 'secondary'}>
+                {client.status}
+              </Badge>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Pool Information */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center space-x-2">
+              <Droplets className="h-5 w-5" />
+              <span>Pool Information</span>
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div>
+              <p className="text-sm font-medium text-muted-foreground">Pool Size</p>
+              <p className="text-lg">{client.pool_size?.toLocaleString()} gallons</p>
+            </div>
+            
+            <div>
+              <p className="text-sm font-medium text-muted-foreground">Pool Type</p>
+              <p className="text-lg">{client.pool_type}</p>
+            </div>
+
+            <div>
+              <p className="text-sm font-medium text-muted-foreground">Liner Type</p>
+              <p>{client.liner_type}</p>
+            </div>
+
+            <div>
+              <p className="text-sm font-medium text-muted-foreground">Currently In Balance</p>
+              <Badge variant={client.in_balance ? 'default' : 'secondary'}>
+                {client.in_balance ? 'Yes' : 'No'}
+              </Badge>
+            </div>
+
+            <div>
+              <p className="text-sm font-medium text-muted-foreground">Last Service</p>
+              <p>{client.last_service_date 
+                ? new Date(client.last_service_date).toLocaleDateString()
+                : 'No services on record'
+              }</p>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Recent Activity */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Recent Activity</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              {/* Recent Services */}
+              {services.slice(0, 3).map((service) => (
+                <div key={service.id} className="flex items-center space-x-3 p-2 border rounded">
+                  <Calendar className="h-4 w-4 text-muted-foreground" />
+                  <div className="flex-1">
+                    <p className="text-sm font-medium">Service Completed</p>
+                    <p className="text-xs text-muted-foreground">
+                      {new Date(service.service_date).toLocaleDateString()} - {service.users?.name}
+                    </p>
+                  </div>
+                  <Badge className={getStatusColor(service.status)}>
+                    {service.status}
+                  </Badge>
+                </div>
+              ))}
+
+              {/* Recent Requests */}
+              {serviceRequests.slice(0, 2).map((request) => (
+                <div key={request.id} className="flex items-center space-x-3 p-2 border rounded">
+                  <Clock className="h-4 w-4 text-muted-foreground" />
+                  <div className="flex-1">
+                    <p className="text-sm font-medium">{request.request_type}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {new Date(request.requested_date).toLocaleDateString()}
+                    </p>
+                  </div>
+                  <Badge className={getStatusColor(request.status)}>
+                    {request.status}
+                  </Badge>
+                </div>
+              ))}
+
+              {services.length === 0 && serviceRequests.length === 0 && (
+                <p className="text-center text-muted-foreground py-4">No recent activity</p>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Service History */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Service History</CardTitle>
+          <CardDescription>Complete history of pool services</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            {services.map((service) => (
+              <div key={service.id} className="border rounded-lg p-4">
+                <div className="flex items-start justify-between mb-3">
+                  <div>
+                    <h4 className="font-medium">
+                      Service - {new Date(service.service_date).toLocaleDateString()}
+                    </h4>
+                    <p className="text-sm text-muted-foreground">
+                      Technician: {service.users?.name || 'Unknown'}
+                    </p>
+                  </div>
+                  <div className="text-right">
+                    <Badge className={getStatusColor(service.status)}>
+                      {service.status}
+                    </Badge>
+                    {service.cost && (
+                      <p className="text-sm font-medium mt-1">${service.cost}</p>
+                    )}
+                  </div>
+                </div>
+
+                {/* Water Chemistry */}
+                {(service.ph_level || service.chlorine_level || service.alkalinity_level) && (
+                  <div className="bg-gray-50 p-3 rounded mb-3">
+                    <h5 className="text-sm font-medium mb-2 flex items-center">
+                      <TestTube className="h-4 w-4 mr-2" />
+                      Water Chemistry
+                    </h5>
+                    <div className="grid grid-cols-2 md:grid-cols-5 gap-2 text-sm">
+                      {service.ph_level && <span>pH: {service.ph_level}</span>}
+                      {service.chlorine_level && <span>Cl: {service.chlorine_level} ppm</span>}
+                      {service.alkalinity_level && <span>Alk: {service.alkalinity_level} ppm</span>}
+                      {service.cyanuric_acid_level && <span>CYA: {service.cyanuric_acid_level} ppm</span>}
+                      {service.calcium_hardness_level && <span>CH: {service.calcium_hardness_level} ppm</span>}
+                    </div>
+                  </div>
+                )}
+
+                {/* Chemicals and Notes */}
+                <div className="space-y-2 text-sm">
+                  {service.chemicals_added && (
+                    <div>
+                      <span className="font-medium">Chemicals Added: </span>
+                      <span>{service.chemicals_added}</span>
+                    </div>
+                  )}
+                  {service.notes && (
+                    <div>
+                      <span className="font-medium">Notes: </span>
+                      <span>{service.notes}</span>
+                    </div>
+                  )}
+                  {service.duration && (
+                    <div>
+                      <span className="font-medium">Duration: </span>
+                      <span>{service.duration} minutes</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            ))}
+
+            {services.length === 0 && (
+              <p className="text-center text-muted-foreground py-8">No services on record</p>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}

@@ -17,6 +17,8 @@ import AdminDashboard from "./pages/admin/Dashboard";
 import ManageClients from "./pages/admin/ManageClients";
 import ChemicalCalculator from "./pages/admin/ChemicalCalculator";
 import ServiceHistory from "./pages/admin/ServiceHistory";
+import ClientView from "./pages/admin/ClientView";
+import ClientEdit from "./pages/admin/ClientEdit";
 import ClientDashboard from "./pages/client/Dashboard";
 
 const queryClient = new QueryClient();
@@ -74,6 +76,22 @@ const AppRoutes = () => {
           element={
             <ProtectedRoute allowedRoles={['admin', 'tech']}>
               <ChemicalCalculator />
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/admin/clients/:id" 
+          element={
+            <ProtectedRoute allowedRoles={['admin', 'tech']}>
+              <ClientView />
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/admin/clients/:id/edit" 
+          element={
+            <ProtectedRoute allowedRoles={['admin', 'tech']}>
+              <ClientEdit />
             </ProtectedRoute>
           } 
         />

@@ -94,22 +94,13 @@ All colors MUST be HSL.
   }
 }
 
-/* Custom 3D spinning animation without mirroring */
-@keyframes spin3d-no-mirror {
+/* Custom 3D spinning animation on Y-axis */
+@keyframes spin-y-3d {
   0% { 
-    transform: rotateZ(0deg) rotateX(5deg);
-  }
-  25% { 
-    transform: rotateZ(90deg) rotateX(10deg);
-  }
-  50% { 
-    transform: rotateZ(180deg) rotateX(5deg);
-  }
-  75% { 
-    transform: rotateZ(270deg) rotateX(10deg);
+    transform: rotateY(0deg);
   }
   100% { 
-    transform: rotateZ(360deg) rotateX(5deg);
+    transform: rotateY(360deg);
   }
 }
 
@@ -117,8 +108,9 @@ All colors MUST be HSL.
   perspective: 1000px;
 }
 
-.animate-spin-3d {
-  animation: spin3d-no-mirror 6s linear infinite;
+.animate-spin-y-3d {
+  animation: spin-y-3d 8s linear infinite;
+  transform-style: preserve-3d;
 }
 
 @layer base {

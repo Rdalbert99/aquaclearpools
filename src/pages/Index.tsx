@@ -7,6 +7,7 @@ import poolBefore1 from '@/assets/pool-before-1.jpg';
 import poolAfter1 from '@/assets/pool-after-1.jpg';
 import poolBefore2 from '@/assets/pool-before-2.jpg';
 import poolAfter2 from '@/assets/pool-after-2.jpg';
+import logo3D from '@/assets/aqua-clear-logo-3d.png';
 
 
 const Index = () => {
@@ -56,12 +57,11 @@ const Index = () => {
           <div className="mb-8 flex justify-center">
             <div className="perspective-1000">
               <img 
-                src="/lovable-uploads/06513546-e1ef-499e-b26c-b920614b3e03.png" 
-                alt="Aqua Clear Pools" 
-                className="h-48 w-48 md:h-56 md:w-56 object-contain transform-gpu bg-transparent animate-spin-3d"
+                src={logo3D} 
+                alt="Aqua Clear Pools 3D Logo" 
+                className="w-[300px] h-[500px] object-contain transform-gpu animate-spin-y-3d"
                 style={{ 
-                  filter: 'drop-shadow(0 0 20px rgba(255,255,255,0.5))',
-                  mixBlendMode: 'multiply'
+                  filter: 'drop-shadow(0 0 30px rgba(59, 130, 246, 0.8))',
                 }}
               />
             </div>

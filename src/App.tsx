@@ -42,7 +42,22 @@ const AppRoutes = () => {
       {isAuthenticated && <Navbar />}
       <Routes>
         {/* Public routes */}
-        <Route path="/" element={<Index />} />
+        <Route 
+          path="/" 
+          element={
+            isAuthenticated ? (
+              user?.role === 'client' ? (
+                <Navigate to="/client" replace />
+              ) : user?.role === 'admin' ? (
+                <Navigate to="/admin" replace />
+              ) : (
+                <Navigate to="/tech" replace />
+              )
+            ) : (
+              <Index />
+            )
+          } 
+        />
         <Route path="/auth/login" element={<Login />} />
         <Route path="/auth/signup" element={<Signup />} />
         

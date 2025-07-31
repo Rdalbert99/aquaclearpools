@@ -23,12 +23,11 @@ const Index = () => {
         <div className="max-w-6xl mx-auto px-4 py-4 flex justify-between items-center">
           <div className="flex items-center space-x-3">
             <img 
-              src="/lovable-uploads/06513546-e1ef-499e-b26c-b920614b3e03.png" 
+              src="/lovable-uploads/ac1a09a4-823e-491c-bf59-fb76c8abb196.png" 
               alt="Aqua Clear Pools" 
               className="h-16 w-16 object-contain bg-transparent"
               style={{ 
                 filter: 'drop-shadow(0 0 10px rgba(255,255,255,0.3))',
-                mixBlendMode: 'multiply'
               }}
             />
             <span className="text-white font-bold text-xl">Aqua Clear Pools</span>

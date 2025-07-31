@@ -6,6 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
+import { ReviewForm } from '@/components/reviews/ReviewForm';
 import { 
   Calendar, 
   Droplets, 
@@ -13,7 +14,8 @@ import {
   CheckCircle,
   AlertCircle,
   Plus,
-  FileText
+  FileText,
+  Star
 } from 'lucide-react';
 
 interface ClientDashboardData {
@@ -309,6 +311,16 @@ export default function ClientDashboard() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Review Form */}
+      {clients.length > 0 && (
+        <ReviewForm 
+          clientId={clients[0].id}
+          onSuccess={() => {
+            // Optionally refresh data or show success message
+          }}
+        />
+      )}
     </div>
   );
 }

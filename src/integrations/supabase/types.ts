@@ -177,6 +177,60 @@ export type Database = {
           },
         ]
       }
+      reviews: {
+        Row: {
+          approved_at: string | null
+          approved_by: string | null
+          client_id: string | null
+          created_at: string
+          customer_name: string
+          id: string
+          rating: number
+          review_text: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          approved_at?: string | null
+          approved_by?: string | null
+          client_id?: string | null
+          created_at?: string
+          customer_name: string
+          id?: string
+          rating: number
+          review_text: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          approved_at?: string | null
+          approved_by?: string | null
+          client_id?: string | null
+          created_at?: string
+          customer_name?: string
+          id?: string
+          rating?: number
+          review_text?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reviews_approved_by_fkey"
+            columns: ["approved_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reviews_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       service_requests: {
         Row: {
           assigned_technician_id: string | null

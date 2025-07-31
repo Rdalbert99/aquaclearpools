@@ -10,7 +10,7 @@ import {
   DropdownMenuSeparator, 
   DropdownMenuTrigger 
 } from '@/components/ui/dropdown-menu';
-import { Droplets, Home, Calculator, Users, FileText, LogOut, User } from 'lucide-react';
+import { Droplets, Home, Calculator, Users, FileText, LogOut, User, Star } from 'lucide-react';
 
 export const Navbar = () => {
   const { user, signOut, isAdmin, isTech, isClient } = useAuth();
@@ -58,6 +58,12 @@ export const Navbar = () => {
                     <Link to="/admin/clients" className="flex items-center space-x-1">
                       <Users className="h-4 w-4" />
                       <span>Clients</span>
+                    </Link>
+                  </Button>
+                  <Button variant="ghost" size="sm" asChild>
+                    <Link to="/admin/reviews" className="flex items-center space-x-1">
+                      <Star className="h-4 w-4" />
+                      <span>Reviews</span>
                     </Link>
                   </Button>
                   <Button variant="ghost" size="sm" asChild>

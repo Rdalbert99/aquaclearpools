@@ -2,6 +2,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Phone, Mail, MapPin, Star, CheckCircle, LogIn, User, Users, Shield } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { ReviewCarousel } from '@/components/reviews/ReviewCarousel';
 import heroImage from '@/assets/hero-pool-service.jpg';
 import poolBefore1 from '@/assets/pool-before-1.jpg';
 import poolAfter1 from '@/assets/pool-after-1.jpg';
@@ -85,6 +86,9 @@ const Index = () => {
           </div>
         </div>
       </section>
+
+      {/* Customer Reviews Section */}
+      <ReviewCarousel />
 
       {/* Before & After Section */}
       <section className="py-20 px-4">

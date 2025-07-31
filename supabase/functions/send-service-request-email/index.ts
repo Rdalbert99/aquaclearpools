@@ -40,7 +40,7 @@ const handler = async (req: Request): Promise<Response> => {
 
     // Send email to business owner
     const businessEmailResponse = await resend.emails.send({
-      from: "Aqua Clear Pools <service@aquaclearpools.com>",
+      from: "Aqua Clear Pools <onboarding@resend.dev>",
       to: ["aquaclearpools@gmail.com"], // Replace with actual business email
       subject: `New Service Request - ${customerData.serviceType} (${requestDetails.urgency} priority)`,
       html: `
@@ -92,7 +92,7 @@ const handler = async (req: Request): Promise<Response> => {
 
     // Send confirmation email to customer
     const customerEmailResponse = await resend.emails.send({
-      from: "Aqua Clear Pools <service@aquaclearpools.com>",
+      from: "Aqua Clear Pools <onboarding@resend.dev>",
       to: [customerData.email],
       subject: "Service Request Received - Aqua Clear Pools",
       html: `

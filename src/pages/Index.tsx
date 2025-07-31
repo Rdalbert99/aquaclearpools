@@ -8,6 +8,7 @@ import poolAfter1 from '@/assets/pool-after-1.jpg';
 import poolBefore2 from '@/assets/pool-before-2.jpg';
 import poolAfter2 from '@/assets/pool-after-2.jpg';
 
+
 const Index = () => {
   const beforeAfterPairs = [
     { before: poolBefore1, after: poolAfter1, title: "Complete Pool Restoration" },
@@ -19,11 +20,13 @@ const Index = () => {
       {/* Header/Navigation */}
       <header className="absolute top-0 left-0 right-0 z-50 bg-black/20 backdrop-blur-sm">
         <div className="max-w-6xl mx-auto px-4 py-4 flex justify-between items-center">
-          <div className="flex items-center space-x-2">
-            <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
-              <Star className="h-5 w-5 text-primary-foreground" />
-            </div>
-            <span className="text-white font-bold text-xl">Crystal Clear Pools</span>
+          <div className="flex items-center space-x-3">
+            <img 
+              src="/lovable-uploads/06513546-e1ef-499e-b26c-b920614b3e03.png" 
+              alt="Aqua Clear Pools" 
+              className="h-12 w-12"
+            />
+            <span className="text-white font-bold text-xl">Aqua Clear Pools</span>
           </div>
           
           <div className="flex items-center space-x-4">
@@ -46,8 +49,15 @@ const Index = () => {
         </div>
         
         <div className="relative z-10 text-center text-white max-w-4xl mx-auto px-4">
+          <div className="mb-8 flex justify-center">
+            <img 
+              src="/lovable-uploads/06513546-e1ef-499e-b26c-b920614b3e03.png" 
+              alt="Aqua Clear Pools" 
+              className="h-32 w-32 md:h-40 md:w-40"
+            />
+          </div>
           <h1 className="text-5xl md:text-7xl font-bold mb-6">
-            Crystal Clear Pool Services
+            Aqua Clear Pools
           </h1>
           <p className="text-xl md:text-2xl mb-8 text-white/90">
             Professional pool maintenance, chemical balancing, and cleaning services you can trust

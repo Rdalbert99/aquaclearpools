@@ -101,7 +101,7 @@ const Index = () => {
           <div className="text-center mb-16">
             <h2 className="text-4xl font-bold mb-4">See the Difference</h2>
             <p className="text-xl text-muted-foreground">
-              Our professional pool services transform neglected pools into pristine swimming environments
+              Our professional pool services transform pools in need of care into pristine swimming environments
             </p>
           </div>
 

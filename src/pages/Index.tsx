@@ -12,7 +12,7 @@ import logo3D from '@/assets/aqua-clear-logo-3d.png';
 
 const Index = () => {
   const beforeAfterPairs = [
-    { before: poolBefore1, after: poolAfter1, title: "Complete Pool Restoration" },
+    { before: "/lovable-uploads/a5900411-fa64-46b8-af48-acf6bf1b1a50.png", after: poolAfter1, title: "Complete Pool Restoration" },
     { before: poolBefore2, after: poolAfter2, title: "Chemical Balance & Cleaning" }
   ];
 

@@ -36,10 +36,12 @@ export const Navbar = () => {
         <div className="flex justify-between h-16">
           <div className="flex items-center">
             <Link to="/" className="flex items-center space-x-2">
-              <div className="w-8 h-8 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-lg flex items-center justify-center">
-                <Droplets className="h-5 w-5 text-white" />
-              </div>
-              <span className="text-xl font-bold text-gray-900">Pool Management</span>
+              <img 
+                src="/lovable-uploads/77c07711-430c-44ce-bbd3-290293acb2c4.png" 
+                alt="Aqua Clear Pools" 
+                className="h-8 w-8 object-contain"
+              />
+              <span className="text-xl font-bold text-gray-900">Aqua Clear Pools</span>
             </Link>
           </div>
 

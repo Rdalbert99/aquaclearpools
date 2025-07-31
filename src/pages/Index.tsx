@@ -134,7 +134,7 @@ const Index = () => {
                   <Star className="h-5 w-5 text-primary-foreground" />
                 </div>
                 <div>
-                  <h3 className="text-xl font-semibold mb-2">Founded in 2003</h3>
+                  <h3 className="text-xl font-semibold mb-2">Founded in 2024</h3>
                   <p className="text-muted-foreground">
                     Started as a family business with a simple goal: provide reliable, professional pool maintenance services to our local community.
                   </p>
@@ -158,9 +158,9 @@ const Index = () => {
                   <Star className="h-5 w-5 text-primary-foreground" />
                 </div>
                 <div>
-                  <h3 className="text-xl font-semibold mb-2">500+ Happy Customers</h3>
+                  <h3 className="text-xl font-semibold mb-2">Many Happy Customers</h3>
                   <p className="text-muted-foreground">
-                    We've built lasting relationships with hundreds of pool owners throughout the region, providing consistent, quality service year after year.
+                    We've built lasting relationships with pool owners throughout the region, providing consistent, quality service year after year.
                   </p>
                 </div>
               </div>

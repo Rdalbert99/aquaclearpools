@@ -22,6 +22,17 @@ import {
   Filter
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 
 interface Client {
   id: string;
@@ -50,6 +61,7 @@ export default function ManageClients() {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [poolTypeFilter, setPoolTypeFilter] = useState('all');
+  const [deletingClientId, setDeletingClientId] = useState<string | null>(null);
 
   useEffect(() => {
     loadClients();
@@ -193,6 +205,44 @@ export default function ManageClients() {
       return { text: 'Due soon', color: 'bg-yellow-100 text-yellow-800' };
     } else {
       return { text: 'Overdue', color: 'bg-red-100 text-red-800' };
+    }
+  };
+
+  const handleDeleteClient = async (clientId: string) => {
+    try {
+      setDeletingClientId(clientId);
+      
+      const { error } = await supabase
+        .from('clients')
+        .delete()
+        .eq('id', clientId);
+
+      if (error) {
+        console.error('Error deleting client:', error);
+        toast({
+          title: "Error",
+          description: `Failed to delete client: ${error.message}`,
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Remove client from local state
+      setClients(prev => prev.filter(client => client.id !== clientId));
+      
+      toast({
+        title: "Success",
+        description: "Client deleted successfully",
+      });
+    } catch (error) {
+      console.error('Unexpected error deleting client:', error);
+      toast({
+        title: "Error",
+        description: "An unexpected error occurred while deleting the client",
+        variant: "destructive",
+      });
+    } finally {
+      setDeletingClientId(null);
     }
   };
 
@@ -435,17 +485,35 @@ export default function ManageClients() {
                             >
                               <Edit className="h-3 w-3" />
                             </Button>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className="text-red-600 hover:text-red-700"
-                              onClick={() => {
-                                // TODO: Add delete confirmation dialog
-                                console.log('Delete client:', client.id);
-                              }}
-                            >
-                              <Trash2 className="h-3 w-3" />
-                            </Button>
+                            <AlertDialog>
+                              <AlertDialogTrigger asChild>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="text-red-600 hover:text-red-700"
+                                  disabled={deletingClientId === client.id}
+                                >
+                                  <Trash2 className="h-3 w-3" />
+                                </Button>
+                              </AlertDialogTrigger>
+                              <AlertDialogContent>
+                                <AlertDialogHeader>
+                                  <AlertDialogTitle>Delete Client</AlertDialogTitle>
+                                  <AlertDialogDescription>
+                                    Are you sure you want to delete "{client.customer}"? This action cannot be undone and will permanently remove all associated data including service history.
+                                  </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                  <AlertDialogAction
+                                    onClick={() => handleDeleteClient(client.id)}
+                                    className="bg-red-600 hover:bg-red-700"
+                                  >
+                                    Delete
+                                  </AlertDialogAction>
+                                </AlertDialogFooter>
+                              </AlertDialogContent>
+                            </AlertDialog>
                           </div>
                         </td>
                       </tr>

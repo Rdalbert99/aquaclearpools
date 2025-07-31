@@ -131,9 +131,6 @@ const Index = () => {
         <div className="max-w-4xl mx-auto">
           <div className="text-center mb-16">
             <h2 className="text-4xl font-bold mb-4">Our Story</h2>
-            <p className="text-xl text-muted-foreground">
-              Over two decades of pool service excellence
-            </p>
           </div>
 
           <div className="grid md:grid-cols-2 gap-12 items-center">

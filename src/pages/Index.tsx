@@ -254,7 +254,7 @@ const Index = () => {
                 <h3 className="font-semibold mb-2">Call Us</h3>
                 <p className="text-muted-foreground text-sm mb-4">Speak directly with our team</p>
                 <Button variant="outline" size="sm" className="w-full">
-                  (555) 123-POOL
+                  601-447-0399
                 </Button>
               </CardContent>
             </Card>

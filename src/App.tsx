@@ -42,21 +42,8 @@ const AppRoutes = () => {
     <div className="min-h-screen bg-background">
       {isAuthenticated && <Navbar />}
       <Routes>
-        {/* Public routes - Landing page is default */}
-        <Route 
-          path="/" 
-          element={
-            !isAuthenticated ? (
-              <Index />
-            ) : user?.role === 'client' ? (
-              <Navigate to="/client" replace />
-            ) : user?.role === 'admin' ? (
-              <Navigate to="/admin" replace />
-            ) : (
-              <Navigate to="/tech" replace />
-            )
-          } 
-        />
+        {/* Public routes - Landing page accessible to all users */}
+        <Route path="/" element={<Index />} />
         <Route path="/auth/login" element={<Login />} />
         <Route path="/auth/signup" element={<Signup />} />
         

@@ -24,7 +24,8 @@ const Index = () => {
             <img 
               src="/lovable-uploads/06513546-e1ef-499e-b26c-b920614b3e03.png" 
               alt="Aqua Clear Pools" 
-              className="h-12 w-12"
+              className="h-16 w-16 object-contain"
+              style={{ filter: 'drop-shadow(0 0 10px rgba(255,255,255,0.3))' }}
             />
             <span className="text-white font-bold text-xl">Aqua Clear Pools</span>
           </div>
@@ -50,11 +51,17 @@ const Index = () => {
         
         <div className="relative z-10 text-center text-white max-w-4xl mx-auto px-4">
           <div className="mb-8 flex justify-center">
-            <img 
-              src="/lovable-uploads/06513546-e1ef-499e-b26c-b920614b3e03.png" 
-              alt="Aqua Clear Pools" 
-              className="h-32 w-32 md:h-40 md:w-40"
-            />
+            <div className="animate-spin-slow perspective-1000">
+              <img 
+                src="/lovable-uploads/06513546-e1ef-499e-b26c-b920614b3e03.png" 
+                alt="Aqua Clear Pools" 
+                className="h-48 w-48 md:h-56 md:w-56 object-contain transform-gpu"
+                style={{ 
+                  filter: 'drop-shadow(0 0 20px rgba(255,255,255,0.5))',
+                  animation: 'spin3d 8s linear infinite'
+                }}
+              />
+            </div>
           </div>
           <h1 className="text-5xl md:text-7xl font-bold mb-6">
             Aqua Clear Pools

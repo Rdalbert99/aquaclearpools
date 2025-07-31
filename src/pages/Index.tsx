@@ -13,7 +13,7 @@ import logo3D from '@/assets/aqua-clear-logo-3d.png';
 const Index = () => {
   const beforeAfterPairs = [
     { before: "/lovable-uploads/a5900411-fa64-46b8-af48-acf6bf1b1a50.png", after: "/lovable-uploads/f52d8304-05ae-44c4-b5b2-f1b5bdc742c8.png", title: "Complete Pool Restoration" },
-    { before: "/lovable-uploads/77f0cfa9-2e13-4e4c-b77f-48884243e0c5.png", after: poolAfter2, title: "Chemical Balance & Cleaning" }
+    { before: "/lovable-uploads/77f0cfa9-2e13-4e4c-b77f-48884243e0c5.png", after: "/lovable-uploads/56e5318a-54aa-4a0f-ab6c-2104bc3dc5f1.png", title: "Chemical Balance & Cleaning" }
   ];
 
   return (

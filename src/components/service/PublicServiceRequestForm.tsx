@@ -54,22 +54,28 @@ export function PublicServiceRequestForm({ open, onOpenChange }: PublicServiceRe
   const onSubmit = async (data: FormData) => {
     setIsSubmitting(true);
     try {
+      console.log('Form data being submitted:', data);
+      
+      const insertData = {
+        request_type: data.serviceType,
+        description: data.description,
+        priority: data.urgency,
+        status: 'pending',
+        contact_name: data.name,
+        contact_email: data.email,
+        contact_phone: data.phone,
+        contact_address: data.address,
+        pool_type: data.poolType,
+        pool_size: data.poolSize,
+        preferred_date: data.preferredDate || null,
+      };
+      
+      console.log('Database insert data:', insertData);
+      
       // Create a service request in the database without requiring authentication
       const { error: dbError } = await supabase
         .from('service_requests')
-        .insert({
-          request_type: data.serviceType,
-          description: data.description,
-          priority: data.urgency,
-          status: 'pending',
-          contact_name: data.name,
-          contact_email: data.email,
-          contact_phone: data.phone,
-          contact_address: data.address,
-          pool_type: data.poolType,
-          pool_size: data.poolSize,
-          preferred_date: data.preferredDate || null,
-        });
+        .insert(insertData);
 
       if (dbError) {
         console.error('Database error:', dbError);

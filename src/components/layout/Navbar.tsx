@@ -18,7 +18,7 @@ export const Navbar = () => {
 
   const handleLogout = async () => {
     await signOut();
-    navigate('/auth/login');
+    navigate('/');
   };
 
   const getInitials = (name: string) => {

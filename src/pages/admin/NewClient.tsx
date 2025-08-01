@@ -187,7 +187,8 @@ export default function NewClient() {
           name: client.customer,
           role: 'client',
           address: client.address || null,
-          phone: client.phone || null
+          phone: client.phone || null,
+          must_change_password: true
         };
         
         console.log('📝 Inserting user data:', userInsertData);
@@ -220,15 +221,6 @@ export default function NewClient() {
       }
 
       console.log('🏢 Creating client with user ID:', finalUserId);
-
-      const userInsertData = {
-        email: client.new_user_email,
-        password: client.new_user_password,
-        name: client.customer,
-        role: 'client',
-        address: client.address || null,
-        phone: client.phone || null
-      };
 
       const insertData: any = {
         customer: client.customer,

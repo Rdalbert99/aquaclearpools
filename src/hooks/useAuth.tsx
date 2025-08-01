@@ -11,7 +11,7 @@ interface AuthContextType {
   user: AuthUser | null;
   session: Session | null;
   loading: boolean;
-  signIn: (email: string, password: string) => Promise<{ error?: string }>;
+  signIn: (email: string, password: string) => Promise<{ error?: string; mustChangePassword?: boolean }>;
   signUp: (email: string, password: string, name: string, role?: string) => Promise<{ error?: string }>;
   signOut: () => Promise<void>;
   isAuthenticated: boolean;
@@ -115,6 +115,19 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       });
       
       if (error) throw error;
+
+      // Check if user must change password
+      if (data.user) {
+        const { data: userData, error: userError } = await supabase
+          .from('users')
+          .select('must_change_password')
+          .eq('id', data.user.id)
+          .single();
+
+        if (!userError && userData?.must_change_password) {
+          return { error: null, mustChangePassword: true };
+        }
+      }
 
       // Track login
       if (data.user) {

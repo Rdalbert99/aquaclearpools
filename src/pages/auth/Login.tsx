@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Link, Navigate, useSearchParams } from 'react-router-dom';
+import { Link, Navigate, useSearchParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -18,6 +18,7 @@ export default function Login() {
   const { signIn, isAuthenticated, user } = useAuth();
   const { toast } = useToast();
   const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
 
   useEffect(() => {
     const demo = searchParams.get('demo');
@@ -47,6 +48,10 @@ export default function Login() {
         description: result.error,
         variant: "destructive",
       });
+    } else if (result.mustChangePassword) {
+      // Redirect to password change page
+      navigate('/auth/change-password');
+      return;
     } else {
       toast({
         title: "Welcome back!",

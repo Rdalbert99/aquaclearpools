@@ -55,15 +55,15 @@ export default function TechDashboard() {
         console.error('Services error:', servicesError);
       }
 
-      // Load pending service requests assigned to this tech
+      // Load pending service requests (both assigned to this tech and unassigned)
       const { data: requests, error: requestsError } = await supabase
         .from('service_requests')
         .select(`
           *,
           clients(*)
         `)
-        .eq('assigned_technician_id', user?.id)
-        .eq('status', 'pending');
+        .eq('status', 'pending')
+        .or(`assigned_technician_id.eq.${user?.id},assigned_technician_id.is.null`);
 
       if (requestsError) {
         console.error('Requests error:', requestsError);

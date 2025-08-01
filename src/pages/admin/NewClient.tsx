@@ -71,7 +71,7 @@ export default function NewClient() {
     is_multi_property: false,
     account_type: 'none',
     new_user_email: '',
-    new_user_password: '',
+    new_user_password: 'password',
     send_login_email: true
   });
 

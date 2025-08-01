@@ -83,7 +83,7 @@ const Index = () => {
             >
               Request Service Now
             </Button>
-            <Link to="/auth/login">
+            <Link to="/auth/login?demo=client">
               <Button size="lg" variant="outline" className="bg-white/10 border-white text-white hover:bg-white/20">
                 Existing Customer Login
               </Button>
@@ -229,7 +229,7 @@ const Index = () => {
                 <User className="h-8 w-8 mx-auto mb-4 text-primary" />
                 <h3 className="font-semibold mb-2">Customer Portal</h3>
                 <p className="text-muted-foreground text-sm mb-4">View service history and request appointments</p>
-                <Link to="/auth/login">
+                <Link to="/auth/login?demo=client">
                   <Button variant="outline" size="sm" className="w-full">
                     Customer Login
                   </Button>

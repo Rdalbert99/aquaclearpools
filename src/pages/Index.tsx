@@ -73,7 +73,7 @@ const Index = () => {
             Aqua Clear Pools
           </h1>
           <p className="text-xl md:text-2xl mb-8 text-white/90">
-            Professional pool maintenance, chemical balancing, and cleaning services you can trust
+            Professional pool maintenance, chemical balancing, and cleaning services in the Hattiesburg, Mississippi area
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Button 
@@ -101,7 +101,7 @@ const Index = () => {
           <div className="text-center mb-16">
             <h2 className="text-4xl font-bold mb-4">See the Difference</h2>
             <p className="text-xl text-muted-foreground">
-              Our professional pool services transform pools in need of care into pristine swimming environments
+              Our professional pool services in the Hattiesburg area transform pools in need of care into pristine swimming environments
             </p>
           </div>
 
@@ -151,7 +151,7 @@ const Index = () => {
                 <div>
                   <h3 className="text-xl font-semibold mb-2">Founded in 2024</h3>
                   <p className="text-muted-foreground">
-                    Started as a family business with a simple goal: provide reliable, professional pool maintenance services to our local community.
+                    Started as a family business in Hattiesburg with a simple goal: provide reliable, professional pool maintenance services to our local Mississippi community.
                   </p>
                 </div>
               </div>
@@ -175,7 +175,7 @@ const Index = () => {
                 <div>
                   <h3 className="text-xl font-semibold mb-2">Many Happy Customers</h3>
                   <p className="text-muted-foreground">
-                    We've built lasting relationships with pool owners throughout the region, providing consistent, quality service year after year.
+                    We've built lasting relationships with pool owners throughout the Hattiesburg and greater Mississippi area, providing consistent, quality service year after year.
                   </p>
                 </div>
               </div>
@@ -220,7 +220,7 @@ const Index = () => {
         <div className="max-w-4xl mx-auto text-center">
           <h2 className="text-4xl font-bold mb-8">Ready to Get Started?</h2>
           <p className="text-xl text-muted-foreground mb-12">
-            Contact us today for a free pool assessment and customized service plan
+            Serving Hattiesburg and the greater Mississippi area - Contact us today for a free pool assessment and customized service plan
           </p>
 
           <div className="grid md:grid-cols-4 gap-6 mb-12">
@@ -266,13 +266,20 @@ const Index = () => {
             <Card>
               <CardContent className="pt-6 text-center">
                 <Phone className="h-8 w-8 mx-auto mb-4 text-primary" />
-                <h3 className="font-semibold mb-2">Call Us</h3>
-                <p className="text-muted-foreground text-sm mb-4">Speak directly with our team</p>
-                <a href="tel:601-447-0399" className="block w-full">
-                  <Button variant="outline" size="sm" className="w-full">
-                    601-447-0399
-                  </Button>
-                </a>
+                <h3 className="font-semibold mb-2">Contact Us</h3>
+                <p className="text-muted-foreground text-sm mb-4">Call or text our team</p>
+                <div className="space-y-2">
+                  <a href="tel:601-447-0399" className="block w-full">
+                    <Button variant="outline" size="sm" className="w-full">
+                      📞 Call 601-447-0399
+                    </Button>
+                  </a>
+                  <a href="sms:601-447-0399" className="block w-full">
+                    <Button variant="outline" size="sm" className="w-full">
+                      💬 Text 601-447-0399
+                    </Button>
+                  </a>
+                </div>
               </CardContent>
             </Card>
           </div>

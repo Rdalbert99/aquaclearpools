@@ -6,6 +6,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
+import { Textarea } from '@/components/ui/textarea';
+import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { 
   Calendar, 
@@ -15,7 +17,9 @@ import {
   Droplets,
   User,
   ArrowLeft,
-  UserPlus
+  UserPlus,
+  CheckCircle,
+  FileText
 } from 'lucide-react';
 
 interface ServiceRequest {
@@ -45,6 +49,8 @@ export default function ServiceRequestDetails() {
   const { toast } = useToast();
   const [request, setRequest] = useState<ServiceRequest | null>(null);
   const [loading, setLoading] = useState(true);
+  const [notes, setNotes] = useState('');
+  const [isUpdating, setIsUpdating] = useState(false);
 
   useEffect(() => {
     if (id) {
@@ -74,6 +80,8 @@ export default function ServiceRequestDetails() {
       }
 
       setRequest(data);
+      // Initialize notes with any existing notes
+      setNotes(data.description || '');
     } catch (error) {
       console.error('Error:', error);
     } finally {
@@ -148,6 +156,56 @@ export default function ServiceRequestDetails() {
     }
   };
 
+  const updateServiceRequest = async (newStatus: string) => {
+    if (!request) return;
+
+    setIsUpdating(true);
+    try {
+      const updateData: any = {
+        status: newStatus,
+        description: notes,
+      };
+
+      // If completing, add completion date and assign to current user
+      if (newStatus === 'completed') {
+        updateData.completed_date = new Date().toISOString();
+        updateData.assigned_technician_id = user?.id;
+      }
+
+      const { error } = await supabase
+        .from('service_requests')
+        .update(updateData)
+        .eq('id', request.id);
+
+      if (error) {
+        console.error('Error updating service request:', error);
+        toast({
+          title: "Error",
+          description: "Could not update service request.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      toast({
+        title: "Success",
+        description: `Service request ${newStatus === 'completed' ? 'completed' : 'updated'} successfully.`,
+      });
+
+      // Reload the request to show updated data
+      loadServiceRequest();
+    } catch (error) {
+      console.error('Error:', error);
+      toast({
+        title: "Error",
+        description: "An unexpected error occurred.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="p-6">
@@ -185,11 +243,34 @@ export default function ServiceRequestDetails() {
         </div>
         
         {!request.client_id && request.contact_name && (
-          <Button onClick={createCustomer}>
+          <Button onClick={createCustomer} disabled={isUpdating}>
             <UserPlus className="h-4 w-4 mr-2" />
             Create Customer Account
           </Button>
         )}
+
+        {/* Action buttons for techs/admins */}
+        <div className="flex space-x-2">
+          {request.status === 'pending' && (
+            <Button 
+              onClick={() => updateServiceRequest('in-progress')}
+              disabled={isUpdating}
+              variant="outline"
+            >
+              Start Work
+            </Button>
+          )}
+          
+          {(request.status === 'pending' || request.status === 'in-progress') && (
+            <Button 
+              onClick={() => updateServiceRequest('completed')}
+              disabled={isUpdating}
+            >
+              <CheckCircle className="h-4 w-4 mr-2" />
+              Complete Work Order
+            </Button>
+          )}
+        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -312,11 +393,50 @@ export default function ServiceRequestDetails() {
           </div>
           
           <div>
-            <label className="text-sm font-medium text-muted-foreground">Description</label>
-            <p className="text-lg whitespace-pre-wrap">{request.description}</p>
+            <label className="text-sm font-medium text-muted-foreground">Description / Service Notes</label>
+            <Textarea
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              className="mt-2 min-h-[120px]"
+              placeholder="Add notes about the service request or work performed..."
+            />
           </div>
         </CardContent>
       </Card>
+
+      {/* Work Order Actions */}
+      {(user?.role === 'tech' || user?.role === 'admin') && request.status !== 'completed' && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center space-x-2">
+              <FileText className="h-5 w-5" />
+              <span>Work Order Actions</span>
+            </CardTitle>
+            <CardDescription>Update the status of this service request</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="flex space-x-4">
+              {request.status === 'pending' && (
+                <Button 
+                  onClick={() => updateServiceRequest('in-progress')}
+                  disabled={isUpdating}
+                  variant="outline"
+                >
+                  Start Work
+                </Button>
+              )}
+              
+              <Button 
+                onClick={() => updateServiceRequest('completed')}
+                disabled={isUpdating}
+              >
+                <CheckCircle className="h-4 w-4 mr-2" />
+                {isUpdating ? 'Completing...' : 'Complete Work Order'}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }

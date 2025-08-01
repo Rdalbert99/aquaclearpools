@@ -162,7 +162,7 @@ export default function TechDashboard() {
             </CardTitle>
             <CardDescription>Service requests from potential and existing customers</CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="max-h-96 overflow-y-auto">
             <div className="space-y-4">
               {stats?.pendingRequests.map((request: any) => (
                 <div key={request.id} className="border rounded-lg p-4 hover:bg-muted/50 cursor-pointer transition-colors">

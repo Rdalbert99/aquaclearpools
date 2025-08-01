@@ -111,6 +111,8 @@ export default function ClientEdit() {
 
     setSaving(true);
     try {
+      console.log('Saving client data:', client);
+      console.log('Client ID:', id);
       const updateData: any = {
         customer: client.customer,
         pool_size: client.pool_size,

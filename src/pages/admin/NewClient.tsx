@@ -38,6 +38,7 @@ interface ClientFormData {
   service_notes: string;
   company_name: string;
   is_multi_property: boolean;
+  service_days: string[];
   // New user creation fields
   account_type: 'existing' | 'new' | 'none';
   new_user_email: string;
@@ -69,6 +70,7 @@ export default function NewClient() {
     service_notes: '',
     company_name: '',
     is_multi_property: false,
+    service_days: [],
     account_type: 'none',
     new_user_email: '',
     new_user_password: 'password',
@@ -235,6 +237,7 @@ export default function NewClient() {
         next_service_date: client.next_service_date || null,
         included_services: client.included_services,
         service_notes: client.service_notes,
+        service_days: client.service_days,
         company_name: client.company_name || null,
         is_multi_property: client.is_multi_property,
         join_date: new Date().toISOString(),
@@ -295,6 +298,13 @@ export default function NewClient() {
     setClient({ ...client, included_services: updatedServices });
   };
 
+  const handleServiceDayToggle = (day: string, checked: boolean) => {
+    const updatedDays = checked 
+      ? [...client.service_days, day]
+      : client.service_days.filter(d => d !== day);
+    setClient({ ...client, service_days: updatedDays });
+  };
+
   const commonPoolServices = [
     'Chemical Testing & Balancing',
     'Skimming Surface Debris',
@@ -311,6 +321,16 @@ export default function NewClient() {
     'pH Adjustment',
     'Filter Cleaning',
     'Pump Maintenance'
+  ];
+
+  const daysOfWeek = [
+    'monday',
+    'tuesday', 
+    'wednesday',
+    'thursday',
+    'friday',
+    'saturday',
+    'sunday'
   ];
 
   return (
@@ -643,6 +663,28 @@ export default function NewClient() {
                       className="text-sm font-normal cursor-pointer"
                     >
                       {service}
+                    </Label>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              <Label className="text-base font-semibold">Service Days</Label>
+              <p className="text-sm text-muted-foreground">Select which days of the week this client receives regular service</p>
+              <div className="grid grid-cols-7 gap-2">
+                {daysOfWeek.map((day) => (
+                  <div key={day} className="flex flex-col items-center space-y-2">
+                    <Checkbox
+                      id={day}
+                      checked={client.service_days.includes(day)}
+                      onCheckedChange={(checked) => handleServiceDayToggle(day, checked as boolean)}
+                    />
+                    <Label 
+                      htmlFor={day} 
+                      className="text-xs font-normal cursor-pointer capitalize"
+                    >
+                      {day.slice(0, 3)}
                     </Label>
                   </div>
                 ))}

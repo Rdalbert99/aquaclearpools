@@ -118,6 +118,7 @@ export type Database = {
           next_service_date: string | null
           pool_size: number
           pool_type: string
+          service_days: string[] | null
           service_frequency: string | null
           service_notes: string | null
           service_rate: number | null
@@ -139,6 +140,7 @@ export type Database = {
           next_service_date?: string | null
           pool_size: number
           pool_type: string
+          service_days?: string[] | null
           service_frequency?: string | null
           service_notes?: string | null
           service_rate?: number | null
@@ -160,6 +162,7 @@ export type Database = {
           next_service_date?: string | null
           pool_size?: number
           pool_type?: string
+          service_days?: string[] | null
           service_frequency?: string | null
           service_notes?: string | null
           service_rate?: number | null

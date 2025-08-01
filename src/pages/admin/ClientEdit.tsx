@@ -35,6 +35,7 @@ interface ClientFormData {
   next_service_date: string;
   included_services: string[];
   service_notes: string;
+  service_days: string[];
 }
 
 export default function ClientEdit() {
@@ -77,7 +78,8 @@ export default function ClientEdit() {
         service_frequency: (data as any).service_frequency || 'weekly',
         next_service_date: (data as any).next_service_date ? (data as any).next_service_date.split('T')[0] : '',
         included_services: (data as any).included_services || [],
-        service_notes: (data as any).service_notes || ''
+        service_notes: (data as any).service_notes || '',
+        service_days: (data as any).service_days || []
       });
 
     } catch (error) {
@@ -126,6 +128,7 @@ export default function ClientEdit() {
         next_service_date: client.next_service_date || null,
         included_services: client.included_services,
         service_notes: client.service_notes,
+        service_days: client.service_days,
         updated_at: new Date().toISOString()
       };
 
@@ -173,6 +176,14 @@ export default function ClientEdit() {
     setClient({ ...client, included_services: updatedServices });
   };
 
+  const handleServiceDayToggle = (day: string, checked: boolean) => {
+    if (!client) return;
+    const updatedDays = checked 
+      ? [...client.service_days, day]
+      : client.service_days.filter(d => d !== day);
+    setClient({ ...client, service_days: updatedDays });
+  };
+
   const commonPoolServices = [
     'Chemical Testing & Balancing',
     'Skimming Surface Debris',
@@ -189,6 +200,16 @@ export default function ClientEdit() {
     'pH Adjustment',
     'Filter Cleaning',
     'Pump Maintenance'
+  ];
+
+  const daysOfWeek = [
+    'monday',
+    'tuesday', 
+    'wednesday',
+    'thursday',
+    'friday',
+    'saturday',
+    'sunday'
   ];
 
   if (loading) {
@@ -436,6 +457,28 @@ export default function ClientEdit() {
                       className="text-sm font-normal cursor-pointer"
                     >
                       {service}
+                    </Label>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              <Label className="text-base font-semibold">Service Days</Label>
+              <p className="text-sm text-muted-foreground">Select which days of the week this client receives regular service</p>
+              <div className="grid grid-cols-7 gap-2">
+                {daysOfWeek.map((day) => (
+                  <div key={day} className="flex flex-col items-center space-y-2">
+                    <Checkbox
+                      id={day}
+                      checked={client.service_days.includes(day)}
+                      onCheckedChange={(checked) => handleServiceDayToggle(day, checked as boolean)}
+                    />
+                    <Label 
+                      htmlFor={day} 
+                      className="text-xs font-normal cursor-pointer capitalize"
+                    >
+                      {day.slice(0, 3)}
                     </Label>
                   </div>
                 ))}

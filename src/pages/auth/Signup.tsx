@@ -69,8 +69,12 @@ export default function Signup() {
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
-          <div className="mx-auto mb-4 w-16 h-16 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-lg flex items-center justify-center">
-            <Droplets className="h-8 w-8 text-white" />
+          <div className="mx-auto mb-4 w-16 h-16 flex items-center justify-center">
+            <img 
+              src="/lovable-uploads/77c07711-430c-44ce-bbd3-290293acb2c4.png" 
+              alt="Aqua Clear Pools Logo" 
+              className="w-16 h-16 object-contain"
+            />
           </div>
           <CardTitle className="text-2xl font-bold">Create Account</CardTitle>
           <CardDescription>Sign up for Pool Management</CardDescription>

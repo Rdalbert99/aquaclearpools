@@ -268,9 +268,11 @@ const Index = () => {
                 <Phone className="h-8 w-8 mx-auto mb-4 text-primary" />
                 <h3 className="font-semibold mb-2">Call Us</h3>
                 <p className="text-muted-foreground text-sm mb-4">Speak directly with our team</p>
-                <Button variant="outline" size="sm" className="w-full">
-                  601-447-0399
-                </Button>
+                <a href="tel:601-447-0399" className="block w-full">
+                  <Button variant="outline" size="sm" className="w-full">
+                    601-447-0399
+                  </Button>
+                </a>
               </CardContent>
             </Card>
           </div>

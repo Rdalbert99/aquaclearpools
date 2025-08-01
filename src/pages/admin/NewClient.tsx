@@ -22,6 +22,8 @@ import {
 
 interface ClientFormData {
   customer: string;
+  address: string;
+  phone: string;
   pool_size: number;
   pool_type: string;
   liner_type: string;
@@ -51,6 +53,8 @@ export default function NewClient() {
   const [users, setUsers] = useState<any[]>([]);
   const [client, setClient] = useState<ClientFormData>({
     customer: '',
+    address: '',
+    phone: '',
     pool_size: 0,
     pool_type: '',
     liner_type: 'Liner',
@@ -123,10 +127,10 @@ export default function NewClient() {
     // Validate new user creation fields
     if (client.account_type === 'new') {
       console.log('🔍 Validating new user creation fields...');
-      if (!client.new_user_email.trim()) {
+      if (client.new_user_email && !client.new_user_email.trim()) {
         toast({
           title: "Error",
-          description: "Email is required for new user account",
+          description: "Email cannot be empty if provided",
           variant: "destructive"
         });
         return;
@@ -181,7 +185,9 @@ export default function NewClient() {
           email: client.new_user_email,
           password: client.new_user_password,
           name: client.customer,
-          role: 'client'
+          role: 'client',
+          address: client.address || null,
+          phone: client.phone || null
         };
         
         console.log('📝 Inserting user data:', userInsertData);
@@ -214,6 +220,15 @@ export default function NewClient() {
       }
 
       console.log('🏢 Creating client with user ID:', finalUserId);
+
+      const userInsertData = {
+        email: client.new_user_email,
+        password: client.new_user_password,
+        name: client.customer,
+        role: 'client',
+        address: client.address || null,
+        phone: client.phone || null
+      };
 
       const insertData: any = {
         customer: client.customer,
@@ -353,6 +368,26 @@ export default function NewClient() {
             </div>
 
             <div className="space-y-2">
+              <Label htmlFor="address">Address</Label>
+              <Input
+                id="address"
+                value={client.address}
+                onChange={(e) => handleInputChange('address', e.target.value)}
+                placeholder="Enter property address"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="phone">Phone Number</Label>
+              <Input
+                id="phone"
+                value={client.phone}
+                onChange={(e) => handleInputChange('phone', e.target.value)}
+                placeholder="Enter phone number"
+              />
+            </div>
+
+            <div className="space-y-2">
               <Label htmlFor="companyName">Company/Organization</Label>
               <Input
                 id="companyName"
@@ -416,13 +451,13 @@ export default function NewClient() {
                 {client.account_type === 'new' && (
                   <div className="space-y-3 p-4 border rounded-lg bg-muted/50">
                     <div className="space-y-2">
-                      <Label htmlFor="newUserEmail">Client Email *</Label>
+                      <Label htmlFor="newUserEmail">Client Email</Label>
                       <Input
                         id="newUserEmail"
                         type="email"
                         value={client.new_user_email}
                         onChange={(e) => handleInputChange('new_user_email', e.target.value)}
-                        placeholder="Enter client's email"
+                        placeholder="Enter client's email (optional)"
                       />
                     </div>
                     

@@ -160,30 +160,52 @@ export default function TechDashboard() {
               <Clock className="h-5 w-5" />
               <span>Pending Requests</span>
             </CardTitle>
-            <CardDescription>Service requests assigned to you</CardDescription>
+            <CardDescription>Service requests from potential and existing customers</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
               {stats?.pendingRequests.map((request: any) => (
-                <div key={request.id} className="flex items-center justify-between p-3 border rounded-lg">
-                  <div>
-                    <p className="font-medium">{request.clients?.customer || 'Unknown Client'}</p>
-                    <p className="text-sm text-muted-foreground">
-                      Type: {request.request_type}
-                    </p>
-                    <p className="text-sm text-muted-foreground">
-                      Requested: {new Date(request.requested_date).toLocaleDateString()}
-                    </p>
-                    <Badge variant={request.priority === 'high' ? 'destructive' : 'secondary'}>
-                      {request.priority} priority
-                    </Badge>
-                  </div>
-                  <div>
-                    <Button size="sm" asChild>
-                      <Link to={`/tech/service/${request.client_id}`}>
-                        Start Service
-                      </Link>
-                    </Button>
+                <div key={request.id} className="border rounded-lg p-4 hover:bg-muted/50 cursor-pointer transition-colors">
+                  <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-center">
+                    <div>
+                      <p className="font-medium">
+                        {request.contact_name || request.clients?.customer || 'Unknown'}
+                      </p>
+                      <p className="text-sm text-muted-foreground">
+                        {request.contact_email || 'No email'}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-sm">
+                        <MapPin className="inline h-3 w-3 mr-1" />
+                        {request.contact_address || 'No address'}
+                      </p>
+                      <p className="text-sm text-muted-foreground">
+                        {request.contact_phone || 'No phone'}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium">{request.request_type}</p>
+                      <p className="text-sm text-muted-foreground">
+                        {request.pool_type && request.pool_size ? 
+                          `${request.pool_type} - ${request.pool_size}` : 
+                          'Pool details not specified'
+                        }
+                      </p>
+                    </div>
+                    <div className="flex flex-col items-end gap-2">
+                      <Badge variant={request.priority === 'high' || request.priority === 'emergency' ? 'destructive' : 'secondary'}>
+                        {request.priority} priority
+                      </Badge>
+                      <p className="text-xs text-muted-foreground">
+                        {new Date(request.requested_date).toLocaleDateString()}
+                      </p>
+                      <Button size="sm" asChild>
+                        <Link to={`/admin/service-request/${request.id}`}>
+                          View Details
+                        </Link>
+                      </Button>
+                    </div>
                   </div>
                 </div>
               ))}

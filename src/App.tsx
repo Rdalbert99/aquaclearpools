@@ -25,6 +25,8 @@ import ClientEdit from "./pages/admin/ClientEdit";
 import NewClient from "./pages/admin/NewClient";
 import NewService from "./pages/admin/NewService";
 import ReviewManagement from "./pages/admin/ReviewManagement";
+import ServiceRequestDetails from "./pages/admin/ServiceRequestDetails";
+import PotentialCustomers from "./pages/admin/PotentialCustomers";
 import ClientDashboard from "./pages/client/Dashboard";
 import ClientServices from "./pages/client/Services";
 import RequestService from "./pages/client/RequestService";
@@ -171,6 +173,22 @@ const AppRoutes = () => {
           element={
             <ProtectedRoute allowedRoles={['admin']}>
               <ReviewManagement />
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/admin/service-request/:id" 
+          element={
+            <ProtectedRoute allowedRoles={['admin', 'tech']}>
+              <ServiceRequestDetails />
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/admin/potential-customers" 
+          element={
+            <ProtectedRoute allowedRoles={['admin']}>
+              <PotentialCustomers />
             </ProtectedRoute>
           } 
         />

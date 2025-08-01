@@ -236,9 +236,16 @@ export type Database = {
           assigned_technician_id: string | null
           client_id: string | null
           completed_date: string | null
+          contact_address: string | null
+          contact_email: string | null
+          contact_name: string | null
+          contact_phone: string | null
           created_at: string | null
           description: string
           id: string
+          pool_size: string | null
+          pool_type: string | null
+          preferred_date: string | null
           priority: string | null
           request_type: string
           requested_date: string | null
@@ -249,9 +256,16 @@ export type Database = {
           assigned_technician_id?: string | null
           client_id?: string | null
           completed_date?: string | null
+          contact_address?: string | null
+          contact_email?: string | null
+          contact_name?: string | null
+          contact_phone?: string | null
           created_at?: string | null
           description: string
           id?: string
+          pool_size?: string | null
+          pool_type?: string | null
+          preferred_date?: string | null
           priority?: string | null
           request_type: string
           requested_date?: string | null
@@ -262,9 +276,16 @@ export type Database = {
           assigned_technician_id?: string | null
           client_id?: string | null
           completed_date?: string | null
+          contact_address?: string | null
+          contact_email?: string | null
+          contact_name?: string | null
+          contact_phone?: string | null
           created_at?: string | null
           description?: string
           id?: string
+          pool_size?: string | null
+          pool_type?: string | null
+          preferred_date?: string | null
           priority?: string | null
           request_type?: string
           requested_date?: string | null

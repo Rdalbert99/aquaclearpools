@@ -59,16 +59,16 @@ export function PublicServiceRequestForm({ open, onOpenChange }: PublicServiceRe
         .from('service_requests')
         .insert({
           request_type: data.serviceType,
-          description: `Contact: ${data.name} (${data.email}, ${data.phone})
-Address: ${data.address}
-Pool Type: ${data.poolType}
-Pool Size: ${data.poolSize}
-Preferred Date: ${data.preferredDate || 'Not specified'}
-Urgency: ${data.urgency}
-
-Details: ${data.description}`,
+          description: data.description,
           priority: data.urgency,
           status: 'pending',
+          contact_name: data.name,
+          contact_email: data.email,
+          contact_phone: data.phone,
+          contact_address: data.address,
+          pool_type: data.poolType,
+          pool_size: data.poolSize,
+          preferred_date: data.preferredDate || null,
         });
 
       if (dbError) {

@@ -13,6 +13,7 @@ import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 import Login from "./pages/auth/Login";
 import Signup from "./pages/auth/Signup";
+import ClientSignup from "./pages/auth/ClientSignup";
 import ChangePassword from "./pages/auth/ChangePassword";
 import AdminDashboard from "./pages/admin/Dashboard";
 import TechDashboard from "./pages/tech/Dashboard";
@@ -49,6 +50,7 @@ const AppRoutes = () => {
         <Route path="/" element={<Index />} />
         <Route path="/auth/login" element={<Login />} />
         <Route path="/auth/signup" element={<Signup />} />
+        <Route path="/auth/client-signup" element={<ClientSignup />} />
         <Route path="/auth/change-password" element={<ChangePassword />} />
         
         {/* Protected routes */}

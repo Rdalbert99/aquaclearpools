@@ -279,7 +279,7 @@ const Index = () => {
             <p className="text-muted-foreground mb-4">
               New to our service? Create an account to get started
             </p>
-            <Link to="/auth/signup">
+            <Link to="/auth/client-signup">
               <Button size="lg" className="bg-primary hover:bg-primary/90">
                 Sign Up Today
               </Button>

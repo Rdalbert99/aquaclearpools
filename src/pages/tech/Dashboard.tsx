@@ -37,6 +37,28 @@ export default function TechDashboard() {
     return () => clearTimeout(timeout);
   }, []);
 
+  const acceptServiceRequest = async (requestId: string) => {
+    try {
+      const { error } = await supabase
+        .from('service_requests')
+        .update({ 
+          assigned_technician_id: user?.id,
+          status: 'assigned'
+        })
+        .eq('id', requestId);
+
+      if (error) {
+        console.error('Error accepting service request:', error);
+        return;
+      }
+
+      // Reload dashboard data
+      loadDashboardData();
+    } catch (error) {
+      console.error('Error accepting service request:', error);
+    }
+  };
+
   const loadDashboardData = async () => {
     try {
       // Load services assigned to this tech
@@ -55,15 +77,16 @@ export default function TechDashboard() {
         console.error('Services error:', servicesError);
       }
 
-      // Load pending service requests (both assigned to this tech and unassigned)
+      // Load all pending service requests for technicians to accept
       const { data: requests, error: requestsError } = await supabase
         .from('service_requests')
         .select(`
           *,
-          clients(*)
+          clients(*),
+          assigned_technician:users!assigned_technician_id(name)
         `)
         .eq('status', 'pending')
-        .or(`assigned_technician_id.eq.${user?.id},assigned_technician_id.is.null`);
+        .order('requested_date', { ascending: true });
 
       if (requestsError) {
         console.error('Requests error:', requestsError);
@@ -153,19 +176,19 @@ export default function TechDashboard() {
       </Card>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Pending Service Requests */}
+        {/* Available Service Requests */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center space-x-2">
               <Clock className="h-5 w-5" />
-              <span>Pending Requests</span>
+              <span>Available Service Requests</span>
             </CardTitle>
-            <CardDescription>Service requests from potential and existing customers</CardDescription>
+            <CardDescription>Service requests available for acceptance</CardDescription>
           </CardHeader>
           <CardContent className="max-h-96 overflow-y-auto">
             <div className="space-y-4">
               {stats?.pendingRequests.map((request: any) => (
-                <div key={request.id} className="border rounded-lg p-4 hover:bg-muted/50 cursor-pointer transition-colors">
+                <div key={request.id} className="border rounded-lg p-4 hover:bg-muted/50 transition-colors">
                   <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-center">
                     <div>
                       <p className="font-medium">
@@ -192,6 +215,11 @@ export default function TechDashboard() {
                           'Pool details not specified'
                         }
                       </p>
+                      {request.assigned_technician && (
+                        <p className="text-xs text-primary">
+                          Assigned to: {request.assigned_technician.name}
+                        </p>
+                      )}
                     </div>
                     <div className="flex flex-col items-end gap-2">
                       <Badge variant={request.priority === 'high' || request.priority === 'emergency' ? 'destructive' : 'secondary'}>
@@ -200,17 +228,32 @@ export default function TechDashboard() {
                       <p className="text-xs text-muted-foreground">
                         {new Date(request.requested_date).toLocaleDateString()}
                       </p>
-                      <Button size="sm" asChild>
-                        <Link to={`/admin/service-request/${request.id}`}>
-                          View Details
-                        </Link>
-                      </Button>
+                      <div className="flex gap-2">
+                        {!request.assigned_technician_id ? (
+                          <Button 
+                            size="sm" 
+                            onClick={() => acceptServiceRequest(request.id)}
+                            className="bg-green-600 hover:bg-green-700"
+                          >
+                            Accept
+                          </Button>
+                        ) : request.assigned_technician_id === user?.id ? (
+                          <Badge variant="default">Assigned to You</Badge>
+                        ) : (
+                          <Badge variant="secondary">Assigned</Badge>
+                        )}
+                        <Button size="sm" variant="outline" asChild>
+                          <Link to={`/admin/service-request/${request.id}`}>
+                            View
+                          </Link>
+                        </Button>
+                      </div>
                     </div>
                   </div>
                 </div>
               ))}
               {stats?.pendingRequests.length === 0 && (
-                <p className="text-center text-muted-foreground py-4">No pending requests</p>
+                <p className="text-center text-muted-foreground py-4">No available requests</p>
               )}
             </div>
           </CardContent>

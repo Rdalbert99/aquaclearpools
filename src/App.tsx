@@ -27,6 +27,7 @@ import NewClient from "./pages/admin/NewClient";
 import NewService from "./pages/admin/NewService";
 import ReviewManagement from "./pages/admin/ReviewManagement";
 import ServiceRequestManagement from "./pages/admin/ServiceRequestManagement";
+import { ApprovalCenter } from "./pages/admin/ApprovalCenter";
 import ServiceRequestDetails from "./pages/admin/ServiceRequestDetails";
 import PotentialCustomers from "./pages/admin/PotentialCustomers";
 import ClientDashboard from "./pages/client/Dashboard";
@@ -200,6 +201,14 @@ const AppRoutes = () => {
           element={
             <ProtectedRoute allowedRoles={['admin']}>
               <ServiceRequestManagement />
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/admin/approvals" 
+          element={
+            <ProtectedRoute allowedRoles={['admin']}>
+              <ApprovalCenter />
             </ProtectedRoute>
           } 
         />

@@ -92,9 +92,6 @@ const Index = () => {
         </div>
       </section>
 
-      {/* Customer Reviews Section */}
-      <ReviewCarousel />
-
       {/* Before & After Section */}
       <section className="py-20 px-4">
         <div className="max-w-6xl mx-auto">
@@ -134,6 +131,9 @@ const Index = () => {
           </div>
         </div>
       </section>
+
+      {/* Customer Reviews Section */}
+      <ReviewCarousel />
 
       {/* Company History Section */}
       <section className="py-20 px-4 bg-muted/50">

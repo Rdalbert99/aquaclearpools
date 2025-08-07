@@ -6,6 +6,9 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { 
   Shield, 
@@ -14,7 +17,9 @@ import {
   Mail,
   Phone,
   User,
-  Calendar
+  Calendar,
+  Edit2,
+  KeyRound
 } from 'lucide-react';
 
 interface AdminUser {
@@ -30,6 +35,10 @@ interface AdminUser {
 export default function ManageAdmins() {
   const [admins, setAdmins] = useState<AdminUser[]>([]);
   const [loading, setLoading] = useState(true);
+  const [editingAdmin, setEditingAdmin] = useState<AdminUser | null>(null);
+  const [editForm, setEditForm] = useState({ name: '', email: '', phone: '' });
+  const [newPassword, setNewPassword] = useState('');
+  const [resettingPasswordFor, setResettingPasswordFor] = useState<AdminUser | null>(null);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -82,6 +91,89 @@ export default function ManageAdmins() {
       toast({
         title: "Error",
         description: "Failed to delete administrator.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleEditAdmin = (admin: AdminUser) => {
+    setEditingAdmin(admin);
+    setEditForm({
+      name: admin.name,
+      email: admin.email,
+      phone: admin.phone || ''
+    });
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editingAdmin) return;
+
+    try {
+      const { error } = await supabase
+        .from('users')
+        .update({
+          name: editForm.name,
+          email: editForm.email,
+          phone: editForm.phone || null,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', editingAdmin.id);
+
+      if (error) throw error;
+
+      toast({
+        title: "Admin Updated",
+        description: "Administrator details have been successfully updated.",
+      });
+
+      setEditingAdmin(null);
+      loadAdmins();
+    } catch (error) {
+      console.error('Error updating admin:', error);
+      toast({
+        title: "Error",
+        description: "Failed to update administrator.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const generateRandomPassword = () => {
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*';
+    let password = '';
+    for (let i = 0; i < 12; i++) {
+      password += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    setNewPassword(password);
+  };
+
+  const handleResetPassword = async () => {
+    if (!resettingPasswordFor || !newPassword) return;
+
+    try {
+      const { error } = await supabase
+        .from('users')
+        .update({
+          password: newPassword,
+          must_change_password: true,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', resettingPasswordFor.id);
+
+      if (error) throw error;
+
+      toast({
+        title: "Password Reset",
+        description: `Password has been reset for ${resettingPasswordFor.name}. They will be required to change it on next login.`,
+      });
+
+      setResettingPasswordFor(null);
+      setNewPassword('');
+    } catch (error) {
+      console.error('Error resetting password:', error);
+      toast({
+        title: "Error",
+        description: "Failed to reset password.",
         variant: "destructive",
       });
     }
@@ -179,12 +271,114 @@ export default function ManageAdmins() {
 
               <div className="pt-3 border-t">
                 <div className="flex gap-2">
-                  <Button variant="outline" size="sm" className="flex-1">
-                    Edit
-                  </Button>
-                  <Button variant="outline" size="sm" className="flex-1">
-                    Reset Password
-                  </Button>
+                  <Dialog>
+                    <DialogTrigger asChild>
+                      <Button variant="outline" size="sm" className="flex-1" onClick={() => handleEditAdmin(admin)}>
+                        <Edit2 className="h-3 w-3 mr-1" />
+                        Edit
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent>
+                      <DialogHeader>
+                        <DialogTitle>Edit Administrator</DialogTitle>
+                        <DialogDescription>
+                          Update administrator details for {admin.name}
+                        </DialogDescription>
+                      </DialogHeader>
+                      
+                      <div className="space-y-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="edit-name">Name</Label>
+                          <Input
+                            id="edit-name"
+                            value={editForm.name}
+                            onChange={(e) => setEditForm(prev => ({ ...prev, name: e.target.value }))}
+                          />
+                        </div>
+                        
+                        <div className="space-y-2">
+                          <Label htmlFor="edit-email">Email</Label>
+                          <Input
+                            id="edit-email"
+                            type="email"
+                            value={editForm.email}
+                            onChange={(e) => setEditForm(prev => ({ ...prev, email: e.target.value }))}
+                          />
+                        </div>
+                        
+                        <div className="space-y-2">
+                          <Label htmlFor="edit-phone">Phone</Label>
+                          <Input
+                            id="edit-phone"
+                            value={editForm.phone}
+                            onChange={(e) => setEditForm(prev => ({ ...prev, phone: e.target.value }))}
+                          />
+                        </div>
+                      </div>
+
+                      <DialogFooter>
+                        <Button variant="outline" onClick={() => setEditingAdmin(null)}>
+                          Cancel
+                        </Button>
+                        <Button onClick={handleSaveEdit}>
+                          Save Changes
+                        </Button>
+                      </DialogFooter>
+                    </DialogContent>
+                  </Dialog>
+                  
+                  <Dialog>
+                    <DialogTrigger asChild>
+                      <Button variant="outline" size="sm" className="flex-1" onClick={() => {
+                        setResettingPasswordFor(admin);
+                        generateRandomPassword();
+                      }}>
+                        <KeyRound className="h-3 w-3 mr-1" />
+                        Reset Password
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent>
+                      <DialogHeader>
+                        <DialogTitle>Reset Password</DialogTitle>
+                        <DialogDescription>
+                          Reset password for {admin.name}. They will be required to change this password on next login.
+                        </DialogDescription>
+                      </DialogHeader>
+                      
+                      <div className="space-y-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="new-password">New Password</Label>
+                          <div className="flex gap-2">
+                            <Input
+                              id="new-password"
+                              value={newPassword}
+                              onChange={(e) => setNewPassword(e.target.value)}
+                              type="text"
+                            />
+                            <Button
+                              type="button"
+                              variant="outline"
+                              onClick={generateRandomPassword}
+                            >
+                              Generate
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+
+                      <DialogFooter>
+                        <Button variant="outline" onClick={() => {
+                          setResettingPasswordFor(null);
+                          setNewPassword('');
+                        }}>
+                          Cancel
+                        </Button>
+                        <Button onClick={handleResetPassword} disabled={!newPassword}>
+                          Reset Password
+                        </Button>
+                      </DialogFooter>
+                    </DialogContent>
+                  </Dialog>
                   <AlertDialog>
                     <AlertDialogTrigger asChild>
                       <Button variant="destructive" size="sm" className="flex-1">

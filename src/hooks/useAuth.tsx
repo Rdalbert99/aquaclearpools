@@ -296,6 +296,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           password: 'password', // This is just for compatibility with existing schema
           name,
           role,
+          login: additionalData?.username || `${name.toLowerCase().replace(/\s+/g, '')}${Date.now()}`,
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
         };

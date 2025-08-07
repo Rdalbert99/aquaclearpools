@@ -15,10 +15,12 @@ import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
+import { UsernameInput } from '@/components/ui/username-input';
 import { Droplets, ArrowLeft, CheckCircle } from 'lucide-react';
 
 
 const formSchema = z.object({
+  username: z.string().min(3, 'Username must be at least 3 characters'),
   firstName: z.string().min(2, 'First name must be at least 2 characters'),
   lastName: z.string().min(2, 'Last name must be at least 2 characters'),
   email: z.string().email('Please enter a valid email address'),
@@ -49,6 +51,7 @@ export default function ClientSignup() {
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
     defaultValues: {
+      username: '',
       firstName: '',
       lastName: '',
       email: '',
@@ -80,6 +83,7 @@ export default function ClientSignup() {
         fullName, 
         'client',
         {
+          username: data.username,
           firstName: data.firstName,
           lastName: data.lastName,
           phone: data.phone,
@@ -207,6 +211,22 @@ export default function ClientSignup() {
                 {/* Personal Information */}
                 <div className="space-y-4">
                   <h3 className="text-lg font-semibold">Personal Information</h3>
+                  
+                  <FormField
+                    control={form.control}
+                    name="username"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormControl>
+                          <UsernameInput 
+                            placeholder="Choose a unique username"
+                            {...field}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
                   
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <FormField

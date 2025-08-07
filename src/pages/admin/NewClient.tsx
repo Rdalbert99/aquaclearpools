@@ -11,6 +11,7 @@ import { Switch } from '@/components/ui/switch';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
+import { UsernameInput } from '@/components/ui/username-input';
 import { 
   ArrowLeft,
   Save,
@@ -41,6 +42,7 @@ interface ClientFormData {
   service_days: string[];
   // New user creation fields
   account_type: 'existing' | 'new' | 'none';
+  new_user_username: string;
   new_user_email: string;
   new_user_password: string;
   send_login_email: boolean;
@@ -72,6 +74,7 @@ export default function NewClient() {
     is_multi_property: false,
     service_days: [],
     account_type: 'none',
+    new_user_username: '',
     new_user_email: '',
     new_user_password: 'password',
     send_login_email: true
@@ -129,6 +132,14 @@ export default function NewClient() {
     // Validate new user creation fields
     if (client.account_type === 'new') {
       console.log('🔍 Validating new user creation fields...');
+      if (!client.new_user_username.trim()) {
+        toast({
+          title: "Error",
+          description: "Username is required for new user account",
+          variant: "destructive"
+        });
+        return;
+      }
       if (client.new_user_email && !client.new_user_email.trim()) {
         toast({
           title: "Error",
@@ -188,7 +199,7 @@ export default function NewClient() {
           password: client.new_user_password,
           name: client.customer,
           role: 'client',
-          login: `${client.customer.toLowerCase().replace(/\s+/g, '')}${Date.now()}`, // Generate unique login
+          login: client.new_user_username,
           address: client.address || null,
           phone: client.phone || null,
           must_change_password: true
@@ -432,6 +443,7 @@ export default function NewClient() {
                     ...client, 
                     account_type: value,
                     user_id: value === 'existing' ? client.user_id : '',
+                    new_user_username: value === 'new' ? client.new_user_username : '',
                     new_user_email: value === 'new' ? client.new_user_email : '',
                     new_user_password: value === 'new' ? client.new_user_password : ''
                   });
@@ -463,6 +475,16 @@ export default function NewClient() {
 
                 {client.account_type === 'new' && (
                   <div className="space-y-3 p-4 border rounded-lg bg-muted/50">
+                    <div className="space-y-2">
+                      <Label htmlFor="newUserUsername">Username</Label>
+                      <UsernameInput
+                        id="newUserUsername"
+                        value={client.new_user_username}
+                        onChange={(e) => handleInputChange('new_user_username', e.target.value)}
+                        placeholder="Choose a unique username"
+                      />
+                    </div>
+                    
                     <div className="space-y-2">
                       <Label htmlFor="newUserEmail">Client Email</Label>
                       <Input

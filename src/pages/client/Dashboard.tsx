@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
 import { ReviewForm } from '@/components/reviews/ReviewForm';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { 
   Calendar, 
   Droplets, 
@@ -15,7 +16,8 @@ import {
   AlertCircle,
   Plus,
   FileText,
-  Star
+  Star,
+  Camera
 } from 'lucide-react';
 
 interface ClientDashboardData {
@@ -62,11 +64,11 @@ export default function ClientDashboard() {
         .select(`
           *,
           users(name),
-          clients(customer)
+          clients(customer, pool_type)
         `)
         .in('client_id', clientIds)
         .order('service_date', { ascending: false })
-        .limit(10);
+        .limit(5);
 
       // Load service requests for all client pools
       const { data: requests } = await supabase
@@ -266,49 +268,172 @@ export default function ClientDashboard() {
         </div>
       )}
 
-      {/* Recent Services - Full width for single property or simplified view */}
+      {/* Pool Pictures Section */}
+      {!isMultiProperty && clients.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center space-x-2">
+              <Camera className="h-5 w-5" />
+              <span>Pool Picture</span>
+            </CardTitle>
+            <CardDescription>Current view of your pool</CardDescription>
+          </CardHeader>
+          <CardContent>
+            {clients[0].pool_image_url ? (
+              <div className="space-y-4">
+                <div className="relative rounded-lg overflow-hidden">
+                  <img 
+                    src={clients[0].pool_image_url} 
+                    alt="Current pool view"
+                    className="w-full h-64 object-cover"
+                  />
+                </div>
+                {clients[0].pool_image_uploaded_at && (
+                  <p className="text-sm text-muted-foreground">
+                    Last updated: {new Date(clients[0].pool_image_uploaded_at).toLocaleDateString()}
+                  </p>
+                )}
+              </div>
+            ) : (
+              <div className="flex items-center justify-center h-32 bg-muted rounded-lg">
+                <div className="text-center">
+                  <Camera className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
+                  <p className="text-sm text-muted-foreground">
+                    Pool picture will be uploaded during your first service visit
+                  </p>
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Recent Services - Service History Table */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center justify-between">
             <div className="flex items-center space-x-2">
               <Calendar className="h-5 w-5" />
-              <span>Recent Services</span>
+              <span>Last 5 Service Visits</span>
             </div>
             <Button variant="outline" size="sm" asChild>
               <Link to="/client/services">View All</Link>
             </Button>
           </CardTitle>
+          <CardDescription>
+            Complete service history with water chemistry and maintenance details
+          </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="space-y-4">
-            {recentServices.map((service: any) => (
-              <div key={service.id} className="flex items-center justify-between p-3 border rounded-lg">
-                <div className="flex-1">
-                  <p className="font-medium">
-                    {isMultiProperty ? `${service.clients?.customer} - ` : ''}
-                    {new Date(service.service_date).toLocaleDateString()}
-                  </p>
-                  <p className="text-sm text-muted-foreground">
-                    Technician: {service.users?.name || 'Unknown'}
-                  </p>
-                  {service.notes && (
-                    <p className="text-sm text-muted-foreground mt-1">{service.notes}</p>
-                  )}
-                </div>
-                <div className="text-right">
-                  <Badge variant={service.status === 'completed' ? 'default' : 'secondary'}>
-                    {service.status}
-                  </Badge>
-                  {service.cost && (
-                    <p className="text-sm font-medium mt-1">${service.cost}</p>
-                  )}
-                </div>
+          {recentServices.length > 0 ? (
+            <div className="space-y-6">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Date</TableHead>
+                    <TableHead>Technician</TableHead>
+                    <TableHead className="text-center">Chlorine</TableHead>
+                    <TableHead className="text-center">pH</TableHead>
+                    <TableHead className="text-center">Alkalinity</TableHead>
+                    {clients[0]?.pool_type?.toLowerCase().includes('salt') && (
+                      <TableHead className="text-center">Salinity</TableHead>
+                    )}
+                    <TableHead>Status</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {recentServices.map((service: any) => (
+                    <TableRow key={service.id}>
+                      <TableCell className="font-medium">
+                        {new Date(service.service_date).toLocaleDateString()}
+                      </TableCell>
+                      <TableCell>{service.users?.name || 'Unknown'}</TableCell>
+                      <TableCell className="text-center">
+                        {service.chlorine_level ? `${service.chlorine_level} ppm` : '-'}
+                      </TableCell>
+                      <TableCell className="text-center">
+                        {service.ph_level ? service.ph_level : '-'}
+                      </TableCell>
+                      <TableCell className="text-center">
+                        {service.alkalinity_level ? `${service.alkalinity_level} ppm` : '-'}
+                      </TableCell>
+                      {clients[0]?.pool_type?.toLowerCase().includes('salt') && (
+                        <TableCell className="text-center">
+                          {service.cyanuric_acid_level ? `${service.cyanuric_acid_level} ppm` : '-'}
+                        </TableCell>
+                      )}
+                      <TableCell>
+                        <Badge variant={service.status === 'completed' ? 'default' : 'secondary'}>
+                          {service.status}
+                        </Badge>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+
+              {/* Service Details Cards */}
+              <div className="space-y-4">
+                <h4 className="font-medium">Service Details</h4>
+                {recentServices.map((service: any) => (
+                  <Card key={`details-${service.id}`} className="border-l-4 border-l-primary">
+                    <CardContent className="pt-4">
+                      <div className="flex justify-between items-start mb-3">
+                        <h5 className="font-medium">
+                          {new Date(service.service_date).toLocaleDateString()} - {service.users?.name}
+                        </h5>
+                        {service.cost && (
+                          <span className="text-sm font-medium">${service.cost}</span>
+                        )}
+                      </div>
+                      
+                      {/* Actions Taken */}
+                      {service.services_performed && (
+                        <div className="mb-3">
+                          <p className="text-sm font-medium text-muted-foreground mb-1">Actions Taken:</p>
+                          <p className="text-sm">{service.services_performed}</p>
+                        </div>
+                      )}
+
+                      {/* Maintenance Activities */}
+                      <div className="grid grid-cols-2 gap-4 mb-3 text-sm">
+                        <div>
+                          <p className="font-medium text-muted-foreground">Maintenance:</p>
+                          <div className="space-y-1">
+                            <p>• Pool vacuumed</p>
+                            <p>• Surfaces brushed</p>
+                            <p>• Skimmers emptied</p>
+                          </div>
+                        </div>
+                        {service.chemicals_added && (
+                          <div>
+                            <p className="font-medium text-muted-foreground">Chemicals Added:</p>
+                            <p>{service.chemicals_added}</p>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Notes */}
+                      {service.notes && (
+                        <div>
+                          <p className="text-sm font-medium text-muted-foreground mb-1">Notes:</p>
+                          <p className="text-sm">{service.notes}</p>
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                ))}
               </div>
-            ))}
-            {recentServices.length === 0 && (
-              <p className="text-center text-muted-foreground py-4">No recent services</p>
-            )}
-          </div>
+            </div>
+          ) : (
+            <div className="text-center py-8">
+              <Calendar className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+              <p className="text-muted-foreground">No service history available yet</p>
+              <p className="text-sm text-muted-foreground mt-1">
+                Your service history will appear here after your first visit
+              </p>
+            </div>
+          )}
         </CardContent>
       </Card>
 

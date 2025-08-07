@@ -199,6 +199,15 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
       console.log('Found email for login:', emailResult);
 
+      // Get the user data for this specific login to determine the correct role
+      const { data: loginUserData, error: loginUserError } = await supabase
+        .from('users')
+        .select('role, name, login')
+        .eq('login', login)
+        .single();
+
+      console.log('Login user data:', { loginUserData, loginUserError });
+
       // Now sign in with the email
       const { data, error } = await supabase.auth.signInWithPassword({
         email: emailResult,
@@ -209,6 +218,29 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       if (error) {
         console.error('Authentication failed:', error.message);
         throw error;
+      }
+
+      // Update the authenticated user's profile to match the login used
+      if (data.user && loginUserData && !loginUserError) {
+        console.log('Updating user profile for auth ID:', data.user.id);
+        try {
+          const { error: updateError } = await supabase
+            .from('users')
+            .update({
+              role: loginUserData.role,
+              name: loginUserData.name,
+              login: loginUserData.login
+            })
+            .eq('id', data.user.id);
+          
+          if (updateError) {
+            console.error('Failed to update user profile:', updateError);
+          } else {
+            console.log('Successfully updated user profile with correct role:', loginUserData.role);
+          }
+        } catch (updateErr) {
+          console.error('Error updating user profile:', updateErr);
+        }
       }
 
       // Check if user must change password

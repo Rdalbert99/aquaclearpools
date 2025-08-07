@@ -58,11 +58,28 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           try {
             // Fetch user profile data before setting user state
             console.log('Attempting to fetch profile for user:', session.user.id);
-            const { data: userData, error } = await supabase
-              .from('users')
-              .select('role, name')
-              .eq('id', session.user.id)
-              .single();
+            
+            // Add timeout to prevent infinite waiting
+            let userData = null;
+            let error = null;
+            
+            try {
+              const result = await Promise.race([
+                supabase
+                  .from('users')
+                  .select('role, name')
+                  .eq('id', session.user.id)
+                  .single(),
+                new Promise((_, reject) => 
+                  setTimeout(() => reject(new Error('Profile fetch timeout')), 5000)
+                )
+              ]) as any;
+              userData = result?.data;
+              error = result?.error;
+            } catch (timeoutError) {
+              console.log('Profile fetch timed out');
+              error = timeoutError;
+            }
             
             console.log('Profile fetch result:', { userData, error });
             

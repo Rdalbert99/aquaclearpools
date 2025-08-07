@@ -68,20 +68,15 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
               setUser({ ...session.user, ...userData });
             } else {
               console.log('Profile fetch failed, using basic user data:', error);
-              // Fallback to basic user data if profile fetch fails
-              setUser({ 
-                ...session.user, 
-                role: 'client', // default to client instead of admin
-                name: session.user.email?.split('@')[0] || 'User'
-              });
+              // Don't set user if profile fetch fails - the user will remain null and loading will stop
+              // This prevents defaulting to wrong role
+              setUser(null);
             }
           } catch (err) {
             console.log('Profile fetch error, using basic user data:', err);
-            setUser({ 
-              ...session.user, 
-              role: 'client', // default to client instead of admin
-              name: session.user.email?.split('@')[0] || 'User'
-            });
+            // Don't set user if profile fetch fails - the user will remain null and loading will stop
+            // This prevents defaulting to wrong role
+            setUser(null);
           }
         } else {
           console.log('No user, clearing state');

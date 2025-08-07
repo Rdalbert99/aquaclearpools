@@ -177,7 +177,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         if (additionalData) {
           if (additionalData.firstName) userRecord.first_name = additionalData.firstName;
           if (additionalData.lastName) userRecord.last_name = additionalData.lastName;
+          if (additionalData.phone) userRecord.phone = additionalData.phone;
           if (additionalData.address) userRecord.address = additionalData.address;
+          if (additionalData.street) userRecord.street_address = additionalData.street;
+          if (additionalData.city) userRecord.city = additionalData.city;
+          if (additionalData.state) userRecord.state = additionalData.state;
+          if (additionalData.zipCode) userRecord.zip_code = additionalData.zipCode;
           if (additionalData.addressComponents) {
             userRecord.street_address = additionalData.addressComponents.street_address;
             userRecord.city = additionalData.addressComponents.city;

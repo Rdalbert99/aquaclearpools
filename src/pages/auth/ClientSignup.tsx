@@ -12,6 +12,7 @@ import { AddressAutocomplete } from '@/components/ui/address-autocomplete';
 import { AddressComponents } from '@/lib/address-validation';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
 import { Droplets, ArrowLeft, CheckCircle } from 'lucide-react';
@@ -42,6 +43,7 @@ type FormData = z.infer<typeof formSchema>;
 export default function ClientSignup() {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { signUp } = useAuth();
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const form = useForm<FormData>({
@@ -70,34 +72,43 @@ export default function ClientSignup() {
       const fullName = `${data.firstName.trim()} ${data.lastName.trim()}`.trim();
       const fullAddress = `${data.street}, ${data.city}, ${data.state} ${data.zipCode}`;
       
-      // Create user account with address components
-      const userRecord: any = {
-        name: fullName,
-        first_name: data.firstName,
-        last_name: data.lastName,
-        email: data.email,
-        phone: data.phone,
-        address: fullAddress,
-        street_address: data.street,
-        city: data.city,
-        state: data.state,
-        zip_code: data.zipCode,
-        role: 'client',
-        password: data.password,
-        must_change_password: false,
-      };
+      // Create auth user using the useAuth hook
+      const result = await signUp(
+        data.email, 
+        data.password, 
+        fullName, 
+        'client',
+        {
+          firstName: data.firstName,
+          lastName: data.lastName,
+          phone: data.phone,
+          street: data.street,
+          city: data.city,
+          state: data.state,
+          zipCode: data.zipCode,
+          address: fullAddress
+        }
+      );
 
-      const { data: newUser, error: userError } = await supabase
-        .from('users')
-        .insert(userRecord)
-        .select()
-        .single();
-
-      if (userError) {
-        console.error('Error creating user:', userError);
+      if (result.error) {
         toast({
           title: "Error",
-          description: "Could not create your account. Please try again.",
+          description: result.error,
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Wait a moment for the user to be created, then get the user ID
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      // Get the current user to create client record
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (!user) {
+        toast({
+          title: "Error",
+          description: "Account created but could not retrieve user information. Please try logging in.",
           variant: "destructive",
         });
         return;
@@ -112,7 +123,7 @@ export default function ClientSignup() {
       const { error: clientError } = await supabase
         .from('clients')
         .insert({
-          user_id: newUser.id,
+          user_id: user.id,
           customer: fullName,
           pool_type: data.poolType,
           pool_size: poolSizeNumber,

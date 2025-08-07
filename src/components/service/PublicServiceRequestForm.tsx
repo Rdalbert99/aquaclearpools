@@ -10,9 +10,11 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import { AddressInput } from '@/components/ui/address-input';
 
 const formSchema = z.object({
-  name: z.string().min(2, 'Name must be at least 2 characters'),
+  firstName: z.string().min(2, 'First name must be at least 2 characters'),
+  lastName: z.string().min(2, 'Last name must be at least 2 characters'),
   email: z.string().email('Please enter a valid email address'),
   phone: z.string().min(10, 'Please enter a valid phone number'),
   address: z.string().min(5, 'Please enter your full address'),
@@ -33,12 +35,14 @@ interface PublicServiceRequestFormProps {
 
 export function PublicServiceRequestForm({ open, onOpenChange }: PublicServiceRequestFormProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [addressComponents, setAddressComponents] = useState<any>(null);
   const { toast } = useToast();
 
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      name: '',
+      firstName: '',
+      lastName: '',
       email: '',
       phone: '',
       address: '',
@@ -56,12 +60,14 @@ export function PublicServiceRequestForm({ open, onOpenChange }: PublicServiceRe
     try {
       console.log('Form data being submitted:', data);
       
-      const insertData = {
+      const fullName = `${data.firstName.trim()} ${data.lastName.trim()}`.trim();
+      
+      const insertData: any = {
         request_type: data.serviceType,
         description: data.description,
         priority: data.urgency,
         status: 'pending',
-        contact_name: data.name,
+        contact_name: fullName,
         contact_email: data.email,
         contact_phone: data.phone,
         contact_address: data.address,
@@ -69,6 +75,16 @@ export function PublicServiceRequestForm({ open, onOpenChange }: PublicServiceRe
         pool_size: data.poolSize,
         preferred_date: data.preferredDate || null,
       };
+
+      // Add address components if validated
+      if (addressComponents) {
+        insertData.street_address = addressComponents.street_address;
+        insertData.city = addressComponents.city;
+        insertData.state = addressComponents.state;
+        insertData.zip_code = addressComponents.zip_code;
+        insertData.country = addressComponents.country;
+        insertData.address_validated = true;
+      }
       
       console.log('Database insert data:', insertData);
       
@@ -84,7 +100,7 @@ export function PublicServiceRequestForm({ open, onOpenChange }: PublicServiceRe
       // Send email using edge function
       const { error: emailError } = await supabase.functions.invoke('send-service-request-email', {
         body: {
-          customerData: data,
+          customerData: { ...data, name: fullName },
           requestDetails: {
             type: data.serviceType,
             urgency: data.urgency,
@@ -138,18 +154,34 @@ export function PublicServiceRequestForm({ open, onOpenChange }: PublicServiceRe
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <FormField
                 control={form.control}
-                name="name"
+                name="firstName"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Full Name</FormLabel>
+                    <FormLabel>First Name</FormLabel>
                     <FormControl>
-                      <Input placeholder="John Doe" {...field} />
+                      <Input placeholder="John" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
               />
 
+              <FormField
+                control={form.control}
+                name="lastName"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Last Name</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Doe" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <FormField
                 control={form.control}
                 name="email"
@@ -163,9 +195,7 @@ export function PublicServiceRequestForm({ open, onOpenChange }: PublicServiceRe
                   </FormItem>
                 )}
               />
-            </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <FormField
                 control={form.control}
                 name="phone"
@@ -179,31 +209,31 @@ export function PublicServiceRequestForm({ open, onOpenChange }: PublicServiceRe
                   </FormItem>
                 )}
               />
-
-              <FormField
-                control={form.control}
-                name="urgency"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Urgency</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select urgency level" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value="low">Low - Routine Maintenance</SelectItem>
-                        <SelectItem value="medium">Medium - Schedule Within Week</SelectItem>
-                        <SelectItem value="high">High - Needs Attention Soon</SelectItem>
-                        <SelectItem value="emergency">Emergency - ASAP</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
             </div>
+
+            <FormField
+              control={form.control}
+              name="urgency"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Urgency</FormLabel>
+                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select urgency level" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="low">Low - Routine Maintenance</SelectItem>
+                      <SelectItem value="medium">Medium - Schedule Within Week</SelectItem>
+                      <SelectItem value="high">High - Needs Attention Soon</SelectItem>
+                      <SelectItem value="emergency">Emergency - ASAP</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
             <FormField
               control={form.control}
@@ -212,7 +242,16 @@ export function PublicServiceRequestForm({ open, onOpenChange }: PublicServiceRe
                 <FormItem>
                   <FormLabel>Pool Address</FormLabel>
                   <FormControl>
-                    <Input placeholder="123 Main St, City, State, ZIP" {...field} />
+                    <AddressInput
+                      value={field.value}
+                      onChange={(value, components) => {
+                        field.onChange(value);
+                        setAddressComponents(components);
+                      }}
+                      placeholder="123 Main St, City, State, ZIP"
+                      required
+                      label=""
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>

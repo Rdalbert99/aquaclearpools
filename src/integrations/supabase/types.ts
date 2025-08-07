@@ -236,13 +236,16 @@ export type Database = {
       }
       service_requests: {
         Row: {
+          address_validated: boolean | null
           assigned_technician_id: string | null
+          city: string | null
           client_id: string | null
           completed_date: string | null
           contact_address: string | null
           contact_email: string | null
           contact_name: string | null
           contact_phone: string | null
+          country: string | null
           created_at: string | null
           description: string
           id: string
@@ -252,17 +255,23 @@ export type Database = {
           priority: string | null
           request_type: string
           requested_date: string | null
+          state: string | null
           status: string | null
+          street_address: string | null
           updated_at: string | null
+          zip_code: string | null
         }
         Insert: {
+          address_validated?: boolean | null
           assigned_technician_id?: string | null
+          city?: string | null
           client_id?: string | null
           completed_date?: string | null
           contact_address?: string | null
           contact_email?: string | null
           contact_name?: string | null
           contact_phone?: string | null
+          country?: string | null
           created_at?: string | null
           description: string
           id?: string
@@ -272,17 +281,23 @@ export type Database = {
           priority?: string | null
           request_type: string
           requested_date?: string | null
+          state?: string | null
           status?: string | null
+          street_address?: string | null
           updated_at?: string | null
+          zip_code?: string | null
         }
         Update: {
+          address_validated?: boolean | null
           assigned_technician_id?: string | null
+          city?: string | null
           client_id?: string | null
           completed_date?: string | null
           contact_address?: string | null
           contact_email?: string | null
           contact_name?: string | null
           contact_phone?: string | null
+          country?: string | null
           created_at?: string | null
           description?: string
           id?: string
@@ -292,8 +307,11 @@ export type Database = {
           priority?: string | null
           request_type?: string
           requested_date?: string | null
+          state?: string | null
           status?: string | null
+          street_address?: string | null
           updated_at?: string | null
+          zip_code?: string | null
         }
         Relationships: [
           {
@@ -417,39 +435,63 @@ export type Database = {
       users: {
         Row: {
           address: string | null
+          address_validated: boolean | null
+          city: string | null
+          country: string | null
           created_at: string | null
           email: string
+          first_name: string | null
           id: string
+          last_name: string | null
           must_change_password: boolean | null
           name: string
           password: string
           phone: string | null
           role: string
+          state: string | null
+          street_address: string | null
           updated_at: string | null
+          zip_code: string | null
         }
         Insert: {
           address?: string | null
+          address_validated?: boolean | null
+          city?: string | null
+          country?: string | null
           created_at?: string | null
           email: string
+          first_name?: string | null
           id?: string
+          last_name?: string | null
           must_change_password?: boolean | null
           name: string
           password: string
           phone?: string | null
           role: string
+          state?: string | null
+          street_address?: string | null
           updated_at?: string | null
+          zip_code?: string | null
         }
         Update: {
           address?: string | null
+          address_validated?: boolean | null
+          city?: string | null
+          country?: string | null
           created_at?: string | null
           email?: string
+          first_name?: string | null
           id?: string
+          last_name?: string | null
           must_change_password?: boolean | null
           name?: string
           password?: string
           phone?: string | null
           role?: string
+          state?: string | null
+          street_address?: string | null
           updated_at?: string | null
+          zip_code?: string | null
         }
         Relationships: []
       }

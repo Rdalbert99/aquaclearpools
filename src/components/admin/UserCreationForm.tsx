@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { UserPlus, Eye, EyeOff } from 'lucide-react';
+import { AddressInput } from '@/components/ui/address-input';
 
 interface UserCreationFormProps {
   onSuccess?: () => void;
@@ -20,13 +21,15 @@ export const UserCreationForm = ({ onSuccess, onCancel }: UserCreationFormProps)
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [formData, setFormData] = useState({
-    name: '',
+    firstName: '',
+    lastName: '',
     email: '',
     password: '',
     role: 'client' as 'admin' | 'tech' | 'client',
     phone: '',
     address: ''
   });
+  const [addressComponents, setAddressComponents] = useState<any>(null);
 
   const canCreateRole = (role: string) => {
     if (user?.role === 'admin') return true;
@@ -48,18 +51,34 @@ export const UserCreationForm = ({ onSuccess, onCancel }: UserCreationFormProps)
     setIsLoading(true);
 
     try {
+      const fullName = `${formData.firstName.trim()} ${formData.lastName.trim()}`.trim();
+      
       // Create user in the users table
+      const userRecord: any = {
+        name: fullName,
+        first_name: formData.firstName,
+        last_name: formData.lastName,
+        email: formData.email,
+        password: formData.password,
+        role: formData.role,
+        phone: formData.phone || null,
+        address: formData.address || null,
+        must_change_password: true
+      };
+
+      // Add address components if validated
+      if (addressComponents) {
+        userRecord.street_address = addressComponents.street_address;
+        userRecord.city = addressComponents.city;
+        userRecord.state = addressComponents.state;
+        userRecord.zip_code = addressComponents.zip_code;
+        userRecord.country = addressComponents.country;
+        userRecord.address_validated = true;
+      }
+
       const { data: newUser, error: userError } = await supabase
         .from('users')
-        .insert({
-          name: formData.name,
-          email: formData.email,
-          password: formData.password,
-          role: formData.role,
-          phone: formData.phone || null,
-          address: formData.address || null,
-          must_change_password: true
-        })
+        .insert(userRecord)
         .select()
         .single();
 
@@ -69,18 +88,20 @@ export const UserCreationForm = ({ onSuccess, onCancel }: UserCreationFormProps)
 
       toast({
         title: "User Created",
-        description: `${formData.role} user "${formData.name}" has been created successfully.`,
+        description: `${formData.role} user "${fullName}" has been created successfully.`,
       });
 
       // Reset form
       setFormData({
-        name: '',
+        firstName: '',
+        lastName: '',
         email: '',
         password: '',
         role: 'client',
         phone: '',
         address: ''
       });
+      setAddressComponents(null);
 
       onSuccess?.();
     } catch (error: any) {
@@ -119,11 +140,21 @@ export const UserCreationForm = ({ onSuccess, onCancel }: UserCreationFormProps)
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="name">Full Name</Label>
+              <Label htmlFor="firstName">First Name</Label>
               <Input
-                id="name"
-                value={formData.name}
-                onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
+                id="firstName"
+                value={formData.firstName}
+                onChange={(e) => setFormData(prev => ({ ...prev, firstName: e.target.value }))}
+                required
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="lastName">Last Name</Label>
+              <Input
+                id="lastName"
+                value={formData.lastName}
+                onChange={(e) => setFormData(prev => ({ ...prev, lastName: e.target.value }))}
                 required
               />
             </div>
@@ -172,14 +203,15 @@ export const UserCreationForm = ({ onSuccess, onCancel }: UserCreationFormProps)
             </div>
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="address">Address (Optional)</Label>
-            <Input
-              id="address"
-              value={formData.address}
-              onChange={(e) => setFormData(prev => ({ ...prev, address: e.target.value }))}
-            />
-          </div>
+          <AddressInput
+            value={formData.address}
+            onChange={(value, components) => {
+              setFormData(prev => ({ ...prev, address: value }));
+              setAddressComponents(components);
+            }}
+            placeholder="123 Main St, City, State, ZIP"
+            label="Address (Optional)"
+          />
 
           <div className="space-y-2">
             <div className="flex items-center justify-between">

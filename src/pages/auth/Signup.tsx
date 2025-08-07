@@ -7,6 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Eye, EyeOff, Droplets } from 'lucide-react';
+import { AddressInput } from '@/components/ui/address-input';
 import { useToast } from '@/hooks/use-toast';
 
 export default function Signup() {
@@ -14,9 +15,12 @@ export default function Signup() {
     email: '',
     password: '',
     confirmPassword: '',
-    name: '',
+    firstName: '',
+    lastName: '',
+    address: '',
     role: 'client'
   });
+  const [addressComponents, setAddressComponents] = useState<any>(null);
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const { signUp, isAuthenticated } = useAuth();
@@ -33,6 +37,11 @@ export default function Signup() {
     }));
   };
 
+  const handleAddressChange = (address: string, components?: any) => {
+    setFormData(prev => ({ ...prev, address }));
+    setAddressComponents(components);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -47,7 +56,19 @@ export default function Signup() {
 
     setIsLoading(true);
 
-    const result = await signUp(formData.email, formData.password, formData.name, formData.role);
+    const fullName = `${formData.firstName.trim()} ${formData.lastName.trim()}`.trim();
+    const result = await signUp(
+      formData.email, 
+      formData.password, 
+      fullName, 
+      formData.role,
+      {
+        firstName: formData.firstName,
+        lastName: formData.lastName,
+        address: formData.address,
+        addressComponents
+      }
+    );
 
     if (result.error) {
       toast({
@@ -81,17 +102,31 @@ export default function Signup() {
         </CardHeader>
         <CardContent className="space-y-4">
           <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="name">Full Name</Label>
-              <Input
-                id="name"
-                name="name"
-                type="text"
-                placeholder="Enter your full name"
-                value={formData.name}
-                onChange={handleChange}
-                required
-              />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="firstName">First Name</Label>
+                <Input
+                  id="firstName"
+                  name="firstName"
+                  type="text"
+                  placeholder="John"
+                  value={formData.firstName}
+                  onChange={handleChange}
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="lastName">Last Name</Label>
+                <Input
+                  id="lastName"
+                  name="lastName"
+                  type="text"
+                  placeholder="Doe"
+                  value={formData.lastName}
+                  onChange={handleChange}
+                  required
+                />
+              </div>
             </div>
 
             <div className="space-y-2">
@@ -106,6 +141,14 @@ export default function Signup() {
                 required
               />
             </div>
+
+            <AddressInput
+              value={formData.address}
+              onChange={handleAddressChange}
+              placeholder="123 Main St, City, State, ZIP"
+              required
+              label="Full Address"
+            />
 
             <div className="space-y-2">
               <Label htmlFor="role">Account Type</Label>

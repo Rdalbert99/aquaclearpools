@@ -13,9 +13,11 @@ import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
 import { Droplets, ArrowLeft, CheckCircle } from 'lucide-react';
+import { AddressInput } from '@/components/ui/address-input';
 
 const formSchema = z.object({
-  name: z.string().min(2, 'Name must be at least 2 characters'),
+  firstName: z.string().min(2, 'First name must be at least 2 characters'),
+  lastName: z.string().min(2, 'Last name must be at least 2 characters'),
   email: z.string().email('Please enter a valid email address'),
   phone: z.string().min(10, 'Please enter a valid phone number'),
   address: z.string().min(5, 'Please enter your full address'),
@@ -36,11 +38,13 @@ export default function ClientSignup() {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [addressComponents, setAddressComponents] = useState<any>(null);
 
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      name: '',
+      firstName: '',
+      lastName: '',
       email: '',
       phone: '',
       address: '',
@@ -56,18 +60,34 @@ export default function ClientSignup() {
   const onSubmit = async (data: FormData) => {
     setIsSubmitting(true);
     try {
-      // Create user account
+      const fullName = `${data.firstName.trim()} ${data.lastName.trim()}`.trim();
+      
+      // Create user account with address components
+      const userRecord: any = {
+        name: fullName,
+        first_name: data.firstName,
+        last_name: data.lastName,
+        email: data.email,
+        phone: data.phone,
+        address: data.address,
+        role: 'client',
+        password: data.password,
+        must_change_password: false,
+      };
+
+      // Add address components if validated
+      if (addressComponents) {
+        userRecord.street_address = addressComponents.street_address;
+        userRecord.city = addressComponents.city;
+        userRecord.state = addressComponents.state;
+        userRecord.zip_code = addressComponents.zip_code;
+        userRecord.country = addressComponents.country;
+        userRecord.address_validated = true;
+      }
+
       const { data: newUser, error: userError } = await supabase
         .from('users')
-        .insert({
-          name: data.name,
-          email: data.email,
-          phone: data.phone,
-          address: data.address,
-          role: 'client',
-          password: data.password,
-          must_change_password: false,
-        })
+        .insert(userRecord)
         .select()
         .single();
 
@@ -91,7 +111,7 @@ export default function ClientSignup() {
         .from('clients')
         .insert({
           user_id: newUser.id,
-          customer: data.name,
+          customer: fullName,
           pool_type: data.poolType,
           pool_size: poolSizeNumber,
           service_frequency: data.serviceFrequency,
@@ -167,18 +187,34 @@ export default function ClientSignup() {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <FormField
                       control={form.control}
-                      name="name"
+                      name="firstName"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Full Name</FormLabel>
+                          <FormLabel>First Name</FormLabel>
                           <FormControl>
-                            <Input placeholder="John Doe" {...field} />
+                            <Input placeholder="John" {...field} />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
                       )}
                     />
 
+                    <FormField
+                      control={form.control}
+                      name="lastName"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Last Name</FormLabel>
+                          <FormControl>
+                            <Input placeholder="Doe" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <FormField
                       control={form.control}
                       name="email"
@@ -192,9 +228,7 @@ export default function ClientSignup() {
                         </FormItem>
                       )}
                     />
-                  </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <FormField
                       control={form.control}
                       name="phone"
@@ -208,21 +242,30 @@ export default function ClientSignup() {
                         </FormItem>
                       )}
                     />
-
-                    <FormField
-                      control={form.control}
-                      name="address"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Pool Address</FormLabel>
-                          <FormControl>
-                            <Input placeholder="123 Main St, City, State, ZIP" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
                   </div>
+
+                  <FormField
+                    control={form.control}
+                    name="address"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Pool Address</FormLabel>
+                        <FormControl>
+                          <AddressInput
+                            value={field.value}
+                            onChange={(value, components) => {
+                              field.onChange(value);
+                              setAddressComponents(components);
+                            }}
+                            placeholder="123 Main St, City, State, ZIP"
+                            required
+                            label=""
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
                 </div>
 
                 {/* Pool Information */}

@@ -12,7 +12,7 @@ interface AuthContextType {
   session: Session | null;
   loading: boolean;
   signIn: (email: string, password: string) => Promise<{ error?: string; mustChangePassword?: boolean }>;
-  signUp: (email: string, password: string, name: string, role?: string) => Promise<{ error?: string }>;
+  signUp: (email: string, password: string, name: string, role?: string, additionalData?: any) => Promise<{ error?: string }>;
   signOut: () => Promise<void>;
   isAuthenticated: boolean;
   isAdmin: boolean;
@@ -149,7 +149,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
   };
 
-  const signUp = async (email: string, password: string, name: string, role: string = 'client') => {
+  const signUp = async (email: string, password: string, name: string, role: string = 'client', additionalData?: any) => {
     try {
       const { data, error } = await supabase.auth.signUp({
         email,
@@ -163,19 +163,34 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
       // Create user profile - use upsert to handle existing records
       if (data.user) {
+        const userRecord: any = {
+          id: data.user.id,
+          email,
+          password: 'password', // This is just for compatibility with existing schema
+          name,
+          role,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        };
+
+        // Add additional data if provided
+        if (additionalData) {
+          if (additionalData.firstName) userRecord.first_name = additionalData.firstName;
+          if (additionalData.lastName) userRecord.last_name = additionalData.lastName;
+          if (additionalData.address) userRecord.address = additionalData.address;
+          if (additionalData.addressComponents) {
+            userRecord.street_address = additionalData.addressComponents.street_address;
+            userRecord.city = additionalData.addressComponents.city;
+            userRecord.state = additionalData.addressComponents.state;
+            userRecord.zip_code = additionalData.addressComponents.zip_code;
+            userRecord.country = additionalData.addressComponents.country;
+            userRecord.address_validated = true;
+          }
+        }
+
         const { error: userError } = await supabase
           .from('users')
-          .upsert([
-            {
-              id: data.user.id,
-              email,
-              password: 'password', // This is just for compatibility with existing schema
-              name,
-              role,
-              created_at: new Date().toISOString(),
-              updated_at: new Date().toISOString(),
-            },
-          ], {
+          .upsert([userRecord], {
             onConflict: 'id'
           });
 

@@ -67,6 +67,7 @@ export default function ClientSignup() {
   });
 
   const onSubmit = async (data: FormData) => {
+    console.log('Form submission started with data:', data);
     setIsSubmitting(true);
     try {
       const fullName = `${data.firstName.trim()} ${data.lastName.trim()}`.trim();
@@ -91,6 +92,7 @@ export default function ClientSignup() {
       );
 
       if (result.error) {
+        console.log('SignUp error:', result.error);
         toast({
           title: "Error",
           description: result.error,
@@ -98,6 +100,8 @@ export default function ClientSignup() {
         });
         return;
       }
+
+      console.log('User created successfully, creating client record...');
 
       // Wait a moment for the user to be created, then get the user ID
       await new Promise(resolve => setTimeout(resolve, 1000));
@@ -141,12 +145,14 @@ export default function ClientSignup() {
         return;
       }
 
+      console.log('Client record created successfully, redirecting to login...');
       toast({
         title: "Welcome to Aqua Clear Pools!",
         description: "Your account has been created successfully. You can now log in to manage your pool services.",
       });
 
       // Redirect to login page
+      console.log('Navigating to login page...');
       navigate('/auth/login?message=account-created');
     } catch (error) {
       console.error('Error during signup:', error);
@@ -156,6 +162,7 @@ export default function ClientSignup() {
         variant: "destructive",
       });
     } finally {
+      console.log('Form submission completed, setting isSubmitting to false');
       setIsSubmitting(false);
     }
   };
@@ -194,7 +201,9 @@ export default function ClientSignup() {
           </CardHeader>
           <CardContent>
             <Form {...form}>
-              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+              <form onSubmit={form.handleSubmit(onSubmit, (errors) => {
+                console.log('Form validation errors:', errors);
+              })} className="space-y-6">
                 {/* Personal Information */}
                 <div className="space-y-4">
                   <h3 className="text-lg font-semibold">Personal Information</h3>

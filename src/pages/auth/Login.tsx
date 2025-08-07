@@ -31,8 +31,13 @@ export default function Login() {
   if (isAuthenticated) {
     if (user?.role === 'client') {
       return <Navigate to="/client" replace />;
-    } else {
+    } else if (user?.role === 'admin') {
       return <Navigate to="/admin" replace />;
+    } else if (user?.role === 'tech') {
+      return <Navigate to="/tech" replace />;
+    } else {
+      // Default fallback for unknown roles
+      return <Navigate to="/client" replace />;
     }
   }
 

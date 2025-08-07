@@ -53,7 +53,7 @@ export const UserCreationForm = ({ onSuccess, onCancel }: UserCreationFormProps)
 
     try {
       // Use the edge function to create user properly in both systems
-      const { data, error } = await supabase.functions.invoke('create-user-account', {
+      const response = await supabase.functions.invoke('create-user-account', {
         body: {
           firstName: formData.firstName,
           lastName: formData.lastName,
@@ -67,16 +67,23 @@ export const UserCreationForm = ({ onSuccess, onCancel }: UserCreationFormProps)
         }
       });
 
-      console.log('Edge function response:', { data, error });
+      console.log('Edge function response:', response);
 
-      if (error) {
-        console.error('Edge function error:', error);
-        throw new Error(error.message || 'Failed to create user');
+      // Check if there was an error in the response
+      if (response.error) {
+        console.error('Edge function error:', response.error);
+        throw new Error(response.error.message || 'Failed to create user');
       }
 
-      if (data?.error) {
-        console.error('Edge function data error:', data.error);
-        throw new Error(data.error);
+      // Check if the data contains an error (for 4xx responses that return error messages)
+      if (response.data?.error) {
+        console.error('Edge function data error:', response.data.error);
+        throw new Error(response.data.error);
+      }
+
+      // Check if there's no data but no error (unexpected case)
+      if (!response.data || !response.data.success) {
+        throw new Error('Unexpected response from server');
       }
 
       toast({

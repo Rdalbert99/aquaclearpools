@@ -55,19 +55,28 @@ export default function ManageAdmins() {
 
   const handleDeleteAdmin = async (adminId: string) => {
     try {
+      console.log('Deleting admin with ID:', adminId);
+      
       const { error } = await supabase
         .from('users')
         .delete()
         .eq('id', adminId);
 
-      if (error) throw error;
+      if (error) {
+        console.error('Delete error:', error);
+        throw error;
+      }
 
+      console.log('Admin deleted successfully, refreshing list...');
+      
       toast({
         title: "Admin deleted",
         description: "The administrator has been successfully removed.",
       });
 
-      loadAdmins();
+      // Refresh the list
+      await loadAdmins();
+      
     } catch (error) {
       console.error('Error deleting admin:', error);
       toast({

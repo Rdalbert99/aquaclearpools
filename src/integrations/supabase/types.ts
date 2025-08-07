@@ -116,6 +116,8 @@ export type Database = {
           last_service_date: string | null
           liner_type: string | null
           next_service_date: string | null
+          pool_image_uploaded_at: string | null
+          pool_image_url: string | null
           pool_size: number
           pool_type: string
           service_days: string[] | null
@@ -138,6 +140,8 @@ export type Database = {
           last_service_date?: string | null
           liner_type?: string | null
           next_service_date?: string | null
+          pool_image_uploaded_at?: string | null
+          pool_image_url?: string | null
           pool_size: number
           pool_type: string
           service_days?: string[] | null
@@ -160,6 +164,8 @@ export type Database = {
           last_service_date?: string | null
           liner_type?: string | null
           next_service_date?: string | null
+          pool_image_uploaded_at?: string | null
+          pool_image_url?: string | null
           pool_size?: number
           pool_type?: string
           service_days?: string[] | null

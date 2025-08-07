@@ -1,1 +1,14 @@
 project_id = "tbqqigqkbogibwumjyol"
+
+[auth.email]
+# Enable custom SMTP
+enable_signup = true
+double_confirm_changes = true
+enable_confirmations = true
+
+# Custom email function configuration
+[functions.send-auth-email]
+verify_jwt = false
+
+[functions.send-service-request-email]
+verify_jwt = false

@@ -94,7 +94,8 @@ const handler = async (req: Request): Promise<Response> => {
 
     // Step 3: Create user profile in custom users table
     const userRecord: any = {
-      id: authUser.id,
+      // Generate new UUID for profile - don't use auth user ID to avoid conflicts
+      // id: authUser.id,  // Removed to let DB generate new UUID
       name: fullName,
       first_name: userData.firstName,
       last_name: userData.lastName,

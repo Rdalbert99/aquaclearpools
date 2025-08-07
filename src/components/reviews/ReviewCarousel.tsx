@@ -79,47 +79,60 @@ export const ReviewCarousel = () => {
           </p>
         </div>
 
-        <Carousel
-          className="w-full max-w-5xl mx-auto"
-          opts={{
-            align: "start",
-            loop: true,
-          }}
-        >
-          <CarouselContent className="-ml-2 md:-ml-4">
-            {reviews.map((review) => (
-              <CarouselItem key={review.id} className="pl-2 md:pl-4 md:basis-1/2 lg:basis-1/3">
-                <Card className="h-full">
-                  <CardContent className="p-6 flex flex-col h-full">
-                    <div className="flex items-center mb-4">
-                      <div className="flex space-x-1 mr-3">
-                        {renderStars(review.rating)}
-                      </div>
-                      <span className="text-sm text-muted-foreground">
-                        {review.rating}/5
-                      </span>
-                    </div>
-                    
-                    <blockquote className="text-sm leading-relaxed mb-4 flex-grow">
-                      "{review.review_text}"
-                    </blockquote>
-                    
-                    <div className="flex items-center justify-between">
-                      <cite className="font-semibold not-italic">
-                        {review.customer_name}
-                      </cite>
-                      <span className="text-xs text-muted-foreground">
-                        {new Date(review.created_at).toLocaleDateString()}
-                      </span>
-                    </div>
-                  </CardContent>
-                </Card>
-              </CarouselItem>
-            ))}
-          </CarouselContent>
-          <CarouselPrevious className="hidden md:flex" />
-          <CarouselNext className="hidden md:flex" />
-        </Carousel>
+        <div className="flex justify-center">
+          <Carousel
+            className="w-full max-w-4xl"
+            opts={{
+              align: "center",
+              loop: true,
+              skipSnaps: false,
+              dragFree: true,
+            }}
+          >
+            <CarouselContent className="-ml-4">
+              {reviews.map((review) => (
+                <CarouselItem key={review.id} className="pl-4 basis-full md:basis-1/2 lg:basis-1/3">
+                  <div className="p-1">
+                    <Card className="h-full hover-scale transition-all duration-300 hover:shadow-lg">
+                      <CardContent className="p-6 flex flex-col h-full">
+                        <div className="flex items-center mb-4">
+                          <div className="flex space-x-1 mr-3">
+                            {renderStars(review.rating)}
+                          </div>
+                          <span className="text-sm text-muted-foreground">
+                            {review.rating}/5
+                          </span>
+                        </div>
+                        
+                        <blockquote className="text-sm leading-relaxed mb-4 flex-grow">
+                          "{review.review_text}"
+                        </blockquote>
+                        
+                        <div className="flex items-center justify-between">
+                          <cite className="font-semibold not-italic">
+                            {review.customer_name}
+                          </cite>
+                          <span className="text-xs text-muted-foreground">
+                            {new Date(review.created_at).toLocaleDateString()}
+                          </span>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </div>
+                </CarouselItem>
+              ))}
+            </CarouselContent>
+            <CarouselPrevious className="hidden md:flex -left-12 hover:bg-primary hover:text-primary-foreground transition-colors" />
+            <CarouselNext className="hidden md:flex -right-12 hover:bg-primary hover:text-primary-foreground transition-colors" />
+          </Carousel>
+        </div>
+
+        {/* Mobile scroll indicator */}
+        <div className="flex justify-center mt-6 md:hidden">
+          <p className="text-sm text-muted-foreground">
+            Swipe to see more reviews
+          </p>
+        </div>
       </div>
     </section>
   );

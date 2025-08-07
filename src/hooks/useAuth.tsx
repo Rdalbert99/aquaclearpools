@@ -11,7 +11,7 @@ interface AuthContextType {
   user: AuthUser | null;
   session: Session | null;
   loading: boolean;
-  signIn: (email: string, password: string) => Promise<{ error?: string; mustChangePassword?: boolean }>;
+  signIn: (login: string, password: string) => Promise<{ error?: string; mustChangePassword?: boolean }>;
   signUp: (email: string, password: string, name: string, role?: string, additionalData?: any) => Promise<{ error?: string }>;
   signOut: () => Promise<void>;
   isAuthenticated: boolean;
@@ -135,10 +135,22 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     };
   }, []);
 
-  const signIn = async (email: string, password: string) => {
+  const signIn = async (login: string, password: string) => {
     try {
+      // First, look up the user by login to get their email
+      const { data: userData, error: lookupError } = await supabase
+        .from('users')
+        .select('email')
+        .eq('login', login)
+        .single();
+
+      if (lookupError || !userData) {
+        throw new Error('Invalid username or password');
+      }
+
+      // Now sign in with the email
       const { data, error } = await supabase.auth.signInWithPassword({
-        email,
+        email: userData.email,
         password,
       });
       

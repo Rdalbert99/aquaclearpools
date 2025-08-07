@@ -10,7 +10,7 @@ import { useToast } from '@/hooks/use-toast';
 import { initializeDemoUsers } from '@/lib/demo-users';
 
 export default function Login() {
-  const [email, setEmail] = useState('');
+  const [login, setLogin] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -23,7 +23,7 @@ export default function Login() {
   useEffect(() => {
     const demo = searchParams.get('demo');
     if (demo === 'client') {
-      setEmail('client1@poolcleaning.com');
+      setLogin('client1');
       setPassword('password');
     }
   }, [searchParams]);
@@ -45,7 +45,7 @@ export default function Login() {
     e.preventDefault();
     setIsLoading(true);
 
-    const result = await signIn(email, password);
+    const result = await signIn(login, password);
 
     if (result.error) {
       toast({
@@ -67,8 +67,8 @@ export default function Login() {
     setIsLoading(false);
   };
 
-  const handleDemoLogin = (demoEmail: string, demoPassword: string = 'password') => {
-    setEmail(demoEmail);
+  const handleDemoLogin = (demoLogin: string, demoPassword: string = 'password') => {
+    setLogin(demoLogin);
     setPassword(demoPassword);
   };
 
@@ -78,7 +78,7 @@ export default function Login() {
       await initializeDemoUsers();
       toast({
         title: "Demo users created!",
-        description: "You can now login with admin@poolcleaning.com / password",
+        description: "You can now login with admin / password",
       });
     } catch (error) {
       toast({
@@ -108,13 +108,13 @@ export default function Login() {
         <CardContent className="space-y-4">
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
+              <Label htmlFor="login">Username</Label>
               <Input
-                id="email"
-                type="email"
-                placeholder="Enter your email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                id="login"
+                type="text"
+                placeholder="Enter your username"
+                value={login}
+                onChange={(e) => setLogin(e.target.value)}
                 required
               />
             </div>

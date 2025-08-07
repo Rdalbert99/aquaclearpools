@@ -176,6 +176,18 @@ export default function AdminDashboard() {
                 </Link>
               </Button>
               <Button asChild variant="outline" className="h-16 flex-col">
+                <Link to="/admin/users/new?role=tech">
+                  <Plus className="h-5 w-5 mb-1" />
+                  <span className="text-sm">Add Tech</span>
+                </Link>
+              </Button>
+              <Button asChild variant="outline" className="h-16 flex-col">
+                <Link to="/admin/users/new?role=admin">
+                  <Plus className="h-5 w-5 mb-1" />
+                  <span className="text-sm">Add Admin</span>
+                </Link>
+              </Button>
+              <Button asChild variant="outline" className="h-16 flex-col">
                 <Link to="/admin/calculator">
                   <BarChart3 className="h-5 w-5 mb-1" />
                   <span className="text-sm">Calculator</span>

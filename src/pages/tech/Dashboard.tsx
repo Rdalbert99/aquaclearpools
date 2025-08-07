@@ -15,6 +15,7 @@ import {
   Plus,
   MapPin
 } from 'lucide-react';
+import { BeforeAfterUpload } from '@/components/tech/BeforeAfterUpload';
 
 interface DashboardStats {
   assignedServices: any[];
@@ -174,6 +175,9 @@ export default function TechDashboard() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Before/After Photo Upload */}
+      <BeforeAfterUpload />
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Available Service Requests */}

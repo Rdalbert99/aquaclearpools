@@ -17,6 +17,7 @@ import {
   FileText,
   Shield
 } from 'lucide-react';
+import { PoolImageUpload } from '@/components/admin/PoolImageUpload';
 
 interface DashboardStats {
   totalClients: number;
@@ -270,6 +271,9 @@ export default function AdminDashboard() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Pool Image Upload */}
+      <PoolImageUpload />
 
       {/* Recent Services Table */}
       {stats?.recentServices && stats.recentServices.length > 0 && (

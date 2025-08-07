@@ -16,6 +16,7 @@ import {
   Camera,
   Phone
 } from 'lucide-react';
+import { YourPoolSection } from '@/components/client/YourPoolSection';
 
 interface ClientDashboardData {
   client: any;
@@ -180,34 +181,12 @@ export default function ClientDashboard() {
         </CardContent>
       </Card>
 
-      {/* Pool Picture */}
-      {client.pool_image_url && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center space-x-2">
-              <Camera className="h-5 w-5" />
-              <span>Your Pool</span>
-            </CardTitle>
-            <CardDescription>Current view of your pool</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              <div className="relative rounded-lg overflow-hidden">
-                <img 
-                  src={client.pool_image_url} 
-                  alt="Current pool view"
-                  className="w-full h-64 object-cover"
-                />
-              </div>
-              {client.pool_image_uploaded_at && (
-                <p className="text-sm text-muted-foreground">
-                  Last updated: {new Date(client.pool_image_uploaded_at).toLocaleDateString()}
-                </p>
-              )}
-            </div>
-          </CardContent>
-        </Card>
-      )}
+      {/* Your Pool Section */}
+      <YourPoolSection 
+        clientId={client.id}
+        currentImageUrl={client.pool_image_url}
+        onImageUpdated={loadDashboardData}
+      />
 
       {/* Quick Actions */}
       <Card>

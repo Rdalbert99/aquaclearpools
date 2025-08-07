@@ -53,31 +53,36 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         setSession(session);
         
         if (session?.user) {
-          console.log('User found, setting basic user data...');
-          // Set user immediately with basic data to avoid hanging
-          setUser({ 
-            ...session.user, 
-            role: 'admin', // default for now
-            name: 'Admin User'
-          });
+          console.log('User found, fetching profile data...');
           
-          // Try to get profile data but don't block on it
-          setTimeout(async () => {
-            try {
-              const { data: userData } = await supabase
-                .from('users')
-                .select('role, name')
-                .eq('id', session.user.id)
-                .single();
-              
-              if (userData) {
-                console.log('Profile loaded, updating user:', userData);
-                setUser({ ...session.user, ...userData });
-              }
-            } catch (err) {
-              console.log('Profile fetch failed, keeping default:', err);
+          try {
+            // Fetch user profile data before setting user state
+            const { data: userData, error } = await supabase
+              .from('users')
+              .select('role, name')
+              .eq('id', session.user.id)
+              .single();
+            
+            if (userData && !error) {
+              console.log('Profile loaded successfully:', userData);
+              setUser({ ...session.user, ...userData });
+            } else {
+              console.log('Profile fetch failed, using basic user data:', error);
+              // Fallback to basic user data if profile fetch fails
+              setUser({ 
+                ...session.user, 
+                role: 'client', // default to client instead of admin
+                name: session.user.email?.split('@')[0] || 'User'
+              });
             }
-          }, 100);
+          } catch (err) {
+            console.log('Profile fetch error, using basic user data:', err);
+            setUser({ 
+              ...session.user, 
+              role: 'client', // default to client instead of admin
+              name: session.user.email?.split('@')[0] || 'User'
+            });
+          }
         } else {
           console.log('No user, clearing state');
           setUser(null);

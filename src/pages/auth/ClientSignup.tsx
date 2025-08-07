@@ -169,7 +169,11 @@ export default function ClientSignup() {
             Back to Home
           </Link>
           <div className="flex items-center justify-center mb-4">
-            <Droplets className="h-8 w-8 text-primary mr-2" />
+            <img 
+              src="/lovable-uploads/ac1a09a4-823e-491c-bf59-fb76c8abb196.png" 
+              alt="Aqua Clear Pools" 
+              className="h-12 w-12 object-contain mr-3"
+            />
             <span className="text-2xl font-bold">Aqua Clear Pools</span>
           </div>
           <h1 className="text-3xl font-bold mb-2">Join Our Pool Service Family</h1>

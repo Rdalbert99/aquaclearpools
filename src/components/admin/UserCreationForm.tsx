@@ -67,11 +67,15 @@ export const UserCreationForm = ({ onSuccess, onCancel }: UserCreationFormProps)
         }
       });
 
+      console.log('Edge function response:', { data, error });
+
       if (error) {
+        console.error('Edge function error:', error);
         throw new Error(error.message || 'Failed to create user');
       }
 
       if (data?.error) {
+        console.error('Edge function data error:', data.error);
         throw new Error(data.error);
       }
 

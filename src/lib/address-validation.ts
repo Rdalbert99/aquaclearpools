@@ -9,6 +9,12 @@ export interface AddressComponents {
   country: string;
 }
 
+export interface AddressSuggestion {
+  formatted_address: string;
+  components: AddressComponents;
+  place_id?: string;
+}
+
 export interface ValidationResult {
   isValid: boolean;
   components?: AddressComponents;
@@ -85,4 +91,49 @@ export const validateAddress = async (address: string): Promise<ValidationResult
 
 export const formatAddress = (components: AddressComponents): string => {
   return `${components.street_address}, ${components.city}, ${components.state} ${components.zip_code}`;
+};
+
+// Mock address suggestions for demonstration
+// In production, this would call Google Places Autocomplete API
+export const getAddressSuggestions = async (input: string): Promise<AddressSuggestion[]> => {
+  if (input.length < 3) return [];
+
+  // Mock data for demonstration - in production this would be an API call
+  const mockSuggestions: AddressSuggestion[] = [
+    {
+      formatted_address: "123 Main Street, Anytown, CA 12345",
+      components: {
+        street_address: "123 Main Street",
+        city: "Anytown",
+        state: "CA",
+        zip_code: "12345",
+        country: "US"
+      }
+    },
+    {
+      formatted_address: "456 Oak Avenue, Springfield, CA 12346",
+      components: {
+        street_address: "456 Oak Avenue", 
+        city: "Springfield",
+        state: "CA",
+        zip_code: "12346",
+        country: "US"
+      }
+    },
+    {
+      formatted_address: "789 Pine Boulevard, Riverside, CA 12347",
+      components: {
+        street_address: "789 Pine Boulevard",
+        city: "Riverside", 
+        state: "CA",
+        zip_code: "12347",
+        country: "US"
+      }
+    }
+  ];
+
+  // Filter suggestions based on input
+  return mockSuggestions.filter(suggestion =>
+    suggestion.formatted_address.toLowerCase().includes(input.toLowerCase())
+  );
 };

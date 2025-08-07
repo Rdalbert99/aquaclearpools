@@ -7,7 +7,8 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Eye, EyeOff, Droplets } from 'lucide-react';
-
+import { AddressAutocomplete } from '@/components/ui/address-autocomplete';
+import { AddressComponents } from '@/lib/address-validation';
 import { useToast } from '@/hooks/use-toast';
 
 export default function Signup() {
@@ -145,18 +146,18 @@ export default function Signup() {
             </div>
 
             <div className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="street">Street Address</Label>
-                <Input
-                  id="street"
-                  name="street"
-                  type="text"
-                  placeholder="123 Main St"
-                  value={formData.street}
-                  onChange={handleChange}
-                  required
-                />
-              </div>
+              <AddressAutocomplete
+                onAddressSelect={(components: AddressComponents) => {
+                  setFormData(prev => ({
+                    ...prev,
+                    street: components.street_address,
+                    city: components.city,
+                    state: components.state,
+                    zipCode: components.zip_code
+                  }));
+                }}
+                required
+              />
               
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="space-y-2 md:col-span-1">

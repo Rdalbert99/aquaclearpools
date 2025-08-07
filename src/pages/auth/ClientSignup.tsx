@@ -8,6 +8,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
+import { AddressAutocomplete } from '@/components/ui/address-autocomplete';
+import { AddressComponents } from '@/lib/address-validation';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
@@ -244,19 +246,17 @@ export default function ClientSignup() {
                     />
                   </div>
 
-                  <FormField
-                    control={form.control}
-                    name="street"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Street Address</FormLabel>
-                        <FormControl>
-                          <Input placeholder="123 Main St" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+                  <div className="space-y-4">
+                    <AddressAutocomplete
+                      onAddressSelect={(components: AddressComponents) => {
+                        form.setValue('street', components.street_address);
+                        form.setValue('city', components.city);
+                        form.setValue('state', components.state);
+                        form.setValue('zipCode', components.zip_code);
+                      }}
+                      required
+                    />
+                  </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <FormField

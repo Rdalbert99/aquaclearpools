@@ -158,8 +158,11 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         password,
       });
       
-      console.log('Attempting auth with email:', emailResult, 'and password');
-      if (error) throw error;
+      console.log('Auth response:', { data: !!data, error });
+      if (error) {
+        console.error('Authentication failed:', error.message);
+        throw error;
+      }
 
       // Check if user must change password
       if (data.user) {

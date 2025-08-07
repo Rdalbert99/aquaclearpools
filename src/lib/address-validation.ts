@@ -98,8 +98,62 @@ export const formatAddress = (components: AddressComponents): string => {
 export const getAddressSuggestions = async (input: string): Promise<AddressSuggestion[]> => {
   if (input.length < 3) return [];
 
-  // Mock data for demonstration - in production this would be an API call
+  // Simulate API delay
+  await new Promise(resolve => setTimeout(resolve, 100));
+
+  // More comprehensive mock data that matches common address patterns
   const mockSuggestions: AddressSuggestion[] = [
+    {
+      formatted_address: "16097 Orange Grove Blvd, Lemon Grove, CA 91945",
+      components: {
+        street_address: "16097 Orange Grove Blvd",
+        city: "Lemon Grove",
+        state: "CA",
+        zip_code: "91945",
+        country: "US"
+      }
+    },
+    {
+      formatted_address: "16097 Orange Grove Ave, Fontana, CA 92335",
+      components: {
+        street_address: "16097 Orange Grove Ave",
+        city: "Fontana",
+        state: "CA",
+        zip_code: "92335",
+        country: "US"
+      }
+    },
+    {
+      formatted_address: "123 Orange Grove Street, San Diego, CA 92101",
+      components: {
+        street_address: "123 Orange Grove Street",
+        city: "San Diego",
+        state: "CA",
+        zip_code: "92101",
+        country: "US"
+      }
+    },
+    {
+      formatted_address: "456 Orange Grove Way, Los Angeles, CA 90210",
+      components: {
+        street_address: "456 Orange Grove Way",
+        city: "Los Angeles",
+        state: "CA",
+        zip_code: "90210",
+        country: "US"
+      }
+    },
+    {
+      formatted_address: "789 Orange Grove Drive, Riverside, CA 92507",
+      components: {
+        street_address: "789 Orange Grove Drive",
+        city: "Riverside",
+        state: "CA",
+        zip_code: "92507",
+        country: "US"
+      }
+    },
+    // Generic suggestions for common street names
     {
       formatted_address: "123 Main Street, Anytown, CA 12345",
       components: {
@@ -132,8 +186,15 @@ export const getAddressSuggestions = async (input: string): Promise<AddressSugge
     }
   ];
 
-  // Filter suggestions based on input
-  return mockSuggestions.filter(suggestion =>
-    suggestion.formatted_address.toLowerCase().includes(input.toLowerCase())
-  );
+  // Enhanced filtering - match against any part of the address
+  return mockSuggestions.filter(suggestion => {
+    const searchText = input.toLowerCase();
+    const addressText = suggestion.formatted_address.toLowerCase();
+    const streetText = suggestion.components.street_address.toLowerCase();
+    const cityText = suggestion.components.city.toLowerCase();
+    
+    return addressText.includes(searchText) || 
+           streetText.includes(searchText) || 
+           cityText.includes(searchText);
+  }).slice(0, 5); // Limit to 5 suggestions
 };

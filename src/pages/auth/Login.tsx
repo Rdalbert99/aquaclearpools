@@ -112,11 +112,14 @@ export default function Login() {
               <Input
                 id="login"
                 type="text"
-                placeholder="Enter your username"
+                placeholder="Enter your username (not email)"
                 value={login}
                 onChange={(e) => setLogin(e.target.value)}
                 required
               />
+              <p className="text-xs text-muted-foreground">
+                Use your username, not your email address. For admin, use "admin", for Randy, use "Randy"
+              </p>
             </div>
 
             <div className="space-y-2">

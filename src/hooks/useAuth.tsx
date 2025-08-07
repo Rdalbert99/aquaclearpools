@@ -137,13 +137,20 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   const signIn = async (login: string, password: string) => {
     try {
+      console.log('SignIn attempt with login:', login);
+      
       // Use the secure function to lookup email by login
       const { data: emailResult, error: lookupError } = await supabase
         .rpc('get_email_by_login', { login_input: login });
 
+      console.log('Email lookup result:', { emailResult, lookupError });
+
       if (lookupError || !emailResult) {
+        console.error('Login lookup failed:', lookupError);
         throw new Error('Invalid username or password');
       }
+
+      console.log('Found email for login:', emailResult);
 
       // Now sign in with the email
       const { data, error } = await supabase.auth.signInWithPassword({

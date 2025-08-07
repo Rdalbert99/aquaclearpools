@@ -146,49 +146,7 @@ export default function Login() {
             </Button>
           </form>
 
-          <div className="relative">
-            <div className="absolute inset-0 flex items-center">
-              <span className="w-full border-t" />
-            </div>
-            <div className="relative flex justify-center text-xs uppercase">
-              <span className="bg-card px-2 text-muted-foreground">Demo Accounts</span>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => handleDemoLogin('admin@poolcleaning.com')}
-            >
-              👨‍💼 Admin Demo
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => handleDemoLogin('tech1@poolcleaning.com')}
-            >
-              🔧 Technician Demo
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => handleDemoLogin('client1@poolcleaning.com')}
-            >
-              🏊‍♀️ Client Demo
-            </Button>
-            <Button
-              variant="destructive"
-              size="sm"
-              onClick={handleInitializeDemoUsers}
-              disabled={isInitializing}
-            >
-              {isInitializing ? 'Creating...' : '🔧 Initialize Demo Users'}
-            </Button>
-          </div>
-
           <div className="text-center text-sm text-muted-foreground">
-            <p>Demo password: "password"</p>
             <p className="mt-2">
               Don't have an account?{' '}
               <Link to="/auth/signup" className="text-primary hover:underline">

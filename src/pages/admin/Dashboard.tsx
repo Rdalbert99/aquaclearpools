@@ -163,12 +163,34 @@ export default function AdminDashboard() {
           <CardDescription>Common tasks and shortcuts</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {user?.role === 'admin' && (
+              <>
+                <Button asChild variant="outline" className="h-20 flex-col">
+                  <Link to="/admin/clients">
+                    <Users className="h-6 w-6 mb-2" />
+                    Manage Clients
+                  </Link>
+                </Button>
+                <Button asChild variant="outline" className="h-20 flex-col">
+                  <Link to="/admin/users/new?role=admin">
+                    <Users className="h-6 w-6 mb-2" />
+                    Create Admin
+                  </Link>
+                </Button>
+                <Button asChild variant="outline" className="h-20 flex-col">
+                  <Link to="/admin/users/new?role=tech">
+                    <Users className="h-6 w-6 mb-2" />
+                    Create Tech
+                  </Link>
+                </Button>
+              </>
+            )}
+            {(user?.role === 'admin' || user?.role === 'tech') && (
               <Button asChild variant="outline" className="h-20 flex-col">
-                <Link to="/admin/clients">
+                <Link to="/admin/users/new?role=client">
                   <Users className="h-6 w-6 mb-2" />
-                  Manage Clients
+                  Create Customer
                 </Link>
               </Button>
             )}

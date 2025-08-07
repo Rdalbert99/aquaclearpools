@@ -113,7 +113,49 @@ export default function ClientDashboard() {
     );
   }
 
-  const { client, lastService, pendingRequests } = dashboardData;
+  const { client } = dashboardData;
+  
+  // Check if essential pool information is missing
+  const missingPoolInfo = !client.pool_size || !client.pool_type || !client.liner_type;
+  
+  if (missingPoolInfo) {
+    return (
+      <div className="p-6">
+        <Card>
+          <CardContent className="text-center py-12">
+            <h2 className="text-2xl font-bold mb-4">Complete Your Pool Setup</h2>
+            <p className="text-muted-foreground mb-6">
+              To get started, please provide your pool information including size, type, and liner details. This helps us provide better service.
+            </p>
+            <div className="space-y-2 mb-6">
+              <p className="text-sm text-muted-foreground">Missing information:</p>
+              <div className="flex flex-wrap justify-center gap-2">
+                {!client.pool_size && <Badge variant="outline">Pool Size</Badge>}
+                {!client.pool_type && <Badge variant="outline">Pool Type</Badge>}
+                {!client.liner_type && <Badge variant="outline">Liner Type</Badge>}
+              </div>
+            </div>
+            <div className="space-y-3">
+              <Button asChild>
+                <Link to="/client/profile">
+                  <Plus className="h-4 w-4 mr-2" />
+                  Update Pool Information
+                </Link>
+              </Button>
+              <Button asChild variant="outline">
+                <Link to="/contact">
+                  <Phone className="h-4 w-4 mr-2" />
+                  Contact Support
+                </Link>
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  const { lastService, pendingRequests } = dashboardData;
 
   // Determine pool status
   let poolStatus = 'good';

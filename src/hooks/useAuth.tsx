@@ -87,8 +87,64 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
               console.log('Profile loaded successfully:', userData);
               setUser({ ...session.user, ...userData });
             } else {
-              console.log('Profile fetch failed, setting user to session user with email-based role detection');
-              // For admin@poolcleaning.com, detect admin role from email
+              console.log('Profile fetch failed, trying fallback email lookup');
+              // Try to get user by email as fallback
+              try {
+                const { data: emailUserData, error: emailError } = await supabase
+                  .from('users')
+                  .select('role, name, login')
+                  .eq('email', session.user.email)
+                  .order('created_at', { ascending: false })
+                  .limit(1)
+                  .single();
+                
+                if (emailUserData && !emailError) {
+                  console.log('Found user by email:', emailUserData);
+                  setUser({ ...session.user, ...emailUserData });
+                } else {
+                  console.log('Email lookup failed, using email-based role detection');
+                  const role = session.user.email === 'admin@poolcleaning.com' ? 'admin' : 'client';
+                  setUser({ 
+                    ...session.user, 
+                    role,
+                    name: session.user.email?.split('@')[0] || 'User'
+                  });
+                }
+              } catch (emailErr) {
+                console.log('Email lookup error, using email-based role detection:', emailErr);
+                const role = session.user.email === 'admin@poolcleaning.com' ? 'admin' : 'client';
+                setUser({ 
+                  ...session.user, 
+                  role,
+                  name: session.user.email?.split('@')[0] || 'User'
+                });
+              }
+            }
+          } catch (err) {
+            console.log('Profile fetch error, trying fallback email lookup:', err);
+            try {
+              const { data: emailUserData, error: emailError } = await supabase
+                .from('users')
+                .select('role, name, login')
+                .eq('email', session.user.email)
+                .order('created_at', { ascending: false })
+                .limit(1)
+                .single();
+              
+              if (emailUserData && !emailError) {
+                console.log('Found user by email after error:', emailUserData);
+                setUser({ ...session.user, ...emailUserData });
+              } else {
+                console.log('Email lookup failed after error, using email-based role detection');
+                const role = session.user.email === 'admin@poolcleaning.com' ? 'admin' : 'client';
+                setUser({ 
+                  ...session.user, 
+                  role,
+                  name: session.user.email?.split('@')[0] || 'User'
+                });
+              }
+            } catch (emailErr) {
+              console.log('Final fallback to email-based role detection:', emailErr);
               const role = session.user.email === 'admin@poolcleaning.com' ? 'admin' : 'client';
               setUser({ 
                 ...session.user, 
@@ -96,15 +152,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
                 name: session.user.email?.split('@')[0] || 'User'
               });
             }
-          } catch (err) {
-            console.log('Profile fetch error, setting user to session user with email-based role detection:', err);
-            // For admin@poolcleaning.com, detect admin role from email
-            const role = session.user.email === 'admin@poolcleaning.com' ? 'admin' : 'client';
-            setUser({ 
-              ...session.user, 
-              role,
-              name: session.user.email?.split('@')[0] || 'User'
-            });
           }
         } else {
           console.log('No user, clearing state');

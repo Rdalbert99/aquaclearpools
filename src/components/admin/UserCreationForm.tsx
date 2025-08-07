@@ -52,45 +52,32 @@ export const UserCreationForm = ({ onSuccess, onCancel }: UserCreationFormProps)
     setIsLoading(true);
 
     try {
-      const fullName = `${formData.firstName.trim()} ${formData.lastName.trim()}`.trim();
-      
-      // Create user in the users table
-      const userRecord: any = {
-        name: fullName,
-        first_name: formData.firstName,
-        last_name: formData.lastName,
-        login: formData.login,
-        email: formData.email,
-        password: formData.password,
-        role: formData.role,
-        phone: formData.phone || null,
-        address: formData.address || null,
-        must_change_password: true
-      };
+      // Use the edge function to create user properly in both systems
+      const { data, error } = await supabase.functions.invoke('create-user-account', {
+        body: {
+          firstName: formData.firstName,
+          lastName: formData.lastName,
+          login: formData.login,
+          email: formData.email,
+          password: formData.password,
+          role: formData.role,
+          phone: formData.phone,
+          address: formData.address,
+          addressComponents: addressComponents
+        }
+      });
 
-      // Add address components if validated
-      if (addressComponents) {
-        userRecord.street_address = addressComponents.street_address;
-        userRecord.city = addressComponents.city;
-        userRecord.state = addressComponents.state;
-        userRecord.zip_code = addressComponents.zip_code;
-        userRecord.country = addressComponents.country;
-        userRecord.address_validated = true;
+      if (error) {
+        throw new Error(error.message || 'Failed to create user');
       }
 
-      const { data: newUser, error: userError } = await supabase
-        .from('users')
-        .insert(userRecord)
-        .select()
-        .single();
-
-      if (userError) {
-        throw userError;
+      if (data?.error) {
+        throw new Error(data.error);
       }
 
       toast({
-        title: "User Created",
-        description: `${formData.role} user "${fullName}" has been created successfully.`,
+        title: "User Created Successfully",
+        description: `${formData.role} user "${formData.firstName} ${formData.lastName}" has been created and will receive a welcome email with login credentials.`,
       });
 
       // Reset form

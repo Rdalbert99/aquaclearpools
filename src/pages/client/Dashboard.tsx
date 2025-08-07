@@ -55,31 +55,11 @@ export default function ClientDashboard() {
         return;
       }
 
-      // Load last service
-      const { data: lastService } = await supabase
-        .from('services')
-        .select(`
-          *,
-          users(name)
-        `)
-        .eq('client_id', client.id)
-        .order('service_date', { ascending: false })
-        .limit(1)
-        .maybeSingle();
-
-      // Load pending service requests
-      const { data: requests } = await supabase
-        .from('service_requests')
-        .select('*')
-        .eq('client_id', client.id)
-        .in('status', ['pending', 'in_progress'])
-        .order('requested_date', { ascending: false });
-
       setDashboardData({
         client,
         nextService: client.next_service_date,
-        lastService: lastService || null,
-        pendingRequests: requests || []
+        lastService: null,
+        pendingRequests: []
       });
     } catch (error) {
       console.error('Error loading dashboard data:', error);
@@ -123,15 +103,15 @@ export default function ClientDashboard() {
       <div className="p-6">
         <Card>
           <CardContent className="text-center py-12">
-            <h2 className="text-2xl font-bold mb-4">Complete Your Pool Setup</h2>
+            <h2 className="text-2xl font-bold mb-4">Welcome! Let's Set Up Your Pool</h2>
             <p className="text-muted-foreground mb-6">
-              To get started, please provide your pool information including size, type, and liner details. This helps us provide better service.
+              To provide you with the best service, we need some basic information about your pool.
             </p>
             <div className="space-y-2 mb-6">
-              <p className="text-sm text-muted-foreground">Missing information:</p>
+              <p className="text-sm text-muted-foreground">We need to know:</p>
               <div className="flex flex-wrap justify-center gap-2">
-                {!client.pool_size && <Badge variant="outline">Pool Size</Badge>}
-                {!client.pool_type && <Badge variant="outline">Pool Type</Badge>}
+                {!client.pool_size && <Badge variant="outline">Pool Size (gallons)</Badge>}
+                {!client.pool_type && <Badge variant="outline">Pool Type (Chlorine/Salt Water)</Badge>}
                 {!client.liner_type && <Badge variant="outline">Liner Type</Badge>}
               </div>
             </div>
@@ -143,10 +123,8 @@ export default function ClientDashboard() {
                 </Link>
               </Button>
               <Button asChild variant="outline">
-                <Link to="/contact">
-                  <Phone className="h-4 w-4 mr-2" />
-                  Contact Support
-                </Link>
+                <Phone className="h-4 w-4 mr-2" />
+                Contact Support
               </Button>
             </div>
           </CardContent>
@@ -155,58 +133,28 @@ export default function ClientDashboard() {
     );
   }
 
-  const { lastService, pendingRequests } = dashboardData;
-
-  // Determine pool status
-  let poolStatus = 'good';
-  let statusText = 'Up to Date';
-  if (!client.last_service_date) {
-    poolStatus = 'needs_service';
-    statusText = 'Needs Service';
-  } else {
-    const lastServiceDate = new Date(client.last_service_date);
-    const weekAgo = new Date();
-    weekAgo.setDate(weekAgo.getDate() - 7);
-    if (lastServiceDate < weekAgo) {
-      poolStatus = 'needs_service';
-      statusText = 'Needs Service';
-    }
-  }
-
   return (
     <div className="p-6 space-y-6">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold">Welcome back, {user?.name}</h1>
           <p className="text-muted-foreground">
-            Here's your pool status and service information
+            Here's your pool information and quick actions
           </p>
         </div>
       </div>
 
-      {/* Pool Status Card */}
+      {/* Pool Information Card */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center space-x-2">
             <Droplets className="h-5 w-5" />
-            <span>Pool Status</span>
+            <span>Your Pool Details</span>
           </CardTitle>
+          <CardDescription>Current pool configuration and information</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="space-y-2">
-              <p className="text-sm text-muted-foreground">Current Status</p>
-              <div className="flex items-center space-x-2">
-                {poolStatus === 'good' ? (
-                  <CheckCircle className="h-5 w-5 text-green-500" />
-                ) : (
-                  <AlertCircle className="h-5 w-5 text-orange-500" />
-                )}
-                <Badge variant={poolStatus === 'good' ? 'default' : 'secondary'}>
-                  {statusText}
-                </Badge>
-              </div>
-            </div>
             <div className="space-y-2">
               <p className="text-sm text-muted-foreground">Pool Size</p>
               <p className="text-lg font-semibold">{client.pool_size?.toLocaleString()} gallons</p>
@@ -215,7 +163,20 @@ export default function ClientDashboard() {
               <p className="text-sm text-muted-foreground">Water Type</p>
               <p className="text-lg font-semibold">{client.pool_type}</p>
             </div>
+            <div className="space-y-2">
+              <p className="text-sm text-muted-foreground">Liner Type</p>
+              <p className="text-lg font-semibold">{client.liner_type}</p>
+            </div>
           </div>
+          
+          {client.service_frequency && (
+            <div className="mt-6 pt-6 border-t">
+              <div className="space-y-2">
+                <p className="text-sm text-muted-foreground">Service Frequency</p>
+                <p className="text-lg font-semibold capitalize">{client.service_frequency}</p>
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
 
@@ -248,110 +209,54 @@ export default function ClientDashboard() {
         </Card>
       )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Quick Actions */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Quick Actions</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              <Button asChild className="w-full justify-start h-12">
-                <Link to="/client/request-service">
-                  <Plus className="h-5 w-5 mr-3" />
-                  Request Service
-                </Link>
-              </Button>
-              <Button asChild variant="outline" className="w-full justify-start h-12">
-                <Link to="/client/services">
-                  <FileText className="h-5 w-5 mr-3" />
-                  View Service History
-                </Link>
-              </Button>
-              <Button asChild variant="outline" className="w-full justify-start h-12">
-                <Link to="/client/profile">
-                  <Calendar className="h-5 w-5 mr-3" />
-                  Manage Profile
-                </Link>
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Service Information */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center space-x-2">
-              <Calendar className="h-5 w-5" />
-              <span>Service Information</span>
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div>
-              <p className="text-sm text-muted-foreground mb-1">Last Service</p>
-              <p className="font-medium">
-                {client.last_service_date 
-                  ? new Date(client.last_service_date).toLocaleDateString()
-                  : 'No services on record'
-                }
-              </p>
-              {lastService && (
-                <p className="text-sm text-muted-foreground">
-                  by {lastService.users?.name}
-                </p>
-              )}
-            </div>
-            
-            <div>
-              <p className="text-sm text-muted-foreground mb-1">Service Frequency</p>
-              <p className="font-medium capitalize">{client.service_frequency}</p>
-            </div>
-
-            {client.next_service_date && (
-              <div>
-                <p className="text-sm text-muted-foreground mb-1">Next Scheduled Service</p>
-                <p className="font-medium">
-                  {new Date(client.next_service_date).toLocaleDateString()}
-                </p>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Pending Requests */}
-      {pendingRequests.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center space-x-2">
-              <AlertCircle className="h-5 w-5" />
-              <span>Pending Service Requests</span>
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              {pendingRequests.map((request: any) => (
-                <div key={request.id} className="flex items-center justify-between p-3 border rounded-lg">
-                  <div>
-                    <p className="font-medium">{request.request_type}</p>
-                    <p className="text-sm text-muted-foreground">{request.description}</p>
-                    <p className="text-sm text-muted-foreground">
-                      Requested: {new Date(request.requested_date).toLocaleDateString()}
-                    </p>
-                  </div>
-                  <Badge 
-                    variant={
-                      request.status === 'in_progress' ? 'secondary' : 'outline'
-                    }
-                  >
-                    {request.status === 'in_progress' ? 'In Progress' : 'Pending'}
-                  </Badge>
+      {/* Quick Actions */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Quick Actions</CardTitle>
+          <CardDescription>What would you like to do today?</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <Button asChild className="h-16 text-left flex-col items-start p-4">
+              <Link to="/client/request-service">
+                <div className="flex items-center space-x-2 mb-1">
+                  <Plus className="h-5 w-5" />
+                  <span className="font-semibold">Request Service</span>
                 </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      )}
+                <span className="text-sm opacity-80">Schedule a pool service or report an issue</span>
+              </Link>
+            </Button>
+            
+            <Button asChild variant="outline" className="h-16 text-left flex-col items-start p-4">
+              <Link to="/client/services">
+                <div className="flex items-center space-x-2 mb-1">
+                  <FileText className="h-5 w-5" />
+                  <span className="font-semibold">Service History</span>
+                </div>
+                <span className="text-sm opacity-80">View past services and chemical readings</span>
+              </Link>
+            </Button>
+            
+            <Button asChild variant="outline" className="h-16 text-left flex-col items-start p-4">
+              <Link to="/client/profile">
+                <div className="flex items-center space-x-2 mb-1">
+                  <Calendar className="h-5 w-5" />
+                  <span className="font-semibold">Manage Profile</span>
+                </div>
+                <span className="text-sm opacity-80">Update your contact information and pool details</span>
+              </Link>
+            </Button>
+
+            <Button asChild variant="outline" className="h-16 text-left flex-col items-start p-4">
+              <div className="flex items-center space-x-2 mb-1">
+                <Phone className="h-5 w-5" />
+                <span className="font-semibold">Contact Support</span>
+              </div>
+              <span className="text-sm opacity-80">Get help with your pool service needs</span>
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }

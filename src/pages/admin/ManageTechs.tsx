@@ -5,6 +5,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { useToast } from '@/hooks/use-toast';
 import { 
   Settings, 
   Plus, 
@@ -29,6 +33,11 @@ interface TechUser {
 export default function ManageTechs() {
   const [techs, setTechs] = useState<TechUser[]>([]);
   const [loading, setLoading] = useState(true);
+  const [clientsToReassign, setClientsToReassign] = useState<any[]>([]);
+  const [selectedTechForReassignment, setSelectedTechForReassignment] = useState<string>('');
+  const [techToDelete, setTechToDelete] = useState<TechUser | null>(null);
+  const [showReassignDialog, setShowReassignDialog] = useState(false);
+  const { toast } = useToast();
 
   useEffect(() => {
     loadTechs();
@@ -48,6 +57,95 @@ export default function ManageTechs() {
       console.error('Error loading techs:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleDeleteTech = async (tech: TechUser) => {
+    try {
+      // Check if tech has assigned clients
+      const { data: clients, error: clientError } = await supabase
+        .from('clients')
+        .select('id, customer')
+        .or(`user_id.eq.${tech.id}`);
+
+      if (clientError) throw clientError;
+
+      if (clients && clients.length > 0) {
+        setTechToDelete(tech);
+        setClientsToReassign(clients);
+        setShowReassignDialog(true);
+        return;
+      }
+
+      // No clients assigned, can delete directly
+      await deleteTech(tech.id);
+    } catch (error) {
+      console.error('Error checking tech assignments:', error);
+      toast({
+        title: "Error",
+        description: "Failed to check technician assignments.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const deleteTech = async (techId: string) => {
+    try {
+      const { error } = await supabase
+        .from('users')
+        .delete()
+        .eq('id', techId);
+
+      if (error) throw error;
+
+      toast({
+        title: "Technician deleted",
+        description: "The technician has been successfully removed.",
+      });
+
+      loadTechs();
+    } catch (error) {
+      console.error('Error deleting tech:', error);
+      toast({
+        title: "Error",
+        description: "Failed to delete technician.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleReassignAndDelete = async () => {
+    if (!techToDelete || !selectedTechForReassignment) return;
+
+    try {
+      // Reassign clients to selected tech
+      const { error: reassignError } = await supabase
+        .from('clients')
+        .update({ user_id: selectedTechForReassignment })
+        .eq('user_id', techToDelete.id);
+
+      if (reassignError) throw reassignError;
+
+      // Delete the tech
+      await deleteTech(techToDelete.id);
+
+      // Reset state
+      setShowReassignDialog(false);
+      setTechToDelete(null);
+      setClientsToReassign([]);
+      setSelectedTechForReassignment('');
+
+      toast({
+        title: "Clients reassigned and technician deleted",
+        description: `${clientsToReassign.length} clients have been reassigned.`,
+      });
+    } catch (error) {
+      console.error('Error reassigning clients:', error);
+      toast({
+        title: "Error",
+        description: "Failed to reassign clients.",
+        variant: "destructive",
+      });
     }
   };
 
@@ -149,6 +247,30 @@ export default function ManageTechs() {
                   <Button variant="outline" size="sm" className="flex-1">
                     Reset Password
                   </Button>
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button variant="destructive" size="sm" className="flex-1">
+                        Remove
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Remove Technician</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          Are you sure you want to remove {tech.name}? This action cannot be undone.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction
+                          onClick={() => handleDeleteTech(tech)}
+                          className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                        >
+                          Remove
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
                 </div>
               </div>
             </CardContent>
@@ -171,6 +293,63 @@ export default function ManageTechs() {
           </div>
         )}
       </div>
+
+      {/* Client Reassignment Dialog */}
+      <Dialog open={showReassignDialog} onOpenChange={setShowReassignDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Reassign Clients</DialogTitle>
+            <DialogDescription>
+              {techToDelete?.name} has {clientsToReassign.length} assigned clients. 
+              Please select another technician to reassign them to before deletion.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4">
+            <div>
+              <label className="text-sm font-medium">Clients to reassign:</label>
+              <div className="mt-2 space-y-1">
+                {clientsToReassign.map((client) => (
+                  <div key={client.id} className="text-sm text-muted-foreground">
+                    • {client.customer}
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div>
+              <label className="text-sm font-medium">Reassign to:</label>
+              <Select value={selectedTechForReassignment} onValueChange={setSelectedTechForReassignment}>
+                <SelectTrigger className="mt-2">
+                  <SelectValue placeholder="Select a technician" />
+                </SelectTrigger>
+                <SelectContent>
+                  {techs
+                    .filter(t => t.id !== techToDelete?.id)
+                    .map((tech) => (
+                      <SelectItem key={tech.id} value={tech.id}>
+                        {tech.name}
+                      </SelectItem>
+                    ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowReassignDialog(false)}>
+              Cancel
+            </Button>
+            <Button 
+              onClick={handleReassignAndDelete}
+              disabled={!selectedTechForReassignment}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Reassign & Delete
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

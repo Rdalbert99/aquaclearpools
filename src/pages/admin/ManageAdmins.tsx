@@ -5,6 +5,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
+import { useToast } from '@/hooks/use-toast';
 import { 
   Shield, 
   Plus, 
@@ -28,6 +30,7 @@ interface AdminUser {
 export default function ManageAdmins() {
   const [admins, setAdmins] = useState<AdminUser[]>([]);
   const [loading, setLoading] = useState(true);
+  const { toast } = useToast();
 
   useEffect(() => {
     loadAdmins();
@@ -47,6 +50,31 @@ export default function ManageAdmins() {
       console.error('Error loading admins:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleDeleteAdmin = async (adminId: string) => {
+    try {
+      const { error } = await supabase
+        .from('users')
+        .delete()
+        .eq('id', adminId);
+
+      if (error) throw error;
+
+      toast({
+        title: "Admin deleted",
+        description: "The administrator has been successfully removed.",
+      });
+
+      loadAdmins();
+    } catch (error) {
+      console.error('Error deleting admin:', error);
+      toast({
+        title: "Error",
+        description: "Failed to delete administrator.",
+        variant: "destructive",
+      });
     }
   };
 
@@ -148,6 +176,30 @@ export default function ManageAdmins() {
                   <Button variant="outline" size="sm" className="flex-1">
                     Reset Password
                   </Button>
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button variant="destructive" size="sm" className="flex-1">
+                        Remove
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Remove Administrator</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          Are you sure you want to remove {admin.name}? This action cannot be undone.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction
+                          onClick={() => handleDeleteAdmin(admin.id)}
+                          className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                        >
+                          Remove
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
                 </div>
               </div>
             </CardContent>

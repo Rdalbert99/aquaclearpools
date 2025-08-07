@@ -45,7 +45,7 @@ const handler = async (req: Request): Promise<Response> => {
 
     const fullName = `${userData.firstName.trim()} ${userData.lastName.trim()}`.trim();
     
-    // Step 1: Check if login already exists
+    // Step 1: Check if login already exists (usernames must be unique)
     const { data: existingUserByLogin, error: checkLoginError } = await supabaseAdmin
       .from('users')
       .select('login')
@@ -55,19 +55,6 @@ const handler = async (req: Request): Promise<Response> => {
     if (existingUserByLogin) {
       return new Response(
         JSON.stringify({ error: 'Username already exists' }),
-        { 
-          status: 400, 
-          headers: { 'Content-Type': 'application/json', ...corsHeaders } 
-        }
-      );
-    }
-
-    // Step 1.5: Check if email already exists in auth system
-    const { data: existingAuthUsers, error: authCheckError } = await supabaseAdmin.auth.admin.listUsers();
-    
-    if (existingAuthUsers?.users?.some(user => user.email === userData.email)) {
-      return new Response(
-        JSON.stringify({ error: 'Email address already registered' }),
         { 
           status: 400, 
           headers: { 'Content-Type': 'application/json', ...corsHeaders } 

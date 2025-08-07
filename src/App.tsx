@@ -31,6 +31,8 @@ import { ApprovalCenter } from "./pages/admin/ApprovalCenter";
 import ServiceRequestDetails from "./pages/admin/ServiceRequestDetails";
 import PotentialCustomers from "./pages/admin/PotentialCustomers";
 import CreateUser from "./pages/admin/CreateUser";
+import ManageAdmins from "./pages/admin/ManageAdmins";
+import ManageTechs from "./pages/admin/ManageTechs";
 import ClientDashboard from "./pages/client/Dashboard";
 import ClientServices from "./pages/client/Services";
 import RequestService from "./pages/client/RequestService";
@@ -218,6 +220,22 @@ const AppRoutes = () => {
           element={
             <ProtectedRoute allowedRoles={['admin', 'tech']}>
               <CreateUser />
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/admin/admins" 
+          element={
+            <ProtectedRoute allowedRoles={['admin']}>
+              <ManageAdmins />
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/admin/techs" 
+          element={
+            <ProtectedRoute allowedRoles={['admin']}>
+              <ManageTechs />
             </ProtectedRoute>
           } 
         />

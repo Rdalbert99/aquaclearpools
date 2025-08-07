@@ -14,7 +14,8 @@ import {
   Plus,
   Settings,
   BarChart3,
-  FileText
+  FileText,
+  Shield
 } from 'lucide-react';
 
 interface DashboardStats {
@@ -176,15 +177,27 @@ export default function AdminDashboard() {
                 </Link>
               </Button>
               <Button asChild variant="outline" className="h-16 flex-col">
-                <Link to="/admin/users/new?role=tech">
-                  <Plus className="h-5 w-5 mb-1" />
-                  <span className="text-sm">Add Tech</span>
+                <Link to="/admin/admins">
+                  <Shield className="h-5 w-5 mb-1" />
+                  <span className="text-sm">Manage Admins</span>
                 </Link>
               </Button>
               <Button asChild variant="outline" className="h-16 flex-col">
                 <Link to="/admin/users/new?role=admin">
                   <Plus className="h-5 w-5 mb-1" />
                   <span className="text-sm">Add Admin</span>
+                </Link>
+              </Button>
+              <Button asChild variant="outline" className="h-16 flex-col">
+                <Link to="/admin/techs">
+                  <Settings className="h-5 w-5 mb-1" />
+                  <span className="text-sm">Manage Techs</span>
+                </Link>
+              </Button>
+              <Button asChild variant="outline" className="h-16 flex-col">
+                <Link to="/admin/users/new?role=tech">
+                  <Plus className="h-5 w-5 mb-1" />
+                  <span className="text-sm">Add Tech</span>
                 </Link>
               </Button>
               <Button asChild variant="outline" className="h-16 flex-col">

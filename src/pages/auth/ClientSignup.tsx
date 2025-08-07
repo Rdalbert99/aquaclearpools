@@ -13,14 +13,17 @@ import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
 import { Droplets, ArrowLeft, CheckCircle } from 'lucide-react';
-import { AddressInput } from '@/components/ui/address-input';
+
 
 const formSchema = z.object({
   firstName: z.string().min(2, 'First name must be at least 2 characters'),
   lastName: z.string().min(2, 'Last name must be at least 2 characters'),
   email: z.string().email('Please enter a valid email address'),
   phone: z.string().min(10, 'Please enter a valid phone number'),
-  address: z.string().min(5, 'Please enter your full address'),
+  street: z.string().min(5, 'Please enter your street address'),
+  city: z.string().min(2, 'Please enter your city'),
+  state: z.string().min(2, 'Please enter your state'),
+  zipCode: z.string().min(5, 'Please enter your ZIP code'),
   poolType: z.string().min(1, 'Please select your pool type'),
   poolSize: z.string().min(1, 'Please enter your pool size'),
   serviceFrequency: z.string().default('weekly'),
@@ -38,7 +41,6 @@ export default function ClientSignup() {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [addressComponents, setAddressComponents] = useState<any>(null);
 
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
@@ -47,7 +49,10 @@ export default function ClientSignup() {
       lastName: '',
       email: '',
       phone: '',
-      address: '',
+      street: '',
+      city: '',
+      state: '',
+      zipCode: '',
       poolType: '',
       poolSize: '',
       serviceFrequency: 'weekly',
@@ -61,6 +66,7 @@ export default function ClientSignup() {
     setIsSubmitting(true);
     try {
       const fullName = `${data.firstName.trim()} ${data.lastName.trim()}`.trim();
+      const fullAddress = `${data.street}, ${data.city}, ${data.state} ${data.zipCode}`;
       
       // Create user account with address components
       const userRecord: any = {
@@ -69,21 +75,15 @@ export default function ClientSignup() {
         last_name: data.lastName,
         email: data.email,
         phone: data.phone,
-        address: data.address,
+        address: fullAddress,
+        street_address: data.street,
+        city: data.city,
+        state: data.state,
+        zip_code: data.zipCode,
         role: 'client',
         password: data.password,
         must_change_password: false,
       };
-
-      // Add address components if validated
-      if (addressComponents) {
-        userRecord.street_address = addressComponents.street_address;
-        userRecord.city = addressComponents.city;
-        userRecord.state = addressComponents.state;
-        userRecord.zip_code = addressComponents.zip_code;
-        userRecord.country = addressComponents.country;
-        userRecord.address_validated = true;
-      }
 
       const { data: newUser, error: userError } = await supabase
         .from('users')
@@ -246,26 +246,61 @@ export default function ClientSignup() {
 
                   <FormField
                     control={form.control}
-                    name="address"
+                    name="street"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Pool Address</FormLabel>
+                        <FormLabel>Street Address</FormLabel>
                         <FormControl>
-                          <AddressInput
-                            value={field.value}
-                            onChange={(value, components) => {
-                              field.onChange(value);
-                              setAddressComponents(components);
-                            }}
-                            placeholder="123 Main St, City, State, ZIP"
-                            required
-                            label=""
-                          />
+                          <Input placeholder="123 Main St" {...field} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
                     )}
                   />
+
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <FormField
+                      control={form.control}
+                      name="city"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>City</FormLabel>
+                          <FormControl>
+                            <Input placeholder="City" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name="state"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>State</FormLabel>
+                          <FormControl>
+                            <Input placeholder="State" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name="zipCode"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>ZIP Code</FormLabel>
+                          <FormControl>
+                            <Input placeholder="12345" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
                 </div>
 
                 {/* Pool Information */}

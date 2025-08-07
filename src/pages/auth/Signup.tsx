@@ -7,7 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Eye, EyeOff, Droplets } from 'lucide-react';
-import { AddressInput } from '@/components/ui/address-input';
+
 import { useToast } from '@/hooks/use-toast';
 
 export default function Signup() {
@@ -17,10 +17,12 @@ export default function Signup() {
     confirmPassword: '',
     firstName: '',
     lastName: '',
-    address: '',
+    street: '',
+    city: '',
+    state: '',
+    zipCode: '',
     role: 'client'
   });
-  const [addressComponents, setAddressComponents] = useState<any>(null);
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const { signUp, isAuthenticated } = useAuth();
@@ -37,10 +39,6 @@ export default function Signup() {
     }));
   };
 
-  const handleAddressChange = (address: string, components?: any) => {
-    setFormData(prev => ({ ...prev, address }));
-    setAddressComponents(components);
-  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -57,6 +55,7 @@ export default function Signup() {
     setIsLoading(true);
 
     const fullName = `${formData.firstName.trim()} ${formData.lastName.trim()}`.trim();
+    const fullAddress = `${formData.street}, ${formData.city}, ${formData.state} ${formData.zipCode}`;
     const result = await signUp(
       formData.email, 
       formData.password, 
@@ -65,8 +64,11 @@ export default function Signup() {
       {
         firstName: formData.firstName,
         lastName: formData.lastName,
-        address: formData.address,
-        addressComponents
+        street: formData.street,
+        city: formData.city,
+        state: formData.state,
+        zipCode: formData.zipCode,
+        address: fullAddress
       }
     );
 
@@ -142,13 +144,61 @@ export default function Signup() {
               />
             </div>
 
-            <AddressInput
-              value={formData.address}
-              onChange={handleAddressChange}
-              placeholder="123 Main St, City, State, ZIP"
-              required
-              label="Full Address"
-            />
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="street">Street Address</Label>
+                <Input
+                  id="street"
+                  name="street"
+                  type="text"
+                  placeholder="123 Main St"
+                  value={formData.street}
+                  onChange={handleChange}
+                  required
+                />
+              </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="space-y-2 md:col-span-1">
+                  <Label htmlFor="city">City</Label>
+                  <Input
+                    id="city"
+                    name="city"
+                    type="text"
+                    placeholder="City"
+                    value={formData.city}
+                    onChange={handleChange}
+                    required
+                  />
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="state">State</Label>
+                  <Input
+                    id="state"
+                    name="state"
+                    type="text"
+                    placeholder="State"
+                    value={formData.state}
+                    onChange={handleChange}
+                    required
+                  />
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="zipCode">ZIP Code</Label>
+                  <Input
+                    id="zipCode"
+                    name="zipCode"
+                    type="text"
+                    placeholder="12345"
+                    value={formData.zipCode}
+                    onChange={handleChange}
+                    required
+                  />
+                </div>
+              </div>
+            </div>
 
             <div className="space-y-2">
               <Label htmlFor="role">Account Type</Label>

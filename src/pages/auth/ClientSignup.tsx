@@ -27,8 +27,8 @@ const formSchema = z.object({
   city: z.string().min(2, 'Please enter your city'),
   state: z.string().min(2, 'Please enter your state'),
   zipCode: z.string().min(5, 'Please enter your ZIP code'),
-  poolType: z.string().min(1, 'Please select your pool type'),
-  poolSize: z.string().min(1, 'Please enter your pool size'),
+  poolType: z.string().min(1, 'Please select your water type'),
+  poolSize: z.string().min(1, 'Please enter your pool size in gallons'),
   serviceFrequency: z.string().default('weekly'),
   serviceNotes: z.string().optional(),
   password: z.string().min(6, 'Password must be at least 6 characters'),
@@ -114,10 +114,8 @@ export default function ClientSignup() {
         return;
       }
 
-      // Convert pool size string to number (extract first number from ranges like "15000-20000")
-      const poolSizeNumber = data.poolSize.includes('-') 
-        ? parseInt(data.poolSize.split('-')[0]) 
-        : parseInt(data.poolSize);
+      // Parse pool size as a number (direct input now)
+      const poolSizeNumber = parseInt(data.poolSize) || 0;
 
       // Create client record
       const { error: clientError } = await supabase
@@ -321,24 +319,19 @@ export default function ClientSignup() {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <FormField
                       control={form.control}
-                      name="poolType"
+                      name="poolSize"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Pool Type</FormLabel>
-                          <Select onValueChange={field.onChange} defaultValue={field.value}>
-                            <FormControl>
-                              <SelectTrigger>
-                                <SelectValue placeholder="Select pool type" />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              <SelectItem value="inground-concrete">In-ground Concrete</SelectItem>
-                              <SelectItem value="inground-fiberglass">In-ground Fiberglass</SelectItem>
-                              <SelectItem value="inground-vinyl">In-ground Vinyl Liner</SelectItem>
-                              <SelectItem value="above-ground">Above Ground</SelectItem>
-                              <SelectItem value="spa-hot-tub">Spa/Hot Tub</SelectItem>
-                            </SelectContent>
-                          </Select>
+                          <FormLabel>Pool Size (Gallons)</FormLabel>
+                          <FormControl>
+                            <Input 
+                              placeholder="e.g. 15000" 
+                              type="number"
+                              min="1000"
+                              max="100000"
+                              {...field} 
+                            />
+                          </FormControl>
                           <FormMessage />
                         </FormItem>
                       )}
@@ -346,22 +339,21 @@ export default function ClientSignup() {
 
                     <FormField
                       control={form.control}
-                      name="poolSize"
+                      name="poolType"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Pool Size (Gallons)</FormLabel>
+                          <FormLabel>Water Type</FormLabel>
                           <Select onValueChange={field.onChange} defaultValue={field.value}>
                             <FormControl>
                               <SelectTrigger>
-                                <SelectValue placeholder="Select pool size" />
+                                <SelectValue placeholder="Select water type" />
                               </SelectTrigger>
                             </FormControl>
                             <SelectContent>
-                              <SelectItem value="5000">Under 10,000 gallons</SelectItem>
-                              <SelectItem value="10000">10,000 - 15,000 gallons</SelectItem>
-                              <SelectItem value="15000">15,000 - 20,000 gallons</SelectItem>
-                              <SelectItem value="20000">20,000 - 30,000 gallons</SelectItem>
-                              <SelectItem value="30000">30,000+ gallons</SelectItem>
+                              <SelectItem value="Chlorine">Chlorine Pool</SelectItem>
+                              <SelectItem value="Salt">Salt Water Pool</SelectItem>
+                              <SelectItem value="Mineral">Mineral Pool</SelectItem>
+                              <SelectItem value="Natural">Natural Pool</SelectItem>
                             </SelectContent>
                           </Select>
                           <FormMessage />

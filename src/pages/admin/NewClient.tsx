@@ -546,43 +546,51 @@ export default function NewClient() {
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="poolSize">Pool Size (gallons)</Label>
+              <Label htmlFor="poolSize">Pool Size (gallons) *</Label>
               <Input
                 id="poolSize"
                 type="number"
                 value={client.pool_size || ''}
                 onChange={(e) => handleInputChange('pool_size', parseInt(e.target.value) || 0)}
-                placeholder="Enter pool size"
+                placeholder="e.g. 15000"
+                min="1000"
+                max="100000"
               />
+              <p className="text-sm text-muted-foreground">
+                Enter the approximate pool capacity in gallons
+              </p>
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="poolType">Pool Type *</Label>
+              <Label htmlFor="poolType">Water Type *</Label>
               <Select value={client.pool_type} onValueChange={(value) => handleInputChange('pool_type', value)}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Select pool type..." />
+                  <SelectValue placeholder="Select water type..." />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="Chlorine">Chlorine</SelectItem>
-                  <SelectItem value="Salt">Salt</SelectItem>
-                  <SelectItem value="Mineral">Mineral</SelectItem>
-                  <SelectItem value="Natural">Natural</SelectItem>
+                  <SelectItem value="Chlorine">Chlorine Pool</SelectItem>
+                  <SelectItem value="Salt">Salt Water Pool</SelectItem>
+                  <SelectItem value="Mineral">Mineral Pool</SelectItem>
+                  <SelectItem value="Natural">Natural Pool</SelectItem>
                 </SelectContent>
               </Select>
+              <p className="text-sm text-muted-foreground">
+                Choose the primary water treatment system
+              </p>
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="linerType">Liner Type</Label>
+              <Label htmlFor="linerType">Pool Surface</Label>
               <Select value={client.liner_type} onValueChange={(value) => handleInputChange('liner_type', value)}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Select liner type..." />
+                  <SelectValue placeholder="Select pool surface..." />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="Liner">Liner</SelectItem>
-                  <SelectItem value="Concrete">Concrete</SelectItem>
+                  <SelectItem value="Concrete">Concrete/Gunite</SelectItem>
                   <SelectItem value="Fiberglass">Fiberglass</SelectItem>
-                  <SelectItem value="Vinyl">Vinyl</SelectItem>
+                  <SelectItem value="Liner">Vinyl Liner</SelectItem>
                   <SelectItem value="Tile">Tile</SelectItem>
+                  <SelectItem value="Pebble">Pebble Tec</SelectItem>
                 </SelectContent>
               </Select>
             </div>

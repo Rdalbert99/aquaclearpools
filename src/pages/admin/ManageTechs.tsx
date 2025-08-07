@@ -212,16 +212,22 @@ export default function ManageTechs() {
     if (!resettingPasswordFor || !newPassword) return;
 
     try {
-      const { error } = await supabase
-        .from('users')
-        .update({
-          password: newPassword,
-          must_change_password: true,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', resettingPasswordFor.id);
+      const { data, error } = await supabase.functions.invoke('reset-user-password', {
+        body: {
+          userId: resettingPasswordFor.id,
+          newPassword: newPassword
+        }
+      });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Edge function error:', error);
+        throw new Error(error.message || 'Failed to reset password');
+      }
+
+      if (data?.error) {
+        console.error('Edge function data error:', data.error);
+        throw new Error(data.error);
+      }
 
       toast({
         title: "Password Reset",
@@ -230,11 +236,11 @@ export default function ManageTechs() {
 
       setResettingPasswordFor(null);
       setNewPassword('');
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error resetting password:', error);
       toast({
         title: "Error",
-        description: "Failed to reset password.",
+        description: error.message || "Failed to reset password.",
         variant: "destructive",
       });
     }

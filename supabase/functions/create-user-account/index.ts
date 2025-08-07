@@ -62,30 +62,39 @@ const handler = async (req: Request): Promise<Response> => {
       );
     }
 
-    // Step 2: Create user in Supabase Auth
-    console.log('Creating auth user...');
-    const { data: authUser, error: authError } = await supabaseAdmin.auth.admin.createUser({
-      email: userData.email,
-      password: userData.password,
-      email_confirm: true, // Auto-confirm email
-      user_metadata: {
-        first_name: userData.firstName,
-        last_name: userData.lastName,
-        full_name: fullName,
-        role: userData.role
+    // Step 2: Check if auth user already exists with this email
+    const { data: existingAuthUsers, error: authCheckError } = await supabaseAdmin.auth.admin.listUsers();
+    let authUser = existingAuthUsers?.users?.find(user => user.email === userData.email);
+    
+    if (!authUser) {
+      // Create user in Supabase Auth only if one doesn't exist
+      console.log('Creating new auth user...');
+      const { data: newAuthUser, error: authError } = await supabaseAdmin.auth.admin.createUser({
+        email: userData.email,
+        password: userData.password,
+        email_confirm: true, // Auto-confirm email
+        user_metadata: {
+          first_name: userData.firstName,
+          last_name: userData.lastName,
+          full_name: fullName,
+          role: userData.role
+        }
+      });
+
+      if (authError) {
+        console.error('Auth user creation failed:', authError);
+        throw new Error(`Failed to create auth user: ${authError.message}`);
       }
-    });
 
-    if (authError) {
-      console.error('Auth user creation failed:', authError);
-      throw new Error(`Failed to create auth user: ${authError.message}`);
+      authUser = newAuthUser.user;
+      console.log('New auth user created:', authUser.id);
+    } else {
+      console.log('Using existing auth user:', authUser.id);
     }
-
-    console.log('Auth user created:', authUser.user.id);
 
     // Step 3: Create user profile in custom users table
     const userRecord: any = {
-      id: authUser.user.id,
+      id: authUser.id,
       name: fullName,
       first_name: userData.firstName,
       last_name: userData.lastName,
@@ -119,8 +128,10 @@ const handler = async (req: Request): Promise<Response> => {
 
     if (profileError) {
       console.error('Profile creation failed:', profileError);
-      // Cleanup: Delete the auth user if profile creation fails
-      await supabaseAdmin.auth.admin.deleteUser(authUser.user.id);
+      // Only cleanup if we created a new auth user
+      if (!existingAuthUsers?.users?.find(user => user.email === userData.email)) {
+        await supabaseAdmin.auth.admin.deleteUser(authUser.id);
+      }
       throw new Error(`Failed to create user profile: ${profileError.message}`);
     }
 

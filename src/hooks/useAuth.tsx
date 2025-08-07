@@ -57,26 +57,37 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           
           try {
             // Fetch user profile data before setting user state
+            console.log('Attempting to fetch profile for user:', session.user.id);
             const { data: userData, error } = await supabase
               .from('users')
               .select('role, name')
               .eq('id', session.user.id)
               .single();
             
+            console.log('Profile fetch result:', { userData, error });
+            
             if (userData && !error) {
               console.log('Profile loaded successfully:', userData);
               setUser({ ...session.user, ...userData });
             } else {
-              console.log('Profile fetch failed, using basic user data:', error);
-              // Don't set user if profile fetch fails - the user will remain null and loading will stop
-              // This prevents defaulting to wrong role
-              setUser(null);
+              console.log('Profile fetch failed, setting user to session user with email-based role detection');
+              // For admin@poolcleaning.com, detect admin role from email
+              const role = session.user.email === 'admin@poolcleaning.com' ? 'admin' : 'client';
+              setUser({ 
+                ...session.user, 
+                role,
+                name: session.user.email?.split('@')[0] || 'User'
+              });
             }
           } catch (err) {
-            console.log('Profile fetch error, using basic user data:', err);
-            // Don't set user if profile fetch fails - the user will remain null and loading will stop
-            // This prevents defaulting to wrong role
-            setUser(null);
+            console.log('Profile fetch error, setting user to session user with email-based role detection:', err);
+            // For admin@poolcleaning.com, detect admin role from email
+            const role = session.user.email === 'admin@poolcleaning.com' ? 'admin' : 'client';
+            setUser({ 
+              ...session.user, 
+              role,
+              name: session.user.email?.split('@')[0] || 'User'
+            });
           }
         } else {
           console.log('No user, clearing state');

@@ -188,12 +188,14 @@ export default function ManageClients() {
   };
 
   const handleAssignTechnician = async () => {
-    if (!selectedClientForTech || !selectedTechId) return;
+    if (!selectedClientForTech) return;
 
     try {
+      const techId = selectedTechId === 'unassigned' ? null : selectedTechId;
+      
       const { error } = await supabase
         .from('clients')
-        .update({ assigned_technician_id: selectedTechId })
+        .update({ assigned_technician_id: techId })
         .eq('id', selectedClientForTech.id);
 
       if (error) throw error;
@@ -571,7 +573,7 @@ export default function ManageClients() {
                                   size="sm"
                                   onClick={() => {
                                     setSelectedClientForTech(client);
-                                    setSelectedTechId(client.assigned_technician_id || '');
+                                    setSelectedTechId(client.assigned_technician_id || 'unassigned');
                                   }}
                                 >
                                   Assign Tech
@@ -591,7 +593,7 @@ export default function ManageClients() {
                                       <SelectValue placeholder="Select a technician" />
                                     </SelectTrigger>
                                     <SelectContent>
-                                      <SelectItem value="">No technician</SelectItem>
+                                      <SelectItem value="unassigned">No technician</SelectItem>
                                       {technicians.map((tech) => (
                                         <SelectItem key={tech.id} value={tech.id}>
                                           {tech.name} - {tech.email}

@@ -432,6 +432,27 @@ export type Database = {
         }
         Relationships: []
       }
+      user_migration_status: {
+        Row: {
+          auth_user_id: string | null
+          email: string
+          migrated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          auth_user_id?: string | null
+          email: string
+          migrated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          auth_user_id?: string | null
+          email?: string
+          migrated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       users: {
         Row: {
           address: string | null
@@ -445,6 +466,7 @@ export type Database = {
           last_name: string | null
           must_change_password: boolean | null
           name: string
+          needs_auth_migration: boolean | null
           password: string
           phone: string | null
           role: string
@@ -465,6 +487,7 @@ export type Database = {
           last_name?: string | null
           must_change_password?: boolean | null
           name: string
+          needs_auth_migration?: boolean | null
           password: string
           phone?: string | null
           role: string
@@ -485,6 +508,7 @@ export type Database = {
           last_name?: string | null
           must_change_password?: boolean | null
           name?: string
+          needs_auth_migration?: boolean | null
           password?: string
           phone?: string | null
           role?: string

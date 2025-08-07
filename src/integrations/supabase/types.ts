@@ -105,6 +105,7 @@ export type Database = {
       }
       clients: {
         Row: {
+          assigned_technician_id: string | null
           company_name: string | null
           created_at: string | null
           customer: string
@@ -129,6 +130,7 @@ export type Database = {
           user_id: string | null
         }
         Insert: {
+          assigned_technician_id?: string | null
           company_name?: string | null
           created_at?: string | null
           customer: string
@@ -153,6 +155,7 @@ export type Database = {
           user_id?: string | null
         }
         Update: {
+          assigned_technician_id?: string | null
           company_name?: string | null
           created_at?: string | null
           customer?: string
@@ -177,6 +180,13 @@ export type Database = {
           user_id?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "clients_assigned_technician_id_fkey"
+            columns: ["assigned_technician_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "clients_user_id_fkey"
             columns: ["user_id"]

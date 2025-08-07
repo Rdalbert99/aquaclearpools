@@ -33,6 +33,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 
 interface Client {
   id: string;
@@ -44,11 +45,23 @@ interface Client {
   last_service_date: string | null;
   created_at: string;
   user_id: string;
+  assigned_technician_id?: string | null;
   users?: {
     email: string;
     phone: string | null;
     name: string;
   };
+  assigned_technician?: {
+    id: string;
+    name: string;
+    email: string;
+  };
+}
+
+interface Technician {
+  id: string;
+  name: string;
+  email: string;
 }
 
 export default function ManageClients() {
@@ -57,14 +70,18 @@ export default function ManageClients() {
   const { toast } = useToast();
   const [clients, setClients] = useState<Client[]>([]);
   const [filteredClients, setFilteredClients] = useState<Client[]>([]);
+  const [technicians, setTechnicians] = useState<Technician[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [poolTypeFilter, setPoolTypeFilter] = useState('all');
   const [deletingClientId, setDeletingClientId] = useState<string | null>(null);
+  const [selectedClientForTech, setSelectedClientForTech] = useState<Client | null>(null);
+  const [selectedTechId, setSelectedTechId] = useState<string>('');
 
   useEffect(() => {
     loadClients();
+    loadTechnicians();
     
     // Timeout to prevent infinite loading
     const timeout = setTimeout(() => {
@@ -103,11 +120,14 @@ export default function ManageClients() {
         return;
       }
       
-      // Now try to get all clients with minimal data
+      // Now try to get all clients with technician data
       console.log('Fetching clients...');
       const { data: clientsData, error: clientsError } = await supabase
         .from('clients')
-        .select('id, customer, pool_size, pool_type, status, user_id');
+        .select(`
+          id, customer, pool_size, pool_type, status, user_id, assigned_technician_id,
+          assigned_technician:users!assigned_technician_id(id, name, email)
+        `);
       
       console.log('Clients query result:', { clientsData, clientsError });
       
@@ -149,6 +169,51 @@ export default function ManageClients() {
     } finally {
       console.log('Setting loading to false');
       setLoading(false);
+    }
+  };
+
+  const loadTechnicians = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('users')
+        .select('id, name, email')
+        .eq('role', 'tech')
+        .order('name');
+
+      if (error) throw error;
+      setTechnicians(data || []);
+    } catch (error) {
+      console.error('Error loading technicians:', error);
+    }
+  };
+
+  const handleAssignTechnician = async () => {
+    if (!selectedClientForTech || !selectedTechId) return;
+
+    try {
+      const { error } = await supabase
+        .from('clients')
+        .update({ assigned_technician_id: selectedTechId })
+        .eq('id', selectedClientForTech.id);
+
+      if (error) throw error;
+
+      toast({
+        title: "Technician Assigned",
+        description: `Technician has been assigned to ${selectedClientForTech.customer}`,
+      });
+
+      // Refresh clients list
+      loadClients();
+      setSelectedClientForTech(null);
+      setSelectedTechId('');
+    } catch (error) {
+      console.error('Error assigning technician:', error);
+      toast({
+        title: "Error",
+        description: "Failed to assign technician",
+        variant: "destructive",
+      });
     }
   };
 
@@ -408,6 +473,7 @@ export default function ManageClients() {
                     <th className="text-left p-4 font-medium">Client</th>
                     <th className="text-left p-4 font-medium">Contact</th>
                     <th className="text-left p-4 font-medium">Pool Details</th>
+                    <th className="text-left p-4 font-medium">Assigned Tech</th>
                     <th className="text-left p-4 font-medium">Status</th>
                     <th className="text-left p-4 font-medium">Last Service</th>
                     <th className="text-left p-4 font-medium">Actions</th>
@@ -451,6 +517,19 @@ export default function ManageClients() {
                         </td>
                         
                         <td className="p-4">
+                          <div>
+                            {client.assigned_technician ? (
+                              <div>
+                                <p className="text-sm font-medium">{client.assigned_technician.name}</p>
+                                <p className="text-xs text-muted-foreground">{client.assigned_technician.email}</p>
+                              </div>
+                            ) : (
+                              <p className="text-sm text-muted-foreground">No technician assigned</p>
+                            )}
+                          </div>
+                        </td>
+                        
+                        <td className="p-4">
                           <Badge className={getStatusColor(client.status)}>
                             {client.status}
                           </Badge>
@@ -485,6 +564,53 @@ export default function ManageClients() {
                             >
                               <Edit className="h-3 w-3" />
                             </Button>
+                            <Dialog>
+                              <DialogTrigger asChild>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => {
+                                    setSelectedClientForTech(client);
+                                    setSelectedTechId(client.assigned_technician_id || '');
+                                  }}
+                                >
+                                  Assign Tech
+                                </Button>
+                              </DialogTrigger>
+                              <DialogContent>
+                                <DialogHeader>
+                                  <DialogTitle>Assign Technician</DialogTitle>
+                                  <DialogDescription>
+                                    Assign a technician to {client.customer}. This technician will receive notifications for service requests.
+                                  </DialogDescription>
+                                </DialogHeader>
+                                
+                                <div className="space-y-4">
+                                  <Select value={selectedTechId} onValueChange={setSelectedTechId}>
+                                    <SelectTrigger>
+                                      <SelectValue placeholder="Select a technician" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      <SelectItem value="">No technician</SelectItem>
+                                      {technicians.map((tech) => (
+                                        <SelectItem key={tech.id} value={tech.id}>
+                                          {tech.name} - {tech.email}
+                                        </SelectItem>
+                                      ))}
+                                    </SelectContent>
+                                  </Select>
+                                </div>
+
+                                <DialogFooter>
+                                  <Button variant="outline" onClick={() => setSelectedClientForTech(null)}>
+                                    Cancel
+                                  </Button>
+                                  <Button onClick={handleAssignTechnician}>
+                                    Assign Technician
+                                  </Button>
+                                </DialogFooter>
+                              </DialogContent>
+                            </Dialog>
                             <AlertDialog>
                               <AlertDialogTrigger asChild>
                                 <Button

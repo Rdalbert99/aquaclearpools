@@ -75,20 +75,18 @@ export const createDemoUser = async (email: string, password: string, name: stri
 };
 
 export const initializeDemoUsers = async () => {
-  console.log('Starting demo user initialization...');
+  console.log('Database is clean and ready for live use.');
   
-  const demoUsers = [
-    { email: 'admin@poolcleaning.com', password: 'password', name: 'Admin User', role: 'admin' },
-    { email: 'tech1@poolcleaning.com', password: 'password', name: 'Tech User', role: 'tech' },
-    { email: 'client1@poolcleaning.com', password: 'password', name: 'Client User', role: 'client' },
+  // No demo users needed - site is ready for production
+  // Admin credentials: admin@poolcleaning.com / Password (must change on first login)
+  return [
+    { 
+      email: 'admin@poolcleaning.com', 
+      password: 'Password', 
+      name: 'Admin', 
+      role: 'admin',
+      success: true,
+      message: 'Admin user ready - login with email: admin@poolcleaning.com, password: Password'
+    }
   ];
-
-  const results = [];
-  for (const user of demoUsers) {
-    const result = await createDemoUser(user.email, user.password, user.name, user.role);
-    results.push({ ...user, ...result });
-  }
-  
-  console.log('Demo user initialization complete:', results);
-  return results;
 };

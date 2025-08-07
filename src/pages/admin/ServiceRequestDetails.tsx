@@ -102,6 +102,7 @@ export default function ServiceRequestDetails() {
           phone: request.contact_phone || '',
           address: request.contact_address || '',
           role: 'client',
+          login: `${request.contact_name?.toLowerCase().replace(/\s+/g, '') || 'client'}${Date.now()}`, // Generate unique login
           password: 'password', // Default password
           must_change_password: true,
         })

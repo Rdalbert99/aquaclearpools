@@ -188,6 +188,7 @@ export default function NewClient() {
           password: client.new_user_password,
           name: client.customer,
           role: 'client',
+          login: `${client.customer.toLowerCase().replace(/\s+/g, '')}${Date.now()}`, // Generate unique login
           address: client.address || null,
           phone: client.phone || null,
           must_change_password: true

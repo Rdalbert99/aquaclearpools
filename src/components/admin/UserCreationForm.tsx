@@ -23,6 +23,7 @@ export const UserCreationForm = ({ onSuccess, onCancel }: UserCreationFormProps)
   const [formData, setFormData] = useState({
     firstName: '',
     lastName: '',
+    login: '',
     email: '',
     password: '',
     role: 'client' as 'admin' | 'tech' | 'client',
@@ -58,6 +59,7 @@ export const UserCreationForm = ({ onSuccess, onCancel }: UserCreationFormProps)
         name: fullName,
         first_name: formData.firstName,
         last_name: formData.lastName,
+        login: formData.login,
         email: formData.email,
         password: formData.password,
         role: formData.role,
@@ -95,6 +97,7 @@ export const UserCreationForm = ({ onSuccess, onCancel }: UserCreationFormProps)
       setFormData({
         firstName: '',
         lastName: '',
+        login: '',
         email: '',
         password: '',
         role: 'client',
@@ -160,12 +163,27 @@ export const UserCreationForm = ({ onSuccess, onCancel }: UserCreationFormProps)
             </div>
 
             <div className="space-y-2">
+              <Label htmlFor="login">Login (Username)</Label>
+              <Input
+                id="login"
+                value={formData.login}
+                onChange={(e) => setFormData(prev => ({ ...prev, login: e.target.value }))}
+                placeholder="Unique username for login"
+                required
+              />
+              <p className="text-sm text-muted-foreground">
+                Must be unique across all users
+              </p>
+            </div>
+
+            <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
               <Input
                 id="email"
                 type="email"
                 value={formData.email}
                 onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
+                placeholder="Can be shared between users"
                 required
               />
             </div>

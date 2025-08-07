@@ -470,6 +470,7 @@ export type Database = {
           first_name: string | null
           id: string
           last_name: string | null
+          login: string
           must_change_password: boolean | null
           name: string
           needs_auth_migration: boolean | null
@@ -491,6 +492,7 @@ export type Database = {
           first_name?: string | null
           id?: string
           last_name?: string | null
+          login: string
           must_change_password?: boolean | null
           name: string
           needs_auth_migration?: boolean | null
@@ -512,6 +514,7 @@ export type Database = {
           first_name?: string | null
           id?: string
           last_name?: string | null
+          login?: string
           must_change_password?: boolean | null
           name?: string
           needs_auth_migration?: boolean | null

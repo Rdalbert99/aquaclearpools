@@ -192,6 +192,7 @@ export default function ClientView() {
           id: authData.user.id,
           email: newUserData.email,
           name: newUserData.name,
+          login: newUserData.email.split('@')[0], // Use email prefix as login
           password: 'temp', // Required field, but not used since auth is handled separately
           role: 'client'
         });

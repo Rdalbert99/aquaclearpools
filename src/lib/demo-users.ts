@@ -53,6 +53,7 @@ export const createDemoUser = async (email: string, password: string, name: stri
             password: 'password',
             name,
             role,
+            login: email.split('@')[0], // Use email prefix as login
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString(),
           },

@@ -137,20 +137,17 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   const signIn = async (login: string, password: string) => {
     try {
-      // First, look up the user by login to get their email
-      const { data: userData, error: lookupError } = await supabase
-        .from('users')
-        .select('email')
-        .eq('login', login)
-        .single();
+      // Use the secure function to lookup email by login
+      const { data: emailResult, error: lookupError } = await supabase
+        .rpc('get_email_by_login', { login_input: login });
 
-      if (lookupError || !userData) {
+      if (lookupError || !emailResult) {
         throw new Error('Invalid username or password');
       }
 
       // Now sign in with the email
       const { data, error } = await supabase.auth.signInWithPassword({
-        email: userData.email,
+        email: emailResult,
         password,
       });
       

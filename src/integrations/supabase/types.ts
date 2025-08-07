@@ -537,6 +537,10 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: string
       }
+      get_email_by_login: {
+        Args: { login_input: string }
+        Returns: string
+      }
     }
     Enums: {
       [_ in never]: never

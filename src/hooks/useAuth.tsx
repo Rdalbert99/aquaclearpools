@@ -53,106 +53,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         setSession(session);
         
         if (session?.user) {
-          console.log('User found, fetching profile data...');
+          console.log('User found, ensuring profile exists...');
           
-          try {
-            // Fetch user profile data before setting user state
-            console.log('Attempting to fetch profile for user:', session.user.id);
-            
-            // Add timeout to prevent infinite waiting
-            let userData = null;
-            let error = null;
-            
-            try {
-              const result = await Promise.race([
-                supabase
-                  .from('users')
-                  .select('role, name')
-                  .eq('id', session.user.id)
-                  .single(),
-                new Promise((_, reject) => 
-                  setTimeout(() => reject(new Error('Profile fetch timeout')), 5000)
-                )
-              ]) as any;
-              userData = result?.data;
-              error = result?.error;
-            } catch (timeoutError) {
-              console.log('Profile fetch timed out');
-              error = timeoutError;
-            }
-            
-            console.log('Profile fetch result:', { userData, error });
-            
-            if (userData && !error) {
-              console.log('Profile loaded successfully:', userData);
-              setUser({ ...session.user, ...userData });
-            } else {
-              console.log('Profile fetch failed, trying fallback email lookup');
-              // Try to get user by email as fallback
-              try {
-                const { data: emailUserData, error: emailError } = await supabase
-                  .from('users')
-                  .select('role, name, login')
-                  .eq('email', session.user.email)
-                  .order('created_at', { ascending: false })
-                  .limit(1)
-                  .single();
-                
-                if (emailUserData && !emailError) {
-                  console.log('Found user by email:', emailUserData);
-                  setUser({ ...session.user, ...emailUserData });
-                } else {
-                  console.log('Email lookup failed, using email-based role detection');
-                  const role = session.user.email === 'admin@poolcleaning.com' ? 'admin' : 'client';
-                  setUser({ 
-                    ...session.user, 
-                    role,
-                    name: session.user.email?.split('@')[0] || 'User'
-                  });
-                }
-              } catch (emailErr) {
-                console.log('Email lookup error, using email-based role detection:', emailErr);
-                const role = session.user.email === 'admin@poolcleaning.com' ? 'admin' : 'client';
-                setUser({ 
-                  ...session.user, 
-                  role,
-                  name: session.user.email?.split('@')[0] || 'User'
-                });
-              }
-            }
-          } catch (err) {
-            console.log('Profile fetch error, trying fallback email lookup:', err);
-            try {
-              const { data: emailUserData, error: emailError } = await supabase
-                .from('users')
-                .select('role, name, login')
-                .eq('email', session.user.email)
-                .order('created_at', { ascending: false })
-                .limit(1)
-                .single();
-              
-              if (emailUserData && !emailError) {
-                console.log('Found user by email after error:', emailUserData);
-                setUser({ ...session.user, ...emailUserData });
-              } else {
-                console.log('Email lookup failed after error, using email-based role detection');
-                const role = session.user.email === 'admin@poolcleaning.com' ? 'admin' : 'client';
-                setUser({ 
-                  ...session.user, 
-                  role,
-                  name: session.user.email?.split('@')[0] || 'User'
-                });
-              }
-            } catch (emailErr) {
-              console.log('Final fallback to email-based role detection:', emailErr);
-              const role = session.user.email === 'admin@poolcleaning.com' ? 'admin' : 'client';
-              setUser({ 
-                ...session.user, 
-                role,
-                name: session.user.email?.split('@')[0] || 'User'
-              });
-            }
-          }
+          // Ensure profile exists and is correct
+          await ensureProfile(session.user);
         } else {
           console.log('No user, clearing state');
           setUser(null);
@@ -181,6 +85,84 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       clearTimeout(loadingTimeout);
     };
   }, []);
+
+  const ensureProfile = async (authUser: User) => {
+    try {
+      console.log('Ensuring profile for user:', authUser.id, authUser.email);
+      
+      // First try to get existing profile by auth user ID
+      const { data: existingProfile, error: profileError } = await supabase
+        .from('users')
+        .select('role, name, login')
+        .eq('id', authUser.id)
+        .single();
+
+      if (existingProfile && !profileError) {
+        console.log('Profile found by ID:', existingProfile);
+        setUser({ ...authUser, ...existingProfile });
+        return;
+      }
+
+      // If no profile by ID, look for profile by email (legacy)
+      const { data: emailProfile, error: emailError } = await supabase
+        .from('users')
+        .select('role, name, login')
+        .eq('email', authUser.email)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .single();
+
+      if (emailProfile && !emailError) {
+        console.log('Profile found by email, updating ID:', emailProfile);
+        
+        // Update the profile to have the correct auth user ID
+        const { error: updateError } = await supabase
+          .from('users')
+          .update({ id: authUser.id })
+          .eq('email', authUser.email)
+          .eq('role', emailProfile.role)
+          .eq('name', emailProfile.name);
+
+        if (!updateError) {
+          console.log('Profile ID updated successfully');
+          setUser({ ...authUser, ...emailProfile });
+          return;
+        } else {
+          console.error('Failed to update profile ID:', updateError);
+        }
+      }
+
+      // If still no profile, create a minimal one
+      console.log('No profile found, creating minimal profile');
+      const role = authUser.email === 'admin@poolcleaning.com' ? 'admin' : 'client';
+      const name = authUser.email?.split('@')[0] || 'User';
+      
+      const { error: insertError } = await supabase
+        .from('users')
+        .insert({
+          id: authUser.id,
+          email: authUser.email,
+          role,
+          name,
+          login: name,
+          password: 'password' // Legacy field
+        });
+
+      if (!insertError) {
+        console.log('Profile created successfully');
+        setUser({ ...authUser, role, name });
+      } else {
+        console.error('Failed to create profile:', insertError);
+        // Fallback to setting user with basic info
+        setUser({ ...authUser, role, name });
+      }
+    } catch (error) {
+      console.error('Error ensuring profile:', error);
+      // Fallback to basic user info
+      const role = authUser.email === 'admin@poolcleaning.com' ? 'admin' : 'client';
+      setUser({ ...authUser, role, name: authUser.email?.split('@')[0] || 'User' });
+    }
+  };
 
   const signIn = async (login: string, password: string) => {
     try {
@@ -220,26 +202,35 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         throw error;
       }
 
-      // Update the authenticated user's profile to match the login used
-      if (data.user && loginUserData && !loginUserError) {
-        console.log('Updating user profile for auth ID:', data.user.id);
-        try {
-          const { error: updateError } = await supabase
-            .from('users')
-            .update({
-              role: loginUserData.role,
-              name: loginUserData.name,
-              login: loginUserData.login
-            })
-            .eq('id', data.user.id);
-          
-          if (updateError) {
-            console.error('Failed to update user profile:', updateError);
-          } else {
-            console.log('Successfully updated user profile with correct role:', loginUserData.role);
+      // Ensure the user profile is correctly set up
+      if (data.user) {
+        await ensureProfile(data.user);
+        
+        // If we have specific login data, make sure the profile matches
+        if (loginUserData && !loginUserError) {
+          console.log('Updating user profile for auth ID:', data.user.id);
+          try {
+            const { error: updateError } = await supabase
+              .from('users')
+              .upsert({
+                id: data.user.id,
+                email: data.user.email,
+                role: loginUserData.role,
+                name: loginUserData.name,
+                login: loginUserData.login,
+                password: 'password' // Legacy field
+              }, {
+                onConflict: 'id'
+              });
+            
+            if (updateError) {
+              console.error('Failed to upsert user profile:', updateError);
+            } else {
+              console.log('Successfully upserted user profile with correct role:', loginUserData.role);
+            }
+          } catch (updateErr) {
+            console.error('Error upserting user profile:', updateErr);
           }
-        } catch (updateErr) {
-          console.error('Error updating user profile:', updateErr);
         }
       }
 

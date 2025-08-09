@@ -118,7 +118,7 @@ export default function ServiceRequestManagement() {
         console.error('Error assigning technician:', error);
         toast({
           title: "Error",
-          description: "Failed to assign technician",
+          description: `Failed to assign technician: ${error.message}`,
           variant: "destructive",
         });
       } else {

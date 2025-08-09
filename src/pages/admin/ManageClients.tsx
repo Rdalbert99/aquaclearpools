@@ -78,10 +78,12 @@ export default function ManageClients() {
   const [deletingClientId, setDeletingClientId] = useState<string | null>(null);
   const [selectedClientForTech, setSelectedClientForTech] = useState<Client | null>(null);
   const [selectedTechId, setSelectedTechId] = useState<string>('');
+  const [duplicateUserIds, setDuplicateUserIds] = useState<string[]>([]);
 
   useEffect(() => {
     loadClients();
     loadTechnicians();
+    loadDuplicateCandidates();
     
     // Timeout to prevent infinite loading
     const timeout = setTimeout(() => {
@@ -184,6 +186,20 @@ export default function ManageClients() {
       setTechnicians(data || []);
     } catch (error) {
       console.error('Error loading technicians:', error);
+    }
+  };
+
+  const loadDuplicateCandidates = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('users')
+        .select('id, login, role')
+        .in('login', ['Beckama', 'beckama23']);
+      if (error) throw error;
+      const ids = (data || []).filter((u: any) => u.role === 'client').map((u: any) => u.id);
+      setDuplicateUserIds(ids);
+    } catch (e) {
+      console.error('Error loading duplicate candidates:', e);
     }
   };
 
@@ -337,6 +353,37 @@ export default function ManageClients() {
           </Link>
         </Button>
       </div>
+      {duplicateUserIds.length > 0 && (
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-3">
+              <div>
+                <p className="font-medium">Duplicate accounts detected for "Beckama".</p>
+                <p className="text-muted-foreground text-sm">Remove extra client accounts and their linked client records, keeping only the admin.</p>
+              </div>
+              <Button
+                variant="destructive"
+                onClick={async () => {
+                  try {
+                    const { error } = await supabase.functions.invoke('delete-users-and-clients', {
+                      body: { userIds: duplicateUserIds },
+                    });
+                    if (error) throw new Error(error.message || 'Cleanup failed');
+                    toast({ title: 'Cleanup complete', description: 'Removed duplicate client accounts.' });
+                    setDuplicateUserIds([]);
+                    await loadClients();
+                  } catch (e: any) {
+                    console.error('Cleanup error', e);
+                    toast({ title: 'Cleanup failed', description: e.message || 'Please try again.', variant: 'destructive' });
+                  }
+                }}
+              >
+                Remove duplicates
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Stats Summary */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">

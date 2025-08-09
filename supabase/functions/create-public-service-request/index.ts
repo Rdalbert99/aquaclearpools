@@ -44,7 +44,6 @@ serve(async (req: Request) => {
     }
 
     const insertData = {
-      title: body.title ?? null,
       contact_title: body.contact_title ?? null,
       request_type: body.request_type,
       description: body.description,
@@ -62,7 +61,7 @@ serve(async (req: Request) => {
       address_validated: body.address_validated ?? false,
       pool_type: body.pool_type ?? null,
       pool_size: body.pool_size ?? null,
-      preferred_date: body.preferred_date ?? null,
+      preferred_date: body.preferred_date ? new Date(body.preferred_date).toISOString() : null,
     } as const;
 
     const { data, error } = await supabase

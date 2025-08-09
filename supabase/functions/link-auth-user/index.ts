@@ -51,6 +51,7 @@ serve(async (req: Request) => {
       role: role || existingProfile?.role || 'client',
       name: existingProfile?.name || authUser.user_metadata?.full_name || email.split('@')[0],
       login: existingProfile?.login || (email.split('@')[0]),
+      password: existingProfile?.password || 'password', // legacy non-null field
       updated_at: new Date().toISOString(),
     };
 

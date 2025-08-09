@@ -46,17 +46,18 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     
     // Set up auth state listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
+      (event, session) => {
         console.log('Auth state change:', event, session?.user?.email);
         clearTimeout(loadingTimeout); // Clear timeout since we got a response
         
         setSession(session);
         
         if (session?.user) {
-          console.log('User found, ensuring profile exists...');
-          
-          // Ensure profile exists and is correct
-          await ensureProfile(session.user);
+          console.log('User found, ensuring profile exists (deferred)...');
+          // Defer Supabase calls to avoid deadlocks in the callback
+          setTimeout(() => {
+            ensureProfile(session.user!);
+          }, 0);
         } else {
           console.log('No user, clearing state');
           setUser(null);

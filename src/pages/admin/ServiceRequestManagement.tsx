@@ -218,7 +218,7 @@ export default function ServiceRequestManagement() {
     );
   }
 
-  const availableRequests = requests.filter(r => (r.status === 'pending' || r.status === 'approved') && !r.assigned_technician_id);
+  
   const pendingRequests = requests.filter(r => r.status === 'pending');
   const assignedRequests = requests.filter(r => r.status === 'assigned');
   const inProgressRequests = requests.filter(r => r.status === 'in_progress');
@@ -273,83 +273,6 @@ export default function ServiceRequestManagement() {
         </Card>
       </div>
 
-      {/* Available (Unassigned) Service Requests */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Available Service Requests</CardTitle>
-          <CardDescription>Approve, schedule, and assign new requests</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            {availableRequests.map((request) => (
-              <div key={request.id} className="border rounded-lg p-4 hover:bg-muted/50 transition-colors">
-                <div className="grid grid-cols-1 md:grid-cols-6 gap-4 items-center">
-                  <div className="md:col-span-2">
-                    <div className="flex items-center space-x-2">
-                      <User className="h-4 w-4 text-muted-foreground" />
-                      <span className="font-medium">{request.contact_name || 'Unknown'}</span>
-                    </div>
-                    <p className="text-sm text-muted-foreground">{request.contact_email}</p>
-                    <p className="text-sm text-muted-foreground">{request.contact_phone}</p>
-                  </div>
-                  <div>
-                    <div className="flex items-center space-x-2">
-                      <MapPin className="h-4 w-4 text-muted-foreground" />
-                      <span className="text-sm">{request.request_type}</span>
-                    </div>
-                    <p className="text-xs text-muted-foreground">{request.contact_address}</p>
-                    <p className="text-xs text-muted-foreground mt-1">{request.description}</p>
-                  </div>
-                  <div className="space-y-1">
-                    <Badge variant={getPriorityColor(request.priority)}>
-                      {request.priority} priority
-                    </Badge>
-                    <Badge variant={getStatusColor(request.status)}>
-                      {request.status}
-                    </Badge>
-                    <div className="flex items-center gap-2 mt-2">
-                      <Input
-                        type="date"
-                        value={scheduleDates[request.id] || ''}
-                        onChange={(e) => setScheduleDates({ ...scheduleDates, [request.id]: e.target.value })}
-                      />
-                      <Button variant="outline" size="sm" onClick={() => scheduleRequest(request.id)}>
-                        Schedule
-                      </Button>
-                    </div>
-                  </div>
-                  <div className="flex gap-2">
-                    {request.status === 'pending' && (
-                      <Button size="sm" onClick={() => approveRequest(request.id)}>Approve</Button>
-                    )}
-                  </div>
-                  <div>
-                    <Select
-                      onValueChange={(techId) => assignTechnician(request.id, techId)}
-                      disabled={assigning === request.id}
-                    >
-                      <SelectTrigger className="w-full">
-                        <SelectValue placeholder="Assign Tech" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {technicians.map((tech) => (
-                          <SelectItem key={tech.id} value={tech.id}>
-                            {tech.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    {assigning === request.id && <LoadingSpinner />}
-                  </div>
-                </div>
-              </div>
-            ))}
-            {availableRequests.length === 0 && (
-              <p className="text-center text-muted-foreground py-8">No available requests</p>
-            )}
-          </div>
-        </CardContent>
-      </Card>
 
       {/* Service Requests List */}
       <Card>
@@ -407,8 +330,21 @@ export default function ServiceRequestManagement() {
                     )}
                   </div>
 
-                  <div>
+                  <div className="space-y-2">
                     {request.status === 'pending' && (
+                      <Button size="sm" onClick={() => approveRequest(request.id)}>Approve</Button>
+                    )}
+                    <div className="flex items-center gap-2">
+                      <Input
+                        type="date"
+                        value={scheduleDates[request.id] || ''}
+                        onChange={(e) => setScheduleDates({ ...scheduleDates, [request.id]: e.target.value })}
+                      />
+                      <Button variant="outline" size="sm" onClick={() => scheduleRequest(request.id)}>
+                        Schedule
+                      </Button>
+                    </div>
+                    {!request.assigned_technician_id && (
                       <Select
                         onValueChange={(techId) => assignTechnician(request.id, techId)}
                         disabled={assigning === request.id}

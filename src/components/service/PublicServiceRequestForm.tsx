@@ -118,10 +118,15 @@ export function PublicServiceRequestForm({ open, onOpenChange }: PublicServiceRe
       
       console.log('Database insert data:', insertData);
       
-      // Create a service request via Edge Function (bypasses RLS for public form)
-      const { data: createData, error: createError } = await supabase.functions.invoke('create-public-service-request', {
+      // Create a service request via Edge Function (bypasses RLS for public form) with timeout
+      const createPromise = supabase.functions.invoke('create-public-service-request', {
         body: insertData,
       });
+      const createTimeoutMs = 10000;
+      const createTimeout = new Promise<{ data?: any; error: any }>((resolve) =>
+        setTimeout(() => resolve({ error: new Error('Request timeout') }), createTimeoutMs)
+      );
+      const { data: createData, error: createError } = await Promise.race([createPromise as any, createTimeout]);
 
       if (createError) {
         console.error('Create request error:', createError);
@@ -133,8 +138,8 @@ export function PublicServiceRequestForm({ open, onOpenChange }: PublicServiceRe
         return;
       }
 
-      // Send email using edge function
-      const { error: emailError } = await supabase.functions.invoke('send-service-request-email', {
+      // Send email using edge function with timeout fallback
+      const emailPromise = supabase.functions.invoke('send-service-request-email', {
         body: {
           customerData: { ...data, name: fullName },
           requestDetails: {
@@ -144,9 +149,14 @@ export function PublicServiceRequestForm({ open, onOpenChange }: PublicServiceRe
           }
         },
       });
+      const timeoutMs = 8000;
+      const timeoutPromise = new Promise<{ error: any }>((resolve) =>
+        setTimeout(() => resolve({ error: null }), timeoutMs)
+      );
+      const { error: emailError } = await Promise.race([emailPromise as any, timeoutPromise]);
 
       if (emailError) {
-        console.error('Email error:', emailError);
+        console.warn('Email function error or timeout, continuing:', emailError);
         toast({
           title: "Request Submitted",
           description: "Your service request has been recorded. We'll contact you soon!",

@@ -6,7 +6,7 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "./hooks/useAuth";
 import { ProtectedRoute } from "./components/auth/ProtectedRoute";
 import { Navbar } from "./components/layout/Navbar";
-import { LoadingSpinner } from "./components/ui/loading-spinner";
+
 
 // Pages
 import Index from "./pages/Index";
@@ -45,9 +45,6 @@ const queryClient = new QueryClient();
 const AppRoutes = () => {
   const { loading, isAuthenticated, user } = useAuth();
 
-  if (loading) {
-    return <LoadingSpinner />;
-  }
 
   return (
     <div className="min-h-screen bg-background">

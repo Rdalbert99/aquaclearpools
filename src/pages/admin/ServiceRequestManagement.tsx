@@ -39,6 +39,7 @@ interface ServiceRequest {
     name: string;
   };
   started_at?: string;
+  preferred_date?: string | null;
   completed_date?: string;
 }
 
@@ -56,6 +57,7 @@ export default function ServiceRequestManagement() {
   const [loading, setLoading] = useState(true);
   const [assigning, setAssigning] = useState<string | null>(null);
   const [scheduleDates, setScheduleDates] = useState<Record<string, string>>({});
+  const [filter, setFilter] = useState<'all' | 'pending' | 'assigned' | 'scheduled' | 'completed'>('all');
 
   useEffect(() => {
     loadData();
@@ -219,10 +221,18 @@ export default function ServiceRequestManagement() {
   }
 
   
-  const pendingRequests = requests.filter(r => r.status === 'pending');
-  const assignedRequests = requests.filter(r => r.status === 'assigned');
-  const inProgressRequests = requests.filter(r => r.status === 'in_progress');
+  const pendingRequests = requests.filter(r => !r.assigned_technician_id);
+  const assignedRequests = requests.filter(r => !!r.assigned_technician_id && !r.preferred_date && r.status !== 'completed');
+  const scheduledRequests = requests.filter(r => !!r.preferred_date && r.status !== 'completed');
   const completedRequests = requests.filter(r => r.status === 'completed');
+
+  const filteredRequests = (
+    filter === 'all' ? requests :
+    filter === 'pending' ? pendingRequests :
+    filter === 'assigned' ? assignedRequests :
+    filter === 'scheduled' ? scheduledRequests :
+    completedRequests
+  );
 
   return (
     <div className="p-6 space-y-6">
@@ -235,7 +245,7 @@ export default function ServiceRequestManagement() {
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card>
+        <Card onClick={() => setFilter('pending')} className={`cursor-pointer ${filter === 'pending' ? 'ring-2 ring-primary' : ''}`}>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Pending Requests</CardTitle>
             <AlertTriangle className="h-4 w-4 text-orange-500" />
@@ -244,7 +254,7 @@ export default function ServiceRequestManagement() {
             <div className="text-2xl font-bold">{pendingRequests.length}</div>
           </CardContent>
         </Card>
-        <Card>
+        <Card onClick={() => setFilter('assigned')} className={`cursor-pointer ${filter === 'assigned' ? 'ring-2 ring-primary' : ''}`}>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Assigned</CardTitle>
             <Users className="h-4 w-4 text-blue-500" />
@@ -253,16 +263,16 @@ export default function ServiceRequestManagement() {
             <div className="text-2xl font-bold">{assignedRequests.length}</div>
           </CardContent>
         </Card>
-        <Card>
+        <Card onClick={() => setFilter('scheduled')} className={`cursor-pointer ${filter === 'scheduled' ? 'ring-2 ring-primary' : ''}`}>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">In Progress</CardTitle>
+            <CardTitle className="text-sm font-medium">Scheduled</CardTitle>
             <Clock className="h-4 w-4 text-yellow-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{inProgressRequests.length}</div>
+            <div className="text-2xl font-bold">{scheduledRequests.length}</div>
           </CardContent>
         </Card>
-        <Card>
+        <Card onClick={() => setFilter('completed')} className={`cursor-pointer ${filter === 'completed' ? 'ring-2 ring-primary' : ''}`}>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Completed</CardTitle>
             <CheckCircle className="h-4 w-4 text-green-500" />
@@ -274,6 +284,14 @@ export default function ServiceRequestManagement() {
       </div>
 
 
+      <div className="flex flex-wrap items-center gap-2">
+        <Button variant={filter === 'all' ? 'default' : 'outline'} onClick={() => setFilter('all')}>All Service Requests</Button>
+        <Button variant={filter === 'pending' ? 'default' : 'outline'} onClick={() => setFilter(filter === 'pending' ? 'all' : 'pending')}>Pending</Button>
+        <Button variant={filter === 'assigned' ? 'default' : 'outline'} onClick={() => setFilter(filter === 'assigned' ? 'all' : 'assigned')}>Assigned</Button>
+        <Button variant={filter === 'scheduled' ? 'default' : 'outline'} onClick={() => setFilter(filter === 'scheduled' ? 'all' : 'scheduled')}>Scheduled</Button>
+        <Button variant={filter === 'completed' ? 'default' : 'outline'} onClick={() => setFilter(filter === 'completed' ? 'all' : 'completed')}>Completed</Button>
+      </div>
+
       {/* Service Requests List */}
       <Card>
         <CardHeader>
@@ -282,7 +300,7 @@ export default function ServiceRequestManagement() {
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
-            {requests.map((request) => (
+            {filteredRequests.map((request) => (
               <div key={request.id} className="border rounded-lg p-4 hover:bg-muted/50 transition-colors">
                 <div className="grid grid-cols-1 md:grid-cols-6 gap-4 items-center">
                   <div className="md:col-span-2">
@@ -366,7 +384,7 @@ export default function ServiceRequestManagement() {
                 </div>
               </div>
             ))}
-            {requests.length === 0 && (
+            {filteredRequests.length === 0 && (
               <p className="text-center text-muted-foreground py-8">No service requests found</p>
             )}
           </div>

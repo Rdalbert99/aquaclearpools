@@ -546,6 +546,17 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      get_all_technicians: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          id: string
+          name: string
+          email: string
+          login: string
+          phone: string
+          created_at: string
+        }[]
+      }
       get_current_user_role: {
         Args: Record<PropertyKey, never>
         Returns: string

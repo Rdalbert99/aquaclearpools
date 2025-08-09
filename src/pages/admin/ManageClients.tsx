@@ -176,11 +176,7 @@ export default function ManageClients() {
 
   const loadTechnicians = async () => {
     try {
-      const { data, error } = await supabase
-        .from('users')
-        .select('id, name, email')
-        .eq('role', 'tech')
-        .order('name');
+      const { data, error } = await supabase.rpc('get_all_technicians');
 
       if (error) throw error;
       setTechnicians(data || []);

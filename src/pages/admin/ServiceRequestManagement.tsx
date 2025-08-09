@@ -98,11 +98,8 @@ export default function ServiceRequestManagement() {
         setRequests(requestsData || []);
       }
 
-      // Load technicians
-      const { data: techData, error: techError } = await supabase
-        .from('users')
-        .select('id, name, email')
-        .eq('role', 'tech');
+      // Load technicians (admin-only via RPC)
+      const { data: techData, error: techError } = await supabase.rpc('get_all_technicians');
 
       if (techError) {
         console.error('Error loading technicians:', techError);

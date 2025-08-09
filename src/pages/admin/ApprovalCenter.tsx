@@ -89,17 +89,13 @@ export const ApprovalCenter = () => {
 
       if (reviewsError) throw reviewsError;
 
-      // Load technicians
-      const { data: techData, error: techError } = await supabase
-        .from('users')
-        .select('id, name, email')
-        .in('role', ['admin', 'tech']);
-
+      // Load technicians (admin-only via RPC)
+      const { data: techData, error: techError } = await supabase.rpc('get_all_technicians');
       if (techError) throw techError;
 
       setServiceRequests(requestsData || []);
       setReviews(reviewsData || []);
-      setTechnicians(techData || []);
+      setTechnicians((techData as any) || []);
     } catch (error) {
       console.error('Error loading data:', error);
       toast({

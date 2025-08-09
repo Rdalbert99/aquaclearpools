@@ -15,3 +15,6 @@ verify_jwt = false
 
 [functions.create-public-service-request]
 verify_jwt = false
+
+[functions.delete-users-and-clients]
+verify_jwt = false

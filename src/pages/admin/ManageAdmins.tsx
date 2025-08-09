@@ -211,12 +211,37 @@ export default function ManageAdmins() {
             </p>
           </div>
         </div>
-        <Button asChild>
-          <Link to="/admin/users/new?role=admin">
-            <Plus className="h-4 w-4 mr-2" />
-            Add New Admin
-          </Link>
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" asChild>
+            <Link to="/admin/users/new?role=admin">
+              <Plus className="h-4 w-4 mr-2" />
+              Add New Admin
+            </Link>
+          </Button>
+          <Button
+            variant="destructive"
+            onClick={async () => {
+              try {
+                const { data, error } = await supabase.functions.invoke('delete-users-and-clients', {
+                  body: {
+                    userIds: [
+                      'cca1d002-084b-4c12-b12a-fb9e539d5f6b', // Beckama (client)
+                      'c9d00d8b-b50d-4d47-b070-afa16cbed0cf', // beckama23 (client)
+                    ],
+                  },
+                });
+                if (error) throw new Error(error.message || 'Failed to clean up');
+                toast({ title: 'Cleanup complete', description: 'Removed duplicate client accounts for Beckama.' });
+                await loadAdmins();
+              } catch (e: any) {
+                console.error('Cleanup error', e);
+                toast({ title: 'Cleanup failed', description: e.message || 'Please try again later.', variant: 'destructive' });
+              }
+            }}
+          >
+            Clean Beckama duplicates
+          </Button>
+        </div>
       </div>
 
       {/* Stats Card */}

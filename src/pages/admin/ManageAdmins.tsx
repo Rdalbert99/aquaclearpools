@@ -36,7 +36,7 @@ export default function ManageAdmins() {
   const [admins, setAdmins] = useState<AdminUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [editingAdmin, setEditingAdmin] = useState<AdminUser | null>(null);
-  const [editForm, setEditForm] = useState({ name: '', email: '', phone: '' });
+  const [editForm, setEditForm] = useState({ name: '', email: '', phone: '', login: '' });
   const [newPassword, setNewPassword] = useState('');
   const [resettingPasswordFor, setResettingPasswordFor] = useState<AdminUser | null>(null);
   const { toast } = useToast();
@@ -68,7 +68,7 @@ export default function ManageAdmins() {
       
       const { error } = await supabase
         .from('users')
-        .delete()
+        .update({ role: 'client', updated_at: new Date().toISOString() })
         .eq('id', adminId);
 
       if (error) {
@@ -101,7 +101,8 @@ export default function ManageAdmins() {
     setEditForm({
       name: admin.name,
       email: admin.email,
-      phone: admin.phone || ''
+      phone: admin.phone || '',
+      login: admin.login || ''
     });
   };
 
@@ -115,6 +116,7 @@ export default function ManageAdmins() {
           name: editForm.name,
           email: editForm.email,
           phone: editForm.phone || null,
+          login: editForm.login,
           updated_at: new Date().toISOString()
         })
         .eq('id', editingAdmin.id);
@@ -309,6 +311,15 @@ export default function ManageAdmins() {
                             type="email"
                             value={editForm.email}
                             onChange={(e) => setEditForm(prev => ({ ...prev, email: e.target.value }))}
+                          />
+                        </div>
+                        
+                        <div className="space-y-2">
+                          <Label htmlFor="edit-login">Username</Label>
+                          <Input
+                            id="edit-login"
+                            value={editForm.login}
+                            onChange={(e) => setEditForm(prev => ({ ...prev, login: e.target.value }))}
                           />
                         </div>
                         

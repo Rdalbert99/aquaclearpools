@@ -37,6 +37,7 @@ import ClientDashboard from "./pages/client/Dashboard";
 import ClientServices from "./pages/client/Services";
 import RequestService from "./pages/client/RequestService";
 import ClientProfile from "./pages/client/Profile";
+import Profile from "./pages/Profile";
 import Contact from "./pages/Contact";
 
 const queryClient = new QueryClient();
@@ -75,6 +76,14 @@ const AppRoutes = () => {
             ) : (
               <Navigate to="/auth/login" replace />
             )
+          } 
+        />
+        <Route 
+          path="/profile" 
+          element={
+            <ProtectedRoute allowedRoles={['admin', 'tech', 'client']}>
+              <Profile />
+            </ProtectedRoute>
           } 
         />
         

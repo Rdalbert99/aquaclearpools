@@ -37,6 +37,7 @@ import ClientDashboard from "./pages/client/Dashboard";
 import ClientServices from "./pages/client/Services";
 import RequestService from "./pages/client/RequestService";
 import ClientProfile from "./pages/client/Profile";
+import Contact from "./pages/Contact";
 
 const queryClient = new QueryClient();
 
@@ -53,6 +54,7 @@ const AppRoutes = () => {
       <Routes>
         {/* Public routes - Landing page accessible to all users */}
         <Route path="/" element={<Index />} />
+        <Route path="/contact" element={<Contact />} />
         <Route path="/auth/login" element={<Login />} />
         <Route path="/auth/signup" element={<Signup />} />
         <Route path="/auth/client-signup" element={<ClientSignup />} />

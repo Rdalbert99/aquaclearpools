@@ -63,6 +63,17 @@ export default function ServiceRequestManagement() {
 
   useEffect(() => {
     loadData();
+
+    // Realtime updates for new/updated service requests
+    const channel = supabase
+      .channel('service-requests')
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'service_requests' }, () => loadData())
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'service_requests' }, () => loadData())
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, []);
 
   const loadData = async () => {

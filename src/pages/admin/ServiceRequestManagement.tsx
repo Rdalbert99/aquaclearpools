@@ -108,9 +108,8 @@ export default function ServiceRequestManagement() {
     try {
       const { error } = await supabase
         .from('service_requests')
-        .update({ 
-          assigned_technician_id: technicianId,
-          status: 'assigned'
+        .update({
+          assigned_technician_id: technicianId
         })
         .eq('id', requestId);
 

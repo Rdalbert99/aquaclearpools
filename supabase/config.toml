@@ -12,3 +12,6 @@ verify_jwt = false
 
 [functions.send-service-request-email]
 verify_jwt = false
+
+[functions.create-public-service-request]
+verify_jwt = false

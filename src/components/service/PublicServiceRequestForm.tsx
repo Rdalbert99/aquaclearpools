@@ -118,13 +118,19 @@ export function PublicServiceRequestForm({ open, onOpenChange }: PublicServiceRe
       
       console.log('Database insert data:', insertData);
       
-      // Create a service request in the database without requiring authentication
-      const { error: dbError } = await supabase
-        .from('service_requests')
-        .insert(insertData);
+      // Create a service request via Edge Function (bypasses RLS for public form)
+      const { data: createData, error: createError } = await supabase.functions.invoke('create-public-service-request', {
+        body: insertData,
+      });
 
-      if (dbError) {
-        console.error('Database error:', dbError);
+      if (createError) {
+        console.error('Create request error:', createError);
+        toast({
+          title: "Submission failed",
+          description: "We couldn't save your request. Please try again.",
+          variant: "destructive",
+        });
+        return;
       }
 
       // Send email using edge function

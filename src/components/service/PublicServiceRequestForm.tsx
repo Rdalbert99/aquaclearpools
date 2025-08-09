@@ -13,6 +13,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { AddressInput } from '@/components/ui/address-input';
 
 const formSchema = z.object({
+  title: z.string().optional(),
   firstName: z.string().min(2, 'First name must be at least 2 characters'),
   lastName: z.string().min(2, 'Last name must be at least 2 characters'),
   email: z.string().email('Please enter a valid email address'),
@@ -41,6 +42,7 @@ export function PublicServiceRequestForm({ open, onOpenChange }: PublicServiceRe
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
     defaultValues: {
+      title: '',
       firstName: '',
       lastName: '',
       email: '',
@@ -63,6 +65,7 @@ export function PublicServiceRequestForm({ open, onOpenChange }: PublicServiceRe
       const fullName = `${data.firstName.trim()} ${data.lastName.trim()}`.trim();
       
       const insertData: any = {
+        title: data.title || null,
         request_type: data.serviceType,
         description: data.description,
         priority: data.urgency,
@@ -151,6 +154,19 @@ export function PublicServiceRequestForm({ open, onOpenChange }: PublicServiceRe
 
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+            <FormField
+              control={form.control}
+              name="title"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Title (Optional)</FormLabel>
+                  <FormControl>
+                    <Input placeholder="Brief title for your service request..." {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <FormField
                 control={form.control}

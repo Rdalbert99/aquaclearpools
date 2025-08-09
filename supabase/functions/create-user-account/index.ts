@@ -100,9 +100,11 @@ const handler = async (req: Request): Promise<Response> => {
     }
 
     // Step 3: Create user profile in custom users table
+    if (!authUser) {
+      throw new Error('Auth user could not be resolved for provided email');
+    }
     const userRecord: any = {
-      // Generate new UUID for profile - don't use auth user ID to avoid conflicts
-      // id: authUser.id,  // Removed to let DB generate new UUID
+      id: authUser.id,
       name: fullName,
       first_name: userData.firstName,
       last_name: userData.lastName,
@@ -130,7 +132,7 @@ const handler = async (req: Request): Promise<Response> => {
     console.log('Creating user profile...');
     const { data: profileUser, error: profileError } = await supabaseAdmin
       .from('users')
-      .insert(userRecord)
+      .upsert(userRecord, { onConflict: 'id' })
       .select()
       .single();
 

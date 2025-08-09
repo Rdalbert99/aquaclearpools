@@ -1,0 +1,95 @@
+import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.53.0';
+
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+};
+
+type LinkRequest = {
+  email: string;
+  role?: 'admin' | 'tech' | 'client';
+};
+
+serve(async (req: Request) => {
+  if (req.method === 'OPTIONS') {
+    return new Response(null, { headers: corsHeaders });
+  }
+
+  try {
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+
+    const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey, {
+      auth: { autoRefreshToken: false, persistSession: false }
+    });
+
+    const { email, role }: LinkRequest = await req.json();
+    if (!email) {
+      return new Response(JSON.stringify({ error: 'email is required' }), { status: 400, headers: { 'Content-Type': 'application/json', ...corsHeaders } });
+    }
+
+    // Find auth user by email
+    const { data: usersList, error: listErr } = await supabaseAdmin.auth.admin.listUsers();
+    if (listErr) throw new Error(listErr.message);
+    const authUser = usersList?.users?.find((u) => u.email === email);
+    if (!authUser) {
+      return new Response(JSON.stringify({ error: 'No auth user found for email' }), { status: 404, headers: { 'Content-Type': 'application/json', ...corsHeaders } });
+    }
+
+    // Fetch an existing profile row by email (if any)
+    const { data: existingProfile, error: profileErr } = await supabaseAdmin
+      .from('users')
+      .select('*')
+      .eq('email', email)
+      .order('created_at', { ascending: false })
+      .maybeSingle();
+
+    let upsertRecord: any = {
+      id: authUser.id,
+      email,
+      role: role || existingProfile?.role || 'client',
+      name: existingProfile?.name || authUser.user_metadata?.full_name || email.split('@')[0],
+      login: existingProfile?.login || (email.split('@')[0]),
+      updated_at: new Date().toISOString(),
+    };
+
+    if (!existingProfile) {
+      upsertRecord.created_at = new Date().toISOString();
+    }
+
+    const { data: upserted, error: upsertErr } = await supabaseAdmin
+      .from('users')
+      .upsert(upsertRecord, { onConflict: 'id' })
+      .select()
+      .single();
+
+    if (upsertErr) throw upsertErr;
+
+    // Optionally clean up duplicate rows with same email but different id
+    const { data: dupes } = await supabaseAdmin
+      .from('users')
+      .select('id')
+      .eq('email', email);
+
+    if (dupes && dupes.length > 1) {
+      const idsToDelete = dupes
+        .map((r) => r.id)
+        .filter((id) => id !== authUser.id);
+      if (idsToDelete.length > 0) {
+        await supabaseAdmin
+          .from('users')
+          .delete()
+          .in('id', idsToDelete);
+      }
+    }
+
+    return new Response(
+      JSON.stringify({ success: true, id: upserted.id, role: upserted.role }),
+      { status: 200, headers: { 'Content-Type': 'application/json', ...corsHeaders } }
+    );
+  } catch (e: any) {
+    console.error('link-auth-user error:', e);
+    return new Response(JSON.stringify({ error: e.message || 'failed to link user' }), { status: 500, headers: { 'Content-Type': 'application/json', ...corsHeaders } });
+  }
+});

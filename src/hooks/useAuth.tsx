@@ -113,22 +113,29 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         .single();
 
       if (emailProfile && !emailError) {
-        console.log('Profile found by email, updating ID:', emailProfile);
-        
-        // Update the profile to have the correct auth user ID
-        const { error: updateError } = await supabase
-          .from('users')
-          .update({ id: authUser.id })
-          .eq('email', authUser.email)
-          .eq('role', emailProfile.role)
-          .eq('name', emailProfile.name);
+        console.log('Profile found by email, linking via edge function...');
+        try {
+          const { data: linkData, error: linkError } = await supabase.functions.invoke('link-auth-user', {
+            body: { email: authUser.email, role: emailProfile.role }
+          });
+          if (linkError) {
+            console.error('Failed to link auth user:', linkError);
+          }
+        } catch (linkErr) {
+          console.error('Invoke link-auth-user failed:', linkErr);
+        }
 
-        if (!updateError) {
-          console.log('Profile ID updated successfully');
-          setUser({ ...authUser, ...emailProfile });
+        // Fetch the now-linked profile by auth ID
+        const { data: profileById } = await supabase
+          .from('users')
+          .select('role, name, login')
+          .eq('id', authUser.id)
+          .maybeSingle();
+
+        if (profileById) {
+          console.log('Linked profile found by ID:', profileById);
+          setUser({ ...authUser, ...profileById });
           return;
-        } else {
-          console.error('Failed to update profile ID:', updateError);
         }
       }
 

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -43,6 +43,34 @@ export default function ManageAdmins() {
 
   useEffect(() => {
     loadAdmins();
+  }, []);
+
+  // Auto-clean duplicate client accounts for Beckama on first load
+  const cleanedRef = useRef(false);
+  useEffect(() => {
+    if (cleanedRef.current) return;
+    (async () => {
+      try {
+        const { data, error } = await supabase
+          .from('users')
+          .select('id, login, role')
+          .in('login', ['Beckama', 'beckama23']);
+        if (error) return;
+        const ids = (data || []).filter((u: any) => u.role === 'client').map((u: any) => u.id);
+        if (ids.length > 0) {
+          const { error: fnErr } = await supabase.functions.invoke('delete-users-and-clients', {
+            body: { userIds: ids },
+          });
+          if (!fnErr) {
+            cleanedRef.current = true;
+            toast({ title: 'Cleanup complete', description: 'Removed duplicate client accounts.' });
+            await loadAdmins();
+          }
+        }
+      } catch (e) {
+        console.error('Auto-clean error', e);
+      }
+    })();
   }, []);
 
   const loadAdmins = async () => {
@@ -218,29 +246,6 @@ export default function ManageAdmins() {
               Add New Admin
             </Link>
           </Button>
-          <Button
-            variant="destructive"
-            onClick={async () => {
-              try {
-                const { data, error } = await supabase.functions.invoke('delete-users-and-clients', {
-                  body: {
-                    userIds: [
-                      'cca1d002-084b-4c12-b12a-fb9e539d5f6b', // Beckama (client)
-                      'c9d00d8b-b50d-4d47-b070-afa16cbed0cf', // beckama23 (client)
-                    ],
-                  },
-                });
-                if (error) throw new Error(error.message || 'Failed to clean up');
-                toast({ title: 'Cleanup complete', description: 'Removed duplicate client accounts for Beckama.' });
-                await loadAdmins();
-              } catch (e: any) {
-                console.error('Cleanup error', e);
-                toast({ title: 'Cleanup failed', description: e.message || 'Please try again later.', variant: 'destructive' });
-              }
-            }}
-          >
-            Clean Beckama duplicates
-          </Button>
         </div>
       </div>
 
@@ -266,12 +271,12 @@ export default function ManageAdmins() {
                 <User className="h-5 w-5" />
                 {admin.name}
               </CardTitle>
-              <CardDescription>
+              <div className="mt-1">
                 <Badge variant="secondary" className="w-fit">
                   <Shield className="h-3 w-3 mr-1" />
                   Administrator
                 </Badge>
-              </CardDescription>
+              </div>
             </CardHeader>
             <CardContent className="space-y-3">
               <div className="space-y-2">

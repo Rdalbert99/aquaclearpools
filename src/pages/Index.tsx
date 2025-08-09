@@ -86,7 +86,7 @@ const Index = () => {
               Schedule Pool Service
             </Button>
             <Link to="/auth/login?demo=client">
-              <Button size="lg" variant="outline" className="bg-white/10 border-white text-white hover:bg-white/20">
+              <Button size="lg" variant="outline" className="bg-white/10 border-white text-white hover:bg-white/20 text-lg px-8 py-6 h-auto">
                 Existing Customer Login
               </Button>
             </Link>

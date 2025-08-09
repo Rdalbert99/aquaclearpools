@@ -50,7 +50,7 @@ const handler = async (req: Request): Promise<Response> => {
       .from('users')
       .select('login')
       .eq('login', userData.login)
-      .single();
+      .maybeSingle();
 
     if (existingUserByLogin) {
       return new Response(
@@ -66,6 +66,7 @@ const handler = async (req: Request): Promise<Response> => {
     const { data: existingAuthUsers, error: authCheckError } = await supabaseAdmin.auth.admin.listUsers();
     let authUser = existingAuthUsers?.users?.find(user => user.email === userData.email);
     
+    let createdNewAuth = false;
     if (!authUser) {
       // Create user in Supabase Auth only if one doesn't exist
       console.log('Creating new auth user...');
@@ -82,12 +83,18 @@ const handler = async (req: Request): Promise<Response> => {
       });
 
       if (authError) {
+        const msg = String(authError.message || '').toLowerCase();
         console.error('Auth user creation failed:', authError);
-        throw new Error(`Failed to create auth user: ${authError.message}`);
+        if (msg.includes('already registered') || msg.includes('duplicate')) {
+          console.log('Auth user already exists, proceeding without creation');
+        } else {
+          throw new Error(`Failed to create auth user: ${authError.message}`);
+        }
+      } else if (newAuthUser?.user) {
+        createdNewAuth = true;
+        authUser = newAuthUser.user;
+        console.log('New auth user created:', authUser.id);
       }
-
-      authUser = newAuthUser.user;
-      console.log('New auth user created:', authUser.id);
     } else {
       console.log('Using existing auth user:', authUser.id);
     }
@@ -129,8 +136,7 @@ const handler = async (req: Request): Promise<Response> => {
 
     if (profileError) {
       console.error('Profile creation failed:', profileError);
-      // Only cleanup if we created a new auth user
-      if (!existingAuthUsers?.users?.find(user => user.email === userData.email)) {
+      if (createdNewAuth && authUser?.id) {
         await supabaseAdmin.auth.admin.deleteUser(authUser.id);
       }
       throw new Error(`Failed to create user profile: ${profileError.message}`);

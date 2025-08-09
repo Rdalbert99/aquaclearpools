@@ -7,6 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/hooks/useAuth';
 import { Star, Clock, User, Phone, Mail, MapPin, Calendar } from 'lucide-react';
 
 interface ServiceRequest {
@@ -47,6 +48,8 @@ interface Technician {
 }
 
 export const ApprovalCenter = () => {
+  const { user } = useAuth();
+  const isAdmin = (user as any)?.role === 'admin';
   const [serviceRequests, setServiceRequests] = useState<ServiceRequest[]>([]);
   const [reviews, setReviews] = useState<Review[]>([]);
   const [technicians, setTechnicians] = useState<Technician[]>([]);
@@ -136,6 +139,24 @@ export const ApprovalCenter = () => {
       });
     } finally {
       setAssigning(null);
+    }
+  };
+
+  const deleteRequest = async (requestId: string) => {
+    if (!isAdmin) return;
+    const confirmed = window.confirm('Delete this service request? This cannot be undone.');
+    if (!confirmed) return;
+    try {
+      const { error } = await supabase
+        .from('service_requests')
+        .delete()
+        .eq('id', requestId);
+      if (error) throw error;
+      toast({ title: 'Deleted', description: 'Service request removed' });
+      loadData();
+    } catch (error) {
+      console.error('Error deleting request:', error);
+      toast({ title: 'Error', description: 'Failed to delete request', variant: 'destructive' });
     }
   };
 
@@ -302,6 +323,11 @@ export const ApprovalCenter = () => {
                           </Select>
                         )}
                         {assigning === request.id && <LoadingSpinner />}
+                        {isAdmin && (
+                          <Button variant="destructive" size="sm" onClick={() => deleteRequest(request.id)}>
+                            Delete
+                          </Button>
+                        )}
                       </div>
                     </div>
                   </div>

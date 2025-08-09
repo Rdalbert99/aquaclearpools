@@ -51,6 +51,7 @@ interface Technician {
 
 export default function ServiceRequestManagement() {
   const { user } = useAuth();
+  const isAdmin = (user as any)?.role === 'admin';
   const { toast } = useToast();
   const [requests, setRequests] = useState<ServiceRequest[]>([]);
   const [technicians, setTechnicians] = useState<Technician[]>([]);
@@ -58,6 +59,7 @@ export default function ServiceRequestManagement() {
   const [assigning, setAssigning] = useState<string | null>(null);
   const [scheduleDates, setScheduleDates] = useState<Record<string, string>>({});
   const [filter, setFilter] = useState<'all' | 'pending' | 'assigned' | 'scheduled' | 'completed'>('all');
+  const [completedFilterDate, setCompletedFilterDate] = useState<string>('');
 
   useEffect(() => {
     loadData();
@@ -177,6 +179,27 @@ export default function ServiceRequestManagement() {
     }
   };
 
+  const deleteRequest = async (requestId: string) => {
+    if (!isAdmin) return;
+    const confirmed = window.confirm('Delete this service request? This cannot be undone.');
+    if (!confirmed) return;
+    try {
+      const { error } = await supabase
+        .from('service_requests')
+        .delete()
+        .eq('id', requestId);
+      if (error) {
+        console.error('Error deleting request:', error);
+        toast({ title: 'Error', description: 'Failed to delete request', variant: 'destructive' });
+      } else {
+        toast({ title: 'Deleted', description: 'Service request removed' });
+        loadData();
+      }
+    } catch (err) {
+      console.error('Delete error:', err);
+    }
+  };
+
   const getPriorityColor = (priority: string) => {
     switch (priority) {
       case 'emergency': return 'destructive';
@@ -219,14 +242,31 @@ export default function ServiceRequestManagement() {
     );
   }
 
-  
-  const pendingRequests = requests.filter(r => !r.assigned_technician_id);
+  const isSameDay = (a: Date, b: Date) => a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
+  const now = new Date();
+  const oneDayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+
+  const pendingRequests = requests.filter(r => !r.assigned_technician_id && r.status !== 'completed');
   const assignedRequests = requests.filter(r => !!r.assigned_technician_id && !r.preferred_date && r.status !== 'completed');
   const scheduledRequests = requests.filter(r => !!r.preferred_date && r.status !== 'completed');
-  const completedRequests = requests.filter(r => r.status === 'completed');
+  const completedRequests = requests.filter(r => r.status === 'completed').filter(r => {
+    const completedAt = r.completed_date ? new Date(r.completed_date) : undefined;
+    if (!completedAt) return false;
+    if (completedFilterDate) {
+      return isSameDay(completedAt, new Date(completedFilterDate));
+    }
+    return completedAt >= oneDayAgo;
+  });
+
+  const allRequestsFiltered = requests.filter(r => {
+    if (r.status !== 'completed') return true;
+    const completedAt = r.completed_date ? new Date(r.completed_date) : undefined;
+    if (!completedAt) return false;
+    return completedAt >= oneDayAgo;
+  });
 
   const filteredRequests = (
-    filter === 'all' ? requests :
+    filter === 'all' ? allRequestsFiltered :
     filter === 'pending' ? pendingRequests :
     filter === 'assigned' ? assignedRequests :
     filter === 'scheduled' ? scheduledRequests :
@@ -289,6 +329,12 @@ export default function ServiceRequestManagement() {
         <Button variant={filter === 'assigned' ? 'default' : 'outline'} onClick={() => setFilter(filter === 'assigned' ? 'all' : 'assigned')}>Assigned</Button>
         <Button variant={filter === 'scheduled' ? 'default' : 'outline'} onClick={() => setFilter(filter === 'scheduled' ? 'all' : 'scheduled')}>Scheduled</Button>
         <Button variant={filter === 'completed' ? 'default' : 'outline'} onClick={() => setFilter(filter === 'completed' ? 'all' : 'completed')}>Completed</Button>
+        {filter === 'completed' && (
+          <div className="flex items-center gap-2">
+            <Input type="date" value={completedFilterDate || ''} onChange={(e) => setCompletedFilterDate(e.target.value)} />
+            <Button variant="outline" size="sm" onClick={() => setCompletedFilterDate('')}>Clear</Button>
+          </div>
+        )}
       </div>
 
       {/* Service Requests List */}
@@ -379,6 +425,11 @@ export default function ServiceRequestManagement() {
                       </Select>
                     )}
                     {assigning === request.id && <LoadingSpinner />}
+                    {isAdmin && (
+                      <Button variant="destructive" size="sm" onClick={() => deleteRequest(request.id)}>
+                        Delete
+                      </Button>
+                    )}
                   </div>
                 </div>
               </div>

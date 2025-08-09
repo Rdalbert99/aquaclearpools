@@ -43,6 +43,9 @@ interface Client {
   liner_type: string;
   status: string;
   last_service_date: string | null;
+  next_service_date?: string | null;
+  service_days?: string[] | null;
+  service_frequency?: string | null;
   created_at: string;
   user_id: string;
   assigned_technician_id?: string | null;
@@ -128,6 +131,7 @@ export default function ManageClients() {
         .from('clients')
         .select(`
           id, customer, pool_size, pool_type, status, user_id, assigned_technician_id,
+          last_service_date, next_service_date, service_days, service_frequency, created_at,
           assigned_technician:users!assigned_technician_id(id, name, email)
         `);
       
@@ -146,11 +150,9 @@ export default function ManageClients() {
       console.log(`Found ${clientsData?.length || 0} clients`);
       
       // Set the basic client data for now (without user joins)
-      const formattedClients = clientsData?.map(client => ({
+      const formattedClients = (clientsData || []).map((client: any) => ({
         ...client,
-        liner_type: 'Liner', // default
-        last_service_date: null, // default
-        created_at: new Date().toISOString(), // default
+        liner_type: client.liner_type || 'Liner',
         users: {
           email: 'admin@example.com', // placeholder
           phone: null,
@@ -295,6 +297,65 @@ export default function ManageClients() {
     } else {
       return { text: 'Overdue', color: 'bg-red-100 text-red-800' };
     }
+  };
+
+  // Map common day names to JS Date.getDay() index (0=Sun..6=Sat)
+  const dayNameToIndex = (name: string): number | null => {
+    const n = name.trim().toLowerCase();
+    switch (n) {
+      case 'sun':
+      case 'sunday':
+        return 0;
+      case 'mon':
+      case 'monday':
+        return 1;
+      case 'tue':
+      case 'tues':
+      case 'tuesday':
+        return 2;
+      case 'wed':
+      case 'wednesday':
+        return 3;
+      case 'thu':
+      case 'thur':
+      case 'thurs':
+      case 'thursday':
+        return 4;
+      case 'fri':
+      case 'friday':
+        return 5;
+      case 'sat':
+      case 'saturday':
+        return 6;
+      default:
+        return null;
+    }
+  };
+
+  const getNextServiceDateFromDays = (serviceDays?: string[] | null): Date | null => {
+    if (!serviceDays || serviceDays.length === 0) return null;
+    const today = new Date();
+    const todayDow = today.getDay();
+
+    let minDiff = 8; // more than a week
+    for (const d of serviceDays) {
+      const idx = dayNameToIndex(d);
+      if (idx == null) continue;
+      let diff = (idx - todayDow + 7) % 7;
+      if (diff === 0) diff = 7; // next occurrence, not today
+      if (diff < minDiff) minDiff = diff;
+    }
+
+    if (minDiff === 8) return null;
+    const next = new Date(today);
+    next.setDate(today.getDate() + minDiff);
+    next.setHours(0, 0, 0, 0);
+    return next;
+  };
+
+  const getNextServiceDateString = (serviceDays?: string[] | null) => {
+    const d = getNextServiceDateFromDays(serviceDays);
+    return d ? d.toLocaleDateString() : '-';
   };
 
   const handleDeleteClient = async (clientId: string) => {
@@ -531,6 +592,7 @@ export default function ManageClients() {
                     <th className="text-left p-4 font-medium">Assigned Tech</th>
                     <th className="text-left p-4 font-medium">Status</th>
                     <th className="text-left p-4 font-medium">Last Service</th>
+                    <th className="text-left p-4 font-medium">Next Service</th>
                     <th className="text-left p-4 font-medium">Actions</th>
                   </tr>
                 </thead>
@@ -600,6 +662,12 @@ export default function ManageClients() {
                                 {new Date(client.last_service_date).toLocaleDateString()}
                               </p>
                             )}
+                          </div>
+                        </td>
+                        
+                        <td className="p-4">
+                          <div>
+                            <p className="text-sm">{getNextServiceDateString(client.service_days)}</p>
                           </div>
                         </td>
                         

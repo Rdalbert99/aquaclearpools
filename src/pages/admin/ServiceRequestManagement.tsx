@@ -3,6 +3,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
 import { useToast } from '@/hooks/use-toast';
@@ -54,6 +55,7 @@ export default function ServiceRequestManagement() {
   const [technicians, setTechnicians] = useState<Technician[]>([]);
   const [loading, setLoading] = useState(true);
   const [assigning, setAssigning] = useState<string | null>(null);
+  const [scheduleDates, setScheduleDates] = useState<Record<string, string>>({});
 
   useEffect(() => {
     loadData();
@@ -131,6 +133,49 @@ export default function ServiceRequestManagement() {
     }
   };
 
+  const approveRequest = async (requestId: string) => {
+    try {
+      const { error } = await supabase
+        .from('service_requests')
+        .update({ status: 'approved' })
+        .eq('id', requestId);
+
+      if (error) {
+        console.error('Error approving request:', error);
+        toast({ title: 'Error', description: 'Failed to approve request', variant: 'destructive' });
+      } else {
+        toast({ title: 'Approved', description: 'Service request approved' });
+        loadData();
+      }
+    } catch (err) {
+      console.error('Approve error:', err);
+    }
+  };
+
+  const scheduleRequest = async (requestId: string) => {
+    const date = scheduleDates[requestId];
+    if (!date) {
+      toast({ title: 'Date required', description: 'Please pick a service date', variant: 'destructive' });
+      return;
+    }
+    try {
+      const iso = new Date(date).toISOString();
+      const { error } = await supabase
+        .from('service_requests')
+        .update({ preferred_date: iso })
+        .eq('id', requestId);
+      if (error) {
+        console.error('Error scheduling request:', error);
+        toast({ title: 'Error', description: 'Failed to schedule date', variant: 'destructive' });
+      } else {
+        toast({ title: 'Scheduled', description: 'Preferred service date set' });
+        loadData();
+      }
+    } catch (err) {
+      console.error('Schedule error:', err);
+    }
+  };
+
   const getPriorityColor = (priority: string) => {
     switch (priority) {
       case 'emergency': return 'destructive';
@@ -173,6 +218,7 @@ export default function ServiceRequestManagement() {
     );
   }
 
+  const availableRequests = requests.filter(r => (r.status === 'pending' || r.status === 'approved') && !r.assigned_technician_id);
   const pendingRequests = requests.filter(r => r.status === 'pending');
   const assignedRequests = requests.filter(r => r.status === 'assigned');
   const inProgressRequests = requests.filter(r => r.status === 'in_progress');
@@ -226,6 +272,84 @@ export default function ServiceRequestManagement() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Available (Unassigned) Service Requests */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Available Service Requests</CardTitle>
+          <CardDescription>Approve, schedule, and assign new requests</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            {availableRequests.map((request) => (
+              <div key={request.id} className="border rounded-lg p-4 hover:bg-muted/50 transition-colors">
+                <div className="grid grid-cols-1 md:grid-cols-6 gap-4 items-center">
+                  <div className="md:col-span-2">
+                    <div className="flex items-center space-x-2">
+                      <User className="h-4 w-4 text-muted-foreground" />
+                      <span className="font-medium">{request.contact_name || 'Unknown'}</span>
+                    </div>
+                    <p className="text-sm text-muted-foreground">{request.contact_email}</p>
+                    <p className="text-sm text-muted-foreground">{request.contact_phone}</p>
+                  </div>
+                  <div>
+                    <div className="flex items-center space-x-2">
+                      <MapPin className="h-4 w-4 text-muted-foreground" />
+                      <span className="text-sm">{request.request_type}</span>
+                    </div>
+                    <p className="text-xs text-muted-foreground">{request.contact_address}</p>
+                    <p className="text-xs text-muted-foreground mt-1">{request.description}</p>
+                  </div>
+                  <div className="space-y-1">
+                    <Badge variant={getPriorityColor(request.priority)}>
+                      {request.priority} priority
+                    </Badge>
+                    <Badge variant={getStatusColor(request.status)}>
+                      {request.status}
+                    </Badge>
+                    <div className="flex items-center gap-2 mt-2">
+                      <Input
+                        type="date"
+                        value={scheduleDates[request.id] || ''}
+                        onChange={(e) => setScheduleDates({ ...scheduleDates, [request.id]: e.target.value })}
+                      />
+                      <Button variant="outline" size="sm" onClick={() => scheduleRequest(request.id)}>
+                        Schedule
+                      </Button>
+                    </div>
+                  </div>
+                  <div className="flex gap-2">
+                    {request.status === 'pending' && (
+                      <Button size="sm" onClick={() => approveRequest(request.id)}>Approve</Button>
+                    )}
+                  </div>
+                  <div>
+                    <Select
+                      onValueChange={(techId) => assignTechnician(request.id, techId)}
+                      disabled={assigning === request.id}
+                    >
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder="Assign Tech" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {technicians.map((tech) => (
+                          <SelectItem key={tech.id} value={tech.id}>
+                            {tech.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    {assigning === request.id && <LoadingSpinner />}
+                  </div>
+                </div>
+              </div>
+            ))}
+            {availableRequests.length === 0 && (
+              <p className="text-center text-muted-foreground py-8">No available requests</p>
+            )}
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Service Requests List */}
       <Card>

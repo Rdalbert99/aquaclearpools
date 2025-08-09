@@ -63,6 +63,12 @@ export const Navbar = () => {
                     </Link>
                   </Button>
                   <Button variant="ghost" size="sm" asChild>
+                    <Link to="/admin/service-request-management" className="flex items-center space-x-1">
+                      <FileText className="h-4 w-4" />
+                      <span>Requests</span>
+                    </Link>
+                  </Button>
+                  <Button variant="ghost" size="sm" asChild>
                     <Link to="/admin/reviews" className="flex items-center space-x-1">
                       <Star className="h-4 w-4" />
                       <span>Reviews</span>

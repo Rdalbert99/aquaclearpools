@@ -10,7 +10,6 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { AddressInput } from '@/components/ui/address-input';
 
 const formSchema = z.object({
   title: z.string().optional(),
@@ -19,7 +18,10 @@ const formSchema = z.object({
   lastName: z.string().min(2, 'Last name must be at least 2 characters'),
   email: z.string().optional(),
   phone: z.string().optional(),
-  address: z.string().min(5, 'Please enter your full address'),
+  streetAddress: z.string().min(5, 'Please enter your street address'),
+  city: z.string().min(2, 'Please enter your city'),
+  state: z.string().min(2, 'Please enter your state'),
+  zipCode: z.string().min(5, 'Please enter your ZIP code'),
   poolType: z.string().min(1, 'Please select your pool type'),
   poolSize: z.string().min(1, 'Please select your pool size'),
   serviceType: z.string().min(1, 'Please select the type of service needed'),
@@ -61,7 +63,6 @@ interface PublicServiceRequestFormProps {
 
 export function PublicServiceRequestForm({ open, onOpenChange }: PublicServiceRequestFormProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [addressComponents, setAddressComponents] = useState<any>(null);
   const { toast } = useToast();
 
   const form = useForm<FormData>({
@@ -73,7 +74,10 @@ export function PublicServiceRequestForm({ open, onOpenChange }: PublicServiceRe
       lastName: '',
       email: '',
       phone: '',
-      address: '',
+      streetAddress: '',
+      city: '',
+      state: '',
+      zipCode: '',
       poolType: '',
       poolSize: '',
       serviceType: '',
@@ -100,21 +104,17 @@ export function PublicServiceRequestForm({ open, onOpenChange }: PublicServiceRe
         contact_name: fullName,
         contact_email: data.email,
         contact_phone: data.phone,
-        contact_address: data.address,
+        contact_address: `${data.streetAddress}, ${data.city}, ${data.state} ${data.zipCode}`,
+        street_address: data.streetAddress,
+        city: data.city,
+        state: data.state,
+        zip_code: data.zipCode,
+        country: 'US',
+        address_validated: true,
         pool_type: data.poolType,
         pool_size: data.poolSize,
         preferred_date: data.preferredDate || null,
       };
-
-      // Add address components if validated
-      if (addressComponents) {
-        insertData.street_address = addressComponents.street_address;
-        insertData.city = addressComponents.city;
-        insertData.state = addressComponents.state;
-        insertData.zip_code = addressComponents.zip_code;
-        insertData.country = addressComponents.country;
-        insertData.address_validated = true;
-      }
       
       console.log('Database insert data:', insertData);
       
@@ -306,26 +306,61 @@ export function PublicServiceRequestForm({ open, onOpenChange }: PublicServiceRe
 
             <FormField
               control={form.control}
-              name="address"
+              name="streetAddress"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Pool Address</FormLabel>
+                  <FormLabel>Street Address</FormLabel>
                   <FormControl>
-                    <AddressInput
-                      value={field.value}
-                      onChange={(value, components) => {
-                        field.onChange(value);
-                        setAddressComponents(components);
-                      }}
-                      placeholder="123 Main St, City, State, ZIP"
-                      required
-                      label=""
-                    />
+                    <Input placeholder="123 Main St" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
               )}
             />
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <FormField
+                control={form.control}
+                name="city"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>City</FormLabel>
+                    <FormControl>
+                      <Input placeholder="San Diego" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="state"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>State</FormLabel>
+                    <FormControl>
+                      <Input placeholder="CA" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="zipCode"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>ZIP Code</FormLabel>
+                    <FormControl>
+                      <Input placeholder="92101" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <FormField

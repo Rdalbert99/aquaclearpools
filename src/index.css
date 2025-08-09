@@ -97,10 +97,13 @@ All colors MUST be HSL.
 /* Custom 3D spinning animation on Y-axis */
 @keyframes spin-y-3d {
   0% { 
-    transform: rotateY(0deg);
+    transform: rotateY(0deg) scaleX(1);
+  }
+  50% { 
+    transform: rotateY(180deg) scaleX(-1);
   }
   100% { 
-    transform: rotateY(360deg);
+    transform: rotateY(360deg) scaleX(1);
   }
 }
 

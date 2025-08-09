@@ -79,11 +79,12 @@ const Index = () => {
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Button 
               size="lg" 
-              className="bg-primary hover:bg-primary/90 text-primary-foreground text-lg px-8 py-6 h-auto"
+              variant="outline"
+              className="bg-white/10 border-white text-white hover:bg-white/20 text-lg px-8 py-6 h-auto"
               onClick={() => setShowRequestForm(true)}
             >
               <Calendar className="h-6 w-6 mr-3" />
-              Schedule Pool Service
+              Request Pool Service
             </Button>
             <Link to="/auth/login?demo=client">
               <Button size="lg" variant="outline" className="bg-white/10 border-white text-white hover:bg-white/20 text-lg px-8 py-6 h-auto">

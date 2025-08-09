@@ -98,14 +98,24 @@ export default function ServiceRequestManagement() {
         setRequests(requestsData || []);
       }
 
-      // Load technicians (admin-only via RPC)
+      // Load technicians (admin-only via RPC with fallback)
+      let techs: any[] | null = null;
       const { data: techData, error: techError } = await supabase.rpc('get_all_technicians');
-
-      if (techError) {
-        console.error('Error loading technicians:', techError);
+      if (!techError && techData && techData.length > 0) {
+        techs = techData as any[];
       } else {
-        setTechnicians(techData || []);
+        const { data: fallbackTechs, error: fallbackErr } = await supabase
+          .from('users')
+          .select('id, name, email')
+          .eq('role', 'tech')
+          .order('name');
+        if (fallbackErr) {
+          console.error('Error loading technicians:', fallbackErr);
+        } else {
+          techs = fallbackTechs as any[];
+        }
       }
+      setTechnicians(techs || []);
     } catch (error) {
       console.error('Error loading data:', error);
     } finally {

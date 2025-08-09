@@ -53,10 +53,20 @@ export default function ManageTechs() {
 
   const loadTechs = async () => {
     try {
+      let techs: any[] | null = null;
       const { data, error } = await supabase.rpc('get_all_technicians');
-
-      if (error) throw error;
-      setTechs((data as any) || []);
+      if (!error && data && data.length > 0) {
+        techs = data as any[];
+      } else {
+        const { data: fallback, error: fbErr } = await supabase
+          .from('users')
+          .select('id, name, login, email, phone, created_at')
+          .eq('role', 'tech')
+          .order('name');
+        if (fbErr) throw fbErr;
+        techs = fallback as any[];
+      }
+      setTechs(techs || []);
     } catch (error) {
       console.error('Error loading techs:', error);
     } finally {

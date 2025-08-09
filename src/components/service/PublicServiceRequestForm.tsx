@@ -17,8 +17,8 @@ const formSchema = z.object({
   contactTitle: z.string().optional(),
   firstName: z.string().min(2, 'First name must be at least 2 characters'),
   lastName: z.string().min(2, 'Last name must be at least 2 characters'),
-  email: z.string().email('Please enter a valid email address'),
-  phone: z.string().min(10, 'Please enter a valid phone number'),
+  email: z.string().optional(),
+  phone: z.string().optional(),
   address: z.string().min(5, 'Please enter your full address'),
   poolType: z.string().min(1, 'Please select your pool type'),
   poolSize: z.string().min(1, 'Please select your pool size'),
@@ -26,6 +26,30 @@ const formSchema = z.object({
   description: z.string().min(10, 'Please provide more details about your service request'),
   preferredDate: z.string().optional(),
   urgency: z.string().default('medium'),
+}).refine((data) => {
+  // Require either email or phone
+  return data.email || data.phone;
+}, {
+  message: "Please provide either an email address or phone number",
+  path: ["email"], // This will show the error on the email field
+}).refine((data) => {
+  // Validate email format if provided
+  if (data.email && data.email.trim() !== '') {
+    return z.string().email().safeParse(data.email).success;
+  }
+  return true;
+}, {
+  message: "Please enter a valid email address",
+  path: ["email"],
+}).refine((data) => {
+  // Validate phone format if provided
+  if (data.phone && data.phone.trim() !== '') {
+    return data.phone.length >= 10;
+  }
+  return true;
+}, {
+  message: "Please enter a valid phone number",
+  path: ["phone"],
 });
 
 type FormData = z.infer<typeof formSchema>;
@@ -232,7 +256,7 @@ export function PublicServiceRequestForm({ open, onOpenChange }: PublicServiceRe
                 name="email"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Email Address</FormLabel>
+                    <FormLabel>Email Address (Optional if phone provided)</FormLabel>
                     <FormControl>
                       <Input placeholder="john@example.com" type="email" {...field} />
                     </FormControl>
@@ -246,7 +270,7 @@ export function PublicServiceRequestForm({ open, onOpenChange }: PublicServiceRe
                 name="phone"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Phone Number</FormLabel>
+                    <FormLabel>Phone Number (Optional if email provided)</FormLabel>
                     <FormControl>
                       <Input placeholder="(555) 123-4567" {...field} />
                     </FormControl>

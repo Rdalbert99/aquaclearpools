@@ -18,3 +18,9 @@ verify_jwt = false
 
 [functions.delete-users-and-clients]
 verify_jwt = false
+
+[functions.send-client-invite]
+verify_jwt = true
+
+[functions.complete-client-invite]
+verify_jwt = false

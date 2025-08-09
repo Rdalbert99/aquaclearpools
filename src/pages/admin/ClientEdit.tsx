@@ -16,10 +16,12 @@ import {
   User,
   Droplets,
   Calendar,
-  DollarSign
+  DollarSign,
+  Send
 } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Textarea } from '@/components/ui/textarea';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
 interface ClientFormData {
   customer: string;
@@ -47,6 +49,12 @@ export default function ClientEdit() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [users, setUsers] = useState<any[]>([]);
+  const [inviteOpen, setInviteOpen] = useState(false);
+  const [inviteEmail, setInviteEmail] = useState('');
+  const [invitePhone, setInvitePhone] = useState('');
+  const [inviteEmailEnabled, setInviteEmailEnabled] = useState(true);
+  const [inviteSmsEnabled, setInviteSmsEnabled] = useState(false);
+  const [sendingInvite, setSendingInvite] = useState(false);
 
   useEffect(() => {
     if (id) {
@@ -258,6 +266,17 @@ export default function ClientEdit() {
         <div className="flex space-x-2">
           <Button variant="outline" onClick={() => navigate(`/admin/clients/${id}`)}>
             Cancel
+          </Button>
+          <Button variant="outline" onClick={() => {
+            // Pre-fill invite contacts
+            const u = users.find((u) => u.id === client.user_id);
+            setInviteEmail(u?.email || '');
+            // @ts-ignore
+            setInvitePhone((client as any).phone || '');
+            setInviteOpen(true);
+          }}>
+            <Send className="mr-2 h-4 w-4" />
+            Send Login Request
           </Button>
           <Button onClick={handleSave} disabled={saving}>
             <Save className="mr-2 h-4 w-4" />
@@ -498,6 +517,73 @@ export default function ClientEdit() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Invite Dialog */}
+      <Dialog open={inviteOpen} onOpenChange={setInviteOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Send Login Request</DialogTitle>
+            <DialogDescription>Send an invitation to let the client create their account.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="flex items-center space-x-2">
+              <Checkbox id="inviteEmailEnabled" checked={inviteEmailEnabled} onCheckedChange={(v) => setInviteEmailEnabled(!!v)} />
+              <Label htmlFor="inviteEmailEnabled">Send via Email</Label>
+            </div>
+            {inviteEmailEnabled && (
+              <div className="space-y-2">
+                <Label>Email</Label>
+                <Input value={inviteEmail} onChange={(e) => setInviteEmail(e.target.value)} placeholder="client@example.com" />
+              </div>
+            )}
+            <div className="flex items-center space-x-2">
+              <Checkbox id="inviteSmsEnabled" checked={inviteSmsEnabled} onCheckedChange={(v) => setInviteSmsEnabled(!!v)} />
+              <Label htmlFor="inviteSmsEnabled">Send via SMS</Label>
+            </div>
+            {inviteSmsEnabled && (
+              <div className="space-y-2">
+                <Label>Phone</Label>
+                <Input value={invitePhone} onChange={(e) => setInvitePhone(e.target.value)} placeholder="+1XXXXXXXXXX" />
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setInviteOpen(false)}>Cancel</Button>
+            <Button onClick={async () => {
+              if (!id) return;
+              if (!inviteEmailEnabled && !inviteSmsEnabled) {
+                toast({ title: 'Select a method', description: 'Choose Email or SMS', variant: 'destructive' });
+                return;
+              }
+              setSendingInvite(true);
+              try {
+                const channels = [
+                  inviteEmailEnabled ? 'email' : null,
+                  inviteSmsEnabled ? 'sms' : null,
+                ].filter(Boolean);
+                const { error } = await supabase.functions.invoke('send-client-invite', {
+                  body: {
+                    clientId: id,
+                    email: inviteEmailEnabled ? inviteEmail : undefined,
+                    phone: inviteSmsEnabled ? invitePhone : undefined,
+                    channels,
+                    baseUrl: window.location.origin,
+                  },
+                });
+                if (error) throw error;
+                toast({ title: 'Invitation sent', description: 'The client will receive instructions shortly.' });
+                setInviteOpen(false);
+              } catch (err: any) {
+                toast({ title: 'Failed to send', description: err.message || 'Please try again.', variant: 'destructive' });
+              } finally {
+                setSendingInvite(false);
+              }
+            }} disabled={sendingInvite}>
+              {sendingInvite ? 'Sending...' : 'Send Request'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

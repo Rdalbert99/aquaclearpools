@@ -65,6 +65,57 @@ export type Database = {
           },
         ]
       }
+      client_invitations: {
+        Row: {
+          client_id: string
+          created_at: string
+          created_by: string | null
+          email: string | null
+          expires_at: string
+          id: string
+          phone: string | null
+          token: string
+          used_at: string | null
+        }
+        Insert: {
+          client_id: string
+          created_at?: string
+          created_by?: string | null
+          email?: string | null
+          expires_at?: string
+          id?: string
+          phone?: string | null
+          token: string
+          used_at?: string | null
+        }
+        Update: {
+          client_id?: string
+          created_at?: string
+          created_by?: string | null
+          email?: string | null
+          expires_at?: string
+          id?: string
+          phone?: string | null
+          token?: string
+          used_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_invitations_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "client_invitations_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       client_users: {
         Row: {
           client_id: string
@@ -556,6 +607,10 @@ export type Database = {
           phone: string
           created_at: string
         }[]
+      }
+      get_client_invite_payload: {
+        Args: { invite_token: string }
+        Returns: Json
       }
       get_current_user_role: {
         Args: Record<PropertyKey, never>

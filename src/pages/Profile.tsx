@@ -51,14 +51,44 @@ export default function Profile() {
 
   const loadProfileData = async () => {
     try {
-      const { data, error } = await supabase
+      const authId = user?.id;
+      const login = (user as any)?.login as string | undefined;
+      const email = user?.email as string | undefined;
+
+      // 1) Try by id (newer accounts map 1:1 with auth users)
+      let { data: byId, error: byIdError } = await supabase
         .from('users')
         .select('*')
-        .eq('id', user?.id)
-        .single();
+        .eq('id', authId)
+        .maybeSingle();
 
-      if (error) throw error;
-      setProfile(data);
+      // 2) If not found, try by login (most accurate for legacy accounts)
+      if (!byId && login) {
+        const { data: byLogin } = await supabase
+          .from('users')
+          .select('*')
+          .eq('login', login)
+          .maybeSingle();
+        if (byLogin) byId = byLogin;
+      }
+
+      // 3) If still not found, fallback to latest by email
+      if (!byId && email) {
+        const { data: byEmail } = await supabase
+          .from('users')
+          .select('*')
+          .eq('email', email)
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        if (byEmail) byId = byEmail;
+      }
+
+      if (!byId) {
+        throw new Error('Profile not found for current user');
+      }
+
+      setProfile(byId as UserProfile);
     } catch (error) {
       console.error('Error loading profile:', error);
       toast({
@@ -89,7 +119,7 @@ export default function Profile() {
           zip_code: profile.zip_code || null,
           country: profile.country || 'US'
         })
-        .eq('id', user?.id);
+        .eq('id', profile.id);
 
       if (error) throw error;
 

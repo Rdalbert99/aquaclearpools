@@ -14,6 +14,7 @@ import { AddressInput } from '@/components/ui/address-input';
 
 const formSchema = z.object({
   title: z.string().optional(),
+  contactTitle: z.string().optional(),
   firstName: z.string().min(2, 'First name must be at least 2 characters'),
   lastName: z.string().min(2, 'Last name must be at least 2 characters'),
   email: z.string().email('Please enter a valid email address'),
@@ -43,6 +44,7 @@ export function PublicServiceRequestForm({ open, onOpenChange }: PublicServiceRe
     resolver: zodResolver(formSchema),
     defaultValues: {
       title: '',
+      contactTitle: '',
       firstName: '',
       lastName: '',
       email: '',
@@ -66,6 +68,7 @@ export function PublicServiceRequestForm({ open, onOpenChange }: PublicServiceRe
       
       const insertData: any = {
         title: data.title || null,
+        contact_title: data.contactTitle || null,
         request_type: data.serviceType,
         description: data.description,
         priority: data.urgency,
@@ -167,7 +170,33 @@ export function PublicServiceRequestForm({ open, onOpenChange }: PublicServiceRe
                 </FormItem>
               )}
             />
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <FormField
+                control={form.control}
+                name="contactTitle"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Title (Optional)</FormLabel>
+                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select title" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="mr">Mr.</SelectItem>
+                        <SelectItem value="mrs">Mrs.</SelectItem>
+                        <SelectItem value="ms">Ms.</SelectItem>
+                        <SelectItem value="dr">Dr.</SelectItem>
+                        <SelectItem value="prof">Prof.</SelectItem>
+                        <SelectItem value="rev">Rev.</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
               <FormField
                 control={form.control}
                 name="firstName"

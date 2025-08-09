@@ -261,6 +261,7 @@ export type Database = {
           contact_email: string | null
           contact_name: string | null
           contact_phone: string | null
+          contact_title: string | null
           country: string | null
           created_at: string | null
           description: string
@@ -287,6 +288,7 @@ export type Database = {
           contact_email?: string | null
           contact_name?: string | null
           contact_phone?: string | null
+          contact_title?: string | null
           country?: string | null
           created_at?: string | null
           description: string
@@ -313,6 +315,7 @@ export type Database = {
           contact_email?: string | null
           contact_name?: string | null
           contact_phone?: string | null
+          contact_title?: string | null
           country?: string | null
           created_at?: string | null
           description?: string

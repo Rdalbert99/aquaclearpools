@@ -176,10 +176,20 @@ export default function ManageClients() {
 
   const loadTechnicians = async () => {
     try {
+      let techs: any[] | null = null;
       const { data, error } = await supabase.rpc('get_all_technicians');
-
-      if (error) throw error;
-      setTechnicians(data || []);
+      if (!error && data && data.length > 0) {
+        techs = data as any[];
+      } else {
+        const { data: fallback, error: fbErr } = await supabase
+          .from('users')
+          .select('id, name, email')
+          .eq('role', 'tech')
+          .order('name');
+        if (fbErr) throw fbErr;
+        techs = fallback as any[];
+      }
+      setTechnicians(techs || []);
     } catch (error) {
       console.error('Error loading technicians:', error);
     }

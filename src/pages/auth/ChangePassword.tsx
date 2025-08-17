@@ -45,7 +45,7 @@ export default function ChangePassword() {
     setIsLoading(true);
 
     try {
-      // Update the user's password
+      // Update the user's password in Auth only
       const { error: updateError } = await supabase.auth.updateUser({
         password: newPassword
       });
@@ -58,7 +58,6 @@ export default function ChangePassword() {
           .from('users')
           .update({ 
             must_change_password: false,
-            password: newPassword,
             updated_at: new Date().toISOString()
           })
           .eq('id', user.id);

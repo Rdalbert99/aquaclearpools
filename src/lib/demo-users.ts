@@ -50,7 +50,6 @@ export const createDemoUser = async (email: string, password: string, name: stri
           {
             id: userId,
             email,
-            password: 'password',
             name,
             role,
             login: email.split('@')[0], // Use email prefix as login

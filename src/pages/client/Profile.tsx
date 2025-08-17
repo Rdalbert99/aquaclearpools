@@ -147,13 +147,9 @@ export default function ClientProfile() {
     try {
       // Note: In a real application, you would verify the current password first
       // and then update the password. For now, we'll just update the password.
-      const { error } = await supabase
-        .from('users')
-        .update({
-          password: newPassword,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', user?.id);
+      const { error } = await supabase.auth.updateUser({
+        password: newPassword
+      });
 
       if (error) throw error;
 

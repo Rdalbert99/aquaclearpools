@@ -110,7 +110,6 @@ const handler = async (req: Request): Promise<Response> => {
       last_name: userData.lastName,
       login: userData.login,
       email: userData.email,
-      password: userData.password, // Keep for compatibility
       role: userData.role,
       phone: userData.phone || null,
       address: userData.address || null,

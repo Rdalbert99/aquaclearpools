@@ -565,7 +565,6 @@ export type Database = {
           must_change_password: boolean | null
           name: string
           needs_auth_migration: boolean | null
-          password: string
           phone: string | null
           role: string
           state: string | null
@@ -587,7 +586,6 @@ export type Database = {
           must_change_password?: boolean | null
           name: string
           needs_auth_migration?: boolean | null
-          password: string
           phone?: string | null
           role: string
           state?: string | null
@@ -609,7 +607,6 @@ export type Database = {
           must_change_password?: boolean | null
           name?: string
           needs_auth_migration?: boolean | null
-          password?: string
           phone?: string | null
           role?: string
           state?: string | null

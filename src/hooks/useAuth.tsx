@@ -152,8 +152,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           email: authUser.email,
           role,
           name,
-          login: name,
-          password: 'password' // Legacy field
+          login: name
         });
 
       if (!insertError) {
@@ -225,8 +224,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
                 email: data.user.email,
                 role: loginUserData.role,
                 name: loginUserData.name,
-                login: loginUserData.login,
-                password: 'password' // Legacy field
+                login: loginUserData.login
               }, {
                 onConflict: 'id'
               });
@@ -292,7 +290,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         const userRecord: any = {
           id: data.user.id,
           email,
-          password: 'password', // This is just for compatibility with existing schema
           name,
           role,
           login: additionalData?.username || `${name.toLowerCase().replace(/\s+/g, '')}${Date.now()}`,

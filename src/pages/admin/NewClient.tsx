@@ -196,7 +196,6 @@ export default function NewClient() {
         
         const userInsertData = {
           email: client.new_user_email,
-          password: client.new_user_password,
           name: client.customer,
           role: 'client',
           login: client.new_user_username,

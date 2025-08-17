@@ -172,6 +172,8 @@ export type Database = {
           pool_image_url: string | null
           pool_size: number
           pool_type: string
+          qb_customer_id: string | null
+          qb_invoice_link: string | null
           service_days: string[] | null
           service_frequency: string | null
           service_notes: string | null
@@ -197,6 +199,8 @@ export type Database = {
           pool_image_url?: string | null
           pool_size: number
           pool_type: string
+          qb_customer_id?: string | null
+          qb_invoice_link?: string | null
           service_days?: string[] | null
           service_frequency?: string | null
           service_notes?: string | null
@@ -222,6 +226,8 @@ export type Database = {
           pool_image_url?: string | null
           pool_size?: number
           pool_type?: string
+          qb_customer_id?: string | null
+          qb_invoice_link?: string | null
           service_days?: string[] | null
           service_frequency?: string | null
           service_notes?: string | null
@@ -402,7 +408,10 @@ export type Database = {
       }
       services: {
         Row: {
+          actions: Json | null
+          after_photo_url: string | null
           alkalinity_level: number | null
+          before_photo_url: string | null
           calcium_hardness_level: number | null
           chemicals_added: string | null
           chlorine_level: number | null
@@ -411,9 +420,13 @@ export type Database = {
           created_at: string | null
           cyanuric_acid_level: number | null
           duration: number | null
+          duration_minutes: number | null
           id: string
+          message_preview: string | null
           notes: string | null
+          performed_at: string
           ph_level: number | null
+          readings: Json | null
           service_date: string
           services_performed: string | null
           status: string | null
@@ -421,7 +434,10 @@ export type Database = {
           updated_at: string | null
         }
         Insert: {
+          actions?: Json | null
+          after_photo_url?: string | null
           alkalinity_level?: number | null
+          before_photo_url?: string | null
           calcium_hardness_level?: number | null
           chemicals_added?: string | null
           chlorine_level?: number | null
@@ -430,17 +446,24 @@ export type Database = {
           created_at?: string | null
           cyanuric_acid_level?: number | null
           duration?: number | null
+          duration_minutes?: number | null
           id?: string
+          message_preview?: string | null
           notes?: string | null
+          performed_at?: string
           ph_level?: number | null
-          service_date: string
+          readings?: Json | null
+          service_date?: string
           services_performed?: string | null
           status?: string | null
           technician_id?: string | null
           updated_at?: string | null
         }
         Update: {
+          actions?: Json | null
+          after_photo_url?: string | null
           alkalinity_level?: number | null
+          before_photo_url?: string | null
           calcium_hardness_level?: number | null
           chemicals_added?: string | null
           chlorine_level?: number | null
@@ -449,9 +472,13 @@ export type Database = {
           created_at?: string | null
           cyanuric_acid_level?: number | null
           duration?: number | null
+          duration_minutes?: number | null
           id?: string
+          message_preview?: string | null
           notes?: string | null
+          performed_at?: string
           ph_level?: number | null
+          readings?: Json | null
           service_date?: string
           services_performed?: string | null
           status?: string | null

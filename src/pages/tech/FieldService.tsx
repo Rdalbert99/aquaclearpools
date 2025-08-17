@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -10,321 +10,162 @@ import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
 import { useToast } from '@/hooks/use-toast';
+import { ServicePhotoUpload } from '@/components/tech/ServicePhotoUpload';
 import { 
-  Clock,
-  Droplets,
-  TestTube,
-  FileText,
-  Calculator,
-  CheckCircle
+  Clock, Droplets, TestTube, CheckCircle, ArrowLeft,
 } from 'lucide-react';
 
-interface Client {
+type Client = {
   id: string;
   customer: string;
-  pool_size: number;
-  pool_type: string;
-  liner_type?: string;
-}
+  phone?: string | null;
+  email?: string | null;
+  pool_size?: number | null;
+  pool_type?: string | null;
+};
 
-interface ServiceData {
-  client_id: string;
-  technician_id: string;
-  service_date: string;
-  duration: number;
-  cost: number;
-  status: string;
-  ph_level?: number;
-  chlorine_level?: number;
-  alkalinity_level?: number;
-  cyanuric_acid_level?: number;
-  calcium_hardness_level?: number;
-  chemicals_added: string;
-  notes: string;
-  services_performed: string[];
-}
-
-interface ChemicalRecommendation {
-  chemical: string;
-  amount: number;
-  unit: string;
-  reason: string;
-}
-
-const serviceOptions = [
-  'Skimmed surface',
-  'Emptied skimmer baskets',
-  'Cleaned pool walls',
-  'Vacuumed pool bottom',
-  'Brushed steps & ladders',
-  'Tested water chemistry',
-  'Added chemicals',
-  'Cleaned pool equipment',
-  'Checked equipment operation',
-  'Backwashed filter'
-];
+type ServiceData = {
+  ph_level?: number | null;
+  alkalinity_level?: number | null;
+  chlorine_level?: number | null;
+  cya_level?: number | null;
+  salt_level?: number | null;
+  brushed?: boolean;
+  vacuumed?: boolean;
+  cleaned_filters?: boolean;
+  robot_plugged_in?: boolean;
+  chemicals_added?: string;
+  notes?: string;
+  duration?: number | null;
+  beforePhotoUrl?: string | null;
+  afterPhotoUrl?: string | null;
+};
 
 export default function FieldService() {
   const { clientId } = useParams();
   const navigate = useNavigate();
   const { user } = useAuth();
   const { toast } = useToast();
-  
+
   const [client, setClient] = useState<Client | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [calculating, setCalculating] = useState(false);
-  const [recommendations, setRecommendations] = useState<ChemicalRecommendation[]>([]);
   const [startTime] = useState(new Date());
   const [serviceData, setServiceData] = useState<ServiceData>({
-    client_id: clientId || '',
-    technician_id: user?.id || '',
-    service_date: new Date().toISOString().split('T')[0],
-    duration: 0,
-    cost: 0,
-    status: 'in_progress',
-    chemicals_added: '',
-    notes: '',
-    services_performed: []
+    brushed: false,
+    vacuumed: false,
+    cleaned_filters: false,
+    robot_plugged_in: false,
   });
 
   useEffect(() => {
-    if (clientId) {
-      loadClient();
-    }
-  }, [clientId]);
-
-  const loadClient = async () => {
-    try {
-      const { data: clientData, error } = await supabase
-        .from('clients')
-        .select('*')
-        .eq('id', clientId)
-        .single();
-
-      if (error) {
-        console.error('Error loading client:', error);
-        toast({
-          title: "Error",
-          description: "Failed to load client information",
-          variant: "destructive",
-        });
-      } else {
-        setClient(clientData);
-        setServiceData(prev => ({ ...prev, client_id: clientData.id }));
+    let mounted = true;
+    (async () => {
+      try {
+        if (!clientId) return;
+        const { data, error } = await supabase.from('clients').select('*').eq('id', clientId).single();
+        if (error) throw error;
+        if (mounted) setClient(data as Client);
+      } catch (e) {
+        console.error(e);
+        toast({ title: "Error", description: "Failed to load client info", variant: "destructive" });
+      } finally {
+        if (mounted) setLoading(false);
       }
-    } catch (error) {
-      console.error('Error:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
+    })();
+    return () => { mounted = false; };
+  }, [clientId, toast]);
 
-  const handleServiceToggle = (service: string, checked: boolean) => {
-    setServiceData(prev => ({
-      ...prev,
-      services_performed: checked 
-        ? [...prev.services_performed, service]
-        : prev.services_performed.filter(s => s !== service)
-    }));
-  };
-
-  const handleInputChange = (field: keyof ServiceData, value: any) => {
+  function handleInputChange<K extends keyof ServiceData>(field: K, value: ServiceData[K]) {
     setServiceData(prev => ({ ...prev, [field]: value }));
-  };
+  }
 
-  const calculateDuration = () => {
+  function calculateDuration() {
     const endTime = new Date();
-    const duration = Math.round((endTime.getTime() - startTime.getTime()) / (1000 * 60));
-    setServiceData(prev => ({ ...prev, duration }));
-  };
+    const minutes = Math.max(1, Math.round((endTime.getTime() - startTime.getTime()) / 60000));
+    setServiceData(prev => ({ ...prev, duration: minutes }));
+  }
 
-  const calculateChemicals = async () => {
-    if (!client || !serviceData.ph_level || !serviceData.chlorine_level) {
-      toast({
-        title: "Error",
-        description: "Please enter at least pH and chlorine levels",
-        variant: "destructive",
-      });
-      return;
-    }
+  function buildServiceMessage(clientName: string, data: ServiceData) {
+    const parts: string[] = [];
+    parts.push(`Hi, this is Randy with Aqua Clear Pools. I've just finished your pool.`);
 
-    setCalculating(true);
+    const balanced =
+      (data.ph_level ?? 0) >= 7.2 && (data.ph_level ?? 0) <= 7.8 &&
+      (data.chlorine_level ?? 0) >= 1 && (data.chlorine_level ?? 0) <= 5;
+
+    parts.push(balanced ? `Water is balanced and clean.` : `Water is improving; final balance will settle as circulation runs.`);
+
+    const actions: string[] = [];
+    if (data.brushed) actions.push('brushed');
+    if (data.vacuumed) actions.push('vacuumed');
+    if (data.cleaned_filters) actions.push('cleaned filters');
+    if (data.robot_plugged_in) actions.push('plugged in your robot');
+    if (actions.length) parts.push(`Today: ${actions.join(', ')}.`);
+
+    if (data.chemicals_added?.trim()) parts.push(`Chemicals added: ${data.chemicals_added.trim()}.`);
+    if (data.notes?.trim()) parts.push(`Notes: ${data.notes.trim()}`);
+    parts.push(`Thanks — have a great week!`);
+    return parts.join(' ');
+  }
+
+  async function completeService() {
+    if (!client) return;
+    setSaving(true);
     try {
-      const testResults = {
-        ph_level: serviceData.ph_level,
-        chlorine_level: serviceData.chlorine_level,
-        alkalinity_level: serviceData.alkalinity_level,
-        cyanuric_acid_level: serviceData.cyanuric_acid_level,
-        calcium_hardness_level: serviceData.calcium_hardness_level
+      calculateDuration();
+
+      const message = buildServiceMessage(client.customer, serviceData);
+
+      const payload = {
+        client_id: client.id,
+        technician_id: user?.id ?? null,
+        readings: {
+          ph: serviceData.ph_level ?? null,
+          ta: serviceData.alkalinity_level ?? null,
+          fc: serviceData.chlorine_level ?? null,
+          cya: serviceData.cya_level ?? null,
+          salt: serviceData.salt_level ?? null,
+        },
+        actions: {
+          brushed: !!serviceData.brushed,
+          vacuumed: !!serviceData.vacuumed,
+          cleaned_filters: !!serviceData.cleaned_filters,
+          robot_plugged_in: !!serviceData.robot_plugged_in,
+        },
+        chemicals_added: serviceData.chemicals_added || null,
+        notes: serviceData.notes || null,
+        duration_minutes: serviceData.duration ?? null,
+        before_photo_url: serviceData.beforePhotoUrl || null,
+        after_photo_url: serviceData.afterPhotoUrl || null,
+        message_preview: message,
+        status: 'completed'
       };
 
-      // Calculate chemical recommendations
-      const recommendations: ChemicalRecommendation[] = [];
-      
-      // pH adjustments
-      if (serviceData.ph_level < 7.2) {
-        const amount = Math.round((7.4 - serviceData.ph_level) * client.pool_size * 0.0012);
-        recommendations.push({
-          chemical: "pH Up (Sodium Carbonate)",
-          amount,
-          unit: "oz",
-          reason: `pH is ${serviceData.ph_level}, target is 7.2-7.6`
-        });
-      } else if (serviceData.ph_level > 7.6) {
-        const amount = Math.round((serviceData.ph_level - 7.4) * client.pool_size * 0.001);
-        recommendations.push({
-          chemical: "pH Down (Muriatic Acid)",
-          amount,
-          unit: "oz",
-          reason: `pH is ${serviceData.ph_level}, target is 7.2-7.6`
-        });
+      const { error } = await supabase.from('services').insert(payload);
+      if (error) throw error;
+
+      // One-tap message (works today without Twilio)
+      if (client.phone) {
+        window.location.href = `sms:${client.phone}?&body=${encodeURIComponent(message)}`;
+      } else if (client.email) {
+        window.location.href = `mailto:${client.email}?subject=${encodeURIComponent('Aqua Clear Service Update')}&body=${encodeURIComponent(message)}`;
       }
 
-      // Chlorine adjustments
-      if (serviceData.chlorine_level < 1.0) {
-        const amount = Math.round((3.0 - serviceData.chlorine_level) * client.pool_size * 0.0013);
-        recommendations.push({
-          chemical: "Liquid Chlorine",
-          amount,
-          unit: "oz",
-          reason: `Chlorine is ${serviceData.chlorine_level} ppm, target is 1.0-3.0 ppm`
-        });
-      }
-
-      // Alkalinity adjustments
-      if (serviceData.alkalinity_level && serviceData.alkalinity_level < 80) {
-        const amount = Math.round((100 - serviceData.alkalinity_level) * client.pool_size * 0.0015);
-        recommendations.push({
-          chemical: "Alkalinity Up (Sodium Bicarbonate)",
-          amount,
-          unit: "oz",
-          reason: `Alkalinity is ${serviceData.alkalinity_level} ppm, target is 80-120 ppm`
-        });
-      }
-
-      setRecommendations(recommendations);
-
-      // Save calculation to database
-      const { error } = await supabase
-        .from('chemical_calculations')
-        .insert({
-          client_id: client.id,
-          technician_id: user?.id,
-          pool_type: client.pool_type,
-          pool_size: client.pool_size,
-          test_results: testResults as any,
-          chemical_recommendations: recommendations as any
-        });
-
-      if (error) {
-        console.error('Error saving calculation:', error);
-        toast({
-          title: "Warning",
-          description: "Calculation completed but couldn't save to history",
-          variant: "destructive",
-        });
-      } else {
-        toast({
-          title: "Success",
-          description: "Chemical calculation completed and saved",
-        });
-      }
-    } catch (error) {
-      console.error('Error calculating chemicals:', error);
-      toast({
-        title: "Error",
-        description: "Failed to calculate chemical recommendations",
-        variant: "destructive",
-      });
-    } finally {
-      setCalculating(false);
-    }
-  };
-
-  const handleComplete = async () => {
-    if (serviceData.services_performed.length === 0) {
-      toast({
-        title: "Error",
-        description: "Please select at least one service performed",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    setSaving(true);
-    calculateDuration();
-
-    try {
-      // Create the service record
-      const { data, error } = await supabase
-        .from('services')
-        .insert({
-          ...serviceData,
-          status: 'completed',
-          services_performed: serviceData.services_performed.join(', ')
-        })
-        .select()
-        .single();
-
-      if (error) {
-        console.error('Error creating service:', error);
-        toast({
-          title: "Error",
-          description: "Failed to save service record",
-          variant: "destructive",
-        });
-        return;
-      }
-
-      // Update client's last service date
-      const { error: updateError } = await supabase
-        .from('clients')
-        .update({ last_service_date: serviceData.service_date })
-        .eq('id', clientId);
-
-      if (updateError) {
-        console.error('Error updating client:', updateError);
-      }
-
-      // Update any pending service requests for this client
-      const { error: requestError } = await supabase
-        .from('service_requests')
-        .update({ 
-          status: 'completed',
-          completed_date: new Date().toISOString()
-        })
-        .eq('client_id', clientId)
-        .eq('status', 'pending');
-
-      if (requestError) {
-        console.error('Error updating service requests:', requestError);
-      }
-
-      toast({
-        title: "Success",
-        description: "Service completed and recorded successfully",
-      });
-
+      toast({ title: 'Service completed', description: 'Saved and message prepared.' });
       navigate('/tech');
-    } catch (error) {
-      console.error('Error:', error);
-      toast({
-        title: "Error",
-        description: "An unexpected error occurred",
-        variant: "destructive",
-      });
+    } catch (e: any) {
+      console.error(e);
+      toast({ title: 'Error', description: e.message || 'Could not complete service', variant: 'destructive' });
     } finally {
       setSaving(false);
     }
-  };
+  }
 
   if (loading) {
     return (
-      <div className="p-6">
-        <div className="flex items-center justify-center min-h-[400px]">
-          <LoadingSpinner />
-        </div>
+      <div className="p-6 flex items-center justify-center min-h-[300px]">
+        <LoadingSpinner />
       </div>
     );
   }
@@ -332,12 +173,14 @@ export default function FieldService() {
   if (!client) {
     return (
       <div className="p-6">
-        <div className="text-center">
-          <h1 className="text-2xl font-bold">Client not found</h1>
-          <Button onClick={() => navigate('/tech')} className="mt-4">
-            Back to Dashboard
-          </Button>
-        </div>
+        <Card>
+          <CardContent className="py-12 text-center">
+            <p className="text-muted-foreground">Client not found.</p>
+            <Button asChild className="mt-4">
+              <Link to="/tech"><ArrowLeft className="h-4 w-4 mr-2" />Back to Tech</Link>
+            </Button>
+          </CardContent>
+        </Card>
       </div>
     );
   }
@@ -345,249 +188,101 @@ export default function FieldService() {
   return (
     <div className="p-6 space-y-6">
       <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold">Field Service</h1>
-          <p className="text-muted-foreground">
-            Service for {client.customer} - {client.pool_size?.toLocaleString()} gal {client.pool_type} pool
-          </p>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Service Checklist */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center space-x-2">
-              <CheckCircle className="h-5 w-5" />
-              <span>Service Checklist</span>
-            </CardTitle>
-            <CardDescription>Check off completed tasks</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {serviceOptions.map((service) => (
-                <div key={service} className="flex items-center space-x-2">
-                  <Checkbox
-                    id={service}
-                    checked={serviceData.services_performed.includes(service)}
-                    onCheckedChange={(checked) => handleServiceToggle(service, checked as boolean)}
-                  />
-                  <Label htmlFor={service} className="text-sm font-normal">
-                    {service}
-                  </Label>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Water Chemistry */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center space-x-2">
-              <TestTube className="h-5 w-5" />
-              <span>Water Chemistry</span>
-            </CardTitle>
-            <CardDescription>Record test results (optional)</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="ph">pH Level</Label>
-                <Input
-                  id="ph"
-                  type="number"
-                  step="0.1"
-                  min="0"
-                  max="14"
-                  value={serviceData.ph_level || ''}
-                  onChange={(e) => handleInputChange('ph_level', parseFloat(e.target.value))}
-                  placeholder="7.2"
-                />
-              </div>
-              <div>
-                <Label htmlFor="chlorine">Chlorine (ppm)</Label>
-                <Input
-                  id="chlorine"
-                  type="number"
-                  step="0.1"
-                  min="0"
-                  value={serviceData.chlorine_level || ''}
-                  onChange={(e) => handleInputChange('chlorine_level', parseFloat(e.target.value))}
-                  placeholder="1.5"
-                />
-              </div>
-              <div>
-                <Label htmlFor="alkalinity">Alkalinity (ppm)</Label>
-                <Input
-                  id="alkalinity"
-                  type="number"
-                  min="0"
-                  value={serviceData.alkalinity_level || ''}
-                  onChange={(e) => handleInputChange('alkalinity_level', parseInt(e.target.value))}
-                  placeholder="100"
-                />
-              </div>
-              <div>
-                <Label htmlFor="cyanuric">Cyanuric Acid (ppm)</Label>
-                <Input
-                  id="cyanuric"
-                  type="number"
-                  min="0"
-                  value={serviceData.cyanuric_acid_level || ''}
-                  onChange={(e) => handleInputChange('cyanuric_acid_level', parseInt(e.target.value))}
-                  placeholder="50"
-                />
-              </div>
-              <div className="col-span-2">
-                <Label htmlFor="calcium">Calcium Hardness (ppm)</Label>
-                <Input
-                  id="calcium"
-                  type="number"
-                  min="0"
-                  value={serviceData.calcium_hardness_level || ''}
-                  onChange={(e) => handleInputChange('calcium_hardness_level', parseInt(e.target.value))}
-                  placeholder="200"
-                />
-              </div>
-            </div>
-            
-            <div className="mt-4 space-y-4">
-              <Button 
-                onClick={calculateChemicals}
-                disabled={calculating || !serviceData.ph_level || !serviceData.chlorine_level}
-                className="w-full"
-              >
-                {calculating ? (
-                  <LoadingSpinner />
-                ) : (
-                  <>
-                    <Calculator className="mr-2 h-4 w-4" />
-                    Calculate Chemical Recommendations
-                  </>
-                )}
-              </Button>
-              
-              {recommendations.length > 0 && (
-                <div className="mt-4 p-4 bg-muted/50 rounded-lg">
-                  <h4 className="font-semibold mb-3 text-sm">Chemical Recommendations:</h4>
-                  <div className="space-y-2">
-                    {recommendations.map((rec, index) => (
-                      <div key={index} className="text-sm p-2 bg-background rounded border">
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <div className="font-medium">{rec.chemical}: {rec.amount} {rec.unit}</div>
-                            <div className="text-muted-foreground text-xs">{rec.reason}</div>
-                          </div>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => {
-                              const addition = `${rec.chemical}: ${rec.amount} ${rec.unit}`;
-                              const current = serviceData.chemicals_added;
-                              const newValue = current ? `${current}\n${addition}` : addition;
-                              handleInputChange('chemicals_added', newValue);
-                            }}
-                          >
-                            Add
-                          </Button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Service Details */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center space-x-2">
-              <Clock className="h-5 w-5" />
-              <span>Service Details</span>
-            </CardTitle>
-            <CardDescription>Cost and timing information</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              <div>
-                <Label htmlFor="cost">Service Cost ($)</Label>
-                <Input
-                  id="cost"
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  value={serviceData.cost || ''}
-                  onChange={(e) => handleInputChange('cost', parseFloat(e.target.value))}
-                  placeholder="75.00"
-                />
-              </div>
-              <div>
-                <Label>Service Started</Label>
-                <p className="text-sm text-muted-foreground">
-                  {startTime.toLocaleTimeString()}
-                </p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Additional Information */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center space-x-2">
-              <FileText className="h-5 w-5" />
-              <span>Additional Information</span>
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              <div>
-                <Label htmlFor="chemicals">Chemicals Added</Label>
-                <Textarea
-                  id="chemicals"
-                  value={serviceData.chemicals_added}
-                  onChange={(e) => handleInputChange('chemicals_added', e.target.value)}
-                  placeholder="e.g., 2 lbs chlorine shock, 1 lb pH up..."
-                  rows={3}
-                />
-              </div>
-              <div>
-                <Label htmlFor="notes">Service Notes</Label>
-                <Textarea
-                  id="notes"
-                  value={serviceData.notes}
-                  onChange={(e) => handleInputChange('notes', e.target.value)}
-                  placeholder="Any additional observations or notes..."
-                  rows={3}
-                />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      <div className="flex justify-between">
+        <h1 className="text-2xl font-bold flex items-center gap-2">
+          <Droplets className="h-5 w-5" /> {client.customer}
+        </h1>
         <Button variant="outline" onClick={() => navigate('/tech')}>
-          Cancel
-        </Button>
-        <Button 
-          onClick={handleComplete}
-          disabled={saving || serviceData.services_performed.length === 0}
-          className="min-w-[120px]"
-        >
-          {saving ? (
-            <LoadingSpinner />
-          ) : (
-            <>
-              <CheckCircle className="mr-2 h-4 w-4" />
-              Complete Service
-            </>
-          )}
+          <ArrowLeft className="h-4 w-4 mr-2" /> Back
         </Button>
       </div>
+
+      {/* Readings */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2"><TestTube className="h-5 w-5" /> Readings</CardTitle>
+          <CardDescription>Enter quick test results.</CardDescription>
+        </CardHeader>
+        <CardContent className="grid grid-cols-2 md:grid-cols-5 gap-4">
+          <div><Label>pH</Label><Input type="number" step="0.1" value={serviceData.ph_level ?? ''} onChange={e => handleInputChange('ph_level', parseFloat(e.target.value))} /></div>
+          <div><Label>TA</Label><Input type="number" value={serviceData.alkalinity_level ?? ''} onChange={e => handleInputChange('alkalinity_level', parseInt(e.target.value || '0'))} /></div>
+          <div><Label>FC</Label><Input type="number" step="0.1" value={serviceData.chlorine_level ?? ''} onChange={e => handleInputChange('chlorine_level', parseFloat(e.target.value))} /></div>
+          <div><Label>CYA</Label><Input type="number" value={serviceData.cya_level ?? ''} onChange={e => handleInputChange('cya_level', parseInt(e.target.value || '0'))} /></div>
+          <div><Label>Salt</Label><Input type="number" value={serviceData.salt_level ?? ''} onChange={e => handleInputChange('salt_level', parseInt(e.target.value || '0'))} /></div>
+        </CardContent>
+      </Card>
+
+      {/* Actions */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2"><Clock className="h-5 w-5" /> Actions</CardTitle>
+          <CardDescription>What you did today.</CardDescription>
+        </CardHeader>
+        <CardContent className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="flex items-center gap-2"><Checkbox checked={!!serviceData.brushed} onCheckedChange={v => handleInputChange('brushed', !!v)} /><Label>Brushed</Label></div>
+          <div className="flex items-center gap-2"><Checkbox checked={!!serviceData.vacuumed} onCheckedChange={v => handleInputChange('vacuumed', !!v)} /><Label>Vacuumed</Label></div>
+          <div className="flex items-center gap-2"><Checkbox checked={!!serviceData.cleaned_filters} onCheckedChange={v => handleInputChange('cleaned_filters', !!v)} /><Label>Cleaned Filters</Label></div>
+          <div className="flex items-center gap-2"><Checkbox checked={!!serviceData.robot_plugged_in} onCheckedChange={v => handleInputChange('robot_plugged_in', !!v)} /><Label>Plugged in Robot</Label></div>
+        </CardContent>
+      </Card>
+
+      {/* Photos */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2"><Droplets className="h-5 w-5" /> Photos</CardTitle>
+          <CardDescription>Snap before/after from your phone.</CardDescription>
+        </CardHeader>
+        <CardContent className="grid md:grid-cols-2 gap-6">
+          <ServicePhotoUpload
+            clientId={client.id}
+            label="Before Photo"
+            onUploaded={(url) => handleInputChange('beforePhotoUrl', url)}
+          />
+          <ServicePhotoUpload
+            clientId={client.id}
+            label="After Photo"
+            onUploaded={(url) => handleInputChange('afterPhotoUrl', url)}
+          />
+        </CardContent>
+      </Card>
+
+      {/* Notes / Chemicals */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Details</CardTitle>
+          <CardDescription>Notes and chemicals added.</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div>
+            <Label htmlFor="chemicals">Chemicals Added</Label>
+            <Textarea id="chemicals" rows={3}
+              value={serviceData.chemicals_added ?? ''}
+              onChange={e => handleInputChange('chemicals_added', e.target.value)}
+              placeholder="e.g., 2 lbs cal-hypo, 1 lb pH down..."
+            />
+          </div>
+          <div>
+            <Label htmlFor="notes">Notes</Label>
+            <Textarea id="notes" rows={3}
+              value={serviceData.notes ?? ''}
+              onChange={e => handleInputChange('notes', e.target.value)}
+              placeholder="Any issues or special actions..."
+            />
+          </div>
+          <div className="flex items-center gap-3">
+            <Button type="button" variant="outline" onClick={calculateDuration}>
+              <Clock className="h-4 w-4 mr-2" /> Calc Duration
+            </Button>
+            <div className="text-sm text-muted-foreground">
+              {serviceData.duration ? `Duration: ${serviceData.duration} min` : 'Duration not set'}
+            </div>
+          </div>
+          <div className="pt-2">
+            <Button onClick={completeService} disabled={saving} className="min-w-[160px]">
+              {saving ? <LoadingSpinner /> : (<><CheckCircle className="h-4 w-4 mr-2" /> Complete Service</>)}
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }

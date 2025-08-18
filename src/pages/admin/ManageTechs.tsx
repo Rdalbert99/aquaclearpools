@@ -252,6 +252,38 @@ export default function ManageTechs() {
     }
   };
 
+  const handleTestEmail = async () => {
+    try {
+      const { data, error } = await supabase.functions.invoke('test-email', {
+        body: {
+          recipientEmail: 'randy@getaquaclear.com'
+        }
+      });
+
+      if (error) {
+        console.error('Test email error:', error);
+        throw new Error(error.message || 'Failed to send test email');
+      }
+
+      if (data?.error) {
+        console.error('Test email data error:', data.error);
+        throw new Error(data.error);
+      }
+
+      toast({
+        title: "Test Email Sent",
+        description: "Test email has been sent to randy@getaquaclear.com",
+      });
+    } catch (error: any) {
+      console.error('Error sending test email:', error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to send test email.",
+        variant: "destructive",
+      });
+    }
+  };
+
   if (loading) {
     return <LoadingSpinner />;
   }
@@ -295,6 +327,14 @@ export default function ManageTechs() {
             Total technicians: {techs.length}
           </CardDescription>
         </CardHeader>
+        <CardContent>
+          <div className="flex gap-2">
+            <Button variant="outline" size="sm" onClick={handleTestEmail}>
+              <Mail className="h-4 w-4 mr-2" />
+              Test Email System
+            </Button>
+          </div>
+        </CardContent>
       </Card>
 
       {/* Techs Grid */}

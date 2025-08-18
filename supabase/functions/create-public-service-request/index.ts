@@ -156,6 +156,7 @@ serve(async (req: Request) => {
           .update({ client_id: clientId })
           .eq('id', data.id);
       }
+    } // close optional client creation block
     // Intentionally do not reveal or link existing clients in public endpoint
 
     return new Response(JSON.stringify({ 

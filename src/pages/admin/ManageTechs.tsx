@@ -10,6 +10,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Checkbox } from '@/components/ui/checkbox';
 import { useToast } from '@/hooks/use-toast';
 import { 
   Settings, 
@@ -42,7 +43,14 @@ export default function ManageTechs() {
   const [techToDelete, setTechToDelete] = useState<TechUser | null>(null);
   const [showReassignDialog, setShowReassignDialog] = useState(false);
   const [editingTech, setEditingTech] = useState<TechUser | null>(null);
-  const [editForm, setEditForm] = useState({ name: '', email: '', phone: '' });
+  const [editForm, setEditForm] = useState({ 
+    name: '', 
+    email: '', 
+    phone: '', 
+    canCreateClients: false, 
+    canManageServices: false, 
+    canViewReports: false 
+  });
   const [newPassword, setNewPassword] = useState('');
   const [resettingPasswordFor, setResettingPasswordFor] = useState<TechUser | null>(null);
   const { toast } = useToast();
@@ -168,7 +176,10 @@ export default function ManageTechs() {
     setEditForm({
       name: tech.name,
       email: tech.email,
-      phone: tech.phone || ''
+      phone: tech.phone || '',
+      canCreateClients: (tech as any).can_create_clients || false,
+      canManageServices: (tech as any).can_manage_services || false,
+      canViewReports: (tech as any).can_view_reports || false
     });
   };
 
@@ -182,6 +193,9 @@ export default function ManageTechs() {
           name: editForm.name,
           email: editForm.email,
           phone: editForm.phone || null,
+          can_create_clients: editForm.canCreateClients,
+          can_manage_services: editForm.canManageServices,
+          can_view_reports: editForm.canViewReports,
           updated_at: new Date().toISOString()
         })
         .eq('id', editingTech.id);
@@ -190,10 +204,18 @@ export default function ManageTechs() {
 
       toast({
         title: "Technician Updated",
-        description: "Technician details have been successfully updated.",
+        description: "Technician details and permissions have been successfully updated.",
       });
 
       setEditingTech(null);
+      setEditForm({ 
+        name: '', 
+        email: '', 
+        phone: '', 
+        canCreateClients: false, 
+        canManageServices: false, 
+        canViewReports: false 
+      });
       loadTechs();
     } catch (error) {
       console.error('Error updating tech:', error);
@@ -439,12 +461,55 @@ export default function ManageTechs() {
                             onChange={(e) => setEditForm(prev => ({ ...prev, phone: e.target.value }))}
                           />
                         </div>
+
+                        <div className="space-y-4">
+                          <Label className="text-base font-semibold">Permissions</Label>
+                          <div className="space-y-3">
+                            <div className="flex items-center space-x-2">
+                              <Checkbox
+                                id="can-create-clients"
+                                checked={editForm.canCreateClients || false}
+                                onCheckedChange={(checked) => setEditForm(prev => ({ ...prev, canCreateClients: checked as boolean }))}
+                              />
+                              <Label htmlFor="can-create-clients" className="text-sm">
+                                Can create new clients
+                              </Label>
+                            </div>
+                            <div className="flex items-center space-x-2">
+                              <Checkbox
+                                id="can-manage-services"
+                                checked={editForm.canManageServices || false}
+                                onCheckedChange={(checked) => setEditForm(prev => ({ ...prev, canManageServices: checked as boolean }))}
+                              />
+                              <Label htmlFor="can-manage-services" className="text-sm">
+                                Can manage all services
+                              </Label>
+                            </div>
+                            <div className="flex items-center space-x-2">
+                              <Checkbox
+                                id="can-view-reports"
+                                checked={editForm.canViewReports || false}
+                                onCheckedChange={(checked) => setEditForm(prev => ({ ...prev, canViewReports: checked as boolean }))}
+                              />
+                              <Label htmlFor="can-view-reports" className="text-sm">
+                                Can view reports and analytics
+                              </Label>
+                            </div>
+                          </div>
+                        </div>
                       </div>
 
                       <DialogFooter>
                         <Button variant="outline" onClick={() => {
                           setEditingTech(null);
-                          setEditForm({ name: '', email: '', phone: '' });
+                          setEditForm({ 
+                            name: '', 
+                            email: '', 
+                            phone: '', 
+                            canCreateClients: false, 
+                            canManageServices: false, 
+                            canViewReports: false 
+                          });
                         }}>
                           Cancel
                         </Button>

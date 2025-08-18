@@ -64,18 +64,9 @@ serve(async (req: Request) => {
       preferred_date: body.preferred_date ? new Date(body.preferred_date).toISOString() : null,
     } as const;
 
-    // First, check if a client with this email/phone already exists
-    let existingClient = null;
-    if (insertData.contact_email || insertData.contact_phone) {
-      const { data: existing } = await supabase
-        .from('clients')
-        .select('id, customer')
-        .or(`contact_email.eq.${insertData.contact_email},contact_phone.eq.${insertData.contact_phone}`)
-        .limit(1)
-        .single();
-      
-      existingClient = existing;
-    }
+    // Avoid enumerating existing clients; do not check the clients table here
+    // This prevents leaking whether an email/phone exists in our database
+    const existingClient = null;
 
     // Create service request
     const { data, error } = await supabase
@@ -136,18 +127,10 @@ serve(async (req: Request) => {
           .update({ client_id: clientId })
           .eq('id', data.id);
       }
-    } else if (existingClient) {
-      // Update the service request with the existing client_id
-      await supabase
-        .from('service_requests')
-        .update({ client_id: existingClient.id })
-        .eq('id', data.id);
-    }
+    // Intentionally do not reveal or link existing clients in public endpoint
 
     return new Response(JSON.stringify({ 
-      id: data?.id, 
-      client_id: clientId,
-      client_status: existingClient ? 'existing' : 'potential' 
+      id: data?.id
     }), {
       status: 200,
       headers: { 'Content-Type': 'application/json', ...corsHeaders },

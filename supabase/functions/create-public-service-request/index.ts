@@ -32,7 +32,7 @@ serve(async (req: Request) => {
     const body = await req.json();
     console.log('Received public service request body:', body);
 
-    // Minimal validation
+    // Enhanced validation
     const required = ['request_type', 'description'];
     for (const key of required) {
       if (!body[key] || String(body[key]).trim() === '') {
@@ -41,6 +41,35 @@ serve(async (req: Request) => {
           headers: { 'Content-Type': 'application/json', ...corsHeaders },
         });
       }
+    }
+    
+    // Validate request_type
+    const validRequestTypes = ['service', 'repair', 'maintenance', 'installation', 'consultation', 'emergency'];
+    if (!validRequestTypes.includes(body.request_type)) {
+      return new Response(JSON.stringify({ error: 'Invalid request type' }), {
+        status: 400, headers: { 'Content-Type': 'application/json', ...corsHeaders }
+      });
+    }
+    
+    // Validate description length
+    if (body.description.trim().length < 10 || body.description.trim().length > 2000) {
+      return new Response(JSON.stringify({ error: 'Description must be 10-2000 characters' }), {
+        status: 400, headers: { 'Content-Type': 'application/json', ...corsHeaders }
+      });
+    }
+    
+    // Validate email if provided
+    if (body.contact_email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(body.contact_email.trim())) {
+      return new Response(JSON.stringify({ error: 'Invalid email address' }), {
+        status: 400, headers: { 'Content-Type': 'application/json', ...corsHeaders }
+      });
+    }
+    
+    // Validate phone if provided
+    if (body.contact_phone && (body.contact_phone.length > 20 || !/^[\d\s\-\+\(\)\.]+$/.test(body.contact_phone))) {
+      return new Response(JSON.stringify({ error: 'Invalid phone number format' }), {
+        status: 400, headers: { 'Content-Type': 'application/json', ...corsHeaders }
+      });
     }
 
     const insertData = {

@@ -119,9 +119,12 @@ export const UserCreationForm = ({ onSuccess, onCancel }: UserCreationFormProps)
 
   const generateRandomPassword = () => {
     const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*';
+    const array = new Uint8Array(16); // Generate 16 bytes for stronger password
+    crypto.getRandomValues(array);
+    
     let password = '';
-    for (let i = 0; i < 12; i++) {
-      password += chars.charAt(Math.floor(Math.random() * chars.length));
+    for (let i = 0; i < 16; i++) {
+      password += chars.charAt(array[i] % chars.length);
     }
     setFormData(prev => ({ ...prev, password }));
   };

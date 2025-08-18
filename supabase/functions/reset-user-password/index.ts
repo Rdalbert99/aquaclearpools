@@ -14,11 +14,14 @@ interface ResetPasswordRequest {
   newPassword?: string;
 }
 
-function generatePassword(length = 12) {
+function generatePassword(length = 16) {
   const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*';
+  const array = new Uint8Array(length);
+  crypto.getRandomValues(array);
+  
   let password = '';
   for (let i = 0; i < length; i++) {
-    password += chars.charAt(Math.floor(Math.random() * chars.length));
+    password += chars.charAt(array[i] % chars.length);
   }
   return password;
 }

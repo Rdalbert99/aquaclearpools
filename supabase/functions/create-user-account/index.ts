@@ -41,6 +41,50 @@ const handler = async (req: Request): Promise<Response> => {
     const resend = new Resend(resendApiKey);
 
     const userData: CreateUserRequest = await req.json();
+    
+    // Enhanced input validation
+    if (!userData.firstName?.trim() || userData.firstName.trim().length < 1 || userData.firstName.trim().length > 50) {
+      return new Response(JSON.stringify({ error: 'Invalid first name' }), {
+        status: 400, headers: { 'Content-Type': 'application/json', ...corsHeaders }
+      });
+    }
+    
+    if (!userData.lastName?.trim() || userData.lastName.trim().length < 1 || userData.lastName.trim().length > 50) {
+      return new Response(JSON.stringify({ error: 'Invalid last name' }), {
+        status: 400, headers: { 'Content-Type': 'application/json', ...corsHeaders }
+      });
+    }
+    
+    if (!userData.login?.trim() || userData.login.trim().length < 3 || userData.login.trim().length > 30 || !/^[a-zA-Z0-9_-]+$/.test(userData.login.trim())) {
+      return new Response(JSON.stringify({ error: 'Invalid login (3-30 chars, alphanumeric, underscore, dash only)' }), {
+        status: 400, headers: { 'Content-Type': 'application/json', ...corsHeaders }
+      });
+    }
+    
+    if (!userData.email?.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(userData.email.trim())) {
+      return new Response(JSON.stringify({ error: 'Invalid email address' }), {
+        status: 400, headers: { 'Content-Type': 'application/json', ...corsHeaders }
+      });
+    }
+    
+    if (!userData.password || userData.password.length < 8 || userData.password.length > 128) {
+      return new Response(JSON.stringify({ error: 'Password must be 8-128 characters' }), {
+        status: 400, headers: { 'Content-Type': 'application/json', ...corsHeaders }
+      });
+    }
+    
+    if (!['admin', 'tech', 'client'].includes(userData.role)) {
+      return new Response(JSON.stringify({ error: 'Invalid role' }), {
+        status: 400, headers: { 'Content-Type': 'application/json', ...corsHeaders }
+      });
+    }
+    
+    if (userData.phone && (userData.phone.length > 20 || !/^[\d\s\-\+\(\)\.]+$/.test(userData.phone))) {
+      return new Response(JSON.stringify({ error: 'Invalid phone number format' }), {
+        status: 400, headers: { 'Content-Type': 'application/json', ...corsHeaders }
+      });
+    }
+    
     console.log('Creating user:', userData.login, userData.email, userData.role);
 
     const fullName = `${userData.firstName.trim()} ${userData.lastName.trim()}`.trim();

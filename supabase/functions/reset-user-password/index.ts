@@ -152,43 +152,14 @@ const handler = async (req: Request): Promise<Response> => {
       if (flagByEmailError) console.warn('Warning: Failed to update must_change_password by email:', flagByEmailError);
     }
 
-    // Send the new password via email if possible
-    let emailed = false;
-    try {
-      const resendApiKey = Deno.env.get('RESEND_API_KEY');
-      if (resendApiKey) {
-        const resend = new Resend(resendApiKey);
-        const emailResponse = await resend.emails.send({
-          from: "Aqua Clear Pools <onboarding@resend.dev>",
-          to: [emailToUse!],
-          subject: "Your password has been reset",
-          html: `
-            <h2>Password Reset</h2>
-            <p>Hello${userRecord?.login ? ' ' + userRecord.login : ''},</p>
-            <p>Your password has been reset. Here is your temporary password:</p>
-            <p style="font-size:16px"><strong>${passwordToSet}</strong></p>
-            <p>Please log in and change it immediately.</p>
-          `,
-        });
-        console.log('Email sent successfully:', emailResponse);
-        emailed = true;
-      } else {
-        console.warn('RESEND_API_KEY not set; skipping email send');
-      }
-    } catch (e) {
-      console.error('Error sending reset email:', e);
-    }
-
     console.log('Password reset successful for:', emailToUse);
 
     return new Response(
       JSON.stringify({
         success: true,
-        emailed,
         email: emailToUse,
-        // Only include password if we could not email it
-        password: emailed ? undefined : passwordToSet,
-        message: emailed ? 'Password reset and emailed' : 'Password reset; no email configured'
+        password: passwordToSet,
+        message: 'Password reset successfully'
       }),
       { status: 200, headers: { 'Content-Type': 'application/json', ...corsHeaders } }
     );

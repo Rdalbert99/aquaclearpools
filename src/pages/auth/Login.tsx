@@ -29,7 +29,16 @@ export default function Login() {
         body: { login: 'admin', email: 'rdalbert99@gmail.com' }
       });
       if (error) throw error;
-      toast({ title: 'Reset email sent', description: 'A temporary password was sent to rdalbert99@gmail.com' });
+      
+      if (data?.password) {
+        toast({ 
+          title: 'Password Reset Successful', 
+          description: `New password: ${data.password}`,
+          duration: 10000
+        });
+      } else {
+        toast({ title: 'Reset completed', description: 'Password has been reset' });
+      }
     } catch (e: any) {
       toast({ title: 'Reset failed', description: e.message || 'Unable to reset password', variant: 'destructive' });
     } finally {

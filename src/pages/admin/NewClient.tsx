@@ -14,17 +14,20 @@ import { useToast } from '@/hooks/use-toast';
 import { UsernameInput } from '@/components/ui/username-input';
 import { AddressInput } from '@/components/ui/address-input';
 import { validateAddress, type AddressComponents } from '@/lib/address-validation';
+import { ClientInviteDialog } from '@/components/admin/ClientInviteDialog';
 import { 
   ArrowLeft,
   Save,
   User,
   Droplets,
   DollarSign,
-  Shuffle
+  Shuffle,
+  Send
 } from 'lucide-react';
 
 interface ClientFormData {
   customer: string;
+  email: string;
   street_address: string;
   city: string;
   state: string;
@@ -60,8 +63,11 @@ export default function NewClient() {
   const { toast } = useToast();
   const [saving, setSaving] = useState(false);
   const [users, setUsers] = useState<any[]>([]);
+  const [showInviteDialog, setShowInviteDialog] = useState(false);
+  const [createdClient, setCreatedClient] = useState<any>(null);
   const [client, setClient] = useState<ClientFormData>({
     customer: '',
+    email: '',
     street_address: '',
     city: '',
     state: '',
@@ -251,6 +257,7 @@ export default function NewClient() {
 
       const insertData: any = {
         customer: client.customer,
+        email: client.email || null,
         pool_size: client.pool_size,
         pool_type: client.pool_type,
         liner_type: client.liner_type,
@@ -287,12 +294,19 @@ export default function NewClient() {
 
       if (error) throw error;
 
+      setCreatedClient(data);
+      
       toast({
         title: "Success",
         description: "Client created successfully"
       });
 
-      navigate(`/admin/clients/${data.id}`);
+      // Show invite dialog if client has email or phone
+      if (client.email || client.phone) {
+        setShowInviteDialog(true);
+      } else {
+        navigate(`/admin/clients/${data.id}`);
+      }
 
     } catch (error) {
       console.error('❌ Error creating client:', error);
@@ -474,6 +488,17 @@ export default function NewClient() {
                   />
                 </div>
               </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="email">Email Address</Label>
+              <Input
+                id="email"
+                type="email"
+                value={client.email}
+                onChange={(e) => handleInputChange('email', e.target.value)}
+                placeholder="Enter email address"
+              />
             </div>
 
             <div className="space-y-2">
@@ -810,6 +835,25 @@ export default function NewClient() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Client Invite Dialog */}
+      {createdClient && (
+        <ClientInviteDialog
+          open={showInviteDialog}
+          onOpenChange={(open) => {
+            setShowInviteDialog(open);
+            if (!open) {
+              navigate(`/admin/clients/${createdClient.id}`);
+            }
+          }}
+          client={{
+            id: createdClient.id,
+            customer: createdClient.customer,
+            email: createdClient.email,
+            phone: createdClient.phone
+          }}
+        />
+      )}
     </div>
   );
 }

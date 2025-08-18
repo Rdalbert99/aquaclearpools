@@ -158,6 +158,9 @@ export type Database = {
         Row: {
           assigned_technician_id: string | null
           company_name: string | null
+          contact_address: string | null
+          contact_email: string | null
+          contact_phone: string | null
           created_at: string | null
           customer: string
           id: string
@@ -185,6 +188,9 @@ export type Database = {
         Insert: {
           assigned_technician_id?: string | null
           company_name?: string | null
+          contact_address?: string | null
+          contact_email?: string | null
+          contact_phone?: string | null
           created_at?: string | null
           customer: string
           id?: string
@@ -212,6 +218,9 @@ export type Database = {
         Update: {
           assigned_technician_id?: string | null
           company_name?: string | null
+          contact_address?: string | null
+          contact_email?: string | null
+          contact_phone?: string | null
           created_at?: string | null
           customer?: string
           id?: string

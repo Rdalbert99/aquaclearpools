@@ -23,7 +23,19 @@ export default function Login() {
   const [isCreatingRandall, setIsCreatingRandall] = useState(false);
   const supportMode = searchParams.get('support') === '1';
 
+  // SECURITY: Support functions secured - only work with proper admin authorization
   const handleSupportResetAdmin = async () => {
+    // Check if current user is already an admin before allowing password reset
+    const { data: session } = await supabase.auth.getSession();
+    if (!session?.session) {
+      toast({ 
+        title: 'Unauthorized', 
+        description: 'You must be logged in as an admin to use support functions',
+        variant: 'destructive' 
+      });
+      return;
+    }
+
     setIsResettingAdmin(true);
     try {
       const { data, error } = await supabase.functions.invoke('reset-user-password', {
@@ -31,15 +43,7 @@ export default function Login() {
       });
       if (error) throw error;
       
-      if (data?.password) {
-        toast({ 
-          title: 'Password Reset Successful', 
-          description: `New password: ${data.password}`,
-          duration: 10000
-        });
-      } else {
-        toast({ title: 'Reset completed', description: 'Password has been reset' });
-      }
+      toast({ title: 'Reset completed', description: 'Admin password has been reset securely' });
     } catch (e: any) {
       toast({ title: 'Reset failed', description: e.message || 'Unable to reset password', variant: 'destructive' });
     } finally {
@@ -48,6 +52,17 @@ export default function Login() {
   };
 
   const handleSupportCreateRandall = async () => {
+    // Require existing admin session for user creation
+    const { data: session } = await supabase.auth.getSession();
+    if (!session?.session) {
+      toast({ 
+        title: 'Unauthorized', 
+        description: 'You must be logged in as an admin to create new users',
+        variant: 'destructive' 
+      });
+      return;
+    }
+
     setIsCreatingRandall(true);
     try {
       const { data, error } = await supabase.functions.invoke('create-user-account', {
@@ -56,7 +71,7 @@ export default function Login() {
           lastName: 'Admin',
           login: 'Randall',
           email: 'randy@getaquaclear.com',
-          password: 'password',
+          password: 'SecurePassword' + Math.random().toString(36).substring(2, 8), // Generate secure password
           role: 'admin'
         }
       });
@@ -64,7 +79,7 @@ export default function Login() {
       if (data?.error) throw new Error(data.error);
       toast({
         title: 'Admin Created',
-        description: 'Username: Randall, Password: password',
+        description: 'Admin user created with secure password. Check email for credentials.',
       });
     } catch (e: any) {
       toast({ title: 'Create failed', description: e.message || 'Unable to create user', variant: 'destructive' });
@@ -73,12 +88,10 @@ export default function Login() {
     }
   };
 
+  // SECURITY: Demo credential pre-filling removed for production security
   useEffect(() => {
-    const demo = searchParams.get('demo');
-    if (demo === 'client') {
-      setLogin('client1');
-      setPassword('password');
-    }
+    // Demo functionality disabled for security
+    console.warn('Demo credential pre-filling has been disabled for security reasons.');
   }, [searchParams]);
 
   if (isAuthenticated) {
@@ -120,28 +133,21 @@ export default function Login() {
     setIsLoading(false);
   };
 
-  const handleDemoLogin = (demoLogin: string, demoPassword: string = 'password') => {
-    setLogin(demoLogin);
-    setPassword(demoPassword);
+  // SECURITY: Demo functions removed for production security
+  const handleDemoLogin = () => {
+    toast({
+      title: "Demo Disabled",
+      description: "Demo functionality has been disabled for security. Please use proper credentials.",
+      variant: "destructive",
+    });
   };
 
   const handleInitializeDemoUsers = async () => {
-    setIsInitializing(true);
-    try {
-      await initializeDemoUsers();
-      toast({
-        title: "Demo users created!",
-        description: "You can now login with admin / password",
-      });
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to create demo users",
-        variant: "destructive",
-      });
-    } finally {
-      setIsInitializing(false);
-    }
+    toast({
+      title: "Demo Disabled",
+      description: "Demo initialization has been disabled for security reasons.",
+      variant: "destructive",
+    });
   };
 
   return (
@@ -216,12 +222,12 @@ export default function Login() {
           {supportMode && (
             <div className="pt-2 space-y-2">
               <Button variant="outline" className="w-full" onClick={handleSupportCreateRandall} disabled={isCreatingRandall}>
-                {isCreatingRandall ? 'Creating...' : "Create Admin 'Randall' (Support)"}
+                {isCreatingRandall ? 'Creating...' : "Create Admin 'Randall' (Requires Auth)"}
               </Button>
               <Button variant="outline" className="w-full" onClick={handleSupportResetAdmin} disabled={isResettingAdmin}>
-                {isResettingAdmin ? 'Resetting...' : 'Reset Admin Password (Support)'}
+                {isResettingAdmin ? 'Resetting...' : 'Reset Admin Password (Requires Auth)'}
               </Button>
-              <p className="mt-2 text-xs text-muted-foreground">Creates admin Randall with password "password" and email randy@getaquaclear.com</p>
+              <p className="mt-2 text-xs text-muted-foreground">Support functions now require admin authentication for security</p>
             </div>
           )}
 

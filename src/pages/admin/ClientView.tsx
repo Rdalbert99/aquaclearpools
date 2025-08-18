@@ -73,7 +73,8 @@ export default function ClientView() {
         .from('clients')
         .select(`
           *,
-          users(id, name, email, phone, address)
+          owner:users!clients_user_id_fkey(id, name, email, phone, address),
+          technician:users!clients_assigned_technician_id_fkey(id, name, email)
         `)
         .eq('id', clientId)
         .maybeSingle();
@@ -568,38 +569,38 @@ export default function ClientView() {
               <p className="text-lg">{client.customer}</p>
             </div>
             
-            {client.users && (
+            {client.owner && (
               <>
                 <div>
                   <p className="text-sm font-medium text-muted-foreground">Contact Person</p>
-                  <p>{client.users.name}</p>
+                  <p>{client.owner.name}</p>
                 </div>
-                {client.users.email && (
+                {client.owner.email && (
                   <div className="flex items-center space-x-2">
                     <Mail className="h-4 w-4 text-muted-foreground" />
                     <a
-                      href={`mailto:${client.users.email}`}
+                      href={`mailto:${client.owner.email}`}
                       className="text-blue-600 hover:text-blue-800 hover:underline transition-colors"
                     >
-                      {client.users.email}
+                      {client.owner.email}
                     </a>
                   </div>
                 )}
-                {client.users.phone && (
+                {client.owner.phone && (
                   <div className="flex items-center space-x-2">
                     <Phone className="h-4 w-4 text-muted-foreground" />
                     <div className="flex items-center space-x-2">
-                      <span className="text-gray-900">{client.users.phone}</span>
+                      <span className="text-gray-900">{client.owner.phone}</span>
                       <div className="flex space-x-1">
                         <a
-                          href={`tel:${client.users.phone}`}
+                          href={`tel:${client.owner.phone}`}
                           className="inline-flex items-center px-2 py-1 text-xs bg-green-100 text-green-800 rounded hover:bg-green-200 transition-colors"
                           title="Call"
                         >
                           📞 Call
                         </a>
                         <a
-                          href={`sms:${client.users.phone}`}
+                          href={`sms:${client.owner.phone}`}
                           className="inline-flex items-center px-2 py-1 text-xs bg-blue-100 text-blue-800 rounded hover:bg-blue-200 transition-colors"
                           title="Text Message"
                         >
@@ -609,16 +610,16 @@ export default function ClientView() {
                     </div>
                   </div>
                 )}
-                {client.users.address && (
+                {client.owner.address && (
                   <div className="flex items-start space-x-2">
                     <MapPin className="h-4 w-4 text-muted-foreground mt-1" />
                     <a
-                      href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(client.users.address)}`}
+                      href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(client.owner.address)}`}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="text-blue-600 hover:text-blue-800 hover:underline transition-colors"
                     >
-                      {client.users.address}
+                      {client.owner.address}
                     </a>
                   </div>
                 )}

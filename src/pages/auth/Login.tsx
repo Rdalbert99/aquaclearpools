@@ -8,7 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Eye, EyeOff, Droplets } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { initializeDemoUsers } from '@/lib/demo-users';
-
+import { supabase } from '@/integrations/supabase/client';
 export default function Login() {
   const [login, setLogin] = useState('');
   const [password, setPassword] = useState('');
@@ -19,6 +19,23 @@ export default function Login() {
   const { toast } = useToast();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
+  const [isResettingAdmin, setIsResettingAdmin] = useState(false);
+  const supportMode = searchParams.get('support') === '1';
+
+  const handleSupportResetAdmin = async () => {
+    setIsResettingAdmin(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('reset-user-password', {
+        body: { login: 'admin', email: 'rdalbert99@gmail.com' }
+      });
+      if (error) throw error;
+      toast({ title: 'Reset email sent', description: 'A temporary password was sent to rdalbert99@gmail.com' });
+    } catch (e: any) {
+      toast({ title: 'Reset failed', description: e.message || 'Unable to reset password', variant: 'destructive' });
+    } finally {
+      setIsResettingAdmin(false);
+    }
+  };
 
   useEffect(() => {
     const demo = searchParams.get('demo');
@@ -153,6 +170,15 @@ export default function Login() {
               {isLoading ? 'Signing in...' : 'Sign in'}
             </Button>
           </form>
+
+          {supportMode && (
+            <div className="pt-2">
+              <Button variant="outline" className="w-full" onClick={handleSupportResetAdmin} disabled={isResettingAdmin}>
+                {isResettingAdmin ? 'Resetting...' : 'Reset Admin Password (Support)'}
+              </Button>
+              <p className="mt-2 text-xs text-muted-foreground">Sends a temporary admin password to rdalbert99@gmail.com</p>
+            </div>
+          )}
 
           <div className="text-center text-sm text-muted-foreground">
             <p className="mt-2">

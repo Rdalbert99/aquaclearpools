@@ -64,6 +64,20 @@ serve(async (req: Request) => {
       preferred_date: body.preferred_date ? new Date(body.preferred_date).toISOString() : null,
     } as const;
 
+    // First, check if a client with this email/phone already exists
+    let existingClient = null;
+    if (insertData.contact_email || insertData.contact_phone) {
+      const { data: existing } = await supabase
+        .from('clients')
+        .select('id, customer')
+        .or(`contact_email.eq.${insertData.contact_email},contact_phone.eq.${insertData.contact_phone}`)
+        .limit(1)
+        .single();
+      
+      existingClient = existing;
+    }
+
+    // Create service request
     const { data, error } = await supabase
       .from('service_requests')
       .insert([insertData])
@@ -78,7 +92,63 @@ serve(async (req: Request) => {
       });
     }
 
-    return new Response(JSON.stringify({ id: data?.id }), {
+    // Create potential client record if one doesn't exist
+    let clientId = existingClient?.id;
+    if (!existingClient && insertData.contact_name) {
+      // Parse pool size to get numeric value
+      let poolSizeNumeric = 0;
+      if (insertData.pool_size) {
+        const sizeMatch = insertData.pool_size.match(/(\d+)/);
+        if (sizeMatch) {
+          poolSizeNumeric = parseInt(sizeMatch[1]) * 1000; // Convert to gallons
+        }
+      }
+
+      const clientData = {
+        customer: insertData.contact_name,
+        pool_size: poolSizeNumeric,
+        pool_type: insertData.pool_type || 'Unknown',
+        liner_type: 'Liner',
+        status: 'Potential', // Mark as potential client
+        created_at: new Date().toISOString(),
+        contact_email: insertData.contact_email,
+        contact_phone: insertData.contact_phone,
+        contact_address: insertData.contact_address,
+        street_address: insertData.street_address,
+        city: insertData.city,
+        state: insertData.state,
+        zip_code: insertData.zip_code,
+        country: insertData.country,
+      };
+
+      const { data: newClient, error: clientError } = await supabase
+        .from('clients')
+        .insert([clientData])
+        .select('id')
+        .single();
+
+      if (!clientError && newClient) {
+        clientId = newClient.id;
+        
+        // Update the service request with the client_id
+        await supabase
+          .from('service_requests')
+          .update({ client_id: clientId })
+          .eq('id', data.id);
+      }
+    } else if (existingClient) {
+      // Update the service request with the existing client_id
+      await supabase
+        .from('service_requests')
+        .update({ client_id: existingClient.id })
+        .eq('id', data.id);
+    }
+
+    return new Response(JSON.stringify({ 
+      id: data?.id, 
+      client_id: clientId,
+      client_status: existingClient ? 'existing' : 'potential' 
+    }), {
       status: 200,
       headers: { 'Content-Type': 'application/json', ...corsHeaders },
     });

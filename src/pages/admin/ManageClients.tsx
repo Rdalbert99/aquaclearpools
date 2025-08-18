@@ -612,15 +612,20 @@ export default function ManageClients() {
                         
                         <td className="p-4">
                           <div className="space-y-1">
-                            <div className="flex items-center space-x-2">
-                              <Mail className="h-3 w-3 text-muted-foreground" />
-                              <span className="text-sm">{client.users?.email}</span>
-                            </div>
+                            {client.users?.email && (
+                              <div className="flex items-center space-x-2">
+                                <Mail className="h-3 w-3 text-muted-foreground" />
+                                <span className="text-sm">{client.users.email}</span>
+                              </div>
+                            )}
                             {client.users?.phone && (
                               <div className="flex items-center space-x-2">
                                 <Phone className="h-3 w-3 text-muted-foreground" />
                                 <span className="text-sm">{client.users.phone}</span>
                               </div>
+                            )}
+                            {!client.users?.email && !client.users?.phone && (
+                              <span className="text-sm text-muted-foreground">No contact info</span>
                             )}
                           </div>
                         </td>
@@ -654,9 +659,25 @@ export default function ManageClients() {
                         
                         <td className="p-4">
                           <div>
-                            <Badge className={serviceStatus.color}>
-                              {serviceStatus.text}
-                            </Badge>
+                            {client.last_service_date ? (
+                              <Link 
+                                to={`/admin/clients/${client.id}/services`} 
+                                className="hover:underline"
+                              >
+                                <Badge className={serviceStatus.color}>
+                                  {serviceStatus.text}
+                                </Badge>
+                              </Link>
+                            ) : (
+                              <Link 
+                                to={`/admin/clients/${client.id}/services`} 
+                                className="hover:underline"
+                              >
+                                <Badge className={serviceStatus.color}>
+                                  No service yet
+                                </Badge>
+                              </Link>
+                            )}
                             {client.last_service_date && (
                               <p className="text-xs text-muted-foreground mt-1">
                                 {new Date(client.last_service_date).toLocaleDateString()}

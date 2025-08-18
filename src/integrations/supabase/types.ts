@@ -554,6 +554,9 @@ export type Database = {
         Row: {
           address: string | null
           address_validated: boolean | null
+          can_create_clients: boolean | null
+          can_manage_services: boolean | null
+          can_view_reports: boolean | null
           city: string | null
           country: string | null
           created_at: string | null
@@ -575,6 +578,9 @@ export type Database = {
         Insert: {
           address?: string | null
           address_validated?: boolean | null
+          can_create_clients?: boolean | null
+          can_manage_services?: boolean | null
+          can_view_reports?: boolean | null
           city?: string | null
           country?: string | null
           created_at?: string | null
@@ -596,6 +602,9 @@ export type Database = {
         Update: {
           address?: string | null
           address_validated?: boolean | null
+          can_create_clients?: boolean | null
+          can_manage_services?: boolean | null
+          can_view_reports?: boolean | null
           city?: string | null
           country?: string | null
           created_at?: string | null

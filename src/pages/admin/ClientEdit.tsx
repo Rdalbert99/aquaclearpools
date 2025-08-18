@@ -17,7 +17,12 @@ import {
   Droplets,
   Calendar,
   DollarSign,
-  Send
+  Send,
+  Lock,
+  MapPin,
+  Mail,
+  Phone,
+  Wrench
 } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Textarea } from '@/components/ui/textarea';
@@ -38,6 +43,9 @@ interface ClientFormData {
   included_services: string[];
   service_notes: string;
   service_days: string[];
+  address: string;
+  email: string;
+  phone: string;
 }
 
 export default function ClientEdit() {
@@ -55,11 +63,16 @@ export default function ClientEdit() {
   const [inviteEmailEnabled, setInviteEmailEnabled] = useState(true);
   const [inviteSmsEnabled, setInviteSmsEnabled] = useState(false);
   const [sendingInvite, setSendingInvite] = useState(false);
+  const [showPasswordDialog, setShowPasswordDialog] = useState(false);
+  const [newPassword, setNewPassword] = useState('');
+  const [mustChangePassword, setMustChangePassword] = useState(false);
+  const [lastTechVisit, setLastTechVisit] = useState<any>(null);
 
   useEffect(() => {
     if (id) {
       loadClientData(id);
       loadUsers();
+      loadLastTechVisit(id);
     }
   }, [id]);
 
@@ -67,12 +80,17 @@ export default function ClientEdit() {
     try {
       const { data, error } = await supabase
         .from('clients')
-        .select('*')
+        .select(`
+          *,
+          users(id, name, email, phone, address, must_change_password)
+        `)
         .eq('id', clientId)
         .single();
 
       if (error) throw error;
 
+      const userData = (data as any).users;
+      
       setClient({
         customer: data.customer || '',
         pool_size: data.pool_size || 0,
@@ -87,8 +105,13 @@ export default function ClientEdit() {
         next_service_date: (data as any).next_service_date ? (data as any).next_service_date.split('T')[0] : '',
         included_services: (data as any).included_services || [],
         service_notes: (data as any).service_notes || '',
-        service_days: (data as any).service_days || []
+        service_days: (data as any).service_days || [],
+        address: userData?.address || '',
+        email: userData?.email || '',
+        phone: userData?.phone || ''
       });
+
+      setMustChangePassword(userData?.must_change_password || false);
 
     } catch (error) {
       console.error('Error loading client data:', error);
@@ -113,6 +136,30 @@ export default function ClientEdit() {
       setUsers(data || []);
     } catch (error) {
       console.error('Error loading users:', error);
+    }
+  };
+
+  const loadLastTechVisit = async (clientId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('services')
+        .select(`
+          *,
+          users!technician_id(name)
+        `)
+        .eq('client_id', clientId)
+        .order('service_date', { ascending: false })
+        .limit(1)
+        .single();
+
+      if (error && error.code !== 'PGRST116') {
+        console.error('Error loading last tech visit:', error);
+        return;
+      }
+
+      setLastTechVisit(data);
+    } catch (error) {
+      console.error('Error loading last tech visit:', error);
     }
   };
 
@@ -145,12 +192,31 @@ export default function ClientEdit() {
         updateData.last_service_date = client.last_service_date;
       }
 
+      // Update client data
       const { error } = await supabase
         .from('clients')
         .update(updateData)
         .eq('id', id);
 
       if (error) throw error;
+
+      // Update user data if there's an associated user
+      if (client.user_id && client.user_id !== "none") {
+        const { error: userError } = await supabase
+          .from('users')
+          .update({
+            email: client.email,
+            phone: client.phone,
+            address: client.address,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', client.user_id);
+
+        if (userError) {
+          console.error('Error updating user data:', userError);
+          // Don't fail the whole operation if user update fails
+        }
+      }
 
       toast({
         title: "Success",
@@ -168,6 +234,47 @@ export default function ClientEdit() {
       });
     } finally {
       setSaving(false);
+    }
+  };
+
+  const generatePassword = () => {
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*';
+    let password = '';
+    for (let i = 0; i < 12; i++) {
+      password += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    setNewPassword(password);
+  };
+
+  const handlePasswordReset = async () => {
+    if (!client?.user_id || !newPassword) return;
+
+    try {
+      const { data, error } = await supabase.functions.invoke('reset-user-password', {
+        body: {
+          userId: client.user_id,
+          newPassword: newPassword
+        }
+      });
+
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+
+      toast({
+        title: "Password Reset",
+        description: "Password has been reset. User will be required to change it on next login.",
+      });
+
+      setShowPasswordDialog(false);
+      setNewPassword('');
+      setMustChangePassword(true);
+    } catch (error: any) {
+      console.error('Error resetting password:', error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to reset password.",
+        variant: "destructive",
+      });
     }
   };
 
@@ -267,12 +374,20 @@ export default function ClientEdit() {
           <Button variant="outline" onClick={() => navigate(`/admin/clients/${id}`)}>
             Cancel
           </Button>
+          {client.user_id && client.user_id !== "none" && (
+            <Button variant="outline" onClick={() => {
+              generatePassword();
+              setShowPasswordDialog(true);
+            }}>
+              <Lock className="mr-2 h-4 w-4" />
+              Reset Password
+            </Button>
+          )}
           <Button variant="outline" onClick={() => {
             // Pre-fill invite contacts
             const u = users.find((u) => u.id === client.user_id);
-            setInviteEmail(u?.email || '');
-            // @ts-ignore
-            setInvitePhone((client as any).phone || '');
+            setInviteEmail(u?.email || client.email);
+            setInvitePhone(client.phone || '');
             setInviteOpen(true);
           }}>
             <Send className="mr-2 h-4 w-4" />
@@ -306,6 +421,39 @@ export default function ClientEdit() {
             </div>
 
             <div className="space-y-2">
+              <Label htmlFor="email">Email Address</Label>
+              <Input
+                id="email"
+                type="email"
+                value={client.email}
+                onChange={(e) => handleInputChange('email', e.target.value)}
+                placeholder="Enter email address"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="phone">Phone Number</Label>
+              <Input
+                id="phone"
+                type="tel"
+                value={client.phone}
+                onChange={(e) => handleInputChange('phone', e.target.value)}
+                placeholder="Enter phone number"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="address">Physical Address</Label>
+              <Textarea
+                id="address"
+                value={client.address}
+                onChange={(e) => handleInputChange('address', e.target.value)}
+                placeholder="Enter physical address"
+                rows={2}
+              />
+            </div>
+
+            <div className="space-y-2">
               <Label htmlFor="user">Associated User Account</Label>
               <Select value={client.user_id || "none"} onValueChange={(value) => handleInputChange('user_id', value === "none" ? "" : value)}>
                 <SelectTrigger>
@@ -320,6 +468,9 @@ export default function ClientEdit() {
                   ))}
                 </SelectContent>
               </Select>
+              {mustChangePassword && client.user_id && client.user_id !== "none" && (
+                <p className="text-sm text-amber-600">⚠️ User must change password on next login</p>
+              )}
             </div>
 
             <div className="space-y-2">
@@ -410,6 +561,40 @@ export default function ClientEdit() {
             </div>
           </CardContent>
         </Card>
+
+        {/* Last Tech Visit */}
+        {lastTechVisit && (
+          <Card className="lg:col-span-2">
+            <CardHeader>
+              <CardTitle className="flex items-center space-x-2">
+                <Wrench className="h-5 w-5" />
+                <span>Last Technician Visit</span>
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                  <Label className="text-sm font-medium">Date</Label>
+                  <p className="text-sm">{new Date(lastTechVisit.service_date).toLocaleDateString()}</p>
+                </div>
+                <div>
+                  <Label className="text-sm font-medium">Technician</Label>
+                  <p className="text-sm">{lastTechVisit.users?.name || 'Unknown'}</p>
+                </div>
+                <div>
+                  <Label className="text-sm font-medium">Duration</Label>
+                  <p className="text-sm">{lastTechVisit.duration_minutes ? `${lastTechVisit.duration_minutes} minutes` : 'Not recorded'}</p>
+                </div>
+              </div>
+              {lastTechVisit.notes && (
+                <div className="mt-4">
+                  <Label className="text-sm font-medium">Notes</Label>
+                  <p className="text-sm text-muted-foreground">{lastTechVisit.notes}</p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        )}
 
         {/* Service Configuration */}
         <Card className="lg:col-span-2">
@@ -580,6 +765,49 @@ export default function ClientEdit() {
               }
             }} disabled={sendingInvite}>
               {sendingInvite ? 'Sending...' : 'Send Request'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Password Reset Dialog */}
+      <Dialog open={showPasswordDialog} onOpenChange={setShowPasswordDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Reset Password</DialogTitle>
+            <DialogDescription>
+              Generate a new password for this client. They will be required to change it on next login.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="newPassword">New Password</Label>
+              <div className="flex gap-2">
+                <Input
+                  id="newPassword"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  type="text"
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={generatePassword}
+                >
+                  Generate
+                </Button>
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => {
+              setShowPasswordDialog(false);
+              setNewPassword('');
+            }}>
+              Cancel
+            </Button>
+            <Button onClick={handlePasswordReset} disabled={!newPassword}>
+              Reset Password
             </Button>
           </DialogFooter>
         </DialogContent>

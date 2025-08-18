@@ -725,7 +725,10 @@ export default function ManageClients() {
                                 </div>
 
                                 <DialogFooter>
-                                  <Button variant="outline" onClick={() => setSelectedClientForTech(null)}>
+                                  <Button variant="outline" onClick={() => {
+                                    setSelectedClientForTech(null);
+                                    setSelectedTechId('');
+                                  }}>
                                     Cancel
                                   </Button>
                                   <Button onClick={handleAssignTechnician}>

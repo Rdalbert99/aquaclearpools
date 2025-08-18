@@ -442,7 +442,10 @@ export default function ManageTechs() {
                       </div>
 
                       <DialogFooter>
-                        <Button variant="outline" onClick={() => setEditingTech(null)}>
+                        <Button variant="outline" onClick={() => {
+                          setEditingTech(null);
+                          setEditForm({ name: '', email: '', phone: '' });
+                        }}>
                           Cancel
                         </Button>
                         <Button onClick={handleSaveEdit}>

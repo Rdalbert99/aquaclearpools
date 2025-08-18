@@ -129,7 +129,7 @@ serve(async (req) => {
     }
 
     return new Response(
-      JSON.stringify({ success: true, invite, emailStatus, smsStatus }),
+      JSON.stringify({ success: true }),
       { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
     );
   } catch (error: any) {

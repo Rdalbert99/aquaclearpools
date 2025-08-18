@@ -12,6 +12,8 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { UsernameInput } from '@/components/ui/username-input';
+import { AddressInput } from '@/components/ui/address-input';
+import { validateAddress, type AddressComponents } from '@/lib/address-validation';
 import { 
   ArrowLeft,
   Save,
@@ -23,7 +25,11 @@ import {
 
 interface ClientFormData {
   customer: string;
-  address: string;
+  street_address: string;
+  city: string;
+  state: string;
+  zip_code: string;
+  address_validated: boolean;
   phone: string;
   pool_size: number;
   pool_type: string;
@@ -56,7 +62,11 @@ export default function NewClient() {
   const [users, setUsers] = useState<any[]>([]);
   const [client, setClient] = useState<ClientFormData>({
     customer: '',
-    address: '',
+    street_address: '',
+    city: '',
+    state: '',
+    zip_code: '',
+    address_validated: false,
     phone: '',
     pool_size: 0,
     pool_type: '',
@@ -199,7 +209,11 @@ export default function NewClient() {
           name: client.customer,
           role: 'client',
           login: client.new_user_username,
-          address: client.address || null,
+          street_address: client.street_address || null,
+          city: client.city || null,
+          state: client.state || null,
+          zip_code: client.zip_code || null,
+          address_validated: client.address_validated,
           phone: client.phone || null,
           must_change_password: true
         };
@@ -302,6 +316,23 @@ export default function NewClient() {
     setClient({ ...client, [field]: value });
   };
 
+  const handleAddressValidation = async (addressComponents?: AddressComponents) => {
+    if (addressComponents) {
+      setClient({
+        ...client,
+        street_address: addressComponents.street_address,
+        city: addressComponents.city,
+        state: addressComponents.state,
+        zip_code: addressComponents.zip_code,
+        address_validated: true
+      });
+      toast({
+        title: "Address Verified",
+        description: "Address has been validated and formatted correctly"
+      });
+    }
+  };
+
   const handleServiceToggle = (service: string, checked: boolean) => {
     const updatedServices = checked 
       ? [...client.included_services, service]
@@ -390,14 +421,59 @@ export default function NewClient() {
               />
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="address">Address</Label>
-              <Input
-                id="address"
-                value={client.address}
-                onChange={(e) => handleInputChange('address', e.target.value)}
-                placeholder="Enter property address"
-              />
+            <div className="space-y-4">
+              <h3 className="text-lg font-medium">Property Address</h3>
+              
+              <div className="space-y-2">
+                <Label htmlFor="street_address">Street Address</Label>
+                <AddressInput
+                  value={client.street_address}
+                  onChange={(value, components) => {
+                    handleInputChange('street_address', value);
+                    if (components) {
+                      handleAddressValidation(components);
+                    }
+                  }}
+                  placeholder="Enter street address"
+                  className={client.address_validated ? 'border-green-500' : ''}
+                />
+                {client.address_validated && (
+                  <p className="text-sm text-green-600">✓ Address verified</p>
+                )}
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="city">City</Label>
+                  <Input
+                    id="city"
+                    value={client.city}
+                    onChange={(e) => handleInputChange('city', e.target.value)}
+                    placeholder="City"
+                  />
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="state">State</Label>
+                  <Input
+                    id="state"
+                    value={client.state}
+                    onChange={(e) => handleInputChange('state', e.target.value.toUpperCase())}
+                    placeholder="State"
+                    maxLength={2}
+                  />
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="zip_code">ZIP Code</Label>
+                  <Input
+                    id="zip_code"
+                    value={client.zip_code}
+                    onChange={(e) => handleInputChange('zip_code', e.target.value)}
+                    placeholder="ZIP"
+                  />
+                </div>
+              </div>
             </div>
 
             <div className="space-y-2">

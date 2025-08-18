@@ -253,33 +253,45 @@ export default function ManageTechs() {
   };
 
   const handleTestEmail = async () => {
+    console.log('[Email Test] Starting...');
     try {
       const { data, error } = await supabase.functions.invoke('test-email', {
-        body: {
-          recipientEmail: 'randy@getaquaclear.com'
-        }
+        body: { recipientEmail: 'randy@getaquaclear.com' },
       });
+
+      console.log('[Email Test] Invoke result:', { data, error });
 
       if (error) {
-        console.error('Test email error:', error);
-        throw new Error(error.message || 'Failed to send test email');
+        console.error('[Email Test] Invoke error:', error);
+        toast({
+          title: 'Email Test Failed (invoke error)',
+          description: error.message || 'Failed to call edge function.',
+          variant: 'destructive',
+        });
+        return;
       }
 
-      if (data?.error) {
-        console.error('Test email data error:', data.error);
-        throw new Error(data.error);
+      if (!data?.success) {
+        console.error('[Email Test] Provider error:', data?.error);
+        toast({
+          title: `Email Test Failed${data?.error?.statusCode ? ` (HTTP ${data.error.statusCode})` : ''}`,
+          description: data?.error?.message || 'Unknown error from email provider.',
+          variant: 'destructive',
+        });
+        return;
       }
 
+      console.log('[Email Test] Success, messageId:', data.messageId);
       toast({
-        title: "Test Email Sent",
-        description: "Test email has been sent to randy@getaquaclear.com",
+        title: 'Test Email Sent',
+        description: `Delivered request to provider. Message ID: ${data.messageId || 'N/A'}`,
       });
-    } catch (error: any) {
-      console.error('Error sending test email:', error);
+    } catch (err: any) {
+      console.error('[Email Test] Unexpected error:', err);
       toast({
-        title: "Error",
-        description: error.message || "Failed to send test email.",
-        variant: "destructive",
+        title: 'Email Test Failed (unexpected)',
+        description: err?.message || 'Unexpected error occurred.',
+        variant: 'destructive',
       });
     }
   };

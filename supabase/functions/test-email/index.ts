@@ -22,6 +22,15 @@ const handler = async (req: Request): Promise<Response> => {
   try {
     const { recipientEmail }: TestEmailRequest = await req.json();
 
+    const apiKey = Deno.env.get("RESEND_API_KEY");
+    if (!apiKey) {
+      console.error("Missing RESEND_API_KEY secret");
+      return new Response(
+        JSON.stringify({ success: false, error: { message: "Missing RESEND_API_KEY secret" } }),
+        { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } }
+      );
+    }
+
     console.log(`Sending test email to: ${recipientEmail}`);
 
     const emailResponse = await resend.emails.send({
@@ -33,7 +42,7 @@ const handler = async (req: Request): Promise<Response> => {
           <h1 style="color: #2563eb; text-align: center;">🏊 AquaClear Pools Test Email</h1>
           
           <div style="background: #f0f9ff; border: 1px solid #bae6fd; border-radius: 8px; padding: 20px; margin: 20px 0;">
-            <h2 style="color: #0369a1; margin-top: 0;">Email System Test Successful!</h2>
+            <h2 style="color: #0369a1; margin-top: 0;">Email System Test</h2>
             <p>This is a test email to verify that your email sending functionality is working correctly.</p>
             <p><strong>Timestamp:</strong> ${new Date().toLocaleString()}</p>
             <p><strong>Recipient:</strong> ${recipientEmail}</p>
@@ -47,30 +56,37 @@ const handler = async (req: Request): Promise<Response> => {
       `,
     });
 
+    if (emailResponse.error) {
+      console.error("Resend error:", emailResponse.error);
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: {
+            name: emailResponse.error.name,
+            message: emailResponse.error.message,
+            statusCode: (emailResponse.error as any).statusCode ?? 400,
+          },
+          provider: "resend",
+          recipient: recipientEmail,
+        }),
+        {
+          status: (emailResponse.error as any).statusCode ?? 400,
+          headers: { "Content-Type": "application/json", ...corsHeaders },
+        }
+      );
+    }
+
     console.log("Test email sent successfully:", emailResponse);
 
-    return new Response(JSON.stringify({ 
-      success: true,
-      messageId: emailResponse.data?.id,
-      recipient: recipientEmail 
-    }), {
-      status: 200,
-      headers: {
-        "Content-Type": "application/json",
-        ...corsHeaders,
-      },
-    });
+    return new Response(
+      JSON.stringify({ success: true, messageId: emailResponse.data?.id, recipient: recipientEmail }),
+      { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
+    );
   } catch (error: any) {
     console.error("Error in test-email function:", error);
     return new Response(
-      JSON.stringify({ 
-        error: error.message,
-        success: false 
-      }),
-      {
-        status: 500,
-        headers: { "Content-Type": "application/json", ...corsHeaders },
-      }
+      JSON.stringify({ success: false, error: { message: error.message } }),
+      { status: 500, headers: { "Content-Type": "application/json", ...corsHeaders } }
     );
   }
 };

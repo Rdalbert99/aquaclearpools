@@ -19,8 +19,16 @@ serve(async (req: Request) => {
   try {
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
 
+    // Create clients
     const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey, {
+      auth: { autoRefreshToken: false, persistSession: false }
+    });
+
+    const authHeader = req.headers.get('Authorization') || '';
+    const supabaseUser = createClient(supabaseUrl, supabaseAnonKey, {
+      global: { headers: { Authorization: authHeader } },
       auth: { autoRefreshToken: false, persistSession: false }
     });
 
@@ -29,12 +37,32 @@ serve(async (req: Request) => {
       return new Response(JSON.stringify({ error: 'email is required' }), { status: 400, headers: { 'Content-Type': 'application/json', ...corsHeaders } });
     }
 
-    // Find auth user by email
-    const { data: usersList, error: listErr } = await supabaseAdmin.auth.admin.listUsers();
-    if (listErr) throw new Error(listErr.message);
-    const authUser = usersList?.users?.find((u) => u.email === email);
-    if (!authUser) {
-      return new Response(JSON.stringify({ error: 'No auth user found for email' }), { status: 404, headers: { 'Content-Type': 'application/json', ...corsHeaders } });
+    // Authenticated user and role
+    const { data: userData } = await supabaseUser.auth.getUser();
+    const { data: roleData } = await supabaseUser.rpc('get_current_user_role');
+    if (!userData?.user) {
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { 'Content-Type': 'application/json', ...corsHeaders } });
+    }
+
+    const isAdmin = roleData === 'admin';
+    const isSelf = (userData.user.email || '').toLowerCase() === email.toLowerCase();
+    if (!isAdmin && !isSelf) {
+      return new Response(JSON.stringify({ error: 'Forbidden' }), { status: 403, headers: { 'Content-Type': 'application/json', ...corsHeaders } });
+    }
+
+    // Determine target auth user
+    let authUser: { id: string; email?: string | null; user_metadata?: any } | null = null;
+    if (isSelf) {
+      authUser = { id: userData.user.id, email: userData.user.email, user_metadata: userData.user.user_metadata };
+    } else {
+      // Admin path: lookup by email
+      const { data: usersList, error: listErr } = await supabaseAdmin.auth.admin.listUsers();
+      if (listErr) throw new Error(listErr.message);
+      const found = usersList?.users?.find((u) => (u.email || '').toLowerCase() === email.toLowerCase());
+      if (!found) {
+        return new Response(JSON.stringify({ error: 'No auth user found for email' }), { status: 404, headers: { 'Content-Type': 'application/json', ...corsHeaders } });
+      }
+      authUser = { id: found.id, email: found.email, user_metadata: found.user_metadata };
     }
 
     // Fetch an existing profile row by email (if any)

@@ -35,6 +35,22 @@ const handler = async (req: Request): Promise<Response> => {
   try {
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
+
+    // Verify caller is authenticated admin
+    const authHeader = req.headers.get('Authorization') || '';
+    const supabaseUser = createClient(supabaseUrl, supabaseAnonKey, {
+      global: { headers: { Authorization: authHeader } },
+      auth: { autoRefreshToken: false, persistSession: false },
+    });
+    const { data: userData } = await supabaseUser.auth.getUser();
+    const { data: roleData } = await supabaseUser.rpc('get_current_user_role');
+    if (!userData?.user || roleData !== 'admin') {
+      return new Response(JSON.stringify({ error: 'Forbidden' }), {
+        status: 403,
+        headers: { 'Content-Type': 'application/json', ...corsHeaders },
+      });
+    }
 
     // Create admin client
     const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey, {

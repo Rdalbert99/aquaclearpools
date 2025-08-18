@@ -27,3 +27,6 @@ verify_jwt = false
 
 [functions.reset-user-password]
 verify_jwt = false
+
+[functions.create-user-account]
+verify_jwt = false

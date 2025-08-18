@@ -20,6 +20,7 @@ export default function Login() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const [isResettingAdmin, setIsResettingAdmin] = useState(false);
+  const [isCreatingRandall, setIsCreatingRandall] = useState(false);
   const supportMode = searchParams.get('support') === '1';
 
   const handleSupportResetAdmin = async () => {
@@ -43,6 +44,32 @@ export default function Login() {
       toast({ title: 'Reset failed', description: e.message || 'Unable to reset password', variant: 'destructive' });
     } finally {
       setIsResettingAdmin(false);
+    }
+  };
+
+  const handleSupportCreateRandall = async () => {
+    setIsCreatingRandall(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('create-user-account', {
+        body: {
+          firstName: 'Randall',
+          lastName: 'Admin',
+          login: 'Randall',
+          email: 'randy@getaquaclear.com',
+          password: 'password',
+          role: 'admin'
+        }
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      toast({
+        title: 'Admin Created',
+        description: 'Username: Randall, Password: password',
+      });
+    } catch (e: any) {
+      toast({ title: 'Create failed', description: e.message || 'Unable to create user', variant: 'destructive' });
+    } finally {
+      setIsCreatingRandall(false);
     }
   };
 
@@ -181,11 +208,14 @@ export default function Login() {
           </form>
 
           {supportMode && (
-            <div className="pt-2">
+            <div className="pt-2 space-y-2">
+              <Button variant="outline" className="w-full" onClick={handleSupportCreateRandall} disabled={isCreatingRandall}>
+                {isCreatingRandall ? 'Creating...' : "Create Admin 'Randall' (Support)"}
+              </Button>
               <Button variant="outline" className="w-full" onClick={handleSupportResetAdmin} disabled={isResettingAdmin}>
                 {isResettingAdmin ? 'Resetting...' : 'Reset Admin Password (Support)'}
               </Button>
-              <p className="mt-2 text-xs text-muted-foreground">Sends a temporary admin password to rdalbert99@gmail.com</p>
+              <p className="mt-2 text-xs text-muted-foreground">Creates admin Randall with password "password" and email randy@getaquaclear.com</p>
             </div>
           )}
 

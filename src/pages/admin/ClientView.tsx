@@ -57,14 +57,18 @@ export default function ClientView() {
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
 
   useEffect(() => {
+    console.log('DEBUG: Current user:', user);
+    console.log('DEBUG: Client ID from params:', id);
     if (id) {
       loadClientData(id);
     }
-  }, [id]);
+  }, [id, user]);
 
   const loadClientData = async (clientId: string) => {
+    console.log('DEBUG: Loading client data for clientId:', clientId);
     try {
       // Load client details
+      console.log('DEBUG: Fetching client details...');
       const { data: client, error: clientError } = await supabase
         .from('clients')
         .select(`
@@ -73,6 +77,8 @@ export default function ClientView() {
         `)
         .eq('id', clientId)
         .maybeSingle();
+
+      console.log('DEBUG: Client query result:', { client, clientError });
 
       if (clientError) throw clientError;
       if (!client) {

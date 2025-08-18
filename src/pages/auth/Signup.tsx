@@ -201,19 +201,9 @@ export default function Signup() {
               </div>
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="role">Account Type</Label>
-              <Select value={formData.role} onValueChange={(value) => setFormData(prev => ({ ...prev, role: value }))}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="client">Client</SelectItem>
-                  <SelectItem value="tech">Technician</SelectItem>
-                  <SelectItem value="admin">Administrator</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+            {/* SECURITY: Role selection removed - public signup limited to client role only */}
+            {/* Tech and admin roles require invitation or admin approval for security */}
+            <input type="hidden" name="role" value="client" />
 
             <div className="space-y-2">
               <Label htmlFor="password">Password</Label>

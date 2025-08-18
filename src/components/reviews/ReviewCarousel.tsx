@@ -19,17 +19,14 @@ export const ReviewCarousel = () => {
   useEffect(() => {
     const fetchReviews = async () => {
       try {
-        const { data, error } = await supabase
-          .from('reviews')
-          .select('id, customer_name, review_text, rating, created_at')
-          .eq('status', 'approved')
-          .order('created_at', { ascending: false })
-          .limit(10);
+        // SECURITY: Use dedicated public endpoint instead of direct database access
+        // This prevents unauthorized access to customer review data
+        const { data, error } = await supabase.functions.invoke('get-approved-reviews');
 
         if (error) {
           console.error('Error fetching reviews:', error);
         } else {
-          setReviews(data || []);
+          setReviews(data?.reviews || []);
         }
       } catch (error) {
         console.error('Error fetching reviews:', error);

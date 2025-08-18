@@ -219,17 +219,7 @@ export default function Login() {
             </Button>
           </form>
 
-          {supportMode && (
-            <div className="pt-2 space-y-2">
-              <Button variant="outline" className="w-full" onClick={handleSupportCreateRandall} disabled={isCreatingRandall}>
-                {isCreatingRandall ? 'Creating...' : "Create Admin 'Randall' (Requires Auth)"}
-              </Button>
-              <Button variant="outline" className="w-full" onClick={handleSupportResetAdmin} disabled={isResettingAdmin}>
-                {isResettingAdmin ? 'Resetting...' : 'Reset Admin Password (Requires Auth)'}
-              </Button>
-              <p className="mt-2 text-xs text-muted-foreground">Support functions now require admin authentication for security</p>
-            </div>
-          )}
+          {/* SECURITY: Support functions removed from public login page for security */}
 
           <div className="text-center text-sm text-muted-foreground">
             <p className="mt-2">

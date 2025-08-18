@@ -202,6 +202,12 @@ export default function Login() {
               </div>
             </div>
 
+            <div className="text-center">
+              <Link to="/auth/forgot-password" className="text-sm text-primary hover:underline">
+                Forgot your password?
+              </Link>
+            </div>
+
             <Button type="submit" className="w-full" disabled={isLoading}>
               {isLoading ? 'Signing in...' : 'Sign in'}
             </Button>

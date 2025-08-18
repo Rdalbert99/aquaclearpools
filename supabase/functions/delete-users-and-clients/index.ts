@@ -34,20 +34,32 @@ serve(async (req: Request) => {
       });
     }
 
-    // Verify caller is an authenticated admin
+    // Enhanced authentication verification for critical operations
     const authHeader = req.headers.get('Authorization') || '';
+    if (!authHeader.startsWith('Bearer ')) {
+      return new Response(JSON.stringify({ error: 'Invalid authorization header' }), {
+        status: 401,
+        headers: { 'Content-Type': 'application/json', ...corsHeaders },
+      });
+    }
+    
     const userClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
       global: { headers: { Authorization: authHeader } },
       auth: { autoRefreshToken: false, persistSession: false },
     });
-    const { data: userData } = await userClient.auth.getUser();
-    const { data: roleData } = await userClient.rpc('get_current_user_role');
-    if (!userData?.user || roleData !== 'admin') {
-      return new Response(JSON.stringify({ error: 'Forbidden' }), {
+    const { data: userData, error: userError } = await userClient.auth.getUser();
+    const { data: roleData, error: roleError } = await userClient.rpc('get_current_user_role');
+    
+    if (userError || roleError || !userData?.user || roleData !== 'admin') {
+      console.error('Authorization failed:', { userError, roleError, hasUser: !!userData?.user, role: roleData });
+      return new Response(JSON.stringify({ error: 'Forbidden - Admin access required' }), {
         status: 403,
         headers: { 'Content-Type': 'application/json', ...corsHeaders },
       });
     }
+    
+    // Log critical operation
+    console.log(`Admin ${userData.user.email} attempting user deletion operation`);
 
     const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY);
 

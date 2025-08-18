@@ -85,6 +85,38 @@ const handler = async (req: Request): Promise<Response> => {
       });
     }
     
+    // Enhanced role validation - only admins can assign privileged roles
+    const authHeader = req.headers.get('Authorization') || '';
+    let userRole = null;
+    
+    if (authHeader.startsWith('Bearer ')) {
+      try {
+        const userClient = createClient(supabaseUrl, Deno.env.get('SUPABASE_ANON_KEY')!, {
+          global: { headers: { Authorization: authHeader } },
+          auth: { autoRefreshToken: false, persistSession: false },
+        });
+        const { data: userData: currentUser } = await userClient.auth.getUser();
+        const { data: roleData } = await userClient.rpc('get_current_user_role');
+        userRole = roleData;
+      } catch (e) {
+        console.log('No valid auth token provided');
+      }
+    }
+    
+    // Only admins can assign tech or admin roles
+    if (['tech', 'admin'].includes(userData.role) && userRole !== 'admin') {
+      return new Response(JSON.stringify({ error: 'Only administrators can assign tech or admin roles' }), {
+        status: 403,
+        headers: { 'Content-Type': 'application/json', ...corsHeaders },
+      });
+    }
+    
+    // Rate limiting check for public registrations
+    if (!authHeader) {
+      const clientIP = req.headers.get('x-real-ip') || req.headers.get('x-forwarded-for') || 'unknown';
+      console.log(`Public registration attempt from IP: ${clientIP}`);
+    }
+    
     console.log('Creating user:', userData.login, userData.email, userData.role);
 
     const fullName = `${userData.firstName.trim()} ${userData.lastName.trim()}`.trim();

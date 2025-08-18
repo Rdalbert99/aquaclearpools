@@ -33,8 +33,9 @@ const handler = async (req: Request): Promise<Response> => {
 
     console.log(`Sending test email to: ${recipientEmail}`);
 
+    const fromEmail = Deno.env.get("RESEND_FROM_EMAIL") || "AquaClear Pools <onboarding@resend.dev>";
     const emailResponse = await resend.emails.send({
-      from: "AquaClear Pools <onboarding@resend.dev>",
+      from: fromEmail,
       to: [recipientEmail],
       subject: "🏊 Test Email from AquaClear Pools",
       html: `
@@ -58,19 +59,20 @@ const handler = async (req: Request): Promise<Response> => {
 
     if (emailResponse.error) {
       console.error("Resend error:", emailResponse.error);
+      const statusCode = (emailResponse.error as any).statusCode ?? 400;
+      const message = (emailResponse.error as any).message || (emailResponse.error as any).error || "Unknown Resend error";
+      const hint = statusCode === 403 && (Deno.env.get("RESEND_FROM_EMAIL") || "").includes("resend.dev")
+        ? "Resend sandbox: Verify a domain at https://resend.com/domains and set RESEND_FROM_EMAIL to a verified sender (e.g., no-reply@yourdomain.com)."
+        : undefined;
       return new Response(
         JSON.stringify({
           success: false,
-          error: {
-            name: emailResponse.error.name,
-            message: emailResponse.error.message,
-            statusCode: (emailResponse.error as any).statusCode ?? 400,
-          },
+          error: { message, statusCode, hint },
           provider: "resend",
           recipient: recipientEmail,
         }),
         {
-          status: (emailResponse.error as any).statusCode ?? 400,
+          status: statusCode,
           headers: { "Content-Type": "application/json", ...corsHeaders },
         }
       );

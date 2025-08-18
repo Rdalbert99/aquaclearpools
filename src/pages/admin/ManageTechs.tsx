@@ -61,20 +61,27 @@ export default function ManageTechs() {
 
   const loadTechs = async () => {
     try {
+      console.log('Loading technicians...');
       let techs: any[] | null = null;
       const { data, error } = await supabase.rpc('get_all_technicians');
+      console.log('RPC result:', { data, error });
+      
       if (!error && data && data.length > 0) {
         techs = data as any[];
+        console.log('Loaded techs from RPC:', techs);
       } else {
+        console.log('Falling back to direct query...');
         const { data: fallback, error: fbErr } = await supabase
           .from('users')
           .select('id, name, login, email, phone, created_at')
           .eq('role', 'tech')
           .order('name');
+        console.log('Fallback result:', { fallback, fbErr });
         if (fbErr) throw fbErr;
         techs = fallback as any[];
       }
       setTechs(techs || []);
+      console.log('Final techs set:', techs);
     } catch (error) {
       console.error('Error loading techs:', error);
     } finally {
@@ -88,7 +95,7 @@ export default function ManageTechs() {
       const { data: clients, error: clientError } = await supabase
         .from('clients')
         .select('id, customer')
-        .or(`user_id.eq.${tech.id}`);
+        .eq('assigned_technician_id', tech.id);
 
       if (clientError) throw clientError;
 
@@ -143,8 +150,8 @@ export default function ManageTechs() {
       // Reassign clients to selected tech
       const { error: reassignError } = await supabase
         .from('clients')
-        .update({ user_id: selectedTechForReassignment })
-        .eq('user_id', techToDelete.id);
+        .update({ assigned_technician_id: selectedTechForReassignment })
+        .eq('assigned_technician_id', techToDelete.id);
 
       if (reassignError) throw reassignError;
 

@@ -72,9 +72,18 @@ export default function ClientView() {
           users(id, name, email, phone, address)
         `)
         .eq('id', clientId)
-        .single();
+        .maybeSingle();
 
       if (clientError) throw clientError;
+      if (!client) {
+        toast({
+          title: "Client not found",
+          description: "The requested client could not be found.",
+          variant: "destructive"
+        });
+        navigate('/admin/clients');
+        return;
+      }
 
       // Load services for this client
       const { data: services, error: servicesError } = await supabase

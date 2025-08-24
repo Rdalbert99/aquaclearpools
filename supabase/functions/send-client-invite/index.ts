@@ -50,16 +50,7 @@ serve(async (req) => {
       });
     }
 
-    // Fetch client for context (e.g., name)
-    const { data: client, error: clientError } = await adminClient
-      .from("clients")
-      .select("id, customer")
-      .eq("id", body.clientId)
-      .maybeSingle();
-
-    if (clientError || !client) {
-      throw clientError || new Error("Client not found");
-    }
+    // Skipping client lookup to avoid schema dependency; greeting will be generic.
 
     // Generate a token and create invitation
     const token = crypto.randomUUID();
@@ -91,7 +82,7 @@ serve(async (req) => {
       const html = `
         <div style="font-family:system-ui,Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:#111">
           <h2>Complete Your Aqua Clear Account</h2>
-          <p>Hello${client.customer ? `, ${client.customer}` : ""}!</p>
+          <p>Hello!</p>
           <p>An administrator invited you to create your client account. Review your details and set a password here:</p>
           <p><a href="${link}" target="_blank" style="display:inline-block;padding:10px 16px;background:#0ea5e9;color:#fff;border-radius:6px;text-decoration:none">Create My Account</a></p>
           <p>If the button doesn't work, copy this link into your browser:</p>

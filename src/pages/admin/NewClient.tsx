@@ -257,7 +257,9 @@ export default function NewClient() {
 
       const insertData: any = {
         customer: client.customer,
-        email: client.email || null,
+        contact_email: client.email || null,
+        contact_phone: client.phone || null,
+        contact_address: client.street_address || null,
         pool_size: client.pool_size,
         pool_type: client.pool_type,
         liner_type: client.liner_type,

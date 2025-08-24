@@ -56,11 +56,32 @@ export default function ClientDashboard() {
         return;
       }
 
+      // Load last service with technician details
+      const { data: lastService } = await supabase
+        .from('services')
+        .select(`
+          *,
+          users(name, email),
+          clients(customer)
+        `)
+        .eq('client_id', client.id)
+        .order('service_date', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      // Load pending service requests
+      const { data: pendingRequests } = await supabase
+        .from('service_requests')
+        .select('*')
+        .eq('client_id', client.id)
+        .eq('status', 'pending')
+        .order('requested_date', { ascending: false });
+
       setDashboardData({
         client,
         nextService: client.next_service_date,
-        lastService: null,
-        pendingRequests: []
+        lastService: lastService || null,
+        pendingRequests: pendingRequests || []
       });
     } catch (error) {
       console.error('Error loading dashboard data:', error);
@@ -187,6 +208,97 @@ export default function ClientDashboard() {
         currentImageUrl={client.pool_image_url}
         onImageUpdated={loadDashboardData}
       />
+
+      {/* Last Service Information */}
+      {dashboardData?.lastService && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center space-x-2">
+              <CheckCircle className="h-5 w-5 text-green-500" />
+              <span>Last Service</span>
+            </CardTitle>
+            <CardDescription>Your most recent pool service details</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="space-y-4">
+                <div>
+                  <p className="text-sm text-muted-foreground">Service Date</p>
+                  <p className="font-medium">
+                    {new Date(dashboardData.lastService.service_date).toLocaleDateString()}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Technician</p>
+                  <p className="font-medium">
+                    {dashboardData.lastService.users?.name || 'Unknown Technician'}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Duration</p>
+                  <p className="font-medium">
+                    {dashboardData.lastService.duration_minutes 
+                      ? `${dashboardData.lastService.duration_minutes} minutes`
+                      : 'Not recorded'}
+                  </p>
+                </div>
+              </div>
+              <div className="space-y-4">
+                {dashboardData.lastService.services_performed && (
+                  <div>
+                    <p className="text-sm text-muted-foreground">Services Performed</p>
+                    <p className="font-medium">{dashboardData.lastService.services_performed}</p>
+                  </div>
+                )}
+                {dashboardData.lastService.chemicals_added && (
+                  <div>
+                    <p className="text-sm text-muted-foreground">Chemicals Added</p>
+                    <p className="font-medium">{dashboardData.lastService.chemicals_added}</p>
+                  </div>
+                )}
+                {dashboardData.lastService.notes && (
+                  <div>
+                    <p className="text-sm text-muted-foreground">Service Notes</p>
+                    <p className="font-medium">{dashboardData.lastService.notes}</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Payment Information */}
+      {client.qb_invoice_link && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center space-x-2">
+              <Calendar className="h-5 w-5 text-blue-500" />
+              <span>Payment Information</span>
+            </CardTitle>
+            <CardDescription>Your invoice and payment details</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-center justify-between p-4 bg-muted rounded-lg">
+              <div>
+                <p className="font-medium">Invoice Ready</p>
+                <p className="text-sm text-muted-foreground">
+                  Your latest service invoice is available for payment
+                </p>
+              </div>
+              <Button asChild>
+                <a
+                  href={client.qb_invoice_link}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  Pay Invoice
+                </a>
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Quick Actions */}
       <Card>

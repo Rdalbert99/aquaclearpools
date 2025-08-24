@@ -34,6 +34,7 @@ import {
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { ClientInviteDialog } from '@/components/admin/ClientInviteDialog';
 
 interface Client {
   id: string;
@@ -82,6 +83,7 @@ export default function ManageClients() {
   const [selectedClientForTech, setSelectedClientForTech] = useState<Client | null>(null);
   const [selectedTechId, setSelectedTechId] = useState<string>('');
   const [duplicateUserIds, setDuplicateUserIds] = useState<string[]>([]);
+  const [inviteClient, setInviteClient] = useState<Client | null>(null);
 
   useEffect(() => {
     loadClients();
@@ -708,6 +710,13 @@ export default function ManageClients() {
                             >
                               <Edit className="h-3 w-3" />
                             </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => setInviteClient(client)}
+                            >
+                              Send Invite
+                            </Button>
                             <Dialog>
                               <DialogTrigger asChild>
                                 <Button
@@ -798,6 +807,20 @@ export default function ManageClients() {
           )}
         </CardContent>
       </Card>
+
+      {/* Client Invite Dialog */}
+      {inviteClient && (
+        <ClientInviteDialog
+          open={!!inviteClient}
+          onOpenChange={(open) => !open && setInviteClient(null)}
+          client={{
+            id: inviteClient.id,
+            customer: inviteClient.customer,
+            email: inviteClient.users?.email,
+            phone: inviteClient.users?.phone
+          }}
+        />
+      )}
     </div>
   );
 }

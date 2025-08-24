@@ -22,9 +22,11 @@ import ResetPassword from "./pages/auth/ResetPassword";
 import AdminDashboard from "./pages/admin/Dashboard";
 import TechDashboard from "./pages/tech/Dashboard";
 import FieldService from "./pages/tech/FieldService";
+import TechSchedule from "./pages/tech/Schedule";
 import ManageClients from "./pages/admin/ManageClients";
 import ChemicalCalculator from "./pages/admin/ChemicalCalculator";
 import ServiceHistory from "./pages/admin/ServiceHistory";
+import Reports from "./pages/admin/Reports";
 import ClientView from "./pages/admin/ClientView";
 import ClientEdit from "./pages/admin/ClientEdit";
 import AdminClientServices from "./pages/admin/ClientServices";
@@ -116,6 +118,14 @@ const AppRoutes = () => {
           element={
             <ProtectedRoute allowedRoles={['tech']}>
               <FieldService />
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/tech/schedule" 
+          element={
+            <ProtectedRoute allowedRoles={['tech']}>
+              <TechSchedule />
             </ProtectedRoute>
           } 
         />
@@ -260,6 +270,14 @@ const AppRoutes = () => {
           element={
             <ProtectedRoute allowedRoles={['admin']}>
               <ManageTechs />
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/admin/reports" 
+          element={
+            <ProtectedRoute allowedRoles={['admin']}>
+              <Reports />
             </ProtectedRoute>
           } 
         />

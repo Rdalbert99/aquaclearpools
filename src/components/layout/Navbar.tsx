@@ -10,7 +10,7 @@ import {
   DropdownMenuSeparator, 
   DropdownMenuTrigger 
 } from '@/components/ui/dropdown-menu';
-import { Droplets, Home, Calculator, Users, FileText, LogOut, User, Star } from 'lucide-react';
+import { Droplets, Home, Calculator, Users, FileText, LogOut, User, Star, Calendar, BarChart3 } from 'lucide-react';
 
 export const Navbar = () => {
   const { user, signOut, isAdmin, isTech, isClient } = useAuth();
@@ -80,6 +80,12 @@ export const Navbar = () => {
                       <span>Calculator</span>
                     </Link>
                   </Button>
+                  <Button variant="ghost" size="sm" asChild>
+                    <Link to="/admin/reports" className="flex items-center space-x-1">
+                      <BarChart3 className="h-4 w-4" />
+                      <span>Reports</span>
+                    </Link>
+                  </Button>
                 </>
               )}
 
@@ -89,6 +95,12 @@ export const Navbar = () => {
                     <Link to="/tech" className="flex items-center space-x-1">
                       <Home className="h-4 w-4" />
                       <span>Dashboard</span>
+                    </Link>
+                  </Button>
+                  <Button variant="ghost" size="sm" asChild>
+                    <Link to="/tech/schedule" className="flex items-center space-x-1">
+                      <Calendar className="h-4 w-4" />
+                      <span>Schedule</span>
                     </Link>
                   </Button>
                   <Button variant="ghost" size="sm" asChild>

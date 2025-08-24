@@ -851,8 +851,8 @@ export default function NewClient() {
           client={{
             id: createdClient.id,
             customer: createdClient.customer,
-            email: createdClient.email,
-            phone: createdClient.phone
+            email: createdClient.contact_email,
+            phone: createdClient.contact_phone
           }}
         />
       )}

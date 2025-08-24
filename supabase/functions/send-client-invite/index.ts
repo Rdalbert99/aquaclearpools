@@ -53,7 +53,7 @@ serve(async (req) => {
     // Fetch client for context (e.g., name)
     const { data: client, error: clientError } = await adminClient
       .from("clients")
-      .select("id, customer, phone")
+      .select("id, customer")
       .eq("id", body.clientId)
       .maybeSingle();
 

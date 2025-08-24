@@ -95,7 +95,7 @@ const handler = async (req: Request): Promise<Response> => {
           global: { headers: { Authorization: authHeader } },
           auth: { autoRefreshToken: false, persistSession: false },
         });
-        const { data: userData: currentUser } = await userClient.auth.getUser();
+        const { data: { user: currentUser } } = await userClient.auth.getUser();
         const { data: roleData } = await userClient.rpc('get_current_user_role');
         userRole = roleData;
       } catch (e) {

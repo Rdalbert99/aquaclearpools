@@ -181,15 +181,55 @@ export default function ServiceRequestManagement() {
     }
     try {
       const iso = new Date(date).toISOString();
+      
+      // First, get the current request details for the email notification
+      const { data: requestData, error: fetchError } = await supabase
+        .from('service_requests')
+        .select('*')
+        .eq('id', requestId)
+        .single();
+
+      if (fetchError) {
+        console.error('Error fetching request details:', fetchError);
+        toast({ title: 'Error', description: 'Failed to fetch request details', variant: 'destructive' });
+        return;
+      }
+
+      // Update the preferred date in the database
       const { error } = await supabase
         .from('service_requests')
-        .update({ preferred_date: iso })
+        .update({ preferred_date: iso, status: 'scheduled' })
         .eq('id', requestId);
+        
       if (error) {
         console.error('Error scheduling request:', error);
         toast({ title: 'Error', description: 'Failed to schedule date', variant: 'destructive' });
       } else {
-        toast({ title: 'Scheduled', description: 'Preferred service date set' });
+        // Send email notification to customer
+        try {
+          const { error: emailError } = await supabase.functions.invoke('service-request-notify', {
+            body: {
+              contact_name: requestData.contact_name,
+              contact_email: requestData.contact_email,
+              contact_phone: requestData.contact_phone,
+              contact_address: requestData.contact_address,
+              request_type: requestData.request_type,
+              description: requestData.description,
+              preferred_date: iso,
+              status: 'scheduled'
+            }
+          });
+
+          if (emailError) {
+            console.error('Error sending email notification:', emailError);
+            // Don't show error to user for email failures, just log it
+          }
+        } catch (emailErr) {
+          console.error('Email notification error:', emailErr);
+          // Don't show error to user for email failures, just log it
+        }
+
+        toast({ title: 'Scheduled', description: 'Service date scheduled and customer notified' });
         loadData();
       }
     } catch (err) {

@@ -687,13 +687,12 @@ export type Database = {
           client_id: string | null
           created_at: string | null
           customer: string | null
-          email: string | null
+          email_masked: string | null
           expires_at: string | null
           id: string | null
           last_accessed: string | null
-          phone: string | null
+          phone_masked: string | null
           status: string | null
-          token: string | null
           used_at: string | null
         }
         Relationships: [

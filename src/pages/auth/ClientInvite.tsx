@@ -36,15 +36,35 @@ export default function ClientInvite() {
   useEffect(() => {
     const load = async () => {
       if (!token) return;
-      const { data, error } = await supabase.rpc("get_client_invite_payload", { invite_token: token });
-      if (error || !data) {
+      
+      try {
+        // Get client IP and user agent for security logging
+        const clientIP = await fetch('https://api.ipify.org?format=json')
+          .then(r => r.json())
+          .then(data => data.ip)
+          .catch(() => 'unknown');
+
+        const userAgent = navigator.userAgent;
+
+        // Use the secure function with audit logging
+        const { data, error } = await supabase.rpc("get_client_invite_payload_secure", { 
+          invite_token: token,
+          accessor_ip: clientIP,
+          accessor_user_agent: userAgent
+        });
+        
+        if (error || !data) {
+          setInvite(null);
+        } else {
+          setInvite(data as any);
+          setName((data as any).customer || "");
+          setEmail(((data as any).email_full as string) || "");
+          setPhone(((data as any).phone as string) || "");
+          setAddress(((data as any).address as string) || "");
+        }
+      } catch (error) {
+        console.error('Error loading invite:', error);
         setInvite(null);
-      } else {
-        setInvite(data as any);
-        setName((data as any).customer || "");
-        setEmail(((data as any).email as string) || "");
-        setPhone(((data as any).phone as string) || "");
-        setAddress(((data as any).address as string) || "");
       }
       setLoading(false);
     };

@@ -43,9 +43,20 @@ serve(async (req: Request) => {
       }
     }
     
-    // Validate request_type
-    const validRequestTypes = ['service', 'repair', 'maintenance', 'installation', 'consultation', 'emergency'];
+    // Validate request_type - accept all service types from the form
+    const validRequestTypes = [
+      'weekly-maintenance',
+      'one-time-cleaning', 
+      'chemical-balancing',
+      'equipment-repair',
+      'pool-opening',
+      'pool-closing',
+      'emergency-service',
+      // Legacy types for backwards compatibility
+      'service', 'repair', 'maintenance', 'installation', 'consultation', 'emergency'
+    ];
     if (!validRequestTypes.includes(body.request_type)) {
+      console.error('Invalid request type received:', body.request_type);
       return new Response(JSON.stringify({ error: 'Invalid request type' }), {
         status: 400, headers: { 'Content-Type': 'application/json', ...corsHeaders }
       });

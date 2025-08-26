@@ -262,6 +262,51 @@ export type Database = {
           },
         ]
       }
+      invitation_access_log: {
+        Row: {
+          access_type: string | null
+          accessed_at: string | null
+          accessor_ip: string | null
+          accessor_user_agent: string | null
+          id: string
+          invitation_id: string | null
+          success: boolean | null
+        }
+        Insert: {
+          access_type?: string | null
+          accessed_at?: string | null
+          accessor_ip?: string | null
+          accessor_user_agent?: string | null
+          id?: string
+          invitation_id?: string | null
+          success?: boolean | null
+        }
+        Update: {
+          access_type?: string | null
+          accessed_at?: string | null
+          accessor_ip?: string | null
+          accessor_user_agent?: string | null
+          id?: string
+          invitation_id?: string | null
+          success?: boolean | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "invitation_access_log_invitation_id_fkey"
+            columns: ["invitation_id"]
+            isOneToOne: false
+            referencedRelation: "client_invitations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "invitation_access_log_invitation_id_fkey"
+            columns: ["invitation_id"]
+            isOneToOne: false
+            referencedRelation: "invitation_security_summary"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       reviews: {
         Row: {
           approved_at: string | null
@@ -636,9 +681,37 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      invitation_security_summary: {
+        Row: {
+          access_count: number | null
+          client_id: string | null
+          created_at: string | null
+          customer: string | null
+          email: string | null
+          expires_at: string | null
+          id: string | null
+          last_accessed: string | null
+          phone: string | null
+          status: string | null
+          token: string | null
+          used_at: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_invitations_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
+      cleanup_expired_invitations: {
+        Args: Record<PropertyKey, never>
+        Returns: number
+      }
       get_all_technicians: {
         Args: Record<PropertyKey, never>
         Returns: {
@@ -654,6 +727,14 @@ export type Database = {
         Args: { invite_token: string }
         Returns: Json
       }
+      get_client_invite_payload_secure: {
+        Args: {
+          accessor_ip?: string
+          accessor_user_agent?: string
+          invite_token: string
+        }
+        Returns: Json
+      }
       get_current_user_role: {
         Args: Record<PropertyKey, never>
         Returns: string
@@ -661,6 +742,14 @@ export type Database = {
       get_email_by_login: {
         Args: { login_input: string }
         Returns: string
+      }
+      mark_invitation_used: {
+        Args: {
+          accessor_ip?: string
+          accessor_user_agent?: string
+          invite_token: string
+        }
+        Returns: boolean
       }
     }
     Enums: {

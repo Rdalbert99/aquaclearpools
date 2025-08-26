@@ -41,7 +41,7 @@ const handler = async (req: Request): Promise<Response> => {
     // Send email to business owner
     const businessEmailResponse = await resend.emails.send({
       from: "Aqua Clear Pools <onboarding@resend.dev>",
-      to: ["aquaclearpools@gmail.com"], // Replace with actual business email
+      to: [Deno.env.get("AQUACLEAR_BUSINESS_EMAIL") || "randy@getaquaclear.com"],
       subject: `New Service Request - ${customerData.serviceType} (${requestDetails.urgency} priority)`,
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">

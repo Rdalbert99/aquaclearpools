@@ -143,8 +143,9 @@ export default function RequestService() {
     setSubmitting(true);
     try {
       const serviceType = serviceTypes.find(s => s.id === selectedService);
+      const selectedClient = clients.find(c => c.id === selectedPool);
       
-      const { error } = await supabase
+      const { data: serviceRequest, error } = await supabase
         .from('service_requests')
         .insert({
           client_id: selectedPool,
@@ -152,9 +153,40 @@ export default function RequestService() {
           description: requestDescription,
           priority: priority,
           status: 'pending'
-        });
+        })
+        .select()
+        .single();
 
       if (error) throw error;
+
+      // Send email notification
+      try {
+        await supabase.functions.invoke('send-service-request-email', {
+          body: {
+            customerData: {
+              name: selectedClient?.customer || user?.name || 'Customer',
+              email: user?.email || selectedClient?.contact_email || '',
+              phone: user?.phone || selectedClient?.contact_phone || '',
+              address: selectedClient?.contact_address || '',
+              poolType: selectedClient?.pool_type || 'Unknown',
+              poolSize: selectedClient?.pool_size ? `${selectedClient.pool_size?.toLocaleString()} gallons` : 'Unknown',
+              serviceType: serviceType?.name || selectedService,
+              description: requestDescription,
+              preferredDate: '',
+              urgency: priority
+            },
+            requestDetails: {
+              type: serviceType?.name || selectedService,
+              urgency: priority,
+              preferredDate: ''
+            }
+          }
+        });
+        console.log('Service request email sent successfully');
+      } catch (emailError) {
+        console.error('Error sending service request email:', emailError);
+        // Don't block the user flow if email fails
+      }
 
       toast({
         title: "Success",

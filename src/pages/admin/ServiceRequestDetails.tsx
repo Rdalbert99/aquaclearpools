@@ -187,6 +187,26 @@ export default function ServiceRequestDetails() {
         return;
       }
 
+      // Send email notification for status changes
+      if ((newStatus === 'in-progress' || newStatus === 'completed') && request.contact_email) {
+        try {
+          await supabase.functions.invoke('service-request-notify', {
+            body: {
+              requestId: request.id,
+              customerName: request.contact_name || request.clients?.customer || 'Customer',
+              customerEmail: request.contact_email,
+              serviceType: request.request_type,
+              status: newStatus === 'in-progress' ? 'approved' : newStatus,
+              notes: notes
+            }
+          });
+          console.log('Service request notification sent successfully');
+        } catch (emailError) {
+          console.error('Error sending service request notification:', emailError);
+          // Don't block the user flow if email fails
+        }
+      }
+
       toast({
         title: "Success",
         description: `Service request ${newStatus === 'completed' ? 'completed' : 'updated'} successfully.`,

@@ -1,0 +1,220 @@
+import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
+import { Resend } from "npm:resend@2.0.0";
+
+const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
+
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers":
+    "authorization, x-client-info, apikey, content-type",
+};
+
+interface ServiceRequestNotification {
+  requestId: string;
+  customerName: string;
+  customerEmail: string;
+  serviceType: string;
+  status: string;
+  scheduledDate?: string;
+  timeRange?: string;
+  notes?: string;
+}
+
+const handler = async (req: Request): Promise<Response> => {
+  // Handle CORS preflight requests
+  if (req.method === "OPTIONS") {
+    return new Response(null, { headers: corsHeaders });
+  }
+
+  try {
+    const { 
+      requestId, 
+      customerName, 
+      customerEmail, 
+      serviceType, 
+      status, 
+      scheduledDate, 
+      timeRange, 
+      notes 
+    }: ServiceRequestNotification = await req.json();
+
+    console.log(`Sending service request notification: ${status} for request ${requestId}`);
+
+    let subject = "";
+    let htmlContent = "";
+
+    if (status === "approved" || status === "in-progress") {
+      subject = `Service Request Approved - ${serviceType}`;
+      htmlContent = `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+          <div style="background: linear-gradient(135deg, #22c55e, #16a34a); color: white; padding: 20px; text-align: center;">
+            <h1 style="margin: 0;">Service Request Approved!</h1>
+            <p style="margin: 5px 0;">Aqua Clear Pools</p>
+          </div>
+          
+          <div style="padding: 20px;">
+            <p>Hi ${customerName},</p>
+            
+            <p>Great news! Your service request has been approved and we're ready to get started.</p>
+
+            <h2 style="color: #1f2937;">Service Details</h2>
+            <div style="background: #f9fafb; padding: 15px; border-radius: 5px;">
+              <p><strong>Service Type:</strong> ${serviceType}</p>
+              <p><strong>Request ID:</strong> ${requestId}</p>
+              ${scheduledDate ? `<p><strong>Scheduled Date:</strong> ${new Date(scheduledDate).toLocaleDateString()}</p>` : ''}
+              ${timeRange ? `<p><strong>Time Window:</strong> ${timeRange}</p>` : ''}
+            </div>
+
+            ${notes ? `
+              <h2 style="color: #1f2937;">Additional Notes</h2>
+              <div style="background: #e0f2fe; padding: 15px; border-radius: 5px;">
+                ${notes}
+              </div>
+            ` : ''}
+
+            <h2 style="color: #1f2937;">What to Expect</h2>
+            <ul style="color: #4b5563;">
+              <li>Our certified technician will arrive during the scheduled time window</li>
+              <li>We'll call 30 minutes before arrival</li>
+              <li>All equipment and chemicals are provided</li>
+              <li>You'll receive a detailed service report after completion</li>
+            </ul>
+
+            <div style="background: #e0f2fe; padding: 15px; border-radius: 5px; margin: 20px 0;">
+              <p style="margin: 0; color: #0c4a6e;"><strong>Questions or need to reschedule?</strong></p>
+              <p style="margin: 5px 0; color: #0c4a6e;">Call us at: <strong>601-447-0399</strong></p>
+            </div>
+
+            <p>Thank you for choosing Aqua Clear Pools!</p>
+          </div>
+        </div>
+      `;
+    } else if (status === "scheduled") {
+      subject = `Service Scheduled - ${serviceType}`;
+      htmlContent = `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+          <div style="background: linear-gradient(135deg, #3b82f6, #1d4ed8); color: white; padding: 20px; text-align: center;">
+            <h1 style="margin: 0;">Service Scheduled!</h1>
+            <p style="margin: 5px 0;">Aqua Clear Pools</p>
+          </div>
+          
+          <div style="padding: 20px;">
+            <p>Hi ${customerName},</p>
+            
+            <p>Your service has been scheduled! Here are the details:</p>
+
+            <div style="background: #f0f9ff; padding: 20px; border-radius: 5px; border-left: 4px solid #3b82f6; margin: 20px 0;">
+              <h2 style="color: #1f2937; margin-top: 0;">Appointment Details</h2>
+              <p><strong>Service:</strong> ${serviceType}</p>
+              <p><strong>Date:</strong> ${scheduledDate ? new Date(scheduledDate).toLocaleDateString() : 'TBD'}</p>
+              <p><strong>Time:</strong> ${timeRange || 'We will contact you to confirm'}</p>
+              <p><strong>Request ID:</strong> ${requestId}</p>
+            </div>
+
+            ${notes ? `
+              <h2 style="color: #1f2937;">Service Notes</h2>
+              <div style="background: #f9fafb; padding: 15px; border-radius: 5px;">
+                ${notes}
+              </div>
+            ` : ''}
+
+            <h2 style="color: #1f2937;">Preparation</h2>
+            <ul style="color: #4b5563;">
+              <li>Please ensure pool area is accessible</li>
+              <li>Secure any pets during service</li>
+              <li>No need to prepare chemicals - we bring everything</li>
+              <li>Someone 18+ should be available if gate access is needed</li>
+            </ul>
+
+            <div style="background: #fef3c7; padding: 15px; border-radius: 5px; margin: 20px 0;">
+              <p style="margin: 0; color: #92400e;"><strong>Important:</strong> We'll call 30 minutes before arrival to confirm.</p>
+            </div>
+
+            <div style="background: #e0f2fe; padding: 15px; border-radius: 5px; margin: 20px 0;">
+              <p style="margin: 0; color: #0c4a6e;"><strong>Need to reschedule or have questions?</strong></p>
+              <p style="margin: 5px 0; color: #0c4a6e;">Call us at: <strong>601-447-0399</strong></p>
+            </div>
+
+            <div style="text-align: center; margin: 30px 0;">
+              <a href="https://aquaclearpools.lovable.app/client" style="background: #3b82f6; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; display: inline-block;">View in Customer Portal</a>
+            </div>
+
+            <p>We're looking forward to keeping your pool crystal clear!</p>
+          </div>
+        </div>
+      `;
+    } else {
+      // Generic status update
+      subject = `Service Request Update - ${serviceType}`;
+      htmlContent = `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+          <div style="background: linear-gradient(135deg, #6b7280, #4b5563); color: white; padding: 20px; text-align: center;">
+            <h1 style="margin: 0;">Service Request Update</h1>
+            <p style="margin: 5px 0;">Aqua Clear Pools</p>
+          </div>
+          
+          <div style="padding: 20px;">
+            <p>Hi ${customerName},</p>
+            
+            <p>We have an update on your service request:</p>
+
+            <div style="background: #f9fafb; padding: 15px; border-radius: 5px;">
+              <p><strong>Service:</strong> ${serviceType}</p>
+              <p><strong>Status:</strong> ${status}</p>
+              <p><strong>Request ID:</strong> ${requestId}</p>
+            </div>
+
+            ${notes ? `
+              <h2 style="color: #1f2937;">Notes</h2>
+              <div style="background: #e0f2fe; padding: 15px; border-radius: 5px;">
+                ${notes}
+              </div>
+            ` : ''}
+
+            <div style="background: #e0f2fe; padding: 15px; border-radius: 5px; margin: 20px 0;">
+              <p style="margin: 0; color: #0c4a6e;"><strong>Questions?</strong></p>
+              <p style="margin: 5px 0; color: #0c4a6e;">Call us at: <strong>601-447-0399</strong></p>
+            </div>
+
+            <p>Thank you for choosing Aqua Clear Pools!</p>
+          </div>
+        </div>
+      `;
+    }
+
+    const emailResponse = await resend.emails.send({
+      from: `Aqua Clear Pools <${Deno.env.get("RESEND_FROM_EMAIL") || "onboarding@resend.dev"}>`,
+      to: [customerEmail],
+      subject: subject,
+      html: htmlContent,
+    });
+
+    console.log("Service notification email sent successfully:", emailResponse);
+
+    return new Response(
+      JSON.stringify({ 
+        success: true, 
+        emailResponse,
+        message: `${status} notification sent to ${customerEmail}`
+      }), 
+      {
+        status: 200,
+        headers: {
+          "Content-Type": "application/json",
+          ...corsHeaders,
+        },
+      }
+    );
+  } catch (error: any) {
+    console.error("Error in service-request-notify function:", error);
+    return new Response(
+      JSON.stringify({ error: error.message }),
+      {
+        status: 500,
+        headers: { "Content-Type": "application/json", ...corsHeaders },
+      }
+    );
+  }
+};
+
+serve(handler);

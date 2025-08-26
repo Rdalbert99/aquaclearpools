@@ -183,10 +183,12 @@ export default function TechDashboard() {
         {/* Available Service Requests */}
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center space-x-2">
-              <Clock className="h-5 w-5" />
-              <span>Available Service Requests</span>
-            </CardTitle>
+            <Link to="/admin/service-requests">
+              <CardTitle className="flex items-center space-x-2 cursor-pointer hover:text-primary transition-colors">
+                <Clock className="h-5 w-5" />
+                <span>Available Service Requests</span>
+              </CardTitle>
+            </Link>
             <CardDescription>Service requests available for acceptance</CardDescription>
           </CardHeader>
           <CardContent className="max-h-96 overflow-y-auto">
@@ -266,13 +268,15 @@ export default function TechDashboard() {
         {/* Clients Needing Service */}
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center justify-between">
-              <div className="flex items-center space-x-2">
-                <AlertTriangle className="h-5 w-5 text-orange-500" />
-                <span>Clients Needing Service</span>
-              </div>
-              <div className="text-3xl font-bold">{stats?.clientsNeedingService.length}</div>
-            </CardTitle>
+            <Link to="/admin/clients">
+              <CardTitle className="flex items-center justify-between cursor-pointer hover:text-primary transition-colors">
+                <div className="flex items-center space-x-2">
+                  <AlertTriangle className="h-5 w-5 text-orange-500" />
+                  <span>Clients Needing Service</span>
+                </div>
+                <div className="text-3xl font-bold">{stats?.clientsNeedingService.length}</div>
+              </CardTitle>
+            </Link>
             <CardDescription>Clients who haven't been serviced recently</CardDescription>
           </CardHeader>
           <CardContent>
@@ -311,10 +315,12 @@ export default function TechDashboard() {
       {/* Recent Services */}
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center space-x-2">
-            <CheckCircle className="h-5 w-5" />
-            <span>My Recent Services</span>
-          </CardTitle>
+          <Link to="/tech/schedule">
+            <CardTitle className="flex items-center space-x-2 cursor-pointer hover:text-primary transition-colors">
+              <CheckCircle className="h-5 w-5" />
+              <span>My Recent Services</span>
+            </CardTitle>
+          </Link>
           <CardDescription>Services you've completed recently</CardDescription>
         </CardHeader>
         <CardContent>

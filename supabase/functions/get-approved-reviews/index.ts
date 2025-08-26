@@ -20,8 +20,8 @@ serve(async (req) => {
 
     console.log('Fetching approved reviews for public display');
 
-    // SECURITY: Only return approved reviews with explicit consent
-    // This replaces direct RLS access to prevent customer data harvesting
+    // SECURITY: Only return approved reviews with sanitized customer data
+    // This prevents exposure of full customer names and personal information
     const { data: reviews, error } = await supabase
       .from('reviews')
       .select('id, customer_name, review_text, rating, created_at')
@@ -36,8 +36,22 @@ serve(async (req) => {
 
     console.log(`Successfully fetched ${reviews?.length || 0} approved reviews`);
 
+    // Sanitize the review data for public consumption
+    const sanitizedReviews = reviews?.map(review => ({
+      id: review.id,
+      // Only show first name or initials to protect customer privacy
+      customer_name: review.customer_name.split(' ')[0] + ' ' + 
+                    (review.customer_name.split(' ')[1]?.[0] || '') + '.',
+      // Truncate very long reviews for better display
+      review_text: review.review_text.length > 200 
+        ? review.review_text.substring(0, 200) + '...'
+        : review.review_text,
+      rating: review.rating,
+      created_at: review.created_at
+    })) || [];
+
     return new Response(
-      JSON.stringify({ reviews: reviews || [] }),
+      JSON.stringify({ reviews: sanitizedReviews }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         status: 200,

@@ -11,6 +11,7 @@ import poolAfter1 from '@/assets/pool-after-1.jpg';
 import poolBefore2 from '@/assets/pool-before-2.jpg';
 import poolAfter2 from '@/assets/pool-after-2.jpg';
 import logo3D from '@/assets/aqua-clear-logo-3d.png';
+import professionalTech from '@/assets/professional-tech.jpg';
 import Footer from '@/components/layout/Footer';
 
 
@@ -232,6 +233,24 @@ const Index = () => {
                   </p>
                 </div>
               </div>
+            </div>
+            
+            <div className="flex justify-center">
+              <Card className="overflow-hidden max-w-sm">
+                <CardContent className="p-0">
+                  <img 
+                    src={professionalTech} 
+                    alt="Professional Pool Technician - Aqua Clear Pools Team" 
+                    className="w-full h-80 object-cover"
+                  />
+                  <div className="p-6">
+                    <h3 className="text-xl font-semibold mb-2">Professional Team</h3>
+                    <p className="text-muted-foreground">
+                      Our certified technicians bring years of experience and dedication to every pool service call in the Hattiesburg area.
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
             </div>
 
             <Card>

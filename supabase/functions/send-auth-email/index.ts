@@ -94,7 +94,7 @@ const handler = async (req: Request): Promise<Response> => {
     }
 
     const emailResponse = await resend.emails.send({
-      from: "Aqua Clear Pools <onboarding@resend.dev>",
+      from: `Aqua Clear Pools <${Deno.env.get("RESEND_FROM_EMAIL") || "onboarding@resend.dev"}>`,
       to: [user?.email || ""],
       subject: subject,
       html: emailContent,

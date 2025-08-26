@@ -91,7 +91,7 @@ serve(async (req) => {
         </div>`;
 
       const sent = await resend.emails.send({
-        from: "Aqua Clear <onboarding@resend.dev>",
+        from: `Aqua Clear <${Deno.env.get("RESEND_FROM_EMAIL") || "onboarding@resend.dev"}>`,
         to: [body.email],
         subject: "Create your Aqua Clear client account",
         html,

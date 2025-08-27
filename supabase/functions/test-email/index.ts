@@ -36,19 +36,27 @@ const handler = async (req: Request): Promise<Response> => {
 
     console.log(`Sending test email to: ${recipientEmail}`);
 
-    const fromEmail = Deno.env.get("RESEND_FROM_EMAIL") || "onboarding@resend.dev";
+    // Debug all environment variables
+    const fromEmailRaw = Deno.env.get("RESEND_FROM_EMAIL");
     const replyToEmail = Deno.env.get("RESEND_REPLY_TO");
     
-    console.log(`From email: ${fromEmail}, Reply-to: ${replyToEmail}`);
+    console.log(`Raw RESEND_FROM_EMAIL: "${fromEmailRaw}"`);
+    console.log(`RESEND_REPLY_TO: "${replyToEmail}"`);
     
-    // Validate that we have a proper from email
-    if (!fromEmail || fromEmail.includes("resend.dev")) {
-      console.error("Invalid RESEND_FROM_EMAIL - must be from verified domain");
+    // Force use verified domain email
+    const fromEmail = fromEmailRaw && fromEmailRaw.includes("getaquaclear.com") 
+      ? fromEmailRaw 
+      : "no-reply@getaquaclear.com";
+    
+    console.log(`Final fromEmail being used: "${fromEmail}"`);
+    
+    if (!fromEmail.includes("getaquaclear.com")) {
+      console.error("CRITICAL: FROM email is not from verified domain!");
       return new Response(
         JSON.stringify({ 
           success: false, 
           error: { 
-            message: "RESEND_FROM_EMAIL must be set to an email from your verified domain (e.g., no-reply@getaquaclear.com)" 
+            message: `FROM email "${fromEmail}" must be from getaquaclear.com domain. Please set RESEND_FROM_EMAIL to "no-reply@getaquaclear.com"` 
           } 
         }),
         { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } }

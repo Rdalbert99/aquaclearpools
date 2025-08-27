@@ -5,6 +5,7 @@ import { Phone, Mail, MapPin, Star, CheckCircle, LogIn, User, Users, Shield, Dro
 import { Link } from 'react-router-dom';
 import { ReviewCarousel } from '@/components/reviews/ReviewCarousel';
 import { PublicServiceRequestForm } from '@/components/service/PublicServiceRequestForm';
+import { BeforeAfterFade } from '@/components/ui/before-after-fade';
 import heroImage from '@/assets/hero-pool-service.jpg';
 import poolBefore1 from '@/assets/pool-before-1.jpg';
 import poolAfter1 from '@/assets/pool-after-1.jpg';
@@ -161,29 +162,7 @@ const Index = () => {
 
           <div className="grid md:grid-cols-2 gap-12">
             {beforeAfterPairs.map((pair, index) => (
-              <Card key={index} className="overflow-hidden">
-                <CardHeader>
-                  <CardTitle className="text-center">{pair.title}</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-6">
-                  <div>
-                    <h4 className="text-sm font-semibold mb-2 text-destructive">BEFORE</h4>
-                    <img 
-                      src={pair.before} 
-                      alt="Pool before service" 
-                      className="w-full h-48 object-cover rounded-lg"
-                    />
-                  </div>
-                  <div>
-                    <h4 className="text-sm font-semibold mb-2 text-green-600">AFTER</h4>
-                    <img 
-                      src={pair.after} 
-                      alt="Pool after service" 
-                      className="w-full h-48 object-cover rounded-lg"
-                    />
-                  </div>
-                </CardContent>
-              </Card>
+              <BeforeAfterFade key={index} pair={pair} />
             ))}
           </div>
         </div>

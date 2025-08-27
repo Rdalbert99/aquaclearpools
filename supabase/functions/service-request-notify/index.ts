@@ -182,15 +182,16 @@ const handler = async (req: Request): Promise<Response> => {
       `;
     }
 
-    const fromEmail = Deno.env.get("RESEND_FROM_EMAIL") || "onboarding@resend.dev";
-    const replyToEmail = Deno.env.get("RESEND_REPLY_TO");
-    
-    console.log(`From email: ${fromEmail}, Reply-to: ${replyToEmail}`);
-    
+    const fromEmailRaw = Deno.env.get("RESEND_FROM_EMAIL") || "no-reply@getaquaclear.com";
+    const replyToEmail = Deno.env.get("RESEND_REPLY_TO") || undefined;
+    const fromSafe = fromEmailRaw.includes("getaquaclear.com") ? fromEmailRaw : "no-reply@getaquaclear.com";
+    const fromDisplay = fromSafe.includes("<") ? fromSafe : `AquaClear Pools <${fromSafe}>`;
+    console.log(`From email resolved: ${fromDisplay}, Reply-to: ${replyToEmail}`);
     const emailResponse = await resend.emails.send({
-      from: fromEmail,
+      from: fromDisplay,
       to: [customerEmail],
       reply_to: replyToEmail,
+      headers: { "List-Unsubscribe": replyToEmail ? `<mailto:${replyToEmail}>` : `<mailto:support@getaquaclear.com>` },
       subject: subject,
       html: htmlContent,
     });

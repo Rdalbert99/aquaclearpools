@@ -38,18 +38,17 @@ const handler = async (req: Request): Promise<Response> => {
   try {
     const { customerData, requestDetails }: ServiceRequestData = await req.json();
 
-    const fromEmail = Deno.env.get("RESEND_FROM_EMAIL") || "onboarding@resend.dev";
-    const replyToEmail = Deno.env.get("RESEND_REPLY_TO");
-    
-    console.log(`From email: ${fromEmail}, Reply-to: ${replyToEmail}`);
-    
+    const fromEmailRaw = Deno.env.get("RESEND_FROM_EMAIL") || "no-reply@getaquaclear.com";
+    const replyToEmail = Deno.env.get("RESEND_REPLY_TO") || undefined;
+    const fromSafe = fromEmailRaw.includes("getaquaclear.com") ? fromEmailRaw : "no-reply@getaquaclear.com";
+    const fromDisplay = fromSafe.includes("<") ? fromSafe : `AquaClear Pools <${fromSafe}>`;
+    console.log(`From email resolved: ${fromDisplay}, Reply-to: ${replyToEmail}`);
     // Send email to business owner
     const businessEmailResponse = await resend.emails.send({
-      from: fromEmail,
+      from: fromDisplay,
       to: [Deno.env.get("AQUACLEAR_BUSINESS_EMAIL") || "randy@getaquaclear.com"],
       reply_to: replyToEmail,
-      subject: `New Service Request - ${customerData.serviceType} (${requestDetails.urgency} priority)`,
-      html: `
+      headers: { "List-Unsubscribe": replyToEmail ? `<mailto:${replyToEmail}>` : `<mailto:support@getaquaclear.com>` },
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
           <div style="background: linear-gradient(135deg, #3b82f6, #1d4ed8); color: white; padding: 20px; text-align: center;">
             <h1 style="margin: 0;">New Service Request</h1>
@@ -97,12 +96,11 @@ const handler = async (req: Request): Promise<Response> => {
     });
 
     // Send confirmation email to customer
-    const customerEmailResponse = await resend.emails.send({
-      from: fromEmail,
-      to: [customerData.email],
-      reply_to: replyToEmail,
-      subject: "Service Request Received - Aqua Clear Pools",
-      html: `
+  const customerEmailResponse = await resend.emails.send({
+    from: fromDisplay,
+    to: [customerData.email],
+    reply_to: replyToEmail,
+    headers: { "List-Unsubscribe": replyToEmail ? `<mailto:${replyToEmail}>` : `<mailto:support@getaquaclear.com>` },
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
           <div style="background: linear-gradient(135deg, #3b82f6, #1d4ed8); color: white; padding: 20px; text-align: center;">
             <h1 style="margin: 0;">Thank You, ${customerData.name}!</h1>

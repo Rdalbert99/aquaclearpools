@@ -63,11 +63,16 @@ const handler = async (req: Request): Promise<Response> => {
       );
     }
     
+    const fromDisplay = fromEmail.includes('<') ? fromEmail : `AquaClear Pools <${fromEmail}>`;
     const emailResponse = await resend.emails.send({
-      from: fromEmail,
+      from: fromDisplay,
       to: [recipientEmail],
-      reply_to: replyToEmail,
-      subject: "🏊 Test Email from AquaClear Pools",
+      reply_to: replyToEmail || undefined,
+      subject: "Test Email from AquaClear Pools",
+      text: `This is a test email to verify that your email sending is working. Timestamp: ${new Date().toLocaleString()} | Recipient: ${recipientEmail}`,
+      headers: {
+        "List-Unsubscribe": replyToEmail ? `<mailto:${replyToEmail}>` : `<mailto:support@getaquaclear.com>`
+      },
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
           <h1 style="color: #2563eb; text-align: center;">🏊 AquaClear Pools Test Email</h1>

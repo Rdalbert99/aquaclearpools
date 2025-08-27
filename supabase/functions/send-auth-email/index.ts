@@ -93,9 +93,15 @@ const handler = async (req: Request): Promise<Response> => {
         );
     }
 
+    const fromEmail = Deno.env.get("RESEND_FROM_EMAIL") || "onboarding@resend.dev";
+    const replyToEmail = Deno.env.get("RESEND_REPLY_TO");
+    
+    console.log(`From email: ${fromEmail}, Reply-to: ${replyToEmail}`);
+    
     const emailResponse = await resend.emails.send({
-      from: `Aqua Clear Pools <${Deno.env.get("RESEND_FROM_EMAIL") || "onboarding@resend.dev"}>`,
+      from: fromEmail,
       to: [user?.email || ""],
+      reply_to: replyToEmail,
       subject: subject,
       html: emailContent,
     });

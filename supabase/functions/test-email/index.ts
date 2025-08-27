@@ -37,9 +37,14 @@ const handler = async (req: Request): Promise<Response> => {
     console.log(`Sending test email to: ${recipientEmail}`);
 
     const fromEmail = Deno.env.get("RESEND_FROM_EMAIL") || "AquaClear Pools <onboarding@resend.dev>";
+    const replyToEmail = Deno.env.get("RESEND_REPLY_TO");
+    
+    console.log(`From email: ${fromEmail}, Reply-to: ${replyToEmail}`);
+    
     const emailResponse = await resend.emails.send({
       from: fromEmail,
       to: [recipientEmail],
+      reply_to: replyToEmail,
       subject: "🏊 Test Email from AquaClear Pools",
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">

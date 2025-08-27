@@ -38,10 +38,16 @@ const handler = async (req: Request): Promise<Response> => {
   try {
     const { customerData, requestDetails }: ServiceRequestData = await req.json();
 
+    const fromEmail = Deno.env.get("RESEND_FROM_EMAIL") || "onboarding@resend.dev";
+    const replyToEmail = Deno.env.get("RESEND_REPLY_TO");
+    
+    console.log(`From email: ${fromEmail}, Reply-to: ${replyToEmail}`);
+    
     // Send email to business owner
     const businessEmailResponse = await resend.emails.send({
-      from: `Aqua Clear Pools <${Deno.env.get("RESEND_FROM_EMAIL") || "onboarding@resend.dev"}>`,
+      from: fromEmail,
       to: [Deno.env.get("AQUACLEAR_BUSINESS_EMAIL") || "randy@getaquaclear.com"],
+      reply_to: replyToEmail,
       subject: `New Service Request - ${customerData.serviceType} (${requestDetails.urgency} priority)`,
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
@@ -92,8 +98,9 @@ const handler = async (req: Request): Promise<Response> => {
 
     // Send confirmation email to customer
     const customerEmailResponse = await resend.emails.send({
-      from: `Aqua Clear Pools <${Deno.env.get("RESEND_FROM_EMAIL") || "onboarding@resend.dev"}>`,
+      from: fromEmail,
       to: [customerData.email],
+      reply_to: replyToEmail,
       subject: "Service Request Received - Aqua Clear Pools",
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">

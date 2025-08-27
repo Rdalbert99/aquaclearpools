@@ -90,9 +90,15 @@ serve(async (req) => {
           <p>This link expires in 7 days.</p>
         </div>`;
 
+      const fromEmail = Deno.env.get("RESEND_FROM_EMAIL") || "onboarding@resend.dev";
+      const replyToEmail = Deno.env.get("RESEND_REPLY_TO");
+      
+      console.log(`From email: ${fromEmail}, Reply-to: ${replyToEmail}`);
+      
       const sent = await resend.emails.send({
-        from: `Aqua Clear <${Deno.env.get("RESEND_FROM_EMAIL") || "onboarding@resend.dev"}>`,
+        from: fromEmail,
         to: [body.email],
+        reply_to: replyToEmail,
         subject: "Create your Aqua Clear client account",
         html,
       });

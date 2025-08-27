@@ -49,6 +49,9 @@ const handler = async (req: Request): Promise<Response> => {
       to: [Deno.env.get("AQUACLEAR_BUSINESS_EMAIL") || "randy@getaquaclear.com"],
       reply_to: replyToEmail,
       headers: { "List-Unsubscribe": replyToEmail ? `<mailto:${replyToEmail}>` : `<mailto:support@getaquaclear.com>` },
+      subject: `New Service Request - ${customerData.serviceType} (${requestDetails.urgency} priority)`,
+      text: `New ${customerData.serviceType} request (${requestDetails.urgency}) from ${customerData.name}, ${customerData.email}, ${customerData.phone}.`,
+      html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
           <div style="background: linear-gradient(135deg, #3b82f6, #1d4ed8); color: white; padding: 20px; text-align: center;">
             <h1 style="margin: 0;">New Service Request</h1>
@@ -101,6 +104,9 @@ const handler = async (req: Request): Promise<Response> => {
     to: [customerData.email],
     reply_to: replyToEmail,
     headers: { "List-Unsubscribe": replyToEmail ? `<mailto:${replyToEmail}>` : `<mailto:support@getaquaclear.com>` },
+    subject: "Service Request Received - Aqua Clear Pools",
+    text: `Thank you ${customerData.name}. We've received your ${customerData.serviceType} request (${requestDetails.urgency}).`,
+    html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
           <div style="background: linear-gradient(135deg, #3b82f6, #1d4ed8); color: white; padding: 20px; text-align: center;">
             <h1 style="margin: 0;">Thank You, ${customerData.name}!</h1>

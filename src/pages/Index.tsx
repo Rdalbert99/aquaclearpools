@@ -19,7 +19,10 @@ const Index = () => {
   const [showRequestForm, setShowRequestForm] = useState(false);
   const beforeAfterPairs = [
     { before: "/lovable-uploads/a5900411-fa64-46b8-af48-acf6bf1b1a50.png", after: "/lovable-uploads/f52d8304-05ae-44c4-b5b2-f1b5bdc742c8.png", title: "Complete Pool Restoration" },
-    { before: "/lovable-uploads/77f0cfa9-2e13-4e4c-b77f-48884243e0c5.png", after: "/lovable-uploads/56e5318a-54aa-4a0f-ab6c-2104bc3dc5f1.png", title: "Chemical Balance & Cleaning" }
+    { before: "/lovable-uploads/77f0cfa9-2e13-4e4c-b77f-48884243e0c5.png", after: "/lovable-uploads/56e5318a-54aa-4a0f-ab6c-2104bc3dc5f1.png", title: "Chemical Balance & Cleaning" },
+    { before: "/lovable-uploads/a150b2f6-b124-48d7-8cb5-15e8fecd1833.png", after: "/lovable-uploads/2849e2a6-bc48-4577-8083-425fac1212c5.png", title: "Algae Treatment & Recovery" },
+    { before: "/lovable-uploads/2241bddb-0983-4dc2-b0fa-2d151374eeac.png", after: "/lovable-uploads/d5b7fe60-d3a1-4493-93ad-9afdb6c97580.png", title: "Complete Transformation" },
+    { before: "/lovable-uploads/6837b855-fbb1-44eb-975c-ecff58dff5ed.png", after: "/lovable-uploads/d151f3cf-3583-4c7d-a201-541acdfeaa6c.png", title: "Professional Pool Recovery" }
   ];
 
   return (
@@ -59,7 +62,7 @@ const Index = () => {
         </div>
         
         <div className="relative z-10 text-center text-white max-w-4xl mx-auto px-4">
-          <div className="mb-8 flex justify-center">
+          <div className="mb-4 flex justify-center">
             <div className="perspective-1000">
               <img 
                 src="/lovable-uploads/ac1a09a4-823e-491c-bf59-fb76c8abb196.png" 
@@ -71,10 +74,10 @@ const Index = () => {
               />
             </div>
           </div>
-          <h1 className="text-5xl md:text-7xl font-bold mb-6">
+          <h1 className="text-5xl md:text-7xl font-bold mb-4">
             Aqua Clear Pools
           </h1>
-          <p className="text-xl md:text-2xl mb-8 text-white/90">
+          <p className="text-xl md:text-2xl mb-6 text-white/90">
             Professional pool maintenance, chemical balancing, and cleaning services in the Hattiesburg, Mississippi area
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">

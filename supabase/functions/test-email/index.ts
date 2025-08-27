@@ -36,10 +36,24 @@ const handler = async (req: Request): Promise<Response> => {
 
     console.log(`Sending test email to: ${recipientEmail}`);
 
-    const fromEmail = Deno.env.get("RESEND_FROM_EMAIL") || "AquaClear Pools <onboarding@resend.dev>";
+    const fromEmail = Deno.env.get("RESEND_FROM_EMAIL") || "onboarding@resend.dev";
     const replyToEmail = Deno.env.get("RESEND_REPLY_TO");
     
     console.log(`From email: ${fromEmail}, Reply-to: ${replyToEmail}`);
+    
+    // Validate that we have a proper from email
+    if (!fromEmail || fromEmail.includes("resend.dev")) {
+      console.error("Invalid RESEND_FROM_EMAIL - must be from verified domain");
+      return new Response(
+        JSON.stringify({ 
+          success: false, 
+          error: { 
+            message: "RESEND_FROM_EMAIL must be set to an email from your verified domain (e.g., no-reply@getaquaclear.com)" 
+          } 
+        }),
+        { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } }
+      );
+    }
     
     const emailResponse = await resend.emails.send({
       from: fromEmail,

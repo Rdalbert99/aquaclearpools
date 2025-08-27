@@ -81,7 +81,7 @@ const Index = () => {
           <p className="text-xl md:text-2xl mb-6 text-white/90">
             Professional pool maintenance, chemical balancing, and cleaning services in the Hattiesburg, Mississippi area
           </p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
+          <div className="flex flex-col sm:flex-row gap-4 justify-center mb-20">
             <Button 
               size="lg" 
               variant="outline"
@@ -221,7 +221,7 @@ const Index = () => {
               <Card className="overflow-hidden max-w-sm">
                 <CardContent className="p-0">
                   <img 
-                    src={professionalTech} 
+                    src="/lovable-uploads/28a51ab0-c877-4762-bd36-771791229032.png" 
                     alt="Professional Pool Technician - Aqua Clear Pools Team" 
                     className="w-full h-80 object-cover"
                   />

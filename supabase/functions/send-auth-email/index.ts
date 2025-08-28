@@ -1,8 +1,14 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
-import { Resend } from "npm:resend@2.0.0";
+// Switched to Mailjet for email delivery
 import { Webhook } from "https://esm.sh/standardwebhooks@1.0.0";
 
-const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
+const MJ_API_URL = "https://api.mailjet.com/v3.1/send";
+function encodeBasicAuth(key: string, secret: string) {
+  try { return btoa(`${key}:${secret}`); } catch {
+    // @ts-ignore
+    return Buffer.from(`${key}:${secret}`).toString("base64");
+  }
+}
 const hookSecret = Deno.env.get("SEND_AUTH_EMAIL_HOOK_SECRET") || "your-webhook-secret";
 
 const corsHeaders = {
@@ -96,22 +102,49 @@ const handler = async (req: Request): Promise<Response> => {
     const fromEmailRaw = Deno.env.get("RESEND_FROM_EMAIL") || "no-reply@getaquaclear.com";
     const replyToEmail = Deno.env.get("RESEND_REPLY_TO") || undefined;
     const fromSafe = fromEmailRaw.includes("getaquaclear.com") ? fromEmailRaw : "no-reply@getaquaclear.com";
-    const fromDisplay = fromSafe.includes("<") ? fromSafe : `AquaClear Pools <${fromSafe}>`;
-    console.log(`From email resolved: ${fromDisplay}, Reply-to: ${replyToEmail}`);
-    const emailResponse = await resend.emails.send({
-      from: fromDisplay,
-      to: [user?.email || ""],
-      reply_to: replyToEmail,
-      subject: subject,
-      text: `Aqua Clear Pools - ${subject}. If you requested this action, follow the link in this email.`,
-      headers: { "List-Unsubscribe": replyToEmail ? `<mailto:${replyToEmail}>` : `<mailto:support@getaquaclear.com>` },
-      html: emailContent,
+    const defaultFromEmail = fromSafe;
+    const defaultFromName = "AquaClear Pools";
+
+    const apiKey = Deno.env.get("MAILJET_API_KEY");
+    const apiSecret = Deno.env.get("MAILJET_API_SECRET");
+    if (!apiKey || !apiSecret) {
+      throw new Error("Missing MAILJET_API_KEY/MAILJET_API_SECRET");
+    }
+
+    const payload = {
+      Messages: [
+        {
+          From: { Email: defaultFromEmail, Name: defaultFromName },
+          To: [{ Email: user?.email || "" }],
+          Subject: subject,
+          TextPart: `Aqua Clear Pools - ${subject}. If you requested this action, follow the link in this email.`,
+          HTMLPart: emailContent,
+          ...(replyToEmail ? { ReplyTo: replyToEmail } : {}),
+          Headers: { "List-Unsubscribe": replyToEmail ? `<mailto:${replyToEmail}>` : `<mailto:support@getaquaclear.com>` }
+        }
+      ]
+    };
+
+    const auth = encodeBasicAuth(apiKey, apiSecret);
+    const mjRes = await fetch(MJ_API_URL, {
+      method: "POST",
+      headers: {
+        "Authorization": `Basic ${auth}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(payload),
     });
 
-    console.log("Auth email sent successfully:", emailResponse);
+    const mjJson = await mjRes.json();
+    if (!mjRes.ok) {
+      console.error("Mailjet API error:", mjJson);
+      throw new Error("Mailjet send failed");
+    }
+
+    console.log("Auth email sent successfully (Mailjet):", mjJson);
 
     return new Response(
-      JSON.stringify({ success: true, emailResponse }),
+      JSON.stringify({ success: true, provider: "mailjet", response: mjJson }),
       {
         status: 200,
         headers: {

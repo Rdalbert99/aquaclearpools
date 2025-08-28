@@ -1,6 +1,6 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.53.0";
-import { Resend } from "npm:resend@2.0.0";
+// Switched to Mailjet for email delivery
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -15,11 +15,17 @@ interface SendInviteRequest {
   baseUrl: string; // e.g. https://your-app.com
 }
 
-const resend = new Resend(Deno.env.get("RESEND_API_KEY") || "");
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
+const MJ_API_URL = "https://api.mailjet.com/v3.1/send";
+function encodeBasicAuth(key: string, secret: string) {
+  try { return btoa(`${key}:${secret}`); } catch {
+    // @ts-ignore
+    return Buffer.from(`${key}:${secret}`).toString("base64");
+  }
+}
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -73,7 +79,7 @@ serve(async (req) => {
 
     const link = `${body.baseUrl.replace(/\/$/, "")}/auth/invite/${token}`;
 
-    // Send Email via Resend if requested
+    // Send Email via Mailjet if requested
     let emailStatus: any = null;
     if (body.channels.includes("email")) {
       if (!body.email) {
@@ -93,18 +99,45 @@ serve(async (req) => {
       const fromEmailRaw = Deno.env.get("RESEND_FROM_EMAIL") || "no-reply@getaquaclear.com";
       const replyToEmail = Deno.env.get("RESEND_REPLY_TO") || undefined;
       const fromSafe = fromEmailRaw.includes("getaquaclear.com") ? fromEmailRaw : "no-reply@getaquaclear.com";
-      const fromDisplay = fromSafe.includes("<") ? fromSafe : `AquaClear Pools <${fromSafe}>`;
-      console.log(`From email resolved: ${fromDisplay}, Reply-to: ${replyToEmail}`);
-      const sent = await resend.emails.send({
-        from: fromDisplay,
-        to: [body.email],
-        reply_to: replyToEmail,
-        subject: "Create your Aqua Clear client account",
-        text: `You've been invited to create your Aqua Clear client account. Use this link: ${link}`,
-        headers: { "List-Unsubscribe": replyToEmail ? `<mailto:${replyToEmail}>` : `<mailto:support@getaquaclear.com>` },
-        html,
+      const defaultFromEmail = fromSafe;
+      const defaultFromName = "AquaClear Pools";
+
+      const apiKey = Deno.env.get("MAILJET_API_KEY");
+      const apiSecret = Deno.env.get("MAILJET_API_SECRET");
+      if (!apiKey || !apiSecret) {
+        throw new Error("Missing MAILJET_API_KEY/MAILJET_API_SECRET");
+      }
+
+      const payload = {
+        Messages: [
+          {
+            From: { Email: defaultFromEmail, Name: defaultFromName },
+            To: [{ Email: body.email }],
+            Subject: "Create your Aqua Clear client account",
+            TextPart: `You've been invited to create your Aqua Clear client account. Use this link: ${link}`,
+            HTMLPart: html,
+            ...(replyToEmail ? { ReplyTo: replyToEmail } : {}),
+            Headers: { "List-Unsubscribe": replyToEmail ? `<mailto:${replyToEmail}>` : `<mailto:support@getaquaclear.com>` }
+          }
+        ]
+      };
+
+      const auth = encodeBasicAuth(apiKey, apiSecret);
+      const mjRes = await fetch(MJ_API_URL, {
+        method: "POST",
+        headers: {
+          "Authorization": `Basic ${auth}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(payload),
       });
-      emailStatus = sent;
+
+      const mjJson = await mjRes.json();
+      if (!mjRes.ok) {
+        console.error("Mailjet API error:", mjJson);
+        throw new Error("Mailjet send failed");
+      }
+      emailStatus = mjJson;
     }
 
     // Send SMS via Twilio if requested (optional if secrets provided)

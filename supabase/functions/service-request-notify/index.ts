@@ -1,7 +1,12 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
-import { Resend } from "npm:resend@2.0.0";
-
-const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
+// Using Mailjet API v3.1 for email delivery
+const MJ_API_URL = "https://api.mailjet.com/v3.1/send";
+function encodeBasicAuth(key: string, secret: string) {
+  try { return btoa(`${key}:${secret}`); } catch {
+    // @ts-ignore
+    return Buffer.from(`${key}:${secret}`).toString("base64");
+  }
+}
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -185,23 +190,51 @@ const handler = async (req: Request): Promise<Response> => {
     const fromEmailRaw = Deno.env.get("RESEND_FROM_EMAIL") || "no-reply@getaquaclear.com";
     const replyToEmail = Deno.env.get("RESEND_REPLY_TO") || undefined;
     const fromSafe = fromEmailRaw.includes("getaquaclear.com") ? fromEmailRaw : "no-reply@getaquaclear.com";
-    const fromDisplay = fromSafe.includes("<") ? fromSafe : `AquaClear Pools <${fromSafe}>`;
-    console.log(`From email resolved: ${fromDisplay}, Reply-to: ${replyToEmail}`);
-    const emailResponse = await resend.emails.send({
-      from: fromDisplay,
-      to: [customerEmail],
-      reply_to: replyToEmail,
-      headers: { "List-Unsubscribe": replyToEmail ? `<mailto:${replyToEmail}>` : `<mailto:support@getaquaclear.com>` },
-      subject: subject,
-      html: htmlContent,
+    const defaultFromEmail = fromSafe;
+    const defaultFromName = "AquaClear Pools";
+
+    const apiKey = Deno.env.get("MAILJET_API_KEY");
+    const apiSecret = Deno.env.get("MAILJET_API_SECRET");
+    if (!apiKey || !apiSecret) {
+      throw new Error("Missing MAILJET_API_KEY/MAILJET_API_SECRET");
+    }
+
+    const payload = {
+      Messages: [
+        {
+          From: { Email: defaultFromEmail, Name: defaultFromName },
+          To: [{ Email: customerEmail }],
+          Subject: subject,
+          HTMLPart: htmlContent,
+          ...(replyToEmail ? { ReplyTo: replyToEmail } : {}),
+          Headers: { "List-Unsubscribe": replyToEmail ? `<mailto:${replyToEmail}>` : `<mailto:support@getaquaclear.com>` }
+        }
+      ]
+    };
+
+    const auth = encodeBasicAuth(apiKey, apiSecret);
+    const mjRes = await fetch(MJ_API_URL, {
+      method: "POST",
+      headers: {
+        "Authorization": `Basic ${auth}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(payload),
     });
 
-    console.log("Service notification email sent successfully:", emailResponse);
+    const mjJson = await mjRes.json();
+    if (!mjRes.ok) {
+      console.error("Mailjet API error:", mjJson);
+      throw new Error("Mailjet send failed");
+    }
+
+    console.log("Service notification email sent successfully (Mailjet):", mjJson);
 
     return new Response(
       JSON.stringify({ 
         success: true, 
-        emailResponse,
+        provider: "mailjet",
+        response: mjJson,
         message: `${status} notification sent to ${customerEmail}`
       }), 
       {

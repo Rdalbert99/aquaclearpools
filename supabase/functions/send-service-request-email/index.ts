@@ -69,7 +69,7 @@ const handler = async (req: Request): Promise<Response> => {
           TextPart: `New ${customerData.serviceType} request (${requestDetails.urgency}) from ${customerData.name}, ${customerData.email}, ${customerData.phone}.`,
           HTMLPart: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-          <div style="background: linear-gradient(135deg, #3b82f6, #1d4ed8); color: white; padding: 20px; text-align: center;">
+          <div style="background: #3b82f6; color: white; padding: 20px; text-align: center;">
             <h1 style="margin: 0;">New Service Request</h1>
             <p style="margin: 5px 0;">Aqua Clear Pools</p>
           </div>
@@ -121,7 +121,7 @@ const handler = async (req: Request): Promise<Response> => {
           TextPart: `Thank you ${customerData.name}. We've received your ${customerData.serviceType} request (${requestDetails.urgency}).`,
           HTMLPart: `
         <div style="font-family: Arial, sans-serif; max-width: 640px; margin: 0 auto;">
-          <div style="background: linear-gradient(135deg, #3b82f6, #1d4ed8); color: white; padding: 24px; text-align: center;">
+          <div style="background: #3b82f6; color: white; padding: 24px; text-align: center;">
             <h1 style="margin: 0;">Thanks, ${customerData.name}! We received your request</h1>
             <p style="margin: 8px 0 0 0;">Aqua Clear Pools</p>
           </div>

@@ -141,7 +141,11 @@ export function PublicServiceRequestForm({ open, onOpenChange }: PublicServiceRe
       // Send email using edge function with timeout fallback
       const emailPromise = supabase.functions.invoke('send-service-request-email', {
         body: {
-          customerData: { ...data, name: fullName },
+          customerData: { 
+            ...data, 
+            name: fullName, 
+            address: `${data.streetAddress}, ${data.city}, ${data.state} ${data.zipCode}` 
+          },
           requestDetails: {
             type: data.serviceType,
             urgency: data.urgency,
@@ -298,30 +302,6 @@ export function PublicServiceRequestForm({ open, onOpenChange }: PublicServiceRe
 
             <FormField
               control={form.control}
-              name="urgency"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Urgency</FormLabel>
-                  <Select onValueChange={field.onChange} defaultValue={field.value}>
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select urgency level" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      <SelectItem value="low">Low - Routine Maintenance</SelectItem>
-                      <SelectItem value="medium">Medium - Schedule Within Week</SelectItem>
-                      <SelectItem value="high">High - Needs Attention Soon</SelectItem>
-                      <SelectItem value="emergency">Emergency - ASAP</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
               name="streetAddress"
               render={({ field }) => (
                 <FormItem>
@@ -377,6 +357,30 @@ export function PublicServiceRequestForm({ open, onOpenChange }: PublicServiceRe
                 )}
               />
             </div>
+
+            <FormField
+              control={form.control}
+              name="urgency"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Urgency</FormLabel>
+                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select urgency level" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="low">Low - Routine Maintenance</SelectItem>
+                      <SelectItem value="medium">Medium - Schedule Within Week</SelectItem>
+                      <SelectItem value="high">High - Needs Attention Soon</SelectItem>
+                      <SelectItem value="emergency">Emergency - ASAP</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <FormField

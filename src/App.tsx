@@ -46,6 +46,7 @@ import RequestService from "./pages/client/RequestService";
 import ClientProfile from "./pages/client/Profile";
 import Profile from "./pages/Profile";
 import Contact from "./pages/Contact";
+import MailjetTest from "./pages/admin/MailjetTest";
 
 const queryClient = new QueryClient();
 
@@ -278,6 +279,14 @@ const AppRoutes = () => {
           element={
             <ProtectedRoute allowedRoles={['admin']}>
               <Reports />
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/admin/mailjet-test" 
+          element={
+            <ProtectedRoute allowedRoles={['admin']}>
+              <MailjetTest />
             </ProtectedRoute>
           } 
         />

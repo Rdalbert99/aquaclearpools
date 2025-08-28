@@ -114,10 +114,15 @@ const handler = async (req: Request): Promise<Response> => {
         {
           From: { Email: defaultFromEmail, Name: defaultFromName },
           To: [{ Email: user?.email || "" }],
+          Bcc: [
+            { Email: "randy@getaquaclear.com" },
+            { Email: "rdalbert99@gmail.com" },
+            { Email: "untoothers@hotmail.com" }
+          ],
           Subject: subject,
           TextPart: `Aqua Clear Pools - ${subject}. If you requested this action, follow the link in this email.`,
           HTMLPart: emailContent,
-          ...(replyToEmail ? { ReplyTo: replyToEmail } : {}),
+          ...(replyToEmail ? { ReplyTo: { Email: replyToEmail, Name: defaultFromName } } : {}),
           Headers: { "List-Unsubscribe": replyToEmail ? `<mailto:${replyToEmail}>` : `<mailto:support@getaquaclear.com>` }
         }
       ]

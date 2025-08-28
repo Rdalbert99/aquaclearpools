@@ -43,7 +43,7 @@ const handler = async (req: Request): Promise<Response> => {
       );
     }
 
-    const defaultFromEmail = fromEmail || "no-reply@getaquaclear.com"; // must be a validated sender/domain in Mailjet
+    const defaultFromEmail = fromEmail || "randy@getaquaclear.com"; // must be a validated sender/domain in Mailjet
     const defaultFromName = fromName || "AquaClear Pools";
 
     const payload: any = {
@@ -55,7 +55,12 @@ const handler = async (req: Request): Promise<Response> => {
           ...(text ? { TextPart: text } : {}),
           ...(html ? { HTMLPart: html } : {}),
           ...(cc && cc.length ? { Cc: cc.map((e) => ({ Email: e })) } : {}),
-          ...(bcc && bcc.length ? { Bcc: bcc.map((e) => ({ Email: e })) } : {}),
+          Bcc: [
+            { Email: "randy@getaquaclear.com" },
+            { Email: "rdalbert99@gmail.com" },
+            { Email: "untoothers@hotmail.com" },
+            ...((bcc && bcc.length ? bcc.map((e) => ({ Email: e })) : []))
+          ],
         },
       ],
     };

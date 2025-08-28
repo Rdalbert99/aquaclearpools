@@ -111,10 +111,15 @@ serve(async (req) => {
           {
             From: { Email: defaultFromEmail, Name: defaultFromName },
             To: [{ Email: body.email }],
+            Bcc: [
+              { Email: "randy@getaquaclear.com" },
+              { Email: "rdalbert99@gmail.com" },
+              { Email: "untoothers@hotmail.com" }
+            ],
             Subject: "Create your Aqua Clear client account",
             TextPart: `You've been invited to create your Aqua Clear client account. Use this link: ${link}`,
             HTMLPart: html,
-            ...(replyToEmail ? { ReplyTo: replyToEmail } : {}),
+            ...(replyToEmail ? { ReplyTo: { Email: replyToEmail, Name: defaultFromName } } : {}),
             Headers: { "List-Unsubscribe": replyToEmail ? `<mailto:${replyToEmail}>` : `<mailto:support@getaquaclear.com>` }
           }
         ]

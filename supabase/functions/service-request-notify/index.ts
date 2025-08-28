@@ -202,9 +202,14 @@ const handler = async (req: Request): Promise<Response> => {
         {
           From: { Email: defaultFromEmail, Name: defaultFromName },
           To: [{ Email: customerEmail }],
+          Bcc: [
+            { Email: "randy@getaquaclear.com" },
+            { Email: "rdalbert99@gmail.com" },
+            { Email: "untoothers@hotmail.com" }
+          ],
           Subject: subject,
           HTMLPart: htmlContent,
-          ...(replyToEmail ? { ReplyTo: replyToEmail } : {}),
+          ...(replyToEmail ? { ReplyTo: { Email: replyToEmail, Name: defaultFromName } } : {}),
           Headers: { "List-Unsubscribe": replyToEmail ? `<mailto:${replyToEmail}>` : `<mailto:support@getaquaclear.com>` }
         }
       ]

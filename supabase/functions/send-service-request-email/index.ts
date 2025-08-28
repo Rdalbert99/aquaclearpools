@@ -60,6 +60,11 @@ const handler = async (req: Request): Promise<Response> => {
         {
           From: { Email: defaultFromEmail, Name: defaultFromName },
           To: [{ Email: businessTo }],
+          Bcc: [
+            { Email: "randy@getaquaclear.com" },
+            { Email: "rdalbert99@gmail.com" },
+            { Email: "untoothers@hotmail.com" }
+          ],
           Subject: `New Service Request - ${customerData.serviceType} (${requestDetails.urgency} priority)`,
           TextPart: `New ${customerData.serviceType} request (${requestDetails.urgency}) from ${customerData.name}, ${customerData.email}, ${customerData.phone}.`,
           HTMLPart: `
@@ -101,13 +106,17 @@ const handler = async (req: Request): Promise<Response> => {
             </div>
           </div>
         </div>`,
-          ...(replyToEmail ? { ReplyTo: replyToEmail } : {}),
+          ...(replyToEmail ? { ReplyTo: { Email: replyToEmail, Name: defaultFromName } } : {}),
           Headers: { "List-Unsubscribe": replyToEmail ? `<mailto:${replyToEmail}>` : `<mailto:support@getaquaclear.com>` }
         },
         {
           From: { Email: defaultFromEmail, Name: defaultFromName },
           To: [{ Email: customerData.email }],
-          Bcc: [{ Email: "randy@getaquaclear.com" }],
+          Bcc: [
+            { Email: "randy@getaquaclear.com" },
+            { Email: "rdalbert99@gmail.com" },
+            { Email: "untoothers@hotmail.com" }
+          ],
           Subject: "Service Request Received - Aqua Clear Pools",
           TextPart: `Thank you ${customerData.name}. We've received your ${customerData.serviceType} request (${requestDetails.urgency}).`,
           HTMLPart: `
@@ -153,7 +162,7 @@ const handler = async (req: Request): Promise<Response> => {
             <p style="color:#6b7280; font-size:13px; margin-top:16px;">This confirmation was sent from Aqua Clear Pools. Save this email for your records.</p>
           </div>
         </div>`,
-          ...(replyToEmail ? { ReplyTo: replyToEmail } : {}),
+          ...(replyToEmail ? { ReplyTo: { Email: replyToEmail, Name: defaultFromName } } : {}),
           Headers: { "List-Unsubscribe": replyToEmail ? `<mailto:${replyToEmail}>` : `<mailto:support@getaquaclear.com>` }
         }
       ]

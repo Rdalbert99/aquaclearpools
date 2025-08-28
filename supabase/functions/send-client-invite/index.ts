@@ -96,10 +96,8 @@ serve(async (req) => {
           <p>This link expires in 7 days.</p>
         </div>`;
 
-      const fromEmailRaw = Deno.env.get("RESEND_FROM_EMAIL") || "no-reply@getaquaclear.com";
       const replyToEmail = Deno.env.get("RESEND_REPLY_TO") || undefined;
-      const fromSafe = fromEmailRaw.includes("getaquaclear.com") ? fromEmailRaw : "no-reply@getaquaclear.com";
-      const defaultFromEmail = fromSafe;
+      const defaultFromEmail = "randy@getaquaclear.com";
       const defaultFromName = "AquaClear Pools";
 
       const apiKey = Deno.env.get("MAILJET_API_KEY");

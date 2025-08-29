@@ -77,8 +77,40 @@ serve(async (req) => {
     }
 
     // Upsert into public.users profile
-    const login = email.split("@")[0] || `client-${crypto.randomUUID().slice(0, 8)}`;
-    const name = body.name || invite.clients.customer || login;
+    const baseLoginRaw = (email.split("@")[0] || invite.clients.customer || `client-${crypto.randomUUID().slice(0, 8)}`);
+    const baseLogin = baseLoginRaw
+      .toLowerCase()
+      .replace(/[^a-z0-9._-]/g, '')
+      .replace(/^[-_.]+|[-_.]+$/g, '')
+      .slice(0, 30) || `client-${crypto.randomUUID().slice(0, 8)}`;
+
+    // Ensure unique login to avoid users_login_unique constraint violation
+    const { data: existingLogins, error: loginsErr } = await admin
+      .from("users")
+      .select("login")
+      .ilike("login", `${baseLogin}%`);
+
+    if (loginsErr) {
+      console.warn("Warning: could not check existing logins", loginsErr);
+    }
+
+    const existingSet = new Set((existingLogins || []).map((r: any) => String(r.login).toLowerCase()));
+    let uniqueLogin = baseLogin;
+    if (existingSet.has(uniqueLogin)) {
+      for (let i = 2; i < 1000; i++) {
+        const candidate = `${baseLogin}${i}`; // e.g., jjimarroyo2
+        if (!existingSet.has(candidate)) {
+          uniqueLogin = candidate;
+          break;
+        }
+      }
+      // As a last fallback
+      if (existingSet.has(uniqueLogin)) {
+        uniqueLogin = `${baseLogin}-${crypto.randomUUID().slice(0, 6)}`;
+      }
+    }
+
+    const name = body.name || invite.clients.customer || uniqueLogin;
 
     const { error: upsertErr } = await admin
       .from("users")
@@ -87,7 +119,7 @@ serve(async (req) => {
         email,
         role: "client",
         name,
-        login,
+        login: uniqueLogin,
         address: body.address || null,
         phone: body.phone || invite.phone || null,
         updated_at: new Date().toISOString(),

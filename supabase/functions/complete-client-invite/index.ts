@@ -76,50 +76,19 @@ serve(async (req) => {
       authUserId = created.user.id;
     }
 
-    // Upsert into public.users profile
-    const baseLoginRaw = (email.split("@")[0] || invite.clients.customer || `client-${crypto.randomUUID().slice(0, 8)}`);
-    const baseLogin = baseLoginRaw
-      .toLowerCase()
-      .replace(/[^a-z0-9._-]/g, '')
-      .replace(/^[-_.]+|[-_.]+$/g, '')
-      .slice(0, 30) || `client-${crypto.randomUUID().slice(0, 8)}`;
-
-    // Ensure unique login to avoid users_login_unique constraint violation
-    const { data: existingLogins, error: loginsErr } = await admin
-      .from("users")
-      .select("login")
-      .ilike("login", `${baseLogin}%`);
-
-    if (loginsErr) {
-      console.warn("Warning: could not check existing logins", loginsErr);
-    }
-
-    const existingSet = new Set((existingLogins || []).map((r: any) => String(r.login).toLowerCase()));
-    let uniqueLogin = baseLogin;
-    if (existingSet.has(uniqueLogin)) {
-      for (let i = 2; i < 1000; i++) {
-        const candidate = `${baseLogin}${i}`; // e.g., jjimarroyo2
-        if (!existingSet.has(candidate)) {
-          uniqueLogin = candidate;
-          break;
-        }
-      }
-      // As a last fallback
-      if (existingSet.has(uniqueLogin)) {
-        uniqueLogin = `${baseLogin}-${crypto.randomUUID().slice(0, 6)}`;
-      }
-    }
-
-    const name = body.name || invite.clients.customer || uniqueLogin;
+    // Upsert into public.users profile with email as the login/username
+    const normalizedEmail = email.toLowerCase().trim();
+    const login = normalizedEmail; // Enforce email as unique username
+    const name = body.name || invite.clients.customer || normalizedEmail.split("@")[0];
 
     const { error: upsertErr } = await admin
       .from("users")
       .upsert({
         id: authUserId,
-        email,
+        email: normalizedEmail,
         role: "client",
         name,
-        login: uniqueLogin,
+        login,
         address: body.address || null,
         phone: body.phone || invite.phone || null,
         updated_at: new Date().toISOString(),

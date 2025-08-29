@@ -139,7 +139,13 @@ export default function ClientInvite() {
             </div>
             <div className="space-y-2">
               <Label>Email</Label>
-              <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
+              <Input 
+                type="email" 
+                value={email} 
+                disabled 
+                className="bg-muted text-muted-foreground cursor-not-allowed" 
+              />
+              <p className="text-xs text-muted-foreground">Email is locked to the invitation</p>
             </div>
             <div className="space-y-2">
               <Label>Phone</Label>

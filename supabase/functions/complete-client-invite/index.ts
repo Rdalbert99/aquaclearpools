@@ -90,7 +90,6 @@ serve(async (req) => {
         login,
         address: body.address || null,
         phone: body.phone || invite.phone || null,
-        password: "password", // legacy field expected elsewhere
         updated_at: new Date().toISOString(),
       }, { onConflict: "id" });
     if (upsertErr) throw upsertErr;

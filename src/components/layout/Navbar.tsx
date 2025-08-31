@@ -1,7 +1,9 @@
+import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { 
   DropdownMenu, 
   DropdownMenuContent, 
@@ -10,11 +12,12 @@ import {
   DropdownMenuSeparator, 
   DropdownMenuTrigger 
 } from '@/components/ui/dropdown-menu';
-import { Droplets, Home, Calculator, Users, FileText, LogOut, User, Star, Calendar, BarChart3, Mail } from 'lucide-react';
+import { Droplets, Home, Calculator, Users, FileText, LogOut, User, Star, Calendar, BarChart3, Mail, Menu } from 'lucide-react';
 
 export const Navbar = () => {
   const { user, signOut, isAdmin, isTech, isClient } = useAuth();
   const navigate = useNavigate();
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   const handleLogout = async () => {
     await signOut();
@@ -29,6 +32,40 @@ export const Navbar = () => {
       .toUpperCase()
       .slice(0, 2);
   };
+
+  // Navigation items based on user role
+  const getNavigationItems = () => {
+    if (isAdmin) {
+      return [
+        { label: 'Dashboard', icon: Home, path: '/admin' },
+        { label: 'Clients', icon: Users, path: '/admin/clients' },
+        { label: 'Requests', icon: FileText, path: '/admin/service-request-management' },
+        { label: 'Reviews', icon: Star, path: '/admin/reviews' },
+        { label: 'Calculator', icon: Calculator, path: '/admin/calculator' },
+        { label: 'Reports', icon: BarChart3, path: '/admin/reports' },
+        { label: 'Mailjet Test', icon: Mail, path: '/admin/mailjet-test' },
+      ];
+    }
+    
+    if (isTech) {
+      return [
+        { label: 'Dashboard', icon: Home, path: '/tech' },
+        { label: 'Schedule', icon: Calendar, path: '/tech/schedule' },
+        { label: 'Calculator', icon: Calculator, path: '/tech/calculator' },
+      ];
+    }
+    
+    if (isClient) {
+      return [
+        { label: 'Dashboard', icon: Home, path: '/client' },
+        { label: 'Services', icon: FileText, path: '/client/services' },
+      ];
+    }
+    
+    return [];
+  };
+
+  const navigationItems = getNavigationItems();
 
   return (
     <nav className="bg-white shadow-sm border-b">
@@ -46,94 +83,80 @@ export const Navbar = () => {
           </div>
 
           <div className="flex items-center space-x-4">
-            {/* Navigation Links */}
-            <div className="hidden md:flex items-center space-x-1">
-              {isAdmin && (
-                <>
-                  <Button variant="ghost" size="sm" asChild>
-                    <Link to="/admin" className="flex items-center space-x-1">
-                      <Home className="h-4 w-4" />
-                      <span>Dashboard</span>
-                    </Link>
-                  </Button>
-                  <Button variant="ghost" size="sm" asChild>
-                    <Link to="/admin/clients" className="flex items-center space-x-1">
-                      <Users className="h-4 w-4" />
-                      <span>Clients</span>
-                    </Link>
-                  </Button>
-                  <Button variant="ghost" size="sm" asChild>
-                    <Link to="/admin/service-request-management" className="flex items-center space-x-1">
-                      <FileText className="h-4 w-4" />
-                      <span>Requests</span>
-                    </Link>
-                  </Button>
-                  <Button variant="ghost" size="sm" asChild>
-                    <Link to="/admin/reviews" className="flex items-center space-x-1">
-                      <Star className="h-4 w-4" />
-                      <span>Reviews</span>
-                    </Link>
-                  </Button>
-                  <Button variant="ghost" size="sm" asChild>
-                    <Link to="/admin/calculator" className="flex items-center space-x-1">
-                      <Calculator className="h-4 w-4" />
-                      <span>Calculator</span>
-                    </Link>
-                  </Button>
-                  <Button variant="ghost" size="sm" asChild>
-                    <Link to="/admin/reports" className="flex items-center space-x-1">
-                      <BarChart3 className="h-4 w-4" />
-                      <span>Reports</span>
-                    </Link>
-                  </Button>
-                  <Button variant="ghost" size="sm" asChild>
-                    <Link to="/admin/mailjet-test" className="flex items-center space-x-1">
-                      <Mail className="h-4 w-4" />
-                      <span>Mailjet Test</span>
-                    </Link>
-                  </Button>
-                </>
-              )}
+            {/* Desktop Navigation Links */}
+            <div className="hidden lg:flex items-center space-x-1">
+              {navigationItems.map((item) => (
+                <Button key={item.path} variant="ghost" size="sm" asChild>
+                  <Link to={item.path} className="flex items-center space-x-1">
+                    <item.icon className="h-4 w-4" />
+                    <span>{item.label}</span>
+                  </Link>
+                </Button>
+              ))}
+            </div>
 
-              {isTech && (
-                <>
-                  <Button variant="ghost" size="sm" asChild>
-                    <Link to="/tech" className="flex items-center space-x-1">
-                      <Home className="h-4 w-4" />
-                      <span>Dashboard</span>
-                    </Link>
+            {/* Mobile Hamburger Menu */}
+            <div className="lg:hidden">
+              <Sheet open={isMobileMenuOpen} onOpenChange={setIsMobileMenuOpen}>
+                <SheetTrigger asChild>
+                  <Button variant="ghost" size="sm">
+                    <Menu className="h-5 w-5" />
                   </Button>
-                  <Button variant="ghost" size="sm" asChild>
-                    <Link to="/tech/schedule" className="flex items-center space-x-1">
-                      <Calendar className="h-4 w-4" />
-                      <span>Schedule</span>
-                    </Link>
-                  </Button>
-                  <Button variant="ghost" size="sm" asChild>
-                    <Link to="/tech/calculator" className="flex items-center space-x-1">
-                      <Calculator className="h-4 w-4" />
-                      <span>Calculator</span>
-                    </Link>
-                  </Button>
-                </>
-              )}
+                </SheetTrigger>
+                <SheetContent 
+                  side="right" 
+                  className="bg-background border-l w-80 z-[100]"
+                >
+                  <div className="flex flex-col h-full pt-8">
+                    {/* Mobile Navigation Links */}
+                    <nav className="flex flex-col space-y-2 mb-8">
+                      {navigationItems.map((item) => (
+                        <Button
+                          key={item.path}
+                          variant="ghost"
+                          size="lg"
+                          asChild
+                          className="w-full justify-start"
+                          onClick={() => setIsMobileMenuOpen(false)}
+                        >
+                          <Link to={item.path} className="flex items-center space-x-3">
+                            <item.icon className="h-5 w-5" />
+                            <span className="text-lg">{item.label}</span>
+                          </Link>
+                        </Button>
+                      ))}
+                    </nav>
 
-              {isClient && (
-                <>
-                  <Button variant="ghost" size="sm" asChild>
-                    <Link to="/client" className="flex items-center space-x-1">
-                      <Home className="h-4 w-4" />
-                      <span>Dashboard</span>
-                    </Link>
-                  </Button>
-                  <Button variant="ghost" size="sm" asChild>
-                    <Link to="/client/services" className="flex items-center space-x-1">
-                      <FileText className="h-4 w-4" />
-                      <span>Services</span>
-                    </Link>
-                  </Button>
-                </>
-              )}
+                    {/* Mobile User Actions */}
+                    <div className="flex flex-col space-y-3 mt-auto border-t pt-4">
+                      <Button
+                        variant="ghost"
+                        size="lg"
+                        asChild
+                        className="w-full justify-start"
+                        onClick={() => setIsMobileMenuOpen(false)}
+                      >
+                        <Link to="/profile" className="flex items-center space-x-3">
+                          <User className="h-5 w-5" />
+                          <span className="text-lg">Profile</span>
+                        </Link>
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="lg"
+                        className="w-full justify-start text-red-600 hover:text-red-700 hover:bg-red-50"
+                        onClick={() => {
+                          handleLogout();
+                          setIsMobileMenuOpen(false);
+                        }}
+                      >
+                        <LogOut className="h-5 w-5 mr-3" />
+                        <span className="text-lg">Log out</span>
+                      </Button>
+                    </div>
+                  </div>
+                </SheetContent>
+              </Sheet>
             </div>
 
             {/* User Menu */}

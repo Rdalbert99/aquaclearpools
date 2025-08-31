@@ -195,6 +195,21 @@ export default function ServiceRequestManagement() {
         return;
       }
 
+      // Fetch assigned technician details (name and phone) if available
+      let technicianName: string | undefined;
+      let technicianPhone: string | undefined;
+      if (requestData.assigned_technician_id) {
+        const { data: techData, error: techErr } = await supabase
+          .from('users')
+          .select('name, phone')
+          .eq('id', requestData.assigned_technician_id)
+          .single();
+        if (!techErr && techData) {
+          technicianName = techData.name as string | undefined;
+          technicianPhone = techData.phone as string | undefined;
+        }
+      }
+
       // Update the preferred date in the database
       const { error } = await supabase
         .from('service_requests')
@@ -209,14 +224,15 @@ export default function ServiceRequestManagement() {
         try {
           const { error: emailError } = await supabase.functions.invoke('service-request-notify', {
             body: {
-              contact_name: requestData.contact_name,
-              contact_email: requestData.contact_email,
-              contact_phone: requestData.contact_phone,
-              contact_address: requestData.contact_address,
-              request_type: requestData.request_type,
-              description: requestData.description,
-              preferred_date: iso,
-              status: 'scheduled'
+              requestId,
+              customerName: requestData.contact_name,
+              customerEmail: requestData.contact_email,
+              serviceType: requestData.request_type,
+              status: 'scheduled',
+              scheduledDate: iso,
+              notes: requestData.description,
+              technicianName,
+              technicianPhone,
             }
           });
 

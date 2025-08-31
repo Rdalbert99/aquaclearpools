@@ -23,6 +23,8 @@ interface ServiceRequestNotification {
   scheduledDate?: string;
   timeRange?: string;
   notes?: string;
+  technicianName?: string;
+  technicianPhone?: string;
 }
 
 const handler = async (req: Request): Promise<Response> => {
@@ -40,7 +42,9 @@ const handler = async (req: Request): Promise<Response> => {
       status, 
       scheduledDate, 
       timeRange, 
-      notes 
+      notes,
+      technicianName,
+      technicianPhone
     }: ServiceRequestNotification = await req.json();
 
     console.log(`Sending service request notification: ${status} for request ${requestId}`);
@@ -115,6 +119,16 @@ const handler = async (req: Request): Promise<Response> => {
               <p><strong>Time:</strong> ${timeRange || 'We will contact you to confirm'}</p>
               <p><strong>Request ID:</strong> ${requestId}</p>
             </div>
+
+            ${technicianName ? `
+            <div style="background: #ecfdf5; padding: 20px; border-radius: 5px; border-left: 4px solid #10b981; margin: 20px 0;">
+              <h2 style="color: #065f46; margin-top: 0;">Your Technician</h2>
+              <p style="margin: 0 0 6px 0;"><strong>Name:</strong> ${technicianName}</p>
+              ${technicianPhone ? `<p style="margin: 0;"><strong>Phone:</strong> <a href="tel:${technicianPhone}" style="color:#065f46; text-decoration: none;">${technicianPhone}</a></p>` : ''}
+              <p style="margin: 10px 0 0 0; color:#065f46;">They will reach out prior to arrival if needed.</p>
+            </div>
+            ` : ''}
+
 
             ${notes ? `
               <h2 style="color: #1f2937;">Service Notes</h2>

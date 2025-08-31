@@ -17,7 +17,7 @@ verify_jwt = false
 verify_jwt = false
 
 [functions.delete-users-and-clients]
-verify_jwt = false
+verify_jwt = true
 
 [functions.send-client-invite]
 verify_jwt = true
@@ -26,10 +26,13 @@ verify_jwt = true
 verify_jwt = false
 
 [functions.reset-user-password]
-verify_jwt = false
+verify_jwt = true
 
 [functions.create-user-account]
-verify_jwt = false
+verify_jwt = true
 
 [functions.mailjet-test-email]
+verify_jwt = true
+
+[functions.service-request-notify]
 verify_jwt = true

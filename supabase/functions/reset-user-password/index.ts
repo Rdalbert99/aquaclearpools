@@ -177,8 +177,7 @@ const handler = async (req: Request): Promise<Response> => {
       JSON.stringify({
         success: true,
         email: emailToUse,
-        password: passwordToSet,
-        message: 'Password reset successfully'
+        message: 'Password reset successfully. The user must change it on next login.'
       }),
       { status: 200, headers: { 'Content-Type': 'application/json', ...corsHeaders } }
     );

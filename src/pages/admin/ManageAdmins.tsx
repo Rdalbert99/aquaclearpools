@@ -79,6 +79,7 @@ export default function ManageAdmins() {
         .from('users')
         .select('id, name, login, email, phone, created_at')
         .eq('role', 'admin')
+        .eq('status', 'active')
         .order('name');
 
       if (error) throw error;
@@ -96,7 +97,7 @@ export default function ManageAdmins() {
       
       const { error } = await supabase
         .from('users')
-        .update({ role: 'client', updated_at: new Date().toISOString() })
+        .update({ status: 'deactivated', updated_at: new Date().toISOString() })
         .eq('id', adminId);
 
       if (error) {

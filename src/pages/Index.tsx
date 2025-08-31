@@ -194,23 +194,6 @@ const Index = () => {
               </div>
             </div>
             
-            <div className="flex justify-center">
-              <Card className="overflow-hidden max-w-sm">
-                <CardContent className="p-0">
-                  <img 
-                    src="/lovable-uploads/28a51ab0-c877-4762-bd36-771791229032.png" 
-                    alt="Professional Pool Technician - Aqua Clear Pools Team" 
-                    className="w-full h-80 object-cover"
-                  />
-                  <div className="p-6">
-                    <h3 className="text-xl font-semibold mb-2">Professional Team</h3>
-                    <p className="text-muted-foreground">
-                      Our certified technicians bring years of experience and dedication to every pool service call in the Hattiesburg area.
-                    </p>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
 
             <Card>
               <CardHeader>

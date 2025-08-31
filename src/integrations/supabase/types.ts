@@ -361,6 +361,45 @@ export type Database = {
           },
         ]
       }
+      security_audit_log: {
+        Row: {
+          actor_id: string | null
+          created_at: string | null
+          event_type: string
+          id: string
+          ip_address: unknown | null
+          new_values: Json | null
+          old_values: Json | null
+          target_table: string | null
+          target_user_id: string | null
+          user_agent: string | null
+        }
+        Insert: {
+          actor_id?: string | null
+          created_at?: string | null
+          event_type: string
+          id?: string
+          ip_address?: unknown | null
+          new_values?: Json | null
+          old_values?: Json | null
+          target_table?: string | null
+          target_user_id?: string | null
+          user_agent?: string | null
+        }
+        Update: {
+          actor_id?: string | null
+          created_at?: string | null
+          event_type?: string
+          id?: string
+          ip_address?: unknown | null
+          new_values?: Json | null
+          old_values?: Json | null
+          target_table?: string | null
+          target_user_id?: string | null
+          user_agent?: string | null
+        }
+        Relationships: []
+      }
       service_requests: {
         Row: {
           address_validated: boolean | null
@@ -625,6 +664,7 @@ export type Database = {
           phone: string | null
           role: string
           state: string | null
+          status: string
           street_address: string | null
           updated_at: string | null
           zip_code: string | null
@@ -649,6 +689,7 @@ export type Database = {
           phone?: string | null
           role: string
           state?: string | null
+          status?: string
           street_address?: string | null
           updated_at?: string | null
           zip_code?: string | null
@@ -673,6 +714,7 @@ export type Database = {
           phone?: string | null
           role?: string
           state?: string | null
+          status?: string
           street_address?: string | null
           updated_at?: string | null
           zip_code?: string | null
@@ -741,6 +783,16 @@ export type Database = {
       get_email_by_login: {
         Args: { login_input: string }
         Returns: string
+      }
+      log_security_event: {
+        Args: {
+          p_event_type: string
+          p_new_values?: Json
+          p_old_values?: Json
+          p_target_table?: string
+          p_target_user_id?: string
+        }
+        Returns: undefined
       }
       mark_invitation_used: {
         Args: {

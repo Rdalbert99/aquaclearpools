@@ -6,6 +6,7 @@ import { Link } from 'react-router-dom';
 import { ReviewCarousel } from '@/components/reviews/ReviewCarousel';
 import { PublicServiceRequestForm } from '@/components/service/PublicServiceRequestForm';
 import { BeforeAfterFade } from '@/components/ui/before-after-fade';
+import { CollapsibleBeforeAfter } from '@/components/ui/collapsible-before-after';
 import heroImage from '@/assets/hero-pool-service.jpg';
 import poolBefore1 from '@/assets/pool-before-1.jpg';
 import poolAfter1 from '@/assets/pool-after-1.jpg';
@@ -160,11 +161,7 @@ const Index = () => {
             </p>
           </div>
 
-          <div className="grid md:grid-cols-2 gap-12">
-            {beforeAfterPairs.map((pair, index) => (
-              <BeforeAfterFade key={index} pair={pair} />
-            ))}
-          </div>
+          <CollapsibleBeforeAfter pairs={beforeAfterPairs} />
         </div>
       </section>
 

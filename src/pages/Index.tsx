@@ -15,6 +15,7 @@ import poolAfter2 from '@/assets/pool-after-2.jpg';
 import logo3D from '@/assets/aqua-clear-logo-3d.png';
 import professionalTech from '@/assets/professional-tech.jpg';
 import Footer from '@/components/layout/Footer';
+import { PublicNavbar } from '@/components/layout/PublicNavbar';
 
 
 const Index = () => {
@@ -30,32 +31,9 @@ const Index = () => {
   return (
     <div className="min-h-screen bg-background">
       {/* Header/Navigation */}
-      <header className="absolute top-0 left-0 right-0 z-50 bg-black/20 backdrop-blur-sm">
-        <div className="max-w-6xl mx-auto px-4 py-4 flex justify-between items-center">
-          <div className="flex items-center space-x-3">
-            <img 
-              src="/lovable-uploads/ac1a09a4-823e-491c-bf59-fb76c8abb196.png" 
-              alt="Aqua Clear Pools" 
-              className="h-16 w-16 object-contain bg-transparent"
-              style={{ 
-                filter: 'drop-shadow(0 0 10px rgba(255,255,255,0.3))',
-              }}
-            />
-            <span className="text-white font-bold text-xl">Aqua Clear Pools</span>
-          </div>
-          
-          <div className="flex items-center space-x-4">
-            <Link to="/auth/login">
-              <Button variant="outline" className="bg-white/10 border-white text-white hover:bg-white/20">
-                <LogIn className="h-4 w-4 mr-2" />
-                Login
-              </Button>
-            </Link>
-          </div>
-        </div>
-      </header>
+      <PublicNavbar onRequestService={() => setShowRequestForm(true)} />
       {/* Hero Section */}
-      <section className="relative h-screen flex items-center justify-center overflow-hidden">
+      <section id="hero" className="relative h-screen flex items-center justify-center overflow-hidden">
         <div 
           className="absolute inset-0 bg-cover bg-center bg-no-repeat"
           style={{ backgroundImage: `url(${heroImage})` }}
@@ -102,7 +80,7 @@ const Index = () => {
       </section>
 
       {/* Services Section */}
-      <section className="py-20 px-4 bg-gradient-to-br from-primary/5 to-secondary/5">
+      <section id="services" className="py-20 px-4 bg-gradient-to-br from-primary/5 to-secondary/5">
         <div className="max-w-6xl mx-auto">
           <div className="text-center mb-16">
             <h2 className="text-4xl font-bold mb-4">Our Pool Services</h2>
@@ -152,7 +130,7 @@ const Index = () => {
       </section>
 
       {/* Before & After Section */}
-      <section className="py-20 px-4">
+      <section id="before-after" className="py-20 px-4">
         <div className="max-w-6xl mx-auto">
           <div className="text-center mb-16">
             <h2 className="text-4xl font-bold mb-4">See the Difference</h2>
@@ -166,7 +144,9 @@ const Index = () => {
       </section>
 
       {/* Customer Reviews Section */}
-      <ReviewCarousel />
+      <section id="reviews">
+        <ReviewCarousel />
+      </section>
 
       {/* Company History Section */}
       <section className="py-20 px-4 bg-muted/50">
@@ -267,7 +247,7 @@ const Index = () => {
       </section>
 
       {/* Contact Section */}
-      <section className="py-20 px-4">
+      <section id="contact" className="py-20 px-4">
         <div className="max-w-4xl mx-auto text-center">
           <h2 className="text-4xl font-bold mb-8">Ready to Get Started?</h2>
           <p className="text-xl text-muted-foreground mb-12">

@@ -206,7 +206,7 @@ export function PublicServiceRequestForm({ open, onOpenChange }: PublicServiceRe
               name="title"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Title (Optional)</FormLabel>
+                  <FormLabel>Brief explanation of service</FormLabel>
                   <FormControl>
                     <Input placeholder="Brief title for your service request..." {...field} />
                   </FormControl>
@@ -248,7 +248,7 @@ export function PublicServiceRequestForm({ open, onOpenChange }: PublicServiceRe
                   <FormItem>
                     <FormLabel>First Name</FormLabel>
                     <FormControl>
-                      <Input placeholder="John" {...field} />
+                      <Input placeholder="ex. John" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -262,7 +262,7 @@ export function PublicServiceRequestForm({ open, onOpenChange }: PublicServiceRe
                   <FormItem>
                     <FormLabel>Last Name</FormLabel>
                     <FormControl>
-                      <Input placeholder="Doe" {...field} />
+                      <Input placeholder="ex. Doe" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -307,7 +307,7 @@ export function PublicServiceRequestForm({ open, onOpenChange }: PublicServiceRe
                 <FormItem>
                   <FormLabel>Street Address</FormLabel>
                   <FormControl>
-                    <Input placeholder="123 Main St" {...field} />
+                    <Input placeholder="ex. 123 Main St" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>

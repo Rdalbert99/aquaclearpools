@@ -139,7 +139,7 @@ export default function AdminDashboard() {
           </Card>
         </Link>
 
-        <Link to="/admin/service-requests">
+        <Link to="/admin/service-request-management">
           <Card className="cursor-pointer hover:bg-muted/50 transition-colors">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Pending Requests</CardTitle>

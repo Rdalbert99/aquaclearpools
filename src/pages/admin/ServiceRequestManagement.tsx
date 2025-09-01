@@ -592,7 +592,49 @@ export default function ServiceRequestManagement() {
                   <div className="space-y-2">
                     {request.status === 'pending' && (
                       <div className="space-y-2">
-                        <Button size="sm" onClick={() => approveRequest(request.id)}>Approve</Button>
+                        <div className="flex items-center gap-2">
+                          <Button size="sm" onClick={() => approveRequest(request.id)}>Approve</Button>
+                          <Popover 
+                            open={datePickerOpen[request.id] || false} 
+                            onOpenChange={(open) => setDatePickerOpen({ ...datePickerOpen, [request.id]: open })}
+                          >
+                            <PopoverTrigger asChild>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className={cn(
+                                  "justify-start text-left font-normal",
+                                  !scheduleDates[request.id] && "text-muted-foreground"
+                                )}
+                              >
+                                <CalendarIcon className="mr-2 h-4 w-4" />
+                                {scheduleDates[request.id] ? (
+                                  format(scheduleDates[request.id], "PPP")
+                                ) : (
+                                  <span>Pick date</span>
+                                )}
+                              </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-auto p-0" align="start">
+                              <Calendar
+                                mode="single"
+                                selected={scheduleDates[request.id]}
+                                onSelect={(date) => {
+                                  if (date) {
+                                    setScheduleDates({ ...scheduleDates, [request.id]: date });
+                                    setDatePickerOpen({ ...datePickerOpen, [request.id]: false });
+                                  }
+                                }}
+                                disabled={(date) => date < new Date()}
+                                initialFocus
+                                className="pointer-events-auto"
+                              />
+                            </PopoverContent>
+                          </Popover>
+                          <Button variant="outline" size="sm" onClick={() => scheduleRequest(request.id)}>
+                            Schedule
+                          </Button>
+                        </div>
                         <div className="flex items-center gap-2 text-xs">
                           <Checkbox
                             id={`email-${request.id}`}
@@ -619,74 +661,76 @@ export default function ServiceRequestManagement() {
                         </div>
                       </div>
                     )}
-                    <div className="space-y-2">
-                      <div className="flex items-center gap-2">
-                        <Popover 
-                          open={datePickerOpen[request.id] || false} 
-                          onOpenChange={(open) => setDatePickerOpen({ ...datePickerOpen, [request.id]: open })}
-                        >
-                          <PopoverTrigger asChild>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className={cn(
-                                "justify-start text-left font-normal",
-                                !scheduleDates[request.id] && "text-muted-foreground"
-                              )}
-                            >
-                              <CalendarIcon className="mr-2 h-4 w-4" />
-                              {scheduleDates[request.id] ? (
-                                format(scheduleDates[request.id], "PPP")
-                              ) : (
-                                <span>Pick date</span>
-                              )}
-                            </Button>
-                          </PopoverTrigger>
-                          <PopoverContent className="w-auto p-0" align="start">
-                            <Calendar
-                              mode="single"
-                              selected={scheduleDates[request.id]}
-                              onSelect={(date) => {
-                                if (date) {
-                                  setScheduleDates({ ...scheduleDates, [request.id]: date });
-                                  setDatePickerOpen({ ...datePickerOpen, [request.id]: false });
-                                }
-                              }}
-                              disabled={(date) => date < new Date()}
-                              initialFocus
-                              className="pointer-events-auto"
-                            />
-                          </PopoverContent>
-                        </Popover>
-                        <Button variant="outline" size="sm" onClick={() => scheduleRequest(request.id)}>
-                          Schedule
-                        </Button>
+                    {request.status !== 'pending' && (
+                      <div className="space-y-2">
+                        <div className="flex items-center gap-2">
+                          <Popover 
+                            open={datePickerOpen[request.id] || false} 
+                            onOpenChange={(open) => setDatePickerOpen({ ...datePickerOpen, [request.id]: open })}
+                          >
+                            <PopoverTrigger asChild>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className={cn(
+                                  "justify-start text-left font-normal",
+                                  !scheduleDates[request.id] && "text-muted-foreground"
+                                )}
+                              >
+                                <CalendarIcon className="mr-2 h-4 w-4" />
+                                {scheduleDates[request.id] ? (
+                                  format(scheduleDates[request.id], "PPP")
+                                ) : (
+                                  <span>Pick date</span>
+                                )}
+                              </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-auto p-0" align="start">
+                              <Calendar
+                                mode="single"
+                                selected={scheduleDates[request.id]}
+                                onSelect={(date) => {
+                                  if (date) {
+                                    setScheduleDates({ ...scheduleDates, [request.id]: date });
+                                    setDatePickerOpen({ ...datePickerOpen, [request.id]: false });
+                                  }
+                                }}
+                                disabled={(date) => date < new Date()}
+                                initialFocus
+                                className="pointer-events-auto"
+                              />
+                            </PopoverContent>
+                          </Popover>
+                          <Button variant="outline" size="sm" onClick={() => scheduleRequest(request.id)}>
+                            Schedule
+                          </Button>
+                        </div>
+                        <div className="flex items-center gap-2 text-xs">
+                          <Checkbox
+                            id={`schedule-email-${request.id}`}
+                            checked={notificationOptions[request.id]?.sendEmail ?? true}
+                            onCheckedChange={(checked) => 
+                              setNotificationOptions(prev => ({
+                                ...prev,
+                                [request.id]: { ...prev[request.id], sendEmail: !!checked }
+                              }))
+                            }
+                          />
+                          <Label htmlFor={`schedule-email-${request.id}`} className="text-xs">Email</Label>
+                          <Checkbox
+                            id={`schedule-sms-${request.id}`}
+                            checked={notificationOptions[request.id]?.sendSMS ?? false}
+                            onCheckedChange={(checked) => 
+                              setNotificationOptions(prev => ({
+                                ...prev,
+                                [request.id]: { ...prev[request.id], sendSMS: !!checked }
+                              }))
+                            }
+                          />
+                          <Label htmlFor={`schedule-sms-${request.id}`} className="text-xs">SMS</Label>
+                        </div>
                       </div>
-                      <div className="flex items-center gap-2 text-xs">
-                        <Checkbox
-                          id={`schedule-email-${request.id}`}
-                          checked={notificationOptions[request.id]?.sendEmail ?? true}
-                          onCheckedChange={(checked) => 
-                            setNotificationOptions(prev => ({
-                              ...prev,
-                              [request.id]: { ...prev[request.id], sendEmail: !!checked }
-                            }))
-                          }
-                        />
-                        <Label htmlFor={`schedule-email-${request.id}`} className="text-xs">Email</Label>
-                        <Checkbox
-                          id={`schedule-sms-${request.id}`}
-                          checked={notificationOptions[request.id]?.sendSMS ?? false}
-                          onCheckedChange={(checked) => 
-                            setNotificationOptions(prev => ({
-                              ...prev,
-                              [request.id]: { ...prev[request.id], sendSMS: !!checked }
-                            }))
-                          }
-                        />
-                        <Label htmlFor={`schedule-sms-${request.id}`} className="text-xs">SMS</Label>
-                      </div>
-                    </div>
+                    )}
                     {!request.assigned_technician_id && (
                       <div className="space-y-2">
                         <Select

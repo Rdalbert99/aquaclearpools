@@ -86,7 +86,7 @@ export default function ClientEdit() {
         .from('clients')
         .select(`
           *,
-          users(id, name, email, phone, address, must_change_password)
+          users!clients_user_id_fkey(id, name, email, phone, address, must_change_password)
         `)
         .eq('id', clientId)
         .single();

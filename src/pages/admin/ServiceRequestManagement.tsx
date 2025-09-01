@@ -143,16 +143,25 @@ export default function ServiceRequestManagement() {
         .select(`
           *,
           client_id,
-          clients!inner(notify_on_assignment, notification_method, contact_email, contact_phone, customer)
+          clients(notify_on_assignment, notification_method, contact_email, contact_phone, customer)
         `)
         .eq('id', requestId)
-        .single();
+        .maybeSingle();
 
       if (fetchError) {
         console.error('Error fetching request details:', fetchError);
         toast({
           title: "Error",
           description: "Failed to fetch request details",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      if (!requestData) {
+        toast({
+          title: "Error",
+          description: "Service request not found",
           variant: "destructive",
         });
         return;
@@ -186,7 +195,7 @@ export default function ServiceRequestManagement() {
           variant: "destructive",
         });
       } else {
-        // Send notification if client preferences allow
+        // Send notification if client preferences allow and client exists
         const clientData = requestData.clients;
         const notifyOptions = notificationOptions[requestId];
         
@@ -231,14 +240,19 @@ export default function ServiceRequestManagement() {
         .select(`
           *,
           client_id,
-          clients!inner(notify_on_confirmation, notification_method, contact_email, contact_phone, customer)
+          clients(notify_on_confirmation, notification_method, contact_email, contact_phone, customer)
         `)
         .eq('id', requestId)
-        .single();
+        .maybeSingle();
 
       if (fetchError) {
         console.error('Error fetching request details:', fetchError);
         toast({ title: 'Error', description: 'Failed to fetch request details', variant: 'destructive' });
+        return;
+      }
+
+      if (!requestData) {
+        toast({ title: 'Error', description: 'Service request not found', variant: 'destructive' });
         return;
       }
 
@@ -251,7 +265,7 @@ export default function ServiceRequestManagement() {
         console.error('Error approving request:', error);
         toast({ title: 'Error', description: 'Failed to approve request', variant: 'destructive' });
       } else {
-        // Send notification if client preferences allow
+        // Send notification if client preferences allow and client exists
         const clientData = requestData.clients;
         const notifyOptions = notificationOptions[requestId];
         

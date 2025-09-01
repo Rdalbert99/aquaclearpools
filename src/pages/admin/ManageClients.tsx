@@ -127,14 +127,15 @@ export default function ManageClients() {
         return;
       }
       
-      // Now try to get all clients with technician data
+      // Now try to get all clients with technician and client user data
       console.log('Fetching clients...');
       const { data: clientsData, error: clientsError } = await supabase
         .from('clients')
         .select(`
           id, customer, pool_size, pool_type, status, user_id, assigned_technician_id,
           last_service_date, next_service_date, service_days, service_frequency, created_at,
-          assigned_technician:users!assigned_technician_id(id, name, email)
+          assigned_technician:users!assigned_technician_id(id, name, email),
+          users!clients_user_id_fkey(id, name, email, phone)
         `);
       
       console.log('Clients query result:', { clientsData, clientsError });
@@ -151,15 +152,10 @@ export default function ManageClients() {
       
       console.log(`Found ${clientsData?.length || 0} clients`);
       
-      // Set the basic client data for now (without user joins)
+      // Format client data with actual user information
       const formattedClients = (clientsData || []).map((client: any) => ({
         ...client,
-        liner_type: client.liner_type || 'Liner',
-        users: {
-          email: 'admin@example.com', // placeholder
-          phone: null,
-          name: 'Admin User'
-        }
+        liner_type: client.liner_type || 'Liner'
       })) || [];
       
       console.log('Setting clients:', formattedClients);
@@ -612,25 +608,35 @@ export default function ManageClients() {
                           </div>
                         </td>
                         
-                        <td className="p-4">
-                          <div className="space-y-1">
-                            {client.users?.email && (
-                              <div className="flex items-center space-x-2">
-                                <Mail className="h-3 w-3 text-muted-foreground" />
-                                <span className="text-sm">{client.users.email}</span>
-                              </div>
-                            )}
-                            {client.users?.phone && (
-                              <div className="flex items-center space-x-2">
-                                <Phone className="h-3 w-3 text-muted-foreground" />
-                                <span className="text-sm">{client.users.phone}</span>
-                              </div>
-                            )}
-                            {!client.users?.email && !client.users?.phone && (
-                              <span className="text-sm text-muted-foreground">No contact info</span>
-                            )}
-                          </div>
-                        </td>
+                         <td className="p-4">
+                           <div className="space-y-1">
+                             {client.users?.email && (
+                               <div className="flex items-center space-x-2">
+                                 <Mail className="h-3 w-3 text-muted-foreground" />
+                                 <a 
+                                   href={`mailto:${client.users.email}`}
+                                   className="text-sm hover:text-blue-600 hover:underline transition-colors"
+                                 >
+                                   {client.users.email}
+                                 </a>
+                               </div>
+                             )}
+                             {client.users?.phone && (
+                               <div className="flex items-center space-x-2">
+                                 <Phone className="h-3 w-3 text-muted-foreground" />
+                                 <a 
+                                   href={`tel:${client.users.phone}`}
+                                   className="text-sm hover:text-blue-600 hover:underline transition-colors"
+                                 >
+                                   {client.users.phone}
+                                 </a>
+                               </div>
+                             )}
+                             {!client.users?.email && !client.users?.phone && (
+                               <span className="text-sm text-muted-foreground">No contact info</span>
+                             )}
+                           </div>
+                         </td>
                         
                         <td className="p-4">
                           <div>

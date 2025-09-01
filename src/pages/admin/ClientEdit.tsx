@@ -173,10 +173,12 @@ export default function ClientEdit() {
   const handleSave = async () => {
     if (!client || !id) return;
 
+    console.log('handleSave called - Starting save process...');
+    console.log('Client data:', client);
+    console.log('Client ID:', id);
+
     setSaving(true);
     try {
-      console.log('Saving client data:', client);
-      console.log('Client ID:', id);
       const updateData: any = {
         customer: client.customer,
         pool_size: client.pool_size,
@@ -203,11 +205,13 @@ export default function ClientEdit() {
       }
 
       // Update client data
+      console.log('Attempting to update client with data:', updateData);
       const { error } = await supabase
         .from('clients')
         .update(updateData)
         .eq('id', id);
 
+      console.log('Client update result:', { error });
       if (error) throw error;
 
       // Update user data if there's an associated user

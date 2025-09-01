@@ -22,7 +22,8 @@ import {
   MapPin,
   Mail,
   Phone,
-  Wrench
+  Wrench,
+  Bell
 } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Textarea } from '@/components/ui/textarea';
@@ -46,6 +47,9 @@ interface ClientFormData {
   address: string;
   email: string;
   phone: string;
+  notify_on_confirmation: boolean;
+  notify_on_assignment: boolean;
+  notification_method: string;
 }
 
 export default function ClientEdit() {
@@ -108,7 +112,10 @@ export default function ClientEdit() {
         service_days: (data as any).service_days || [],
         address: userData?.address || '',
         email: userData?.email || '',
-        phone: userData?.phone || ''
+        phone: userData?.phone || '',
+        notify_on_confirmation: data.notify_on_confirmation ?? true,
+        notify_on_assignment: data.notify_on_assignment ?? true,
+        notification_method: data.notification_method || 'email'
       });
 
       setMustChangePassword(userData?.must_change_password || false);
@@ -184,6 +191,9 @@ export default function ClientEdit() {
         included_services: client.included_services,
         service_notes: client.service_notes,
         service_days: client.service_days,
+        notify_on_confirmation: client.notify_on_confirmation,
+        notify_on_assignment: client.notify_on_assignment,
+        notification_method: client.notification_method,
         updated_at: new Date().toISOString()
       };
 
@@ -698,6 +708,51 @@ export default function ClientEdit() {
                 placeholder="Additional notes about service requirements, special instructions, or client preferences..."
                 rows={3}
               />
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Notification Preferences */}
+        <Card className="lg:col-span-2">
+          <CardHeader>
+            <CardTitle className="flex items-center space-x-2">
+              <Bell className="h-5 w-5" />
+              <span>Notification Preferences</span>
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            <div className="space-y-4">
+              <div className="flex items-center space-x-2">
+                <Switch
+                  id="notifyConfirmation"
+                  checked={client.notify_on_confirmation}
+                  onCheckedChange={(checked) => handleInputChange('notify_on_confirmation', checked)}
+                />
+                <Label htmlFor="notifyConfirmation">Send notifications when service requests are confirmed/approved</Label>
+              </div>
+              
+              <div className="flex items-center space-x-2">
+                <Switch
+                  id="notifyAssignment"
+                  checked={client.notify_on_assignment}
+                  onCheckedChange={(checked) => handleInputChange('notify_on_assignment', checked)}
+                />
+                <Label htmlFor="notifyAssignment">Send notifications when technicians are assigned</Label>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="notificationMethod">Preferred Notification Method</Label>
+                <Select value={client.notification_method} onValueChange={(value) => handleInputChange('notification_method', value)}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select notification method..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="email">Email Only</SelectItem>
+                    <SelectItem value="sms">SMS Only</SelectItem>
+                    <SelectItem value="both">Both Email & SMS</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
           </CardContent>
         </Card>

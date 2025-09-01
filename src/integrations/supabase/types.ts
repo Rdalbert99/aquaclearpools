@@ -171,6 +171,9 @@ export type Database = {
           last_service_date: string | null
           liner_type: string | null
           next_service_date: string | null
+          notification_method: string | null
+          notify_on_assignment: boolean | null
+          notify_on_confirmation: boolean | null
           pool_image_uploaded_at: string | null
           pool_image_url: string | null
           pool_size: number
@@ -201,6 +204,9 @@ export type Database = {
           last_service_date?: string | null
           liner_type?: string | null
           next_service_date?: string | null
+          notification_method?: string | null
+          notify_on_assignment?: boolean | null
+          notify_on_confirmation?: boolean | null
           pool_image_uploaded_at?: string | null
           pool_image_url?: string | null
           pool_size: number
@@ -231,6 +237,9 @@ export type Database = {
           last_service_date?: string | null
           liner_type?: string | null
           next_service_date?: string | null
+          notification_method?: string | null
+          notify_on_assignment?: boolean | null
+          notify_on_confirmation?: boolean | null
           pool_image_uploaded_at?: string | null
           pool_image_url?: string | null
           pool_size?: number

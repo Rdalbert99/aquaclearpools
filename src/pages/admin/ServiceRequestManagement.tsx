@@ -7,13 +7,20 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
 import { useToast } from '@/hooks/use-toast';
+import { Calendar } from '@/components/ui/calendar';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { format } from 'date-fns';
+import { cn } from '@/lib/utils';
 import { 
   Clock, 
   MapPin, 
   User,
   AlertTriangle,
   CheckCircle,
-  Users
+  Users,
+  CalendarIcon,
+  Bell,
+  BellOff
 } from 'lucide-react';
 import {
   Select,
@@ -22,6 +29,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Checkbox } from '@/components/ui/checkbox';
+import { Label } from '@/components/ui/label';
 
 interface ServiceRequest {
   id: string;
@@ -57,9 +66,11 @@ export default function ServiceRequestManagement() {
   const [technicians, setTechnicians] = useState<Technician[]>([]);
   const [loading, setLoading] = useState(true);
   const [assigning, setAssigning] = useState<string | null>(null);
-  const [scheduleDates, setScheduleDates] = useState<Record<string, string>>({});
+  const [scheduleDates, setScheduleDates] = useState<Record<string, Date>>({});
+  const [datePickerOpen, setDatePickerOpen] = useState<Record<string, boolean>>({});
   const [filter, setFilter] = useState<'all' | 'pending' | 'assigned' | 'scheduled' | 'completed'>('all');
   const [completedFilterDate, setCompletedFilterDate] = useState<string>('');
+  const [notificationOptions, setNotificationOptions] = useState<Record<string, { sendEmail: boolean, sendSMS: boolean }>>({});
 
   useEffect(() => {
     loadData();
@@ -126,10 +137,44 @@ export default function ServiceRequestManagement() {
   const assignTechnician = async (requestId: string, technicianId: string) => {
     setAssigning(requestId);
     try {
+      // Get request details first
+      const { data: requestData, error: fetchError } = await supabase
+        .from('service_requests')
+        .select(`
+          *,
+          client_id,
+          clients!inner(notify_on_assignment, notification_method, contact_email, contact_phone, customer)
+        `)
+        .eq('id', requestId)
+        .single();
+
+      if (fetchError) {
+        console.error('Error fetching request details:', fetchError);
+        toast({
+          title: "Error",
+          description: "Failed to fetch request details",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Get technician details
+      const { data: techData, error: techError } = await supabase
+        .from('users')
+        .select('name, email, phone')
+        .eq('id', technicianId)
+        .single();
+
+      if (techError) {
+        console.error('Error fetching technician details:', techError);
+      }
+
+      // Update assignment
       const { error } = await supabase
         .from('service_requests')
         .update({
-          assigned_technician_id: technicianId
+          assigned_technician_id: technicianId,
+          status: 'assigned'
         })
         .eq('id', requestId);
 
@@ -141,11 +186,35 @@ export default function ServiceRequestManagement() {
           variant: "destructive",
         });
       } else {
+        // Send notification if client preferences allow
+        const clientData = requestData.clients;
+        const notifyOptions = notificationOptions[requestId];
+        
+        if (clientData?.notify_on_assignment && (notifyOptions?.sendEmail || notifyOptions?.sendSMS)) {
+          try {
+            await supabase.functions.invoke('service-request-notify', {
+              body: {
+                requestId,
+                customerName: clientData.customer,
+                customerEmail: notifyOptions?.sendEmail ? clientData.contact_email : undefined,
+                customerPhone: notifyOptions?.sendSMS ? clientData.contact_phone : undefined,
+                serviceType: requestData.request_type,
+                status: 'assigned',
+                technicianName: techData?.name,
+                technicianPhone: techData?.phone,
+                notes: requestData.description,
+              }
+            });
+          } catch (emailErr) {
+            console.error('Email notification error:', emailErr);
+          }
+        }
+
         toast({
           title: "Success",
           description: "Technician assigned successfully",
         });
-        loadData(); // Reload data
+        loadData();
       }
     } catch (error) {
       console.error('Error:', error);
@@ -156,6 +225,23 @@ export default function ServiceRequestManagement() {
 
   const approveRequest = async (requestId: string) => {
     try {
+      // Get request details first
+      const { data: requestData, error: fetchError } = await supabase
+        .from('service_requests')
+        .select(`
+          *,
+          client_id,
+          clients!inner(notify_on_confirmation, notification_method, contact_email, contact_phone, customer)
+        `)
+        .eq('id', requestId)
+        .single();
+
+      if (fetchError) {
+        console.error('Error fetching request details:', fetchError);
+        toast({ title: 'Error', description: 'Failed to fetch request details', variant: 'destructive' });
+        return;
+      }
+
       const { error } = await supabase
         .from('service_requests')
         .update({ status: 'approved' })
@@ -165,6 +251,28 @@ export default function ServiceRequestManagement() {
         console.error('Error approving request:', error);
         toast({ title: 'Error', description: 'Failed to approve request', variant: 'destructive' });
       } else {
+        // Send notification if client preferences allow
+        const clientData = requestData.clients;
+        const notifyOptions = notificationOptions[requestId];
+        
+        if (clientData?.notify_on_confirmation && (notifyOptions?.sendEmail || notifyOptions?.sendSMS)) {
+          try {
+            await supabase.functions.invoke('service-request-notify', {
+              body: {
+                requestId,
+                customerName: clientData.customer,
+                customerEmail: notifyOptions?.sendEmail ? clientData.contact_email : undefined,
+                customerPhone: notifyOptions?.sendSMS ? clientData.contact_phone : undefined,
+                serviceType: requestData.request_type,
+                status: 'approved',
+                notes: requestData.description,
+              }
+            });
+          } catch (emailErr) {
+            console.error('Email notification error:', emailErr);
+          }
+        }
+
         toast({ title: 'Approved', description: 'Service request approved' });
         loadData();
       }
@@ -180,7 +288,7 @@ export default function ServiceRequestManagement() {
       return;
     }
     try {
-      const iso = new Date(date).toISOString();
+      const iso = date.toISOString();
       
       // First, get the current request details for the email notification
       const { data: requestData, error: fetchError } = await supabase
@@ -469,34 +577,144 @@ export default function ServiceRequestManagement() {
 
                   <div className="space-y-2">
                     {request.status === 'pending' && (
-                      <Button size="sm" onClick={() => approveRequest(request.id)}>Approve</Button>
+                      <div className="space-y-2">
+                        <Button size="sm" onClick={() => approveRequest(request.id)}>Approve</Button>
+                        <div className="flex items-center gap-2 text-xs">
+                          <Checkbox
+                            id={`email-${request.id}`}
+                            checked={notificationOptions[request.id]?.sendEmail ?? true}
+                            onCheckedChange={(checked) => 
+                              setNotificationOptions(prev => ({
+                                ...prev,
+                                [request.id]: { ...prev[request.id], sendEmail: !!checked }
+                              }))
+                            }
+                          />
+                          <Label htmlFor={`email-${request.id}`} className="text-xs">Email</Label>
+                          <Checkbox
+                            id={`sms-${request.id}`}
+                            checked={notificationOptions[request.id]?.sendSMS ?? false}
+                            onCheckedChange={(checked) => 
+                              setNotificationOptions(prev => ({
+                                ...prev,
+                                [request.id]: { ...prev[request.id], sendSMS: !!checked }
+                              }))
+                            }
+                          />
+                          <Label htmlFor={`sms-${request.id}`} className="text-xs">SMS</Label>
+                        </div>
+                      </div>
                     )}
-                    <div className="flex items-center gap-2">
-                      <Input
-                        type="date"
-                        value={scheduleDates[request.id] || ''}
-                        onChange={(e) => setScheduleDates({ ...scheduleDates, [request.id]: e.target.value })}
-                      />
-                      <Button variant="outline" size="sm" onClick={() => scheduleRequest(request.id)}>
-                        Schedule
-                      </Button>
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2">
+                        <Popover 
+                          open={datePickerOpen[request.id] || false} 
+                          onOpenChange={(open) => setDatePickerOpen({ ...datePickerOpen, [request.id]: open })}
+                        >
+                          <PopoverTrigger asChild>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className={cn(
+                                "justify-start text-left font-normal",
+                                !scheduleDates[request.id] && "text-muted-foreground"
+                              )}
+                            >
+                              <CalendarIcon className="mr-2 h-4 w-4" />
+                              {scheduleDates[request.id] ? (
+                                format(scheduleDates[request.id], "PPP")
+                              ) : (
+                                <span>Pick date</span>
+                              )}
+                            </Button>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-auto p-0" align="start">
+                            <Calendar
+                              mode="single"
+                              selected={scheduleDates[request.id]}
+                              onSelect={(date) => {
+                                if (date) {
+                                  setScheduleDates({ ...scheduleDates, [request.id]: date });
+                                  setDatePickerOpen({ ...datePickerOpen, [request.id]: false });
+                                }
+                              }}
+                              disabled={(date) => date < new Date()}
+                              initialFocus
+                              className="pointer-events-auto"
+                            />
+                          </PopoverContent>
+                        </Popover>
+                        <Button variant="outline" size="sm" onClick={() => scheduleRequest(request.id)}>
+                          Schedule
+                        </Button>
+                      </div>
+                      <div className="flex items-center gap-2 text-xs">
+                        <Checkbox
+                          id={`schedule-email-${request.id}`}
+                          checked={notificationOptions[request.id]?.sendEmail ?? true}
+                          onCheckedChange={(checked) => 
+                            setNotificationOptions(prev => ({
+                              ...prev,
+                              [request.id]: { ...prev[request.id], sendEmail: !!checked }
+                            }))
+                          }
+                        />
+                        <Label htmlFor={`schedule-email-${request.id}`} className="text-xs">Email</Label>
+                        <Checkbox
+                          id={`schedule-sms-${request.id}`}
+                          checked={notificationOptions[request.id]?.sendSMS ?? false}
+                          onCheckedChange={(checked) => 
+                            setNotificationOptions(prev => ({
+                              ...prev,
+                              [request.id]: { ...prev[request.id], sendSMS: !!checked }
+                            }))
+                          }
+                        />
+                        <Label htmlFor={`schedule-sms-${request.id}`} className="text-xs">SMS</Label>
+                      </div>
                     </div>
                     {!request.assigned_technician_id && (
-                      <Select
-                        onValueChange={(techId) => assignTechnician(request.id, techId)}
-                        disabled={assigning === request.id}
-                      >
-                        <SelectTrigger className="w-full">
-                          <SelectValue placeholder="Assign Tech" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {technicians.map((tech) => (
-                            <SelectItem key={tech.id} value={tech.id}>
-                              {tech.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                      <div className="space-y-2">
+                        <Select
+                          onValueChange={(techId) => assignTechnician(request.id, techId)}
+                          disabled={assigning === request.id}
+                        >
+                          <SelectTrigger className="w-full">
+                            <SelectValue placeholder="Assign Tech" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {technicians.map((tech) => (
+                              <SelectItem key={tech.id} value={tech.id}>
+                                {tech.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <div className="flex items-center gap-2 text-xs">
+                          <Checkbox
+                            id={`assign-email-${request.id}`}
+                            checked={notificationOptions[request.id]?.sendEmail ?? true}
+                            onCheckedChange={(checked) => 
+                              setNotificationOptions(prev => ({
+                                ...prev,
+                                [request.id]: { ...prev[request.id], sendEmail: !!checked }
+                              }))
+                            }
+                          />
+                          <Label htmlFor={`assign-email-${request.id}`} className="text-xs">Email</Label>
+                          <Checkbox
+                            id={`assign-sms-${request.id}`}
+                            checked={notificationOptions[request.id]?.sendSMS ?? false}
+                            onCheckedChange={(checked) => 
+                              setNotificationOptions(prev => ({
+                                ...prev,
+                                [request.id]: { ...prev[request.id], sendSMS: !!checked }
+                              }))
+                            }
+                          />
+                          <Label htmlFor={`assign-sms-${request.id}`} className="text-xs">SMS</Label>
+                        </div>
+                      </div>
                     )}
                     {assigning === request.id && <LoadingSpinner />}
                     {isAdmin && (

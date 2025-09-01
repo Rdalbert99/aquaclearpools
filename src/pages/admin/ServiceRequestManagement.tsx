@@ -594,47 +594,47 @@ export default function ServiceRequestManagement() {
                       <div className="space-y-2">
                         <div className="flex items-center gap-2">
                           <Button size="sm" onClick={() => approveRequest(request.id)}>Approve</Button>
-                          <Popover 
-                            open={datePickerOpen[request.id] || false} 
-                            onOpenChange={(open) => setDatePickerOpen({ ...datePickerOpen, [request.id]: open })}
-                          >
-                            <PopoverTrigger asChild>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                className={cn(
-                                  "justify-start text-left font-normal",
-                                  !scheduleDates[request.id] && "text-muted-foreground"
-                                )}
-                              >
-                                <CalendarIcon className="mr-2 h-4 w-4" />
-                                {scheduleDates[request.id] ? (
-                                  format(scheduleDates[request.id], "PPP")
-                                ) : (
-                                  <span>Pick date</span>
-                                )}
-                              </Button>
-                            </PopoverTrigger>
-                            <PopoverContent className="w-auto p-0" align="start">
-                              <Calendar
-                                mode="single"
-                                selected={scheduleDates[request.id]}
-                                onSelect={(date) => {
-                                  if (date) {
-                                    setScheduleDates({ ...scheduleDates, [request.id]: date });
-                                    setDatePickerOpen({ ...datePickerOpen, [request.id]: false });
-                                  }
-                                }}
-                                disabled={(date) => date < new Date()}
-                                initialFocus
-                                className="pointer-events-auto"
-                              />
-                            </PopoverContent>
-                          </Popover>
                           <Button variant="outline" size="sm" onClick={() => scheduleRequest(request.id)}>
                             Schedule
                           </Button>
                         </div>
+                        <Popover 
+                          open={datePickerOpen[request.id] || false} 
+                          onOpenChange={(open) => setDatePickerOpen({ ...datePickerOpen, [request.id]: open })}
+                        >
+                          <PopoverTrigger asChild>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className={cn(
+                                "w-full justify-start text-left font-normal",
+                                !scheduleDates[request.id] && "text-muted-foreground"
+                              )}
+                            >
+                              <CalendarIcon className="mr-2 h-4 w-4" />
+                              {scheduleDates[request.id] ? (
+                                format(scheduleDates[request.id], "PPP")
+                              ) : (
+                                <span>Pick date</span>
+                              )}
+                            </Button>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-auto p-0" align="start">
+                            <Calendar
+                              mode="single"
+                              selected={scheduleDates[request.id]}
+                              onSelect={(date) => {
+                                if (date) {
+                                  setScheduleDates({ ...scheduleDates, [request.id]: date });
+                                  setDatePickerOpen({ ...datePickerOpen, [request.id]: false });
+                                }
+                              }}
+                              disabled={(date) => date < new Date()}
+                              initialFocus
+                              className="p-3 pointer-events-auto"
+                            />
+                          </PopoverContent>
+                        </Popover>
                         <div className="flex items-center gap-2 text-xs">
                           <Checkbox
                             id={`email-${request.id}`}
@@ -663,48 +663,46 @@ export default function ServiceRequestManagement() {
                     )}
                     {request.status !== 'pending' && (
                       <div className="space-y-2">
-                        <div className="flex items-center gap-2">
-                          <Popover 
-                            open={datePickerOpen[request.id] || false} 
-                            onOpenChange={(open) => setDatePickerOpen({ ...datePickerOpen, [request.id]: open })}
-                          >
-                            <PopoverTrigger asChild>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                className={cn(
-                                  "justify-start text-left font-normal",
-                                  !scheduleDates[request.id] && "text-muted-foreground"
-                                )}
-                              >
-                                <CalendarIcon className="mr-2 h-4 w-4" />
-                                {scheduleDates[request.id] ? (
-                                  format(scheduleDates[request.id], "PPP")
-                                ) : (
-                                  <span>Pick date</span>
-                                )}
-                              </Button>
-                            </PopoverTrigger>
-                            <PopoverContent className="w-auto p-0" align="start">
-                              <Calendar
-                                mode="single"
-                                selected={scheduleDates[request.id]}
-                                onSelect={(date) => {
-                                  if (date) {
-                                    setScheduleDates({ ...scheduleDates, [request.id]: date });
-                                    setDatePickerOpen({ ...datePickerOpen, [request.id]: false });
-                                  }
-                                }}
-                                disabled={(date) => date < new Date()}
-                                initialFocus
-                                className="pointer-events-auto"
-                              />
-                            </PopoverContent>
-                          </Popover>
-                          <Button variant="outline" size="sm" onClick={() => scheduleRequest(request.id)}>
-                            Schedule
-                          </Button>
-                        </div>
+                        <Button variant="outline" size="sm" onClick={() => scheduleRequest(request.id)}>
+                          Schedule
+                        </Button>
+                        <Popover 
+                          open={datePickerOpen[request.id] || false} 
+                          onOpenChange={(open) => setDatePickerOpen({ ...datePickerOpen, [request.id]: open })}
+                        >
+                          <PopoverTrigger asChild>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className={cn(
+                                "w-full justify-start text-left font-normal",
+                                !scheduleDates[request.id] && "text-muted-foreground"
+                              )}
+                            >
+                              <CalendarIcon className="mr-2 h-4 w-4" />
+                              {scheduleDates[request.id] ? (
+                                format(scheduleDates[request.id], "PPP")
+                              ) : (
+                                <span>Pick date</span>
+                              )}
+                            </Button>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-auto p-0" align="start">
+                            <Calendar
+                              mode="single"
+                              selected={scheduleDates[request.id]}
+                              onSelect={(date) => {
+                                if (date) {
+                                  setScheduleDates({ ...scheduleDates, [request.id]: date });
+                                  setDatePickerOpen({ ...datePickerOpen, [request.id]: false });
+                                }
+                              }}
+                              disabled={(date) => date < new Date()}
+                              initialFocus
+                              className="p-3 pointer-events-auto"
+                            />
+                          </PopoverContent>
+                        </Popover>
                         <div className="flex items-center gap-2 text-xs">
                           <Checkbox
                             id={`schedule-email-${request.id}`}

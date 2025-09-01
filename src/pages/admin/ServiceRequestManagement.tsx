@@ -454,10 +454,9 @@ export default function ServiceRequestManagement() {
   });
 
   const allRequestsFiltered = requests.filter(r => {
-    if (r.status !== 'completed') return true;
-    const completedAt = r.completed_date ? new Date(r.completed_date) : undefined;
-    if (!completedAt) return false;
-    return completedAt >= oneDayAgo;
+    // Only show pending and assigned requests in 'all' view, not scheduled or completed
+    if (r.status === 'completed' || r.status === 'scheduled') return false;
+    return true;
   });
 
   const filteredRequests = (
@@ -612,7 +611,7 @@ export default function ServiceRequestManagement() {
                             >
                               <CalendarIcon className="mr-2 h-4 w-4" />
                               {scheduleDates[request.id] ? (
-                                format(scheduleDates[request.id], "PPP")
+                                format(scheduleDates[request.id], "MMM d, yyyy")
                               ) : (
                                 <span>Pick date</span>
                               )}
@@ -680,7 +679,7 @@ export default function ServiceRequestManagement() {
                             >
                               <CalendarIcon className="mr-2 h-4 w-4" />
                               {scheduleDates[request.id] ? (
-                                format(scheduleDates[request.id], "PPP")
+                                format(scheduleDates[request.id], "MMM d, yyyy")
                               ) : (
                                 <span>Pick date</span>
                               )}

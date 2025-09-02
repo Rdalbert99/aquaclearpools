@@ -15,6 +15,10 @@ export default function SMSTest() {
   const [sending, setSending] = useState(false);
 
   const handleSendSMS = async () => {
+    console.log('Starting SMS send process...');
+    console.log('Customer Phone:', customerPhone);
+    console.log('Message Text:', messageText);
+    
     if (!customerPhone.trim()) {
       toast({
         title: "Error",
@@ -35,6 +39,11 @@ export default function SMSTest() {
 
     setSending(true);
     try {
+      console.log('Calling Telnyx function with payload:', {
+        to: customerPhone,
+        message: messageText
+      });
+
       const { data, error } = await supabase.functions.invoke('send-sms-via-telnyx', {
         body: {
           to: customerPhone,
@@ -42,18 +51,25 @@ export default function SMSTest() {
         }
       });
 
+      console.log('Telnyx function response:', { data, error });
+
       if (error) {
+        console.error('Supabase function error:', error);
         throw error;
       }
 
-      toast({
-        title: "Message sent ✅",
-        description: `SMS successfully sent to ${customerPhone}`,
-      });
+      if (data && data.success) {
+        toast({
+          title: "Message sent ✅",
+          description: `SMS successfully sent to ${customerPhone}`,
+        });
 
-      // Clear form after successful send
-      setCustomerPhone('');
-      setMessageText('');
+        // Clear form after successful send
+        setCustomerPhone('');
+        setMessageText('');
+      } else {
+        throw new Error(data?.error || 'Unknown error from Telnyx API');
+      }
 
     } catch (error: any) {
       console.error('SMS sending error:', error);

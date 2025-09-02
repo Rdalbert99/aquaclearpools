@@ -15,20 +15,29 @@ const TELNYX_API_URL = "https://api.telnyx.com/v2/messages";
 const DEFAULT_FROM_NUMBER = "+16014198527"; // Your Telnyx number
 
 const handler = async (req: Request): Promise<Response> => {
+  console.log('=== Telnyx SMS Function Started ===');
+  
   // Handle CORS preflight requests
   if (req.method === "OPTIONS") {
+    console.log('CORS preflight request received');
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
+    console.log('Checking Telnyx API key...');
     const apiKey = Deno.env.get("TELNYX_API_KEY");
     if (!apiKey) {
+      console.error('TELNYX_API_KEY is not configured');
       throw new Error("TELNYX_API_KEY is not configured");
     }
+    console.log('Telnyx API key found:', apiKey.substring(0, 10) + '...');
 
+    console.log('Parsing request body...');
     const { to, message, from }: SendSMSRequest = await req.json();
+    console.log('Request payload:', { to, message, from: from || 'using default' });
     
     if (!to || !message) {
+      console.error('Missing required fields:', { to: !!to, message: !!message });
       return new Response(
         JSON.stringify({ error: "Missing required fields: to, message" }),
         {
@@ -39,21 +48,31 @@ const handler = async (req: Request): Promise<Response> => {
     }
 
     // Clean and validate phone number
+    console.log('Original phone number:', to);
     let cleanedPhone = to.replace(/\D/g, "");
+    console.log('After removing non-digits:', cleanedPhone);
+    
     if (cleanedPhone.length === 10) {
       cleanedPhone = "1" + cleanedPhone; // Add US country code
+      console.log('Added US country code:', cleanedPhone);
     }
     if (!cleanedPhone.startsWith("+")) {
       cleanedPhone = "+" + cleanedPhone;
+      console.log('Added + prefix:', cleanedPhone);
     }
 
-    console.log(`Sending SMS via Telnyx to ${cleanedPhone}: ${message}`);
+    console.log(`Final phone number: ${cleanedPhone}`);
+    console.log(`Message to send: ${message}`);
+    console.log(`From number: ${from || DEFAULT_FROM_NUMBER}`);
 
     const payload = {
       from: from || DEFAULT_FROM_NUMBER,
       to: cleanedPhone,
       text: message
     };
+
+    console.log('Telnyx API payload:', JSON.stringify(payload, null, 2));
+    console.log('Making request to Telnyx API...');
 
     const response = await fetch(TELNYX_API_URL, {
       method: "POST",

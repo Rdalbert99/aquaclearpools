@@ -36,3 +36,6 @@ verify_jwt = true
 
 [functions.service-request-notify]
 verify_jwt = true
+
+[functions.send-sms-via-telnyx]
+verify_jwt = true

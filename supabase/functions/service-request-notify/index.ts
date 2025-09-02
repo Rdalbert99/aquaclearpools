@@ -17,7 +17,8 @@ const corsHeaders = {
 interface ServiceRequestNotification {
   requestId: string;
   customerName: string;
-  customerEmail: string;
+  customerEmail?: string;
+  customerPhone?: string;
   serviceType: string;
   status: string;
   scheduledDate?: string;
@@ -38,6 +39,7 @@ const handler = async (req: Request): Promise<Response> => {
       requestId, 
       customerName, 
       customerEmail, 
+      customerPhone,
       serviceType, 
       status, 
       scheduledDate, 
@@ -201,59 +203,120 @@ const handler = async (req: Request): Promise<Response> => {
       `;
     }
 
-    const replyToEmail = Deno.env.get("RESEND_REPLY_TO") || undefined;
-    const defaultFromEmail = "randy@getaquaclear.com";
-    const defaultFromName = "AquaClear Pools";
-
-    const apiKey = Deno.env.get("MAILJET_API_KEY");
-    const apiSecret = Deno.env.get("MAILJET_API_SECRET");
-    if (!apiKey || !apiSecret) {
-      throw new Error("Missing MAILJET_API_KEY/MAILJET_API_SECRET");
+    // Create SMS message based on status
+    let smsMessage = "";
+    if (status === "approved" || status === "in-progress") {
+      smsMessage = `Aqua Clear: Your ${serviceType} request has been approved! We're ready to get started. Call 601-447-0399 with questions.`;
+    } else if (status === "scheduled") {
+      const dateStr = scheduledDate ? new Date(scheduledDate).toLocaleDateString() : 'TBD';
+      smsMessage = `Aqua Clear: Your ${serviceType} is scheduled for ${dateStr}. ${technicianName ? `Your tech: ${technicianName}` : ''} Call 601-447-0399 with questions.`;
+    } else if (status === "assigned") {
+      smsMessage = `Aqua Clear: A technician has been assigned to your ${serviceType} request. ${technicianName ? `Tech: ${technicianName}` : ''} Call 601-447-0399 with questions.`;
+    } else {
+      smsMessage = `Aqua Clear: Update on your ${serviceType} request - Status: ${status}. Call 601-447-0399 with questions.`;
     }
 
-    const payload = {
-      Messages: [
-        {
-          From: { Email: defaultFromEmail, Name: defaultFromName },
-          To: [{ Email: customerEmail }],
-          Bcc: [
-            { Email: "randy@getaquaclear.com" },
-            { Email: "rdalbert99@gmail.com" },
-            { Email: "untoothers@hotmail.com" }
-          ],
-          Subject: subject,
-          HTMLPart: htmlContent,
-          ...(replyToEmail ? { ReplyTo: { Email: replyToEmail, Name: defaultFromName } } : {}),
-          Headers: { "List-Unsubscribe": replyToEmail ? `<mailto:${replyToEmail}>` : `<mailto:support@getaquaclear.com>` }
+    // Send email if customerEmail is provided
+    let emailStatus: any = null;
+    if (customerEmail) {
+      const replyToEmail = Deno.env.get("RESEND_REPLY_TO") || undefined;
+      const defaultFromEmail = "randy@getaquaclear.com";
+      const defaultFromName = "AquaClear Pools";
+      
+      const apiKey = Deno.env.get("MAILJET_API_KEY");
+      const apiSecret = Deno.env.get("MAILJET_API_SECRET");
+      if (!apiKey || !apiSecret) {
+        throw new Error("Missing MAILJET_API_KEY/MAILJET_API_SECRET");
+      }
+
+      const payload = {
+        Messages: [
+          {
+            From: { Email: defaultFromEmail, Name: defaultFromName },
+            To: [{ Email: customerEmail }],
+            Bcc: [
+              { Email: "randy@getaquaclear.com" },
+              { Email: "rdalbert99@gmail.com" },
+              { Email: "untoothers@hotmail.com" }
+            ],
+            Subject: subject,
+            HTMLPart: htmlContent,
+            ...(replyToEmail ? { ReplyTo: { Email: replyToEmail, Name: defaultFromName } } : {}),
+            Headers: { "List-Unsubscribe": replyToEmail ? `<mailto:${replyToEmail}>` : `<mailto:support@getaquaclear.com>` }
+          }
+        ]
+      };
+
+      const auth = encodeBasicAuth(apiKey, apiSecret);
+      const mjRes = await fetch(MJ_API_URL, {
+        method: "POST",
+        headers: {
+          "Authorization": `Basic ${auth}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(payload),
+      });
+
+      const mjJson = await mjRes.json();
+      if (!mjRes.ok) {
+        console.error("Mailjet API error:", mjJson);
+        throw new Error("Mailjet send failed");
+      }
+
+      console.log("Service notification email sent successfully (Mailjet):", mjJson);
+      emailStatus = mjJson;
+    }
+
+    // Send SMS if customerPhone is provided
+    let smsStatus: any = null;
+    if (customerPhone) {
+      const telnyxApiKey = Deno.env.get("TELNYX_API_KEY");
+      if (!telnyxApiKey) {
+        console.warn("TELNYX_API_KEY missing; skipping SMS");
+      } else {
+        // Clean and validate phone number
+        let cleanedPhone = customerPhone.replace(/\D/g, "");
+        if (cleanedPhone.length === 10) {
+          cleanedPhone = "1" + cleanedPhone; // Add US country code
         }
-      ]
+        if (!cleanedPhone.startsWith("+")) {
+          cleanedPhone = "+" + cleanedPhone;
+        }
+
+        const smsPayload = {
+          from: "+16014198527",
+          to: cleanedPhone,
+          text: smsMessage
+        };
+
+        const smsResponse = await fetch("https://api.telnyx.com/v2/messages", {
+          method: "POST",
+          headers: {
+            "Authorization": `Bearer ${telnyxApiKey}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(smsPayload),
+        });
+
+        const smsData = await smsResponse.json();
+        if (!smsResponse.ok) {
+          console.error("Telnyx SMS error:", smsData);
+        } else {
+          console.log("SMS sent successfully via Telnyx:", smsData);
+          smsStatus = smsData;
+        }
+      }
+    }
+
+    const results = {
+      success: true,
+      email: emailStatus ? { sent: true, provider: "mailjet" } : { sent: false, reason: "no email provided" },
+      sms: smsStatus ? { sent: true, provider: "telnyx" } : { sent: false, reason: customerPhone ? "telnyx api key missing" : "no phone provided" },
+      message: `${status} notification processing completed`
     };
 
-    const auth = encodeBasicAuth(apiKey, apiSecret);
-    const mjRes = await fetch(MJ_API_URL, {
-      method: "POST",
-      headers: {
-        "Authorization": `Basic ${auth}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(payload),
-    });
-
-    const mjJson = await mjRes.json();
-    if (!mjRes.ok) {
-      console.error("Mailjet API error:", mjJson);
-      throw new Error("Mailjet send failed");
-    }
-
-    console.log("Service notification email sent successfully (Mailjet):", mjJson);
-
     return new Response(
-      JSON.stringify({ 
-        success: true, 
-        provider: "mailjet",
-        response: mjJson,
-        message: `${status} notification sent to ${customerEmail}`
-      }), 
+      JSON.stringify(results), 
       {
         status: 200,
         headers: {

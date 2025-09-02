@@ -145,14 +145,36 @@ export default function FieldService() {
       const { error } = await supabase.from('services').insert(payload);
       if (error) throw error;
 
-      // One-tap message (works today without Twilio)
+      // Send actual SMS via Telnyx
       if (client.phone) {
-        window.location.href = `sms:${client.phone}?&body=${encodeURIComponent(message)}`;
+        try {
+          const { error } = await supabase.functions.invoke('send-sms-via-telnyx', {
+            body: {
+              to: client.phone,
+              message: message
+            }
+          });
+          
+          if (error) {
+            console.error('SMS sending error:', error);
+            // Fall back to SMS intent if API fails
+            window.location.href = `sms:${client.phone}?&body=${encodeURIComponent(message)}`;
+            toast({ title: 'Service completed', description: 'SMS app opened with message.' });
+          } else {
+            toast({ title: 'Service completed', description: 'Saved and SMS sent to client.' });
+          }
+        } catch (smsError) {
+          console.error('SMS API error:', smsError);
+          // Fall back to SMS intent if API fails
+          window.location.href = `sms:${client.phone}?&body=${encodeURIComponent(message)}`;
+          toast({ title: 'Service completed', description: 'SMS app opened with message.' });
+        }
       } else if (client.email) {
         window.location.href = `mailto:${client.email}?subject=${encodeURIComponent('Aqua Clear Service Update')}&body=${encodeURIComponent(message)}`;
+        toast({ title: 'Service completed', description: 'Email app opened with message.' });
+      } else {
+        toast({ title: 'Service completed', description: 'Service saved successfully.' });
       }
-
-      toast({ title: 'Service completed', description: 'Saved and message prepared.' });
       navigate('/tech');
     } catch (e: any) {
       console.error(e);

@@ -143,23 +143,46 @@ serve(async (req) => {
       emailStatus = mjJson;
     }
 
-    // Send SMS via Twilio if requested (optional if secrets provided)
+    // Send SMS via Telnyx if requested
     let smsStatus: any = null;
     if (body.channels.includes("sms")) {
-      const sid = Deno.env.get("TWILIO_ACCOUNT_SID");
-      const auth = Deno.env.get("TWILIO_AUTH_TOKEN");
-      const from = Deno.env.get("TWILIO_FROM_NUMBER");
-      if (!sid || !auth || !from) {
-        console.warn("Twilio secrets missing; skipping SMS");
+      const apiKey = Deno.env.get("TELNYX_API_KEY");
+      if (!apiKey) {
+        console.warn("TELNYX_API_KEY missing; skipping SMS");
       } else {
-        const twilio = await import("npm:twilio@4.21.0");
-        const clientTwilio = twilio.default(sid, auth);
         if (!body.phone) throw new Error("SMS channel selected but no phone provided");
-        smsStatus = await clientTwilio.messages.create({
-          body: `Aqua Clear: Finish creating your account: ${link}`,
-          to: body.phone,
-          from,
+        
+        // Clean and validate phone number
+        let cleanedPhone = body.phone.replace(/\D/g, "");
+        if (cleanedPhone.length === 10) {
+          cleanedPhone = "1" + cleanedPhone; // Add US country code
+        }
+        if (!cleanedPhone.startsWith("+")) {
+          cleanedPhone = "+" + cleanedPhone;
+        }
+
+        const smsPayload = {
+          from: "+16014198527",
+          to: cleanedPhone,
+          text: `Aqua Clear: Finish creating your account: ${link}`
+        };
+
+        const smsResponse = await fetch("https://api.telnyx.com/v2/messages", {
+          method: "POST",
+          headers: {
+            "Authorization": `Bearer ${apiKey}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(smsPayload),
         });
+
+        const smsData = await smsResponse.json();
+        if (!smsResponse.ok) {
+          console.error("Telnyx SMS error:", smsData);
+        } else {
+          console.log("SMS sent successfully via Telnyx:", smsData);
+          smsStatus = smsData;
+        }
       }
     }
 

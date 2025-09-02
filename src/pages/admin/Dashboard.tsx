@@ -15,7 +15,8 @@ import {
   Settings,
   BarChart3,
   FileText,
-  Shield
+  Shield,
+  MessageSquare
 } from 'lucide-react';
 import { PoolImageUpload } from '@/components/admin/PoolImageUpload';
 
@@ -219,6 +220,12 @@ export default function AdminDashboard() {
                 <Link to="/admin/services">
                   <FileText className="h-5 w-5 mb-1" />
                   <span className="text-sm">Service History</span>
+                </Link>
+              </Button>
+              <Button asChild variant="outline" className="h-16 flex-col">
+                <Link to="/admin/sms-test">
+                  <MessageSquare className="h-5 w-5 mb-1" />
+                  <span className="text-sm">SMS Test</span>
                 </Link>
               </Button>
             </div>

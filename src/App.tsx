@@ -47,6 +47,7 @@ import ClientProfile from "./pages/client/Profile";
 import Profile from "./pages/Profile";
 import Contact from "./pages/Contact";
 import MailjetTest from "./pages/admin/MailjetTest";
+import SMSTest from "./pages/admin/SMSTest";
 
 const queryClient = new QueryClient();
 
@@ -287,6 +288,14 @@ const AppRoutes = () => {
           element={
             <ProtectedRoute allowedRoles={['admin']}>
               <MailjetTest />
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/admin/sms-test" 
+          element={
+            <ProtectedRoute allowedRoles={['admin']}>
+              <SMSTest />
             </ProtectedRoute>
           } 
         />

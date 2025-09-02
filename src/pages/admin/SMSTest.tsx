@@ -177,6 +177,77 @@ export default function SMSTest() {
           </div>
         </CardContent>
       </Card>
+
+      <Card className="max-w-2xl">
+        <CardHeader>
+          <CardTitle className="text-amber-600">⚠️ Not Receiving Messages?</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4 text-sm">
+            <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+              <h4 className="font-semibold text-amber-800 mb-2">✅ Code is Working!</h4>
+              <p className="text-amber-700">
+                Your integration is working correctly - Telnyx is accepting messages and returning success. 
+                The issue is with your Telnyx account configuration.
+              </p>
+            </div>
+            
+            <div className="space-y-3">
+              <h4 className="font-semibold">🔧 Check Your Telnyx Account:</h4>
+              
+              <div className="bg-blue-50 border border-blue-200 rounded p-3">
+                <h5 className="font-medium text-blue-800">1. Phone Number Setup</h5>
+                <ul className="text-blue-700 text-xs mt-1 ml-4 list-disc">
+                  <li>Go to <strong>Numbers → My Numbers</strong></li>
+                  <li>Find <code>+16014198527</code></li>
+                  <li>Ensure <strong>"SMS Enabled"</strong> is checked ✅</li>
+                  <li>Verify <strong>"Messaging Profile"</strong> is assigned</li>
+                </ul>
+              </div>
+
+              <div className="bg-green-50 border border-green-200 rounded p-3">
+                <h5 className="font-medium text-green-800">2. Account Status</h5>
+                <ul className="text-green-700 text-xs mt-1 ml-4 list-disc">
+                  <li>Go to <strong>Billing → Balance</strong></li>
+                  <li>Verify sufficient credits for SMS</li>
+                  <li>Check account verification status</li>
+                  <li>Ensure no sending restrictions</li>
+                </ul>
+              </div>
+
+              <div className="bg-purple-50 border border-purple-200 rounded p-3">
+                <h5 className="font-medium text-purple-800">3. Messaging Profile</h5>
+                <ul className="text-purple-700 text-xs mt-1 ml-4 list-disc">
+                  <li>Go to <strong>Messaging → Messaging Profiles</strong></li>
+                  <li>Ensure you have an active profile</li>
+                  <li>Verify it's linked to your phone number</li>
+                  <li>Check compliance requirements are met</li>
+                </ul>
+              </div>
+
+              <div className="bg-orange-50 border border-orange-200 rounded p-3">
+                <h5 className="font-medium text-orange-800">4. Message Tracking</h5>
+                <ul className="text-orange-700 text-xs mt-1 ml-4 list-disc">
+                  <li>Go to <strong>Messaging → Message Detail</strong></li>
+                  <li>Search recent messages by phone number</li>
+                  <li>Check delivery status and error details</li>
+                  <li>Look for failed delivery reasons</li>
+                </ul>
+              </div>
+            </div>
+
+            <div className="bg-red-50 border border-red-200 rounded p-3">
+              <h5 className="font-medium text-red-800">🚨 Common Issues:</h5>
+              <ul className="text-red-700 text-xs mt-1 ml-4 list-disc">
+                <li><strong>New Account:</strong> May require verification before SMS works</li>
+                <li><strong>Trial Account:</strong> Often has sending restrictions</li>
+                <li><strong>Compliance:</strong> Business numbers may need 10DLC registration</li>
+                <li><strong>Carrier Filtering:</strong> Some carriers block new/unverified senders</li>
+              </ul>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }

@@ -84,13 +84,19 @@ const handler = async (req: Request): Promise<Response> => {
     });
 
     const responseData = await response.json();
+    console.log('Telnyx API Status:', response.status);
+    console.log('Telnyx API Response Headers:', Object.fromEntries(response.headers.entries()));
+    console.log('Telnyx API Response Body:', JSON.stringify(responseData, null, 2));
 
     if (!response.ok) {
       console.error("Telnyx API error:", responseData);
       throw new Error(`Telnyx API error: ${responseData.errors?.[0]?.detail || 'Unknown error'}`);
     }
 
-    console.log("SMS sent successfully via Telnyx:", responseData);
+    console.log("SMS sent successfully via Telnyx!");
+    console.log("Message ID:", responseData.data?.id);
+    console.log("Message Status:", responseData.data?.to);
+    console.log("Full Response:", responseData);
 
     return new Response(
       JSON.stringify({ 

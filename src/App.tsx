@@ -39,6 +39,7 @@ import ServiceRequestDetails from "./pages/admin/ServiceRequestDetails";
 import PotentialCustomers from "./pages/admin/PotentialCustomers";
 import CreateUser from "./pages/admin/CreateUser";
 import PrivacyPolicy from "./pages/PrivacyPolicy";
+import TermsAndConditions from "./pages/TermsAndConditions";
 import ManageAdmins from "./pages/admin/ManageAdmins";
 import ManageTechs from "./pages/admin/ManageTechs";
 import ClientDashboard from "./pages/client/Dashboard";

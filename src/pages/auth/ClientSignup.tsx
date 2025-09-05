@@ -288,6 +288,14 @@ export default function ClientSignup() {
                     />
                   </div>
 
+                  <div className="bg-muted/50 p-3 rounded-lg border border-border">
+                    <p className="text-sm text-muted-foreground">
+                      By providing your phone number, you agree to receive SMS notifications from Aqua Clear Pools, 
+                      including appointment reminders, service updates, and account notices. Message & data rates may apply. 
+                      Message frequency may vary. Reply STOP to unsubscribe or HELP for help.
+                    </p>
+                  </div>
+
                   <div className="space-y-4">
                     <AddressAutocomplete
                       onAddressSelect={(components: AddressComponents) => {

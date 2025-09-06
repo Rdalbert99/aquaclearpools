@@ -128,6 +128,32 @@ export default function TechSchedule() {
       // Combine assigned and unassigned requests
       const allPendingRequests = [...(assignedRequests || []), ...(unassignedRequests || [])];
 
+      // Add service requests to weekly schedule based on preferred_date
+      allPendingRequests.forEach(request => {
+        if (request.preferred_date) {
+          const requestDate = new Date(request.preferred_date);
+          const requestDay = daysOfWeek[requestDate.getDay()];
+          
+          // Check if this day is within our 7-day window
+          const today = new Date();
+          const daysDiff = Math.floor((requestDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+          
+          if (daysDiff >= 0 && daysDiff < 7) {
+            if (!weeklySchedule[requestDay]) {
+              weeklySchedule[requestDay] = [];
+            }
+            // Add request as a special type to distinguish from regular clients
+            weeklySchedule[requestDay].push({
+              ...request,
+              customer: request.contact_name,
+              isServiceRequest: true,
+              pool_type: request.pool_type || 'Unknown',
+              pool_size: request.pool_size || 'Unknown'
+            });
+          }
+        }
+      });
+
       setScheduleData({
         todayClients,
         tomorrowClients,
@@ -166,7 +192,7 @@ export default function TechSchedule() {
       <CardContent className="p-4">
         <div className="flex items-start justify-between mb-3">
           <div>
-            <Link to={`/admin/client-view/${client.id}`} className="hover:underline">
+            <Link to={`/admin/clients/${client.id}`} className="hover:underline">
               <h3 className="font-semibold text-primary hover:text-primary/80 flex items-center space-x-1">
                 <span>{client.customer}</span>
                 <ExternalLink className="h-3 w-3" />
@@ -222,7 +248,7 @@ export default function TechSchedule() {
         
         <div className="mt-4 flex justify-between">
           <Button size="sm" variant="outline" asChild>
-            <Link to={`/admin/client-view/${client.id}`}>
+            <Link to={`/admin/clients/${client.id}`}>
               View Client
             </Link>
           </Button>
@@ -410,25 +436,45 @@ export default function TechSchedule() {
                         {clients.length === 0 ? (
                           <p className="text-xs text-muted-foreground">No clients</p>
                         ) : (
-                          clients.map(client => (
-                            <div key={client.id} className="text-xs border rounded p-2 hover:bg-muted/50">
-                              <Link 
-                                to={`/admin/client-view/${client.id}`}
-                                className="font-medium text-primary hover:underline flex items-center space-x-1"
-                              >
-                                <span>{client.customer}</span>
-                                <ExternalLink className="h-2 w-2" />
-                              </Link>
-                              <p className="text-muted-foreground truncate">
-                                {client.pool_size?.toLocaleString()} gal
-                              </p>
-                              {client.assigned_technician?.phone && (
-                                <Button size="sm" variant="outline" className="h-6 px-2 mt-1" asChild>
-                                  <a href={`tel:${client.assigned_technician.phone}`} className="text-xs">
-                                    <Phone className="h-2 w-2 mr-1" />
-                                    Call
-                                  </a>
-                                </Button>
+                          clients.map((item, itemIndex) => (
+                            <div key={item.id || itemIndex} className="text-xs border rounded p-2 hover:bg-muted/50">
+                              {item.isServiceRequest ? (
+                                <div>
+                                  <Link 
+                                    to={`/admin/service-request/${item.id}`}
+                                    className="font-medium text-orange-600 hover:underline flex items-center space-x-1"
+                                  >
+                                    <span>{item.customer} (Request)</span>
+                                    <ExternalLink className="h-2 w-2" />
+                                  </Link>
+                                  <p className="text-muted-foreground truncate">
+                                    {item.request_type} - {item.pool_type}
+                                  </p>
+                                  <p className="text-xs text-muted-foreground">
+                                    {new Date(item.preferred_date).toLocaleDateString()}
+                                  </p>
+                                </div>
+                              ) : (
+                                <div>
+                                  <Link 
+                                    to={`/admin/clients/${item.id}`}
+                                    className="font-medium text-primary hover:underline flex items-center space-x-1"
+                                  >
+                                    <span>{item.customer}</span>
+                                    <ExternalLink className="h-2 w-2" />
+                                  </Link>
+                                  <p className="text-muted-foreground truncate">
+                                    {item.pool_size?.toLocaleString()} gal
+                                  </p>
+                                  {item.assigned_technician?.phone && (
+                                    <Button size="sm" variant="outline" className="h-6 px-2 mt-1" asChild>
+                                      <a href={`tel:${item.assigned_technician.phone}`} className="text-xs">
+                                        <Phone className="h-2 w-2 mr-1" />
+                                        Call
+                                      </a>
+                                    </Button>
+                                  )}
+                                </div>
                               )}
                             </div>
                           ))

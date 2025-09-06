@@ -15,7 +15,8 @@ import {
   CheckCircle,
   AlertTriangle,
   User,
-  Navigation
+  Navigation,
+  ExternalLink
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
@@ -24,9 +25,11 @@ interface ScheduleData {
   tomorrowClients: any[];
   weekClients: any[];
   pendingRequests: any[];
+  weeklySchedule: { [key: string]: any[] };
 }
 
 const daysOfWeek = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+const shortDays = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
 
 export default function TechSchedule() {
   const { user } = useAuth();
@@ -73,6 +76,16 @@ export default function TechSchedule() {
         client.service_days?.includes(tomorrowDayName.substring(0, 3).toLowerCase())
       ) || [];
 
+      // Build weekly schedule
+      const weeklySchedule: { [key: string]: any[] } = {};
+      daysOfWeek.forEach(day => {
+        const shortDay = day.substring(0, 3).toLowerCase();
+        weeklySchedule[day] = assignedClients?.filter(client => 
+          client.service_days?.includes(day) || 
+          client.service_days?.includes(shortDay)
+        ) || [];
+      });
+
       // Get clients needing service (no service in last 7 days)
       const { data: recentServices } = await supabase
         .from('services')
@@ -100,7 +113,8 @@ export default function TechSchedule() {
         todayClients,
         tomorrowClients,
         weekClients: weekClients.slice(0, 10), // Limit to 10 for display
-        pendingRequests: pendingRequests || []
+        pendingRequests: pendingRequests || [],
+        weeklySchedule
       });
     } catch (error) {
       console.error('Error loading schedule data:', error);
@@ -133,7 +147,12 @@ export default function TechSchedule() {
       <CardContent className="p-4">
         <div className="flex items-start justify-between mb-3">
           <div>
-            <h3 className="font-semibold">{client.customer}</h3>
+            <Link to={`/admin/client-view/${client.id}`} className="hover:underline">
+              <h3 className="font-semibold text-primary hover:text-primary/80 flex items-center space-x-1">
+                <span>{client.customer}</span>
+                <ExternalLink className="h-3 w-3" />
+              </h3>
+            </Link>
             <p className="text-sm text-muted-foreground">
               {client.pool_size?.toLocaleString()} gal • {client.pool_type}
             </p>
@@ -182,7 +201,12 @@ export default function TechSchedule() {
           )}
         </div>
         
-        <div className="mt-4 flex justify-end">
+        <div className="mt-4 flex justify-between">
+          <Button size="sm" variant="outline" asChild>
+            <Link to={`/admin/client-view/${client.id}`}>
+              View Client
+            </Link>
+          </Button>
           <Button size="sm" asChild>
             <Link to={`/tech/service/${client.id}`}>
               Start Service
@@ -220,7 +244,8 @@ export default function TechSchedule() {
           <SelectContent>
             <SelectItem value="today">Today's Schedule</SelectItem>
             <SelectItem value="tomorrow">Tomorrow's Schedule</SelectItem>
-            <SelectItem value="week">This Week</SelectItem>
+            <SelectItem value="calendar">Weekly Calendar</SelectItem>
+            <SelectItem value="overdue">Overdue Clients</SelectItem>
             <SelectItem value="requests">Service Requests</SelectItem>
           </SelectContent>
         </Select>
@@ -330,12 +355,72 @@ export default function TechSchedule() {
         </Card>
       )}
 
-      {selectedDay === 'week' && (
+      {selectedDay === 'calendar' && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center space-x-2">
+              <Calendar className="h-5 w-5" />
+              <span>Weekly Calendar</span>
+            </CardTitle>
+            <CardDescription>
+              Your client schedule for the week
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-7 gap-4">
+              {daysOfWeek.map((day, index) => {
+                const todayIndex = new Date().getDay();
+                const isToday = index === todayIndex;
+                const clients = scheduleData?.weeklySchedule?.[day] || [];
+                
+                return (
+                  <div key={day} className={`p-3 rounded-lg border ${isToday ? 'bg-primary/5 border-primary' : 'bg-card'}`}>
+                    <h4 className={`font-semibold text-sm mb-2 ${isToday ? 'text-primary' : ''}`}>
+                      {day}
+                      {isToday && <span className="text-xs ml-1">(Today)</span>}
+                    </h4>
+                    <div className="space-y-2">
+                      {clients.length === 0 ? (
+                        <p className="text-xs text-muted-foreground">No clients</p>
+                      ) : (
+                        clients.map(client => (
+                          <div key={client.id} className="text-xs border rounded p-2 hover:bg-muted/50">
+                            <Link 
+                              to={`/admin/client-view/${client.id}`}
+                              className="font-medium text-primary hover:underline flex items-center space-x-1"
+                            >
+                              <span>{client.customer}</span>
+                              <ExternalLink className="h-2 w-2" />
+                            </Link>
+                            <p className="text-muted-foreground truncate">
+                              {client.pool_size?.toLocaleString()} gal
+                            </p>
+                            {client.users?.phone && (
+                              <Button size="sm" variant="outline" className="h-6 px-2 mt-1" asChild>
+                                <a href={`tel:${client.users.phone}`} className="text-xs">
+                                  <Phone className="h-2 w-2 mr-1" />
+                                  Call
+                                </a>
+                              </Button>
+                            )}
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {selectedDay === 'overdue' && (
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center space-x-2">
               <AlertTriangle className="h-5 w-5 text-orange-500" />
-              <span>Clients Needing Service</span>
+              <span>Overdue Clients</span>
             </CardTitle>
             <CardDescription>
               Clients who haven't been serviced recently
@@ -370,8 +455,8 @@ export default function TechSchedule() {
           <CardContent>
             {scheduleData?.pendingRequests.length === 0 ? (
               <div className="text-center py-8">
-                <CheckCircle className="h-12 w-12 mx-auto text-green-500 mb-4" />
-                <p className="text-muted-foreground">No pending service requests</p>
+                <User className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                <p className="text-muted-foreground">No service requests at this time</p>
               </div>
             ) : (
               <div className="space-y-4">
@@ -380,9 +465,15 @@ export default function TechSchedule() {
                     <CardContent className="p-4">
                       <div className="flex items-start justify-between">
                         <div className="flex-1">
-                          <h3 className="font-semibold">
-                            {request.clients?.customer || request.contact_name}
-                          </h3>
+                          <Link 
+                            to={`/admin/service-request/${request.id}`}
+                            className="hover:underline"
+                          >
+                            <h3 className="font-semibold text-primary hover:text-primary/80 flex items-center space-x-1">
+                              <span>{request.clients?.customer || request.contact_name}</span>
+                              <ExternalLink className="h-3 w-3" />
+                            </h3>
+                          </Link>
                           <p className="text-sm text-muted-foreground mb-2">
                             {request.request_type}
                           </p>
@@ -391,6 +482,11 @@ export default function TechSchedule() {
                             <span>Requested: {new Date(request.requested_date).toLocaleDateString()}</span>
                             {request.pool_type && (
                               <span>{request.pool_type} pool</span>
+                            )}
+                            {request.contact_phone && (
+                              <a href={`tel:${request.contact_phone}`} className="text-primary hover:underline">
+                                📞 {request.contact_phone}
+                              </a>
                             )}
                           </div>
                         </div>

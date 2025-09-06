@@ -78,7 +78,16 @@ const Footer = () => {
         </div>
 
         <div className="border-t border-secondary-foreground/20 mt-12 pt-8 text-center text-sm opacity-80">
-          <p>&copy; 2024 Aqua Clear Pools. All rights reserved. Professional pool services in Hattiesburg, Mississippi.</p>
+          <p className="mb-2">&copy; 2024 Aqua Clear Pools. All rights reserved. Professional pool services in Hattiesburg, Mississippi.</p>
+          <div className="flex justify-center items-center space-x-4 text-xs">
+            <Link to="/privacy" className="hover:underline focus:underline">
+              Privacy Policy
+            </Link>
+            <span>•</span>
+            <Link to="/terms" className="hover:underline focus:underline">
+              Terms & Conditions
+            </Link>
+          </div>
         </div>
       </div>
     </footer>

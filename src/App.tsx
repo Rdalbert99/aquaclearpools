@@ -40,6 +40,8 @@ import PotentialCustomers from "./pages/admin/PotentialCustomers";
 import CreateUser from "./pages/admin/CreateUser";
 import PrivacyPolicy from "./pages/PrivacyPolicy";
 import TermsAndConditions from "./pages/TermsAndConditions";
+import Privacy from "./pages/Privacy";
+import Terms from "./pages/Terms";
 import ManageAdmins from "./pages/admin/ManageAdmins";
 import ManageTechs from "./pages/admin/ManageTechs";
 import ClientDashboard from "./pages/client/Dashboard";
@@ -64,6 +66,10 @@ const AppRoutes = () => {
         {/* Public routes - Landing page accessible to all users */}
         <Route path="/" element={<Index />} />
         <Route path="/contact" element={<Contact />} />
+        <Route path="/privacy" element={<Privacy />} />
+        <Route path="/terms" element={<Terms />} />
+        <Route path="/privacy-policy" element={<PrivacyPolicy />} />
+        <Route path="/terms-and-conditions" element={<TermsAndConditions />} />
         <Route path="/auth/login" element={<Login />} />
         <Route path="/auth/signup" element={<Signup />} />
         <Route path="/auth/client-signup" element={<ClientSignup />} />

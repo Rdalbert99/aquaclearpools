@@ -294,6 +294,11 @@ export function PublicServiceRequestForm({ open, onOpenChange }: PublicServiceRe
                     <FormControl>
                       <Input placeholder="(555) 123-4567" {...field} />
                     </FormControl>
+                    <div className="text-xs text-muted-foreground mt-2 leading-relaxed">
+                      By providing your phone number, you agree to receive SMS notifications from Aqua Clear Pools, 
+                      including appointment reminders, service updates, and account notices. Message & data rates may apply. 
+                      Message frequency may vary. Reply STOP to unsubscribe or HELP for help.
+                    </div>
                     <FormMessage />
                   </FormItem>
                 )}

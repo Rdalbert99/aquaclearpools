@@ -51,8 +51,8 @@ export default function TechSchedule() {
       const weekEnd = new Date(today);
       weekEnd.setDate(weekEnd.getDate() + 7);
 
-      const todayDayName = daysOfWeek[today.getDay()];
-      const tomorrowDayName = daysOfWeek[tomorrow.getDay()];
+      const todayDayName = daysOfWeek[today.getDay()].toLowerCase();
+      const tomorrowDayName = daysOfWeek[tomorrow.getDay()].toLowerCase();
 
       // Load clients assigned to this technician
       const { data: assignedClients, error: clientsError } = await supabase
@@ -65,26 +65,31 @@ export default function TechSchedule() {
 
       if (clientsError) throw clientsError;
 
-      // Filter clients by service days
+      // Filter clients by service days (all lowercase matching)
       const todayClients = assignedClients?.filter(client => 
         client.service_days?.includes(todayDayName) || 
-        client.service_days?.includes(todayDayName.substring(0, 3).toLowerCase())
+        client.service_days?.includes(todayDayName.substring(0, 3))
       ) || [];
 
       const tomorrowClients = assignedClients?.filter(client => 
         client.service_days?.includes(tomorrowDayName) ||
-        client.service_days?.includes(tomorrowDayName.substring(0, 3).toLowerCase())
+        client.service_days?.includes(tomorrowDayName.substring(0, 3))
       ) || [];
 
-      // Build weekly schedule
+      // Build weekly schedule starting from today for next 7 days
       const weeklySchedule: { [key: string]: any[] } = {};
-      daysOfWeek.forEach(day => {
-        const shortDay = day.substring(0, 3).toLowerCase();
-        weeklySchedule[day] = assignedClients?.filter(client => 
-          client.service_days?.includes(day) || 
+      for (let i = 0; i < 7; i++) {
+        const date = new Date(today);
+        date.setDate(date.getDate() + i);
+        const dayName = daysOfWeek[date.getDay()];
+        const dayNameLower = dayName.toLowerCase();
+        const shortDay = dayName.substring(0, 3).toLowerCase();
+        
+        weeklySchedule[dayName] = assignedClients?.filter(client => 
+          client.service_days?.includes(dayNameLower) || 
           client.service_days?.includes(shortDay)
         ) || [];
-      });
+      }
 
       // Get clients needing service (no service in last 7 days)
       const { data: recentServices } = await supabase
@@ -98,22 +103,36 @@ export default function TechSchedule() {
         !recentClientIds.includes(client.id)
       ) || [];
 
-      // Load pending service requests assigned to this tech
-      const { data: pendingRequests } = await supabase
+      // Load service requests - both assigned to this tech AND unassigned ones they can accept
+      const { data: assignedRequests } = await supabase
         .from('service_requests')
         .select(`
           *,
           clients(customer, pool_type, pool_size)
         `)
         .eq('assigned_technician_id', user.id)
-        .in('status', ['pending', 'assigned'])
+        .in('status', ['pending', 'assigned', 'scheduled'])
         .order('requested_date', { ascending: true });
+
+      // Load unassigned requests that techs can accept
+      const { data: unassignedRequests } = await supabase
+        .from('service_requests')
+        .select(`
+          *,
+          clients(customer, pool_type, pool_size)
+        `)
+        .is('assigned_technician_id', null)
+        .eq('status', 'pending')
+        .order('requested_date', { ascending: true });
+
+      // Combine assigned and unassigned requests
+      const allPendingRequests = [...(assignedRequests || []), ...(unassignedRequests || [])];
 
       setScheduleData({
         todayClients,
         tomorrowClients,
         weekClients: weekClients.slice(0, 10), // Limit to 10 for display
-        pendingRequests: pendingRequests || [],
+        pendingRequests: allPendingRequests,
         weeklySchedule
       });
     } catch (error) {
@@ -368,48 +387,58 @@ export default function TechSchedule() {
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-7 gap-4">
-              {daysOfWeek.map((day, index) => {
-                const todayIndex = new Date().getDay();
-                const isToday = index === todayIndex;
-                const clients = scheduleData?.weeklySchedule?.[day] || [];
-                
-                return (
-                  <div key={day} className={`p-3 rounded-lg border ${isToday ? 'bg-primary/5 border-primary' : 'bg-card'}`}>
-                    <h4 className={`font-semibold text-sm mb-2 ${isToday ? 'text-primary' : ''}`}>
-                      {day}
-                      {isToday && <span className="text-xs ml-1">(Today)</span>}
-                    </h4>
-                    <div className="space-y-2">
-                      {clients.length === 0 ? (
-                        <p className="text-xs text-muted-foreground">No clients</p>
-                      ) : (
-                        clients.map(client => (
-                          <div key={client.id} className="text-xs border rounded p-2 hover:bg-muted/50">
-                            <Link 
-                              to={`/admin/client-view/${client.id}`}
-                              className="font-medium text-primary hover:underline flex items-center space-x-1"
-                            >
-                              <span>{client.customer}</span>
-                              <ExternalLink className="h-2 w-2" />
-                            </Link>
-                            <p className="text-muted-foreground truncate">
-                              {client.pool_size?.toLocaleString()} gal
-                            </p>
-                            {client.users?.phone && (
-                              <Button size="sm" variant="outline" className="h-6 px-2 mt-1" asChild>
-                                <a href={`tel:${client.users.phone}`} className="text-xs">
-                                  <Phone className="h-2 w-2 mr-1" />
-                                  Call
-                                </a>
-                              </Button>
-                            )}
-                          </div>
-                        ))
-                      )}
+              {(() => {
+                const today = new Date();
+                const weekDays = [];
+                for (let i = 0; i < 7; i++) {
+                  const date = new Date(today);
+                  date.setDate(date.getDate() + i);
+                  const dayName = daysOfWeek[date.getDay()];
+                  const isToday = i === 0;
+                  const clients = scheduleData?.weeklySchedule?.[dayName] || [];
+                  
+                  weekDays.push(
+                    <div key={dayName + i} className={`p-3 rounded-lg border ${isToday ? 'bg-primary/5 border-primary' : 'bg-card'}`}>
+                      <h4 className={`font-semibold text-sm mb-2 ${isToday ? 'text-primary' : ''}`}>
+                        {dayName}
+                        {isToday && <span className="text-xs ml-1">(Today)</span>}
+                        <div className="text-xs text-muted-foreground">
+                          {date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                        </div>
+                      </h4>
+                      <div className="space-y-2">
+                        {clients.length === 0 ? (
+                          <p className="text-xs text-muted-foreground">No clients</p>
+                        ) : (
+                          clients.map(client => (
+                            <div key={client.id} className="text-xs border rounded p-2 hover:bg-muted/50">
+                              <Link 
+                                to={`/admin/client-view/${client.id}`}
+                                className="font-medium text-primary hover:underline flex items-center space-x-1"
+                              >
+                                <span>{client.customer}</span>
+                                <ExternalLink className="h-2 w-2" />
+                              </Link>
+                              <p className="text-muted-foreground truncate">
+                                {client.pool_size?.toLocaleString()} gal
+                              </p>
+                              {client.users?.phone && (
+                                <Button size="sm" variant="outline" className="h-6 px-2 mt-1" asChild>
+                                  <a href={`tel:${client.users.phone}`} className="text-xs">
+                                    <Phone className="h-2 w-2 mr-1" />
+                                    Call
+                                  </a>
+                                </Button>
+                              )}
+                            </div>
+                          ))
+                        )}
+                      </div>
                     </div>
-                  </div>
-                );
-              })}
+                  );
+                }
+                return weekDays;
+              })()}
             </div>
           </CardContent>
         </Card>

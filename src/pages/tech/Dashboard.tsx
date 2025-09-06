@@ -144,6 +144,12 @@ export default function TechDashboard() {
         </div>
         <div className="flex space-x-2">
           <Button asChild>
+            <Link to="/tech/schedule">
+              <Calendar className="mr-2 h-4 w-4" />
+              View Schedule
+            </Link>
+          </Button>
+          <Button asChild variant="outline">
             <Link to="/tech/calculator">
               <Droplets className="mr-2 h-4 w-4" />
               Chemical Calculator
@@ -160,6 +166,12 @@ export default function TechDashboard() {
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <Button asChild variant="outline" className="h-20 flex-col">
+              <Link to="/tech/schedule">
+                <Calendar className="h-6 w-6 mb-2" />
+                My Schedule
+              </Link>
+            </Button>
             <Button asChild variant="outline" className="h-20 flex-col">
               <Link to="/tech/calculator">
                 <Droplets className="h-6 w-6 mb-2" />

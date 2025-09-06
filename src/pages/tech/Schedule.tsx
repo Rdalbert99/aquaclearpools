@@ -59,7 +59,7 @@ export default function TechSchedule() {
         .from('clients')
         .select(`
           *,
-          users(name, phone, email, address)
+          assigned_technician:users!clients_assigned_technician_id_fkey(name, phone, email, address)
         `)
         .eq('assigned_technician_id', user.id);
 
@@ -182,17 +182,17 @@ export default function TechSchedule() {
             )}
           </div>
           <div className="flex space-x-1">
-            {client.users?.phone && (
+            {client.assigned_technician?.phone && (
               <Button size="sm" variant="outline" asChild>
-                <a href={`tel:${client.users.phone}`}>
+                <a href={`tel:${client.assigned_technician.phone}`}>
                   <Phone className="h-3 w-3" />
                 </a>
               </Button>
             )}
-            {client.users?.address && (
+            {client.assigned_technician?.address && (
               <Button size="sm" variant="outline" asChild>
                 <a 
-                  href={`https://maps.google.com?q=${encodeURIComponent(client.users.address)}`}
+                  href={`https://maps.google.com?q=${encodeURIComponent(client.assigned_technician.address)}`}
                   target="_blank"
                   rel="noopener noreferrer"
                 >
@@ -204,10 +204,10 @@ export default function TechSchedule() {
         </div>
         
         <div className="space-y-2 text-sm">
-          {client.users?.address && (
+          {client.assigned_technician?.address && (
             <div className="flex items-center space-x-2">
               <MapPin className="h-3 w-3 text-muted-foreground" />
-              <span className="text-muted-foreground">{client.users.address}</span>
+              <span className="text-muted-foreground">{client.assigned_technician.address}</span>
             </div>
           )}
           {client.last_service_date && (
@@ -422,9 +422,9 @@ export default function TechSchedule() {
                               <p className="text-muted-foreground truncate">
                                 {client.pool_size?.toLocaleString()} gal
                               </p>
-                              {client.users?.phone && (
+                              {client.assigned_technician?.phone && (
                                 <Button size="sm" variant="outline" className="h-6 px-2 mt-1" asChild>
-                                  <a href={`tel:${client.users.phone}`} className="text-xs">
+                                  <a href={`tel:${client.assigned_technician.phone}`} className="text-xs">
                                     <Phone className="h-2 w-2 mr-1" />
                                     Call
                                   </a>

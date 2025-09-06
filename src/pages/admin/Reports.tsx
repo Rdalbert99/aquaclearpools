@@ -47,7 +47,7 @@ export default function Reports() {
       // Load clients data
       const { data: clients, error: clientsError } = await supabase
         .from('clients')
-        .select('*, users(name, email)');
+        .select('*, users!clients_user_id_fkey(name, email)');
 
       if (clientsError) throw clientsError;
 

@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useState } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
+import { validatePasswordComplexity } from '@/lib/security';
 
 interface AuthUser extends User {
   role?: string;
@@ -275,6 +276,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   const signUp = async (email: string, password: string, name: string, role: string = 'client', additionalData?: any) => {
     try {
+      const { valid, errors } = validatePasswordComplexity(password, email);
+      if (!valid) {
+        throw new Error(errors.join(' '));
+      }
       const { data, error } = await supabase.auth.signUp({
         email,
         password,

@@ -8,6 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Eye, EyeOff, Lock } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { validatePasswordComplexity } from '@/lib/security';
 
 export default function ChangePassword() {
   const [currentPassword, setCurrentPassword] = useState('');
@@ -33,10 +34,11 @@ export default function ChangePassword() {
       return;
     }
 
-    if (newPassword.length < 6) {
+    const { valid, errors } = validatePasswordComplexity(newPassword, user?.email || undefined);
+    if (!valid) {
       toast({
-        title: "Error", 
-        description: "Password must be at least 6 characters long",
+        title: "Weak password",
+        description: errors.join(' '),
         variant: "destructive",
       });
       return;
@@ -66,6 +68,19 @@ export default function ChangePassword() {
           console.error('Error updating user record:', dbError);
           // Don't fail the whole operation if this fails
         }
+      }
+
+      // Log security event (non-blocking)
+      try {
+        await supabase.rpc('log_security_event', {
+          p_event_type: 'password_change',
+          p_target_user_id: user?.id,
+          p_target_table: 'users',
+          p_old_values: null,
+          p_new_values: { changed: true }
+        });
+      } catch (e) {
+        console.warn('Failed to log password change event', e);
       }
 
       toast({

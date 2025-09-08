@@ -11,6 +11,7 @@ import { AddressAutocomplete } from '@/components/ui/address-autocomplete';
 import { AddressComponents } from '@/lib/address-validation';
 import { useToast } from '@/hooks/use-toast';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { validatePasswordComplexity } from '@/lib/security';
 
 export default function Signup() {
   const [formData, setFormData] = useState({

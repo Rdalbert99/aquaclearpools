@@ -288,12 +288,19 @@ export default function ClientSignup() {
                     />
                   </div>
 
-                  <div className="bg-muted/50 p-3 rounded-lg border border-border">
-                    <p className="text-sm text-muted-foreground">
-                      By providing your phone number, you agree to receive SMS notifications from Aqua Clear Pools, 
-                      including appointment reminders, service updates, and account notices. Message & data rates may apply. 
-                      Message frequency may vary. Reply STOP to unsubscribe or HELP for help.
-                    </p>
+                  <div className="bg-muted/50 p-4 rounded-lg border border-border">
+                    <div className="space-y-3 text-left">
+                      <p className="text-sm leading-relaxed text-muted-foreground">
+                        By providing your phone number, you agree to receive SMS notifications from Aqua Clear Pools, including appointment reminders, service updates, and account notices. Message & data rates may apply. Message frequency varies. Reply STOP to unsubscribe or HELP for help.
+                      </p>
+                      <p className="text-sm leading-relaxed text-muted-foreground">
+                        No mobile information will be shared with third parties/affiliates for marketing or promotional purposes. All other categories exclude text messaging originator opt-in data and consent; this information will not be shared with any third parties.
+                      </p>
+                      <div className="flex gap-4 text-sm pt-2">
+                        <Link to="/privacy" className="text-primary hover:underline">Privacy Policy</Link>
+                        <Link to="/terms" className="text-primary hover:underline">Terms of Service</Link>
+                      </div>
+                    </div>
                   </div>
 
                   <div className="space-y-4">

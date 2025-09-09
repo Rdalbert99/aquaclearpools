@@ -50,7 +50,22 @@ serve(async (req: Request) => {
       return new Response(JSON.stringify({ error: 'Forbidden' }), { status: 403, headers: { 'Content-Type': 'application/json', ...corsHeaders } });
     }
 
-    // Determine target auth user
+    // Rate limit linking attempts per user
+    try {
+      const { data: allowed, error: rlError } = await supabaseAdmin.rpc('check_rate_limit', {
+        p_identifier: userData.user.id,
+        p_endpoint: 'link-auth-user',
+        p_max_requests: 30,
+        p_window_minutes: 15
+      });
+      if (rlError) console.warn('check_rate_limit error:', rlError);
+      if (allowed === false) {
+        return new Response(JSON.stringify({ error: 'Too many requests. Please try again later.' }), { status: 429, headers: { 'Content-Type': 'application/json', ...corsHeaders } });
+      }
+    } catch (e) {
+      console.warn('Rate limit RPC failed (continuing):', e);
+    }
+
     let authUser: { id: string; email?: string | null; user_metadata?: any } | null = null;
     if (isSelf) {
       authUser = { id: userData.user.id, email: userData.user.email, user_metadata: userData.user.user_metadata };

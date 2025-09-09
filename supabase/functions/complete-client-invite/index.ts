@@ -32,7 +32,41 @@ serve(async (req) => {
       });
     }
 
+    // Basic password complexity: min 12 chars, at least 3 of 4 categories, no spaces
+    const pwd = body.password;
+    const hasLower = /[a-z]/.test(pwd);
+    const hasUpper = /[A-Z]/.test(pwd);
+    const hasNumber = /[0-9]/.test(pwd);
+    const hasSpecial = /[^A-Za-z0-9]/.test(pwd);
+    const categories = [hasLower, hasUpper, hasNumber, hasSpecial].filter(Boolean).length;
+    if (pwd.length < 12 || categories < 3 || /\s/.test(pwd)) {
+      return new Response(JSON.stringify({ error: "Password does not meet complexity requirements" }), {
+        status: 400,
+        headers: { "Content-Type": "application/json", ...corsHeaders },
+      });
+    }
+
     const admin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+
+    // Rate limit by IP for public endpoint
+    try {
+      const ip = req.headers.get('x-real-ip') || req.headers.get('x-forwarded-for') || 'unknown';
+      const { data: allowed, error: rlError } = await admin.rpc('check_rate_limit', {
+        p_identifier: ip,
+        p_endpoint: 'complete-client-invite',
+        p_max_requests: 5,
+        p_window_minutes: 15,
+      });
+      if (rlError) console.warn('check_rate_limit error:', rlError);
+      if (allowed === false) {
+        return new Response(JSON.stringify({ error: 'Too many requests. Please try again later.' }), {
+          status: 429,
+          headers: { 'Content-Type': 'application/json', ...corsHeaders },
+        });
+      }
+    } catch (e) {
+      console.warn('Rate limit RPC failed (continuing):', e);
+    }
 
     // Validate invite
     const { data: invite, error: invErr } = await admin

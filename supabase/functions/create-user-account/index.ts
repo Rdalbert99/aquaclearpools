@@ -111,10 +111,26 @@ const handler = async (req: Request): Promise<Response> => {
       });
     }
     
-    // Rate limiting check for public registrations
-    if (!authHeader) {
-      const clientIP = req.headers.get('x-real-ip') || req.headers.get('x-forwarded-for') || 'unknown';
-      console.log(`Public registration attempt from IP: ${clientIP}`);
+    // Rate limiting: stricter for unauthenticated, higher for admins
+    const identifier = userRole === 'admin' && (typeof currentUser !== 'undefined') && currentUser?.id
+      ? currentUser.id
+      : (req.headers.get('x-real-ip') || req.headers.get('x-forwarded-for') || 'unknown');
+    try {
+      const { data: allowed, error: rlError } = await supabaseAdmin.rpc('check_rate_limit', {
+        p_identifier: identifier,
+        p_endpoint: 'create-user-account',
+        p_max_requests: userRole === 'admin' ? 60 : 5,
+        p_window_minutes: 15
+      });
+      if (rlError) console.warn('check_rate_limit error:', rlError);
+      if (allowed === false) {
+        return new Response(JSON.stringify({ error: 'Too many requests. Please try again later.' }), {
+          status: 429,
+          headers: { 'Content-Type': 'application/json', ...corsHeaders }
+        });
+      }
+    } catch (e) {
+      console.warn('Rate limit RPC failed (continuing):', e);
     }
     
     console.log('Creating user:', userData.login, userData.email, userData.role);
@@ -268,6 +284,19 @@ const handler = async (req: Request): Promise<Response> => {
     } catch (emailError) {
       console.error('Failed to send welcome email:', emailError);
       // Don't fail the entire operation if email fails
+    }
+
+    try {
+      await supabaseAdmin.rpc('log_security_event_enhanced', {
+        p_event_type: 'create_user_success',
+        p_user_id: (typeof currentUser !== 'undefined' && currentUser?.id) ? currentUser.id : null,
+        p_session_id: null,
+        p_endpoint: 'create-user-account',
+        p_payload: { target_email: userData.email, role: userData.role, login: userData.login },
+        p_severity: 'info'
+      });
+    } catch (e) {
+      console.warn('log_security_event_enhanced failed (continuing):', e);
     }
 
     return new Response(

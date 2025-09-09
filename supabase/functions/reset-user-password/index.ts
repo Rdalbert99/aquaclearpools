@@ -52,6 +52,27 @@ const handler = async (req: Request): Promise<Response> => {
       });
     }
 
+    // Rate limit per admin user
+    try {
+      const identifier = userData.user.id;
+      const tempAdmin = createClient(supabaseUrl, supabaseServiceKey, { auth: { autoRefreshToken: false, persistSession: false } });
+      const { data: allowed, error: rlError } = await tempAdmin.rpc('check_rate_limit', {
+        p_identifier: identifier,
+        p_endpoint: 'reset-user-password',
+        p_max_requests: 30,
+        p_window_minutes: 15
+      });
+      if (rlError) console.warn('check_rate_limit error:', rlError);
+      if (allowed === false) {
+        return new Response(JSON.stringify({ error: 'Too many requests. Please try again later.' }), {
+          status: 429,
+          headers: { 'Content-Type': 'application/json', ...corsHeaders },
+        });
+      }
+    } catch (e) {
+      console.warn('Rate limit RPC failed (continuing):', e);
+    }
+
     // Create admin client
     const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey, {
       auth: {
@@ -171,7 +192,19 @@ const handler = async (req: Request): Promise<Response> => {
       if (flagByEmailError) console.warn('Warning: Failed to update must_change_password by email:', flagByEmailError);
     }
 
-    console.log('Password reset successful for:', emailToUse);
+    try {
+      const tempAdmin = createClient(supabaseUrl, supabaseServiceKey, { auth: { autoRefreshToken: false, persistSession: false } });
+      await tempAdmin.rpc('log_security_event_enhanced', {
+        p_event_type: 'reset_password_success',
+        p_user_id: userData.user.id,
+        p_session_id: null,
+        p_endpoint: 'reset-user-password',
+        p_payload: { target_email: emailToUse },
+        p_severity: 'info'
+      });
+    } catch (e) {
+      console.warn('log_security_event_enhanced failed (continuing):', e);
+    }
 
     return new Response(
       JSON.stringify({

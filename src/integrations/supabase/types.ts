@@ -143,6 +143,42 @@ export type Database = {
           },
         ]
       }
+      client_tech_messages: {
+        Row: {
+          client_id: string
+          created_at: string
+          id: string
+          message: string
+          message_type: string | null
+          read_at: string | null
+          sender_id: string
+          technician_id: string
+          updated_at: string
+        }
+        Insert: {
+          client_id: string
+          created_at?: string
+          id?: string
+          message: string
+          message_type?: string | null
+          read_at?: string | null
+          sender_id: string
+          technician_id: string
+          updated_at?: string
+        }
+        Update: {
+          client_id?: string
+          created_at?: string
+          id?: string
+          message?: string
+          message_type?: string | null
+          read_at?: string | null
+          sender_id?: string
+          technician_id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       client_users: {
         Row: {
           client_id: string
@@ -761,6 +797,7 @@ export type Database = {
           name: string
           needs_auth_migration: boolean | null
           phone: string | null
+          profile_image_url: string | null
           role: string
           state: string | null
           status: string
@@ -786,6 +823,7 @@ export type Database = {
           name: string
           needs_auth_migration?: boolean | null
           phone?: string | null
+          profile_image_url?: string | null
           role: string
           state?: string | null
           status?: string
@@ -811,6 +849,7 @@ export type Database = {
           name?: string
           needs_auth_migration?: boolean | null
           phone?: string | null
+          profile_image_url?: string | null
           role?: string
           state?: string | null
           status?: string

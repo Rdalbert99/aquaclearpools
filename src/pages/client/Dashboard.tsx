@@ -14,15 +14,24 @@ import {
   Plus,
   FileText,
   Camera,
-  Phone
+  Phone,
+  User,
+  MessageCircle,
+  Clock,
+  Star
 } from 'lucide-react';
 import { YourPoolSection } from '@/components/client/YourPoolSection';
+import { ProfilePictureUpload } from '@/components/client/ProfilePictureUpload';
+import { TechnicianMessageDialog } from '@/components/client/TechnicianMessageDialog';
+import { ReviewDialog } from '@/components/client/ReviewDialog';
 
 interface ClientDashboardData {
   client: any;
   nextService: any;
   lastService: any;
   pendingRequests: any[];
+  assignedTechnician: any;
+  userProfile: any;
 }
 
 export default function ClientDashboard() {
@@ -46,6 +55,13 @@ export default function ClientDashboard() {
     try {
       console.log('Fetching client profile for user_id:', user.id);
       
+      // Load user profile for profile image
+      const { data: userProfile } = await supabase
+        .from('users')
+        .select('profile_image_url')
+        .eq('id', user.id)
+        .maybeSingle();
+      
       // Load client profile
       const { data: client, error: clientError } = await supabase
         .from('clients')
@@ -68,6 +84,25 @@ export default function ClientDashboard() {
       }
 
       console.log('Client found:', client.customer, 'ID:', client.id);
+
+      // Load assigned technician details
+      let assignedTechnician = null;
+      if (client.assigned_technician_id) {
+        console.log('Loading technician details for ID:', client.assigned_technician_id);
+        const { data: techData, error: techError } = await supabase
+          .from('users')
+          .select('id, name, email, phone, profile_image_url')
+          .eq('id', client.assigned_technician_id)
+          .eq('role', 'tech')
+          .maybeSingle();
+        
+        if (techError) {
+          console.error('Error loading technician:', techError);
+        } else {
+          assignedTechnician = techData;
+          console.log('Technician loaded:', techData?.name);
+        }
+      }
 
       // Load last service with technician details
       console.log('Loading last service for client_id:', client.id);
@@ -108,7 +143,9 @@ export default function ClientDashboard() {
         client,
         nextService: client.next_service_date,
         lastService: lastService || null,
-        pendingRequests: pendingRequests || []
+        pendingRequests: pendingRequests || [],
+        assignedTechnician,
+        userProfile
       };
       
       console.log('Setting dashboard data:', dashboardData);
@@ -252,6 +289,81 @@ export default function ClientDashboard() {
         onImageUpdated={loadDashboardData}
       />
 
+      {/* Profile Picture Section */}
+      <ProfilePictureUpload 
+        currentImageUrl={dashboardData?.userProfile?.profile_image_url}
+        onImageUpdated={loadDashboardData}
+      />
+
+      {/* Technician Information */}
+      {dashboardData?.assignedTechnician && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center space-x-2">
+              <User className="h-5 w-5 text-blue-500" />
+              <span>Your Technician</span>
+            </CardTitle>
+            <CardDescription>Your assigned pool service technician</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-center space-x-4">
+              <div className="h-12 w-12 rounded-full bg-muted flex items-center justify-center">
+                {dashboardData.assignedTechnician.profile_image_url ? (
+                  <img 
+                    src={dashboardData.assignedTechnician.profile_image_url} 
+                    alt={dashboardData.assignedTechnician.name}
+                    className="h-12 w-12 rounded-full object-cover"
+                  />
+                ) : (
+                  <User className="h-6 w-6" />
+                )}
+              </div>
+              <div className="flex-1">
+                <p className="font-semibold">{dashboardData.assignedTechnician.name}</p>
+                <p className="text-sm text-muted-foreground">{dashboardData.assignedTechnician.email}</p>
+                {dashboardData.assignedTechnician.phone && (
+                  <p className="text-sm text-muted-foreground">{dashboardData.assignedTechnician.phone}</p>
+                )}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Next Service Appointment */}
+      {client.next_service_date && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center space-x-2">
+              <Clock className="h-5 w-5 text-green-500" />
+              <span>Next Scheduled Service</span>
+            </CardTitle>
+            <CardDescription>Your upcoming pool service appointment</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-center justify-between p-4 bg-muted rounded-lg">
+              <div>
+                <p className="font-medium">
+                  {new Date(client.next_service_date).toLocaleDateString('en-US', {
+                    weekday: 'long',
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric'
+                  })}
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  {dashboardData.assignedTechnician 
+                    ? `with ${dashboardData.assignedTechnician.name}`
+                    : 'Technician to be assigned'
+                  }
+                </p>
+              </div>
+              <Badge variant="outline">Scheduled</Badge>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Last Service Information */}
       {dashboardData?.lastService && (
         <Card>
@@ -371,6 +483,16 @@ export default function ClientDashboard() {
               </Link>
             </Button>
             
+            <ReviewDialog clientId={client.id} />
+            
+            {dashboardData?.assignedTechnician && (
+              <TechnicianMessageDialog 
+                clientId={client.id}
+                technicianId={dashboardData.assignedTechnician.id}
+                technicianName={dashboardData.assignedTechnician.name}
+              />
+            )}
+            
             <Button asChild variant="outline" className="h-16 text-left flex-col items-start p-4">
               <Link to="/client/profile">
                 <div className="flex items-center space-x-2 mb-1">
@@ -381,15 +503,15 @@ export default function ClientDashboard() {
               </Link>
             </Button>
 
-              <Button asChild variant="outline" className="h-16 text-left flex-col items-start p-4">
-                <Link to="/contact">
-                  <div className="flex items-center space-x-2 mb-1">
-                    <Phone className="h-5 w-5" />
-                    <span className="font-semibold">Contact Support</span>
-                  </div>
-                  <span className="text-sm opacity-80">Get help with your pool service needs</span>
-                </Link>
-              </Button>
+            <Button asChild variant="outline" className="h-16 text-left flex-col items-start p-4">
+              <Link to="/contact">
+                <div className="flex items-center space-x-2 mb-1">
+                  <Phone className="h-5 w-5" />
+                  <span className="font-semibold">Contact Support</span>
+                </div>
+                <span className="text-sm opacity-80">Get help with your pool service needs</span>
+              </Link>
+            </Button>
           </div>
         </CardContent>
       </Card>

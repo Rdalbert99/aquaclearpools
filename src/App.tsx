@@ -50,6 +50,7 @@ import RequestService from "./pages/client/RequestService";
 import ClientProfile from "./pages/client/Profile";
 import Profile from "./pages/Profile";
 import Contact from "./pages/Contact";
+import OptinProof from "./pages/OptinProof";
 import MailjetTest from "./pages/admin/MailjetTest";
 import SMSTest from "./pages/admin/SMSTest";
 
@@ -66,6 +67,7 @@ const AppRoutes = () => {
         {/* Public routes - Landing page accessible to all users */}
         <Route path="/" element={<Index />} />
         <Route path="/contact" element={<Contact />} />
+        <Route path="/optin-proof" element={<OptinProof />} />
         <Route path="/privacy" element={<Privacy />} />
         <Route path="/terms" element={<Terms />} />
         <Route path="/privacy-policy" element={<PrivacyPolicy />} />

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
+import { useUsernameValidation } from '@/hooks/useUsernameValidation';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -71,6 +72,14 @@ export default function ClientEdit() {
   const [newPassword, setNewPassword] = useState('');
   const [mustChangePassword, setMustChangePassword] = useState(false);
   const [lastTechVisit, setLastTechVisit] = useState<any>(null);
+  const [showCreateUser, setShowCreateUser] = useState(false);
+  const [newUserLogin, setNewUserLogin] = useState('');
+  const [newUserPassword, setNewUserPassword] = useState('');
+  const [creatingUser, setCreatingUser] = useState(false);
+  
+  const { isValidating: isValidatingUsername, isAvailable: isUsernameAvailable } = useUsernameValidation({
+    username: newUserLogin
+  });
 
   useEffect(() => {
     if (id) {
@@ -258,6 +267,70 @@ export default function ClientEdit() {
       password += chars.charAt(Math.floor(Math.random() * chars.length));
     }
     setNewPassword(password);
+  };
+
+  const generateNewUserPassword = () => {
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*';
+    let password = '';
+    for (let i = 0; i < 12; i++) {
+      password += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    setNewUserPassword(password);
+  };
+
+  const handleCreateUser = async () => {
+    if (!newUserLogin || !newUserPassword || !client?.email) return;
+    
+    setCreatingUser(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('create-user-account', {
+        body: {
+          email: client.email,
+          login: newUserLogin,
+          password: newUserPassword,
+          name: client.customer,
+          role: 'client',
+          phone: client.phone || null,
+          address: client.address || null
+        }
+      });
+
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+
+      // Link the new user to this client
+      if (data.userId) {
+        const { error: linkError } = await supabase
+          .from('clients')
+          .update({ user_id: data.userId, updated_at: new Date().toISOString() })
+          .eq('id', id);
+
+        if (linkError) throw linkError;
+
+        // Update local state
+        setClient({ ...client, user_id: data.userId });
+        setMustChangePassword(true);
+      }
+
+      toast({
+        title: "User Created",
+        description: "Login credentials have been created successfully.",
+      });
+
+      setShowCreateUser(false);
+      setNewUserLogin('');
+      setNewUserPassword('');
+      loadUsers(); // Refresh users list
+    } catch (error: any) {
+      console.error('Error creating user:', error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to create user account.",
+        variant: "destructive",
+      });
+    } finally {
+      setCreatingUser(false);
+    }
   };
 
   const handlePasswordReset = async () => {
@@ -484,6 +557,17 @@ export default function ClientEdit() {
               </Select>
               {mustChangePassword && client.user_id && client.user_id !== "none" && (
                 <p className="text-sm text-amber-600">⚠️ User must change password on next login</p>
+              )}
+              {(!client.user_id || client.user_id === "none") && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setShowCreateUser(true)}
+                  className="w-full"
+                >
+                  <User className="mr-2 h-4 w-4" />
+                  Create New Login Account
+                </Button>
               )}
             </div>
 
@@ -824,6 +908,71 @@ export default function ClientEdit() {
               }
             }} disabled={sendingInvite}>
               {sendingInvite ? 'Sending...' : 'Send Request'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Create User Dialog */}
+      <Dialog open={showCreateUser} onOpenChange={setShowCreateUser}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Create Login Account</DialogTitle>
+            <DialogDescription>
+              Create login credentials for this client to access their account.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="newUserLogin">Username</Label>
+              <Input
+                id="newUserLogin"
+                value={newUserLogin}
+                onChange={(e) => setNewUserLogin(e.target.value)}
+                placeholder="Enter username"
+              />
+              {isValidatingUsername && (
+                <p className="text-xs text-muted-foreground">Checking availability...</p>
+              )}
+              {newUserLogin.length >= 3 && !isValidatingUsername && (
+                <p className={`text-xs ${isUsernameAvailable ? 'text-green-600' : 'text-red-600'}`}>
+                  {isUsernameAvailable ? '✓ Username available' : '✗ Username already taken'}
+                </p>
+              )}
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="newUserPassword">Password</Label>
+              <div className="flex gap-2">
+                <Input
+                  id="newUserPassword"
+                  value={newUserPassword}
+                  onChange={(e) => setNewUserPassword(e.target.value)}
+                  type="text"
+                  placeholder="Enter password"
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={generateNewUserPassword}
+                >
+                  Generate
+                </Button>
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => {
+              setShowCreateUser(false);
+              setNewUserLogin('');
+              setNewUserPassword('');
+            }}>
+              Cancel
+            </Button>
+            <Button 
+              onClick={handleCreateUser} 
+              disabled={creatingUser || !newUserLogin || !newUserPassword || !isUsernameAvailable}
+            >
+              {creatingUser ? 'Creating...' : 'Create Account'}
             </Button>
           </DialogFooter>
         </DialogContent>

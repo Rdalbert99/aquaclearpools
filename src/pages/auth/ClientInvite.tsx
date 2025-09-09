@@ -30,6 +30,7 @@ export default function ClientInvite() {
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [address, setAddress] = useState("");
+  const [login, setLogin] = useState("");
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -78,6 +79,10 @@ export default function ClientInvite() {
       toast({ title: "Email required", description: "Please enter a valid email.", variant: "destructive" });
       return;
     }
+    if (!login) {
+      toast({ title: "Login required", description: "Please enter a username for login.", variant: "destructive" });
+      return;
+    }
     if (!password || password !== confirm) {
       toast({ title: "Password mismatch", description: "Passwords must match.", variant: "destructive" });
       return;
@@ -90,6 +95,7 @@ export default function ClientInvite() {
           token,
           name,
           email,
+          login,
           phone: phone || undefined,
           address: address || undefined,
           password,
@@ -155,6 +161,15 @@ export default function ClientInvite() {
                 className="bg-muted text-muted-foreground cursor-not-allowed" 
               />
               <p className="text-xs text-muted-foreground">Email is locked to the invitation</p>
+            </div>
+            <div className="space-y-2">
+              <Label>Username</Label>
+              <Input 
+                value={login} 
+                onChange={(e) => setLogin(e.target.value)} 
+                placeholder="Enter username for login"
+              />
+              <p className="text-xs text-muted-foreground">This will be your login username</p>
             </div>
             <div className="space-y-2">
               <Label>Phone</Label>

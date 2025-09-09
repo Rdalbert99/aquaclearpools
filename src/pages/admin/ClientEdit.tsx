@@ -28,7 +28,9 @@ import {
   Key,
   Plus,
   UserCheck,
-  UserX
+  UserX,
+  Eye,
+  EyeOff
 } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Textarea } from '@/components/ui/textarea';
@@ -79,6 +81,8 @@ export default function ClientEdit() {
   const [showCreateUser, setShowCreateUser] = useState(false);
   const [newUserLogin, setNewUserLogin] = useState('');
   const [newUserPassword, setNewUserPassword] = useState('');
+  const [newUserConfirmPassword, setNewUserConfirmPassword] = useState('');
+  const [showNewUserPassword, setShowNewUserPassword] = useState(false);
   const [creatingUser, setCreatingUser] = useState(false);
   
   const { isValidating: isValidatingUsername, isAvailable: isUsernameAvailable } = useUsernameValidation({
@@ -280,10 +284,20 @@ export default function ClientEdit() {
       password += chars.charAt(Math.floor(Math.random() * chars.length));
     }
     setNewUserPassword(password);
+    return password;
   };
 
   const handleCreateUser = async () => {
     if (!newUserLogin || !newUserPassword || !client?.email) return;
+    
+    if (newUserPassword !== newUserConfirmPassword) {
+      toast({
+        title: "Password Mismatch",
+        description: "Password and confirmation do not match.",
+        variant: "destructive"
+      });
+      return;
+    }
     
     setCreatingUser(true);
     try {
@@ -324,6 +338,7 @@ export default function ClientEdit() {
       setShowCreateUser(false);
       setNewUserLogin('');
       setNewUserPassword('');
+      setNewUserConfirmPassword('');
       loadUsers(); // Refresh users list
     } catch (error: any) {
       console.error('Error creating user:', error);
@@ -989,7 +1004,7 @@ export default function ClientEdit() {
 
       {/* Create User Dialog */}
       <Dialog open={showCreateUser} onOpenChange={setShowCreateUser}>
-        <DialogContent>
+        <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Create Login Account</DialogTitle>
             <DialogDescription>
@@ -1014,24 +1029,76 @@ export default function ClientEdit() {
                 </p>
               )}
             </div>
+            
             <div className="space-y-2">
               <Label htmlFor="newUserPassword">Password</Label>
               <div className="flex gap-2">
-                <Input
-                  id="newUserPassword"
-                  value={newUserPassword}
-                  onChange={(e) => setNewUserPassword(e.target.value)}
-                  type="text"
-                  placeholder="Enter password"
-                />
+                <div className="relative flex-1">
+                  <Input
+                    id="newUserPassword"
+                    value={newUserPassword}
+                    onChange={(e) => setNewUserPassword(e.target.value)}
+                    type={showNewUserPassword ? "text" : "password"}
+                    placeholder="Enter password"
+                  />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                    onClick={() => setShowNewUserPassword(!showNewUserPassword)}
+                  >
+                    {showNewUserPassword ? (
+                      <EyeOff className="h-4 w-4" />
+                    ) : (
+                      <Eye className="h-4 w-4" />
+                    )}
+                  </Button>
+                </div>
                 <Button
                   type="button"
                   variant="outline"
-                  onClick={generateNewUserPassword}
+                  onClick={() => {
+                    const password = generateNewUserPassword();
+                    setNewUserPassword(password);
+                    setNewUserConfirmPassword(password);
+                  }}
                 >
                   Generate
                 </Button>
               </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="newUserConfirmPassword">Confirm Password</Label>
+              <div className="relative">
+                <Input
+                  id="newUserConfirmPassword"
+                  value={newUserConfirmPassword}
+                  onChange={(e) => setNewUserConfirmPassword(e.target.value)}
+                  type={showNewUserPassword ? "text" : "password"}
+                  placeholder="Confirm password"
+                />
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                  onClick={() => setShowNewUserPassword(!showNewUserPassword)}
+                >
+                  {showNewUserPassword ? (
+                    <EyeOff className="h-4 w-4" />
+                  ) : (
+                    <Eye className="h-4 w-4" />
+                  )}
+                </Button>
+              </div>
+              {newUserPassword && newUserConfirmPassword && newUserPassword !== newUserConfirmPassword && (
+                <p className="text-xs text-red-600">✗ Passwords do not match</p>
+              )}
+              {newUserPassword && newUserConfirmPassword && newUserPassword === newUserConfirmPassword && (
+                <p className="text-xs text-green-600">✓ Passwords match</p>
+              )}
             </div>
           </div>
           <DialogFooter>
@@ -1039,12 +1106,13 @@ export default function ClientEdit() {
               setShowCreateUser(false);
               setNewUserLogin('');
               setNewUserPassword('');
+              setNewUserConfirmPassword('');
             }}>
               Cancel
             </Button>
             <Button 
               onClick={handleCreateUser} 
-              disabled={creatingUser || !newUserLogin || !newUserPassword || !isUsernameAvailable}
+              disabled={creatingUser || !newUserLogin || !newUserPassword || !newUserConfirmPassword || !isUsernameAvailable || newUserPassword !== newUserConfirmPassword}
             >
               {creatingUser ? 'Creating...' : 'Create Account'}
             </Button>

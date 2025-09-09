@@ -301,12 +301,18 @@ export default function ClientEdit() {
     
     setCreatingUser(true);
     try {
+      const full = (client.customer || '').trim();
+      const [firstNameRaw, ...restParts] = full.split(/\s+/);
+      const firstName = firstNameRaw || 'Customer';
+      const lastName = restParts.join(' ') || 'Account';
+
       const { data, error } = await supabase.functions.invoke('create-user-account', {
         body: {
+          firstName,
+          lastName,
           email: client.email,
           login: newUserLogin,
           password: newUserPassword,
-          name: client.customer,
           role: 'client',
           phone: client.phone || null,
           address: client.address || null
@@ -317,16 +323,17 @@ export default function ClientEdit() {
       if (data?.error) throw new Error(data.error);
 
       // Link the new user to this client
-      if (data.userId) {
+      const createdUserId = data?.user?.id;
+      if (createdUserId) {
         const { error: linkError } = await supabase
           .from('clients')
-          .update({ user_id: data.userId, updated_at: new Date().toISOString() })
+          .update({ user_id: createdUserId, updated_at: new Date().toISOString() })
           .eq('id', id);
 
         if (linkError) throw linkError;
 
         // Update local state
-        setClient({ ...client, user_id: data.userId });
+        setClient({ ...client, user_id: createdUserId });
         setMustChangePassword(true);
       }
 

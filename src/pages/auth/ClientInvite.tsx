@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
-import aquaClearLogo from "@/assets/aqua-clear-logo-3d.png";
+
 
 interface InvitePayload {
   token: string;
@@ -59,7 +59,7 @@ export default function ClientInvite() {
         } else {
           setInvite(data as any);
           setName((data as any).customer || "");
-          setEmail(((data as any).email_full as string) || "");
+          setEmail(((data as any).email as string) || "");
           setPhone(((data as any).phone as string) || "");
           setAddress(((data as any).address as string) || "");
         }
@@ -132,7 +132,7 @@ export default function ClientInvite() {
         <CardHeader className="text-center pb-4">
           <div className="flex justify-center mb-4">
             <img 
-              src={aquaClearLogo} 
+              src="/lovable-uploads/ac1a09a4-823e-491c-bf59-fb76c8abb196.png" 
               alt="Aqua Clear Pools" 
               className="h-16 w-auto"
             />

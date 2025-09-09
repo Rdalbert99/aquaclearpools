@@ -19,12 +19,46 @@ export default function ForgotPassword() {
     setIsLoading(true);
 
     try {
-      // First, get the email by username/login
+      // Check rate limiting before processing
+      const { data: allowed, error: rateLimitError } = await supabase.rpc(
+        'allow_password_reset_request',
+        { p_identifier: identifier }
+      );
+
+      if (rateLimitError) {
+        console.error('Error checking rate limit:', rateLimitError);
+        toast({
+          title: "Error",
+          description: "Unable to process your request. Please try again later.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      if (!allowed) {
+        toast({
+          title: "Too many attempts",
+          description: "Too many password reset attempts. Please wait 15 minutes before trying again.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Get the email by username/login
       const { data: emailData, error: emailError } = await supabase.rpc('get_email_by_login', {
         login_input: identifier
       });
 
-      if (emailError) throw emailError;
+      if (emailError) {
+        console.error('Error getting email:', emailError);
+        // Don't reveal specific errors - show generic success to prevent enumeration
+        setIsSubmitted(true);
+        toast({
+          title: "Request processed",
+          description: "If an account exists with that username/email, you'll receive reset instructions.",
+        });
+        return;
+      }
 
       let email = emailData;
       
@@ -38,19 +72,28 @@ export default function ForgotPassword() {
         redirectTo: `${window.location.origin}/auth/reset-password`,
       });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error sending reset email:', error);
+        // Don't reveal email sending errors - show generic success
+        setIsSubmitted(true);
+        toast({
+          title: "Request processed",
+          description: "If an account exists with that username/email, you'll receive reset instructions.",
+        });
+        return;
+      }
 
       setIsSubmitted(true);
       toast({
-        title: "Reset email sent",
-        description: "Check your email for password reset instructions.",
+        title: "Request processed",
+        description: "If an account exists with that username/email, you'll receive reset instructions.",
       });
 
     } catch (error: any) {
-      console.error('Error sending reset email:', error);
+      console.error('Unexpected error:', error);
       toast({
         title: "Error",
-        description: error.message || "Failed to send reset email. Please try again.",
+        description: "An unexpected error occurred. Please try again later.",
         variant: "destructive",
       });
     } finally {

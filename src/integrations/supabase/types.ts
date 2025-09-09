@@ -316,6 +316,30 @@ export type Database = {
           },
         ]
       }
+      password_reset_attempts: {
+        Row: {
+          created_at: string
+          id: string
+          identifier_hash: string
+          ip: string | null
+          user_agent: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          identifier_hash: string
+          ip?: string | null
+          user_agent?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          identifier_hash?: string
+          ip?: string | null
+          user_agent?: string | null
+        }
+        Relationships: []
+      }
       reviews: {
         Row: {
           approved_at: string | null
@@ -758,6 +782,10 @@ export type Database = {
       }
     }
     Functions: {
+      allow_password_reset_request: {
+        Args: { p_identifier: string }
+        Returns: boolean
+      }
       cleanup_expired_invitations: {
         Args: Record<PropertyKey, never>
         Returns: number

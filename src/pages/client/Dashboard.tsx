@@ -35,15 +35,25 @@ export default function ClientDashboard() {
   }, [user]);
 
   const loadDashboardData = async () => {
-    if (!user?.id) return;
+    console.log('Loading dashboard data for user:', user?.id, 'role:', user?.role);
+    
+    if (!user?.id) {
+      console.log('No user ID found, cannot load dashboard data');
+      setLoading(false);
+      return;
+    }
 
     try {
+      console.log('Fetching client profile for user_id:', user.id);
+      
       // Load client profile
       const { data: client, error: clientError } = await supabase
         .from('clients')
         .select('*')
         .eq('user_id', user.id)
         .maybeSingle();
+
+      console.log('Client query result:', { client, error: clientError });
 
       if (clientError) {
         console.error('Error loading client:', clientError);
@@ -52,12 +62,16 @@ export default function ClientDashboard() {
       }
 
       if (!client) {
+        console.log('No client record found for user_id:', user.id);
         setLoading(false);
         return;
       }
 
+      console.log('Client found:', client.customer, 'ID:', client.id);
+
       // Load last service with technician details
-      const { data: lastService } = await supabase
+      console.log('Loading last service for client_id:', client.id);
+      const { data: lastService, error: serviceError } = await supabase
         .from('services')
         .select(`
           *,
@@ -69,20 +83,36 @@ export default function ClientDashboard() {
         .limit(1)
         .maybeSingle();
 
+      if (serviceError) {
+        console.error('Error loading last service:', serviceError);
+      } else {
+        console.log('Last service loaded:', lastService);
+      }
+
       // Load pending service requests
-      const { data: pendingRequests } = await supabase
+      console.log('Loading pending requests for client_id:', client.id);
+      const { data: pendingRequests, error: requestsError } = await supabase
         .from('service_requests')
         .select('*')
         .eq('client_id', client.id)
         .eq('status', 'pending')
         .order('requested_date', { ascending: false });
 
-      setDashboardData({
+      if (requestsError) {
+        console.error('Error loading pending requests:', requestsError);
+      } else {
+        console.log('Pending requests loaded:', pendingRequests?.length || 0);
+      }
+
+      const dashboardData = {
         client,
         nextService: client.next_service_date,
         lastService: lastService || null,
         pendingRequests: pendingRequests || []
-      });
+      };
+      
+      console.log('Setting dashboard data:', dashboardData);
+      setDashboardData(dashboardData);
     } catch (error) {
       console.error('Error loading dashboard data:', error);
     } finally {
@@ -90,11 +120,15 @@ export default function ClientDashboard() {
     }
   };
 
+  console.log('ClientDashboard render - loading:', loading, 'user:', user?.id, 'role:', user?.role, 'dashboardData:', !!dashboardData);
+
   if (loading) {
+    console.log('Showing loading spinner');
     return <LoadingSpinner />;
   }
 
   if (!dashboardData?.client) {
+    console.log('No client data found, showing welcome message');
     return (
       <div className="p-6">
         <Card>
@@ -116,11 +150,19 @@ export default function ClientDashboard() {
   }
 
   const { client } = dashboardData;
+  console.log('Client data found:', client.customer, 'checking for missing pool info');
   
   // Check if essential pool information is missing
   const missingPoolInfo = !client.pool_size || !client.pool_type || !client.liner_type;
+  console.log('Missing pool info check:', { 
+    pool_size: client.pool_size, 
+    pool_type: client.pool_type, 
+    liner_type: client.liner_type, 
+    missingPoolInfo 
+  });
   
   if (missingPoolInfo) {
+    console.log('Showing missing pool info setup screen');
     return (
       <div className="p-6">
         <Card>
@@ -155,6 +197,7 @@ export default function ClientDashboard() {
     );
   }
 
+  console.log('Rendering full client dashboard for:', client.customer);
   return (
     <div className="p-6 space-y-6">
       <div className="flex items-center justify-between">
@@ -338,13 +381,15 @@ export default function ClientDashboard() {
               </Link>
             </Button>
 
-            <Button asChild variant="outline" className="h-16 text-left flex-col items-start p-4">
-              <div className="flex items-center space-x-2 mb-1">
-                <Phone className="h-5 w-5" />
-                <span className="font-semibold">Contact Support</span>
-              </div>
-              <span className="text-sm opacity-80">Get help with your pool service needs</span>
-            </Button>
+              <Button asChild variant="outline" className="h-16 text-left flex-col items-start p-4">
+                <Link to="/contact">
+                  <div className="flex items-center space-x-2 mb-1">
+                    <Phone className="h-5 w-5" />
+                    <span className="font-semibold">Contact Support</span>
+                  </div>
+                  <span className="text-sm opacity-80">Get help with your pool service needs</span>
+                </Link>
+              </Button>
           </div>
         </CardContent>
       </Card>

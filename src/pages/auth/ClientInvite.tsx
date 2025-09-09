@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
+import aquaClearLogo from "@/assets/aqua-clear-logo-3d.png";
 
 interface InvitePayload {
   token: string;
@@ -73,7 +74,7 @@ export default function ClientInvite() {
 
   const handleSubmit = async () => {
     if (!token) return;
-    if (!email) {
+    if (!email || !invite) {
       toast({ title: "Email required", description: "Please enter a valid email.", variant: "destructive" });
       return;
     }
@@ -128,8 +129,16 @@ export default function ClientInvite() {
   return (
     <div className="p-6">
       <Card className="max-w-2xl mx-auto">
-        <CardHeader>
-          <CardTitle>Create Your Account</CardTitle>
+        <CardHeader className="text-center pb-4">
+          <div className="flex justify-center mb-4">
+            <img 
+              src={aquaClearLogo} 
+              alt="Aqua Clear Pools" 
+              className="h-16 w-auto"
+            />
+          </div>
+          <CardTitle className="text-2xl font-bold">Create Your Account</CardTitle>
+          <p className="text-muted-foreground">Complete your registration to get started</p>
         </CardHeader>
         <CardContent>
           <div className="space-y-4">

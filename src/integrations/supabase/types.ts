@@ -14,6 +14,33 @@ export type Database = {
   }
   public: {
     Tables: {
+      api_rate_limits: {
+        Row: {
+          created_at: string
+          endpoint: string
+          id: string
+          identifier: string
+          request_count: number
+          window_start: string
+        }
+        Insert: {
+          created_at?: string
+          endpoint: string
+          id?: string
+          identifier: string
+          request_count?: number
+          window_start?: string
+        }
+        Update: {
+          created_at?: string
+          endpoint?: string
+          id?: string
+          identifier?: string
+          request_count?: number
+          window_start?: string
+        }
+        Relationships: []
+      }
       chemical_calculations: {
         Row: {
           calculated_date: string | null
@@ -433,6 +460,45 @@ export type Database = {
         }
         Relationships: []
       }
+      security_events: {
+        Row: {
+          created_at: string
+          endpoint: string | null
+          event_type: string
+          id: string
+          ip_address: unknown | null
+          payload: Json | null
+          session_id: string | null
+          severity: string
+          user_agent: string | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          endpoint?: string | null
+          event_type: string
+          id?: string
+          ip_address?: unknown | null
+          payload?: Json | null
+          session_id?: string | null
+          severity?: string
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          endpoint?: string | null
+          event_type?: string
+          id?: string
+          ip_address?: unknown | null
+          payload?: Json | null
+          session_id?: string | null
+          severity?: string
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       service_requests: {
         Row: {
           address_validated: boolean | null
@@ -786,6 +852,15 @@ export type Database = {
         Args: { p_identifier: string }
         Returns: boolean
       }
+      check_rate_limit: {
+        Args: {
+          p_endpoint: string
+          p_identifier: string
+          p_max_requests?: number
+          p_window_minutes?: number
+        }
+        Returns: boolean
+      }
       cleanup_expired_invitations: {
         Args: Record<PropertyKey, never>
         Returns: number
@@ -828,6 +903,17 @@ export type Database = {
           p_old_values?: Json
           p_target_table?: string
           p_target_user_id?: string
+        }
+        Returns: undefined
+      }
+      log_security_event_enhanced: {
+        Args: {
+          p_endpoint?: string
+          p_event_type: string
+          p_payload?: Json
+          p_session_id?: string
+          p_severity?: string
+          p_user_id?: string
         }
         Returns: undefined
       }

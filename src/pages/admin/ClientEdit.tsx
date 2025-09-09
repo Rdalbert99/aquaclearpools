@@ -24,7 +24,11 @@ import {
   Mail,
   Phone,
   Wrench,
-  Bell
+  Bell,
+  Key,
+  Plus,
+  UserCheck,
+  UserX
 } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Textarea } from '@/components/ui/textarea';
@@ -540,6 +544,90 @@ export default function ClientEdit() {
               />
             </div>
 
+            {/* Website Login Access Section */}
+            <div className="border-2 border-blue-200 rounded-lg p-4 bg-gradient-to-r from-blue-50 to-indigo-50">
+              <div className="flex items-center justify-between mb-3">
+                <h4 className="font-semibold text-blue-900 flex items-center gap-2">
+                  <Key className="w-5 h-5" />
+                  Website Login Access
+                </h4>
+                {client.user_id && client.user_id !== "none" ? (
+                  <div className="flex items-center gap-1 text-green-700">
+                    <UserCheck className="w-4 h-4" />
+                    <span className="text-sm font-medium">Active</span>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-1 text-orange-700">
+                    <UserX className="w-4 h-4" />
+                    <span className="text-sm font-medium">No Access</span>
+                  </div>
+                )}
+              </div>
+              
+              {client.user_id && client.user_id !== "none" ? (
+                <div className="space-y-3">
+                  <div className="bg-white p-3 rounded border">
+                    <div className="text-sm text-muted-foreground mb-1">Current Login Details:</div>
+                    <div className="flex items-center justify-between">
+                      <span className="font-medium">
+                        {users.find(u => u.id === client.user_id)?.name || 'Loading...'}
+                      </span>
+                      <span className="text-sm text-muted-foreground">
+                        ({users.find(u => u.id === client.user_id)?.email || client.email})
+                      </span>
+                    </div>
+                    {mustChangePassword && (
+                      <p className="text-xs text-amber-600 mt-1">⚠️ Must change password on next login</p>
+                    )}
+                  </div>
+                  
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setShowCreateUser(true)}
+                      className="flex-1"
+                    >
+                      <User className="w-4 h-4 mr-2" />
+                      Update Credentials
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        generatePassword();
+                        setShowPasswordDialog(true);
+                      }}
+                      className="flex-1"
+                    >
+                      <Lock className="w-4 h-4 mr-2" />
+                      Reset Password
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  <div className="bg-orange-50 border border-orange-200 p-3 rounded">
+                    <p className="text-sm text-orange-700 mb-2">
+                      <strong>No website access configured</strong>
+                    </p>
+                    <p className="text-xs text-orange-600">
+                      Create login credentials so this client can access the customer portal.
+                    </p>
+                  </div>
+                  
+                  <Button
+                    type="button"
+                    onClick={() => setShowCreateUser(true)}
+                    className="w-full bg-blue-600 hover:bg-blue-700"
+                  >
+                    <Plus className="w-4 h-4 mr-2" />
+                    Create Website Login
+                  </Button>
+                </div>
+              )}
+            </div>
+
             <div className="space-y-2">
               <Label htmlFor="user">Associated User Account</Label>
               <Select value={client.user_id || "none"} onValueChange={(value) => handleInputChange('user_id', value === "none" ? "" : value)}>
@@ -555,20 +643,6 @@ export default function ClientEdit() {
                   ))}
                 </SelectContent>
               </Select>
-              {mustChangePassword && client.user_id && client.user_id !== "none" && (
-                <p className="text-sm text-amber-600">⚠️ User must change password on next login</p>
-              )}
-              {(!client.user_id || client.user_id === "none") && (
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => setShowCreateUser(true)}
-                  className="w-full"
-                >
-                  <User className="mr-2 h-4 w-4" />
-                  Create New Login Account
-                </Button>
-              )}
             </div>
 
             <div className="space-y-2">

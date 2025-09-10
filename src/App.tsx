@@ -67,7 +67,7 @@ const AppRoutes = () => {
         {/* Public routes - Landing page accessible to all users */}
         <Route path="/" element={<Index />} />
         <Route path="/contact" element={<Contact />} />
-        <Route path="/optin-proof" element={<OptinProof />} />
+        <Route path="/opt-in-form-proof" element={<OptinProof />} />
         <Route path="/privacy" element={<Privacy />} />
         <Route path="/terms" element={<Terms />} />
         <Route path="/privacy-policy" element={<PrivacyPolicy />} />

@@ -1,4 +1,4 @@
-const optinProofScreenshot = '/lovable-uploads/39ceb9da-017e-4762-9dc1-4b7cbfc29af7.png';
+const optinProofScreenshot = '/lovable-uploads/2849e2a6-bc48-4577-8083-425fac1212c5.png';
 
 export default function OptinProof() {
   return (
@@ -15,6 +15,16 @@ export default function OptinProof() {
           <div className="mb-6">
             <h2 className="text-2xl font-semibold mb-4 text-center">Client Registration Form SMS Consent</h2>
             
+            <div className="flex justify-center mb-6">
+              <div className="w-full max-w-3xl bg-background border border-border rounded-lg p-4">
+                <img 
+                  src={optinProofScreenshot}
+                  alt="Screenshot of Aqua Clear Pools client registration form showing SMS opt-in consent checkbox with full legal text"
+                  className="w-full h-auto rounded-lg border border-border shadow-md"
+                  style={{ maxHeight: '70vh' }}
+                />
+              </div>
+            </div>
           </div>
           
           <div className="mb-6">

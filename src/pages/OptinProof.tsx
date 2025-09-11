@@ -15,19 +15,6 @@ export default function OptinProof() {
           <div className="mb-6">
             <h2 className="text-2xl font-semibold mb-4 text-center">Client Registration Form SMS Consent</h2>
             
-            <div className="flex justify-center mb-4">
-              <div className="w-full max-w-2xl bg-background border border-border rounded-lg p-4">
-                <p className="text-sm text-muted-foreground mb-4 text-center">
-                  Screenshot placeholder - Upload screenshot of form after publishing
-                </p>
-                <img 
-                  src={optinProofScreenshot}
-                  alt="Screenshot of Aqua Clear Pools client registration form showing phone number field with SMS opt-in consent checkbox"
-                  className="max-w-full h-auto rounded-lg border border-border shadow-md"
-                  style={{ maxHeight: '60vh' }}
-                />
-              </div>
-            </div>
           </div>
           
           <div className="mb-6">

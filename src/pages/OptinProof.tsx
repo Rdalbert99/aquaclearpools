@@ -7,22 +7,14 @@ export default function OptinProof() {
         <div className="text-center mb-8">
           <h1 className="text-3xl font-bold mb-4">Opt-In Form Proof – Aqua Clear Pools</h1>
           <p className="text-muted-foreground text-lg">
-            Documentation of SMS opt-in consent collection in our client registration form
+            Documentation of SMS opt-in consent collection in our client registration form.
           </p>
         </div>
         
         <div className="bg-card rounded-lg shadow-lg p-6 md:p-8">
           <div className="mb-6">
-            <h2 className="text-xl font-semibold mb-3">SMS Opt-In Disclosure</h2>
-            <div className="bg-muted p-4 rounded-lg mb-4">
-              <p className="text-sm font-medium mb-2">Current SMS Disclosure Text:</p>
-              <p className="text-sm italic">
-                "By providing your phone number, you agree to receive SMS notifications from Aqua Clear Pools, including appointment reminders, service updates, and account notices. Message & data rates may apply. Message frequency varies. Reply STOP to unsubscribe or HELP for help. No mobile information will be sold or shared with third parties for promotional or marketing purposes."
-              </p>
-            </div>
-            <p className="text-muted-foreground">
-              This disclosure appears in our client registration form below the phone number field 
-              and complies with TCPA requirements for SMS consent collection.
+            <p className="text-base mb-6">
+              By providing your phone number, you agree to receive SMS notifications from Aqua Clear Pools, including appointment reminders, service updates, and account notices. Message & data rates may apply. Message frequency varies. Reply STOP to unsubscribe or HELP for help. No mobile information will be sold or shared with third parties for promotional or marketing purposes.
             </p>
           </div>
           

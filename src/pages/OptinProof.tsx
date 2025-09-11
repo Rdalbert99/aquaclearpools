@@ -17,14 +17,22 @@ export default function OptinProof() {
               By providing your phone number, you agree to receive SMS notifications from Aqua Clear Pools, including appointment reminders, service updates, and account notices. Message & data rates may apply. Message frequency varies. Reply STOP to unsubscribe or HELP for help. No mobile information will be sold or shared with third parties for promotional or marketing purposes.
             </p>
           </div>
-          
-          <div className="flex justify-center">
-            <img 
-              src={optinProofScreenshot}
-              alt="Screenshot of Aqua Clear Pools client registration form showing phone number field with SMS opt-in disclosure text"
-              className="max-w-full h-auto rounded-lg border border-border shadow-md"
-              style={{ maxHeight: '80vh' }}
-            />
+
+          <div className="mb-6">
+            <h2 className="text-2xl font-semibold mb-4 text-center">Client Registration Form SMS Disclosure</h2>
+            
+            <div className="flex justify-center mb-4">
+              <img 
+                src={optinProofScreenshot}
+                alt="Screenshot of Aqua Clear Pools client registration form showing phone number field with SMS opt-in disclosure text"
+                className="max-w-full h-auto rounded-lg border border-border shadow-md"
+                style={{ maxHeight: '80vh' }}
+              />
+            </div>
+            
+            <p className="text-center text-sm text-muted-foreground mb-6">
+              Screenshot of the Aqua Clear Pools client registration form with SMS opt-in disclosure, as required for compliance.
+            </p>
           </div>
           
           <div className="mt-6 text-sm text-muted-foreground text-center">

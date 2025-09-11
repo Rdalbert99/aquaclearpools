@@ -1,4 +1,4 @@
-import optinProofScreenshot from '@/assets/optin-proof-screenshot.png';
+const optinProofScreenshot = '/lovable-uploads/39ceb9da-017e-4762-9dc1-4b7cbfc29af7.png';
 
 export default function OptinProof() {
   return (

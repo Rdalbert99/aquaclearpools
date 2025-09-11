@@ -16,6 +16,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
 import { UsernameInput } from '@/components/ui/username-input';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Droplets, ArrowLeft, CheckCircle } from 'lucide-react';
 
 
@@ -25,6 +26,9 @@ const formSchema = z.object({
   lastName: z.string().min(2, 'Last name must be at least 2 characters'),
   email: z.string().email('Please enter a valid email address'),
   phone: z.string().min(10, 'Please enter a valid phone number'),
+  sms_consent: z.boolean().refine(val => val === true, {
+    message: "Please agree to SMS terms to continue.",
+  }),
   street: z.string().min(5, 'Please enter your street address'),
   city: z.string().min(2, 'Please enter your city'),
   state: z.string().min(2, 'Please enter your state'),
@@ -56,6 +60,7 @@ export default function ClientSignup() {
       lastName: '',
       email: '',
       phone: '',
+      sms_consent: false,
       street: '',
       city: '',
       state: '',
@@ -273,35 +278,46 @@ export default function ClientSignup() {
                       )}
                     />
 
-                    <FormField
-                      control={form.control}
-                      name="phone"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Phone Number</FormLabel>
-                          <FormControl>
-                            <Input placeholder="(555) 123-4567" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
+                     <FormField
+                       control={form.control}
+                       name="phone"
+                       render={({ field }) => (
+                         <FormItem>
+                           <FormLabel>Phone Number</FormLabel>
+                           <FormControl>
+                             <Input placeholder="(555) 123-4567" {...field} />
+                           </FormControl>
+                           <FormMessage />
+                         </FormItem>
+                       )}
+                     />
+                   </div>
 
-                  <div className="bg-muted/50 p-4 rounded-lg border border-border">
-                    <div className="space-y-3 text-left">
-                      <p className="text-sm leading-relaxed text-muted-foreground">
-                        By providing your phone number, you agree to receive SMS notifications from Aqua Clear Pools, including appointment reminders, service updates, and account notices. Message & data rates may apply. Message frequency varies. Reply STOP to unsubscribe or HELP for help.
-                      </p>
-                      <p className="text-sm leading-relaxed text-muted-foreground">
-                        No mobile information will be shared with third parties/affiliates for marketing or promotional purposes. All other categories exclude text messaging originator opt-in data and consent; this information will not be shared with any third parties.
-                      </p>
-                      <div className="flex gap-4 text-sm pt-2">
-                        <Link to="/privacy" className="text-primary hover:underline">Privacy Policy</Link>
-                        <Link to="/terms" className="text-primary hover:underline">Terms of Service</Link>
-                      </div>
-                    </div>
-                  </div>
+                   <FormField
+                     control={form.control}
+                     name="sms_consent"
+                     render={({ field }) => (
+                       <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                         <FormControl>
+                           <Checkbox
+                             checked={field.value}
+                             onCheckedChange={field.onChange}
+                           />
+                         </FormControl>
+                         <div className="space-y-1 leading-none">
+                           <FormLabel className="text-sm leading-relaxed">
+                             I agree to receive SMS notifications from Aqua Clear Pools, including appointment reminders, service updates, and account notices. Message & data rates may apply. Message frequency varies. Reply STOP to unsubscribe or HELP for help. No mobile information will be sold or shared with third parties for promotional or marketing purposes.
+                           </FormLabel>
+                           <div className="flex gap-4 text-sm pt-2">
+                             <Link to="/privacy" className="text-primary hover:underline">Privacy Policy</Link>
+                             <span className="text-muted-foreground">•</span>
+                             <Link to="/terms" className="text-primary hover:underline">Terms & Conditions</Link>
+                           </div>
+                           <FormMessage />
+                         </div>
+                       </FormItem>
+                     )}
+                   />
 
                   <div className="space-y-4">
                     <AddressAutocomplete

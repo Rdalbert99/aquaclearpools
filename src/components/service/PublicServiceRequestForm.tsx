@@ -8,6 +8,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Checkbox } from '@/components/ui/checkbox';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -18,6 +19,7 @@ const formSchema = z.object({
   lastName: z.string().min(2, 'Last name must be at least 2 characters'),
   email: z.string().optional(),
   phone: z.string().optional(),
+  sms_consent: z.boolean().optional(),
   streetAddress: z.string().min(5, 'Please enter your street address'),
   city: z.string().min(2, 'Please enter your city'),
   state: z.string().min(2, 'Please enter your state'),
@@ -52,6 +54,15 @@ const formSchema = z.object({
 }, {
   message: "Please enter a valid phone number",
   path: ["phone"],
+}).refine((data) => {
+  // Require SMS consent if phone is provided
+  if (data.phone && data.phone.trim() !== '') {
+    return data.sms_consent === true;
+  }
+  return true;
+}, {
+  message: "Please agree to SMS terms to continue.",
+  path: ["sms_consent"],
 });
 
 type FormData = z.infer<typeof formSchema>;
@@ -74,6 +85,7 @@ export function PublicServiceRequestForm({ open, onOpenChange }: PublicServiceRe
       lastName: '',
       email: '',
       phone: '',
+      sms_consent: false,
       streetAddress: '',
       city: '',
       state: '',
@@ -294,23 +306,39 @@ export function PublicServiceRequestForm({ open, onOpenChange }: PublicServiceRe
                     <FormControl>
                       <Input placeholder="(555) 123-4567" {...field} />
                     </FormControl>
-                    <div className="mt-3 space-y-3 text-left">
-                      <p className="text-sm leading-relaxed text-muted-foreground">
-                        By providing your phone number, you agree to receive SMS notifications from Aqua Clear Pools, including appointment reminders, service updates, and account notices. Message & data rates may apply. Message frequency varies. Reply STOP to unsubscribe or HELP for help.
-                      </p>
-                      <p className="text-sm leading-relaxed text-muted-foreground">
-                        No mobile information will be shared with third parties/affiliates for marketing or promotional purposes. All other categories exclude text messaging originator opt-in data and consent; this information will not be shared with any third parties.
-                      </p>
-                      <div className="flex gap-4 text-sm">
-                        <a href="/privacy" className="text-primary hover:underline">Privacy Policy</a>
-                        <a href="/terms" className="text-primary hover:underline">Terms of Service</a>
-                      </div>
-                    </div>
                     <FormMessage />
                   </FormItem>
                 )}
               />
             </div>
+
+            {form.watch("phone") && (
+              <FormField
+                control={form.control}
+                name="sms_consent"
+                render={({ field }) => (
+                  <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                    <FormControl>
+                      <Checkbox
+                        checked={field.value}
+                        onCheckedChange={field.onChange}
+                      />
+                    </FormControl>
+                    <div className="space-y-1 leading-none">
+                      <FormLabel className="text-sm leading-relaxed">
+                        I agree to receive SMS notifications from Aqua Clear Pools, including appointment reminders, service updates, and account notices. Message & data rates may apply. Message frequency varies. Reply STOP to unsubscribe or HELP for help. No mobile information will be sold or shared with third parties for promotional or marketing purposes.
+                      </FormLabel>
+                      <div className="flex gap-4 text-sm pt-2">
+                        <a href="/privacy" className="text-primary hover:underline">Privacy Policy</a>
+                        <span className="text-muted-foreground">•</span>
+                        <a href="/terms" className="text-primary hover:underline">Terms & Conditions</a>
+                      </div>
+                      <FormMessage />
+                    </div>
+                  </FormItem>
+                )}
+              />
+            )}
 
             <FormField
               control={form.control}

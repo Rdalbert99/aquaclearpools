@@ -1,4 +1,4 @@
-const optinProofScreenshot = '/lovable-uploads/2849e2a6-bc48-4577-8083-425fac1212c5.png';
+const optinProofScreenshot = '/lovable-uploads/3ddd4698-ce51-4a50-a1e7-4bd5f0e332eb.png';
 
 export default function OptinProof() {
   return (

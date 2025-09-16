@@ -60,7 +60,8 @@ export default function ClientInvite() {
         } else {
           setInvite(data as any);
           setName((data as any).customer || "");
-          setEmail(((data as any).email as string) || "");
+          // Don't pre-populate email since it comes masked from secure function
+          setEmail("");
           setPhone(((data as any).phone as string) || "");
           setAddress(((data as any).address as string) || "");
         }
@@ -157,10 +158,9 @@ export default function ClientInvite() {
               <Input 
                 type="email" 
                 value={email} 
-                disabled 
-                className="bg-muted text-muted-foreground cursor-not-allowed" 
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="Enter your email address"
               />
-              <p className="text-xs text-muted-foreground">Email is locked to the invitation</p>
             </div>
             <div className="space-y-2">
               <Label>Username</Label>

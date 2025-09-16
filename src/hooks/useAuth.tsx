@@ -176,27 +176,30 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     try {
       console.log('SignIn attempt with login:', login);
       
-      // Use the secure function to lookup email by login
+      // Use the secure function to lookup both email and user data by login
+      const { data: loginData, error: loginError } = await supabase
+        .rpc('get_user_login_data', { login_input: login });
+
+      console.log('Login data result:', { loginData, loginError });
+
+      if (loginError || !loginData || loginData.length === 0) {
+        console.error('Login lookup failed:', loginError);
+        throw new Error('Invalid username or password');
+      }
+
+      const userData = loginData[0];
+      console.log('Found user data for login:', userData);
+
+      // Get email for authentication
       const { data: emailResult, error: lookupError } = await supabase
         .rpc('get_email_by_login', { login_input: login });
 
       console.log('Email lookup result:', { emailResult, lookupError });
 
       if (lookupError || !emailResult) {
-        console.error('Login lookup failed:', lookupError);
+        console.error('Email lookup failed:', lookupError);
         throw new Error('Invalid username or password');
       }
-
-      console.log('Found email for login:', emailResult);
-
-      // Get the user data for this specific login to determine the correct role
-      const { data: loginUserData, error: loginUserError } = await supabase
-        .from('users')
-        .select('role, name, login')
-        .eq('login', login)
-        .single();
-
-      console.log('Login user data:', { loginUserData, loginUserError });
 
       // Now sign in with the email
       const { data, error } = await supabase.auth.signInWithPassword({
@@ -215,7 +218,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         await ensureProfile(data.user);
         
         // If we have specific login data, make sure the profile matches
-        if (loginUserData && !loginUserError) {
+        if (userData) {
           console.log('Updating user profile for auth ID:', data.user.id);
           try {
             const { error: updateError } = await supabase
@@ -223,9 +226,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
               .upsert({
                 id: data.user.id,
                 email: data.user.email,
-                role: loginUserData.role,
-                name: loginUserData.name,
-                login: loginUserData.login
+                role: userData.role,
+                name: userData.name,
+                login: userData.login
               }, {
                 onConflict: 'id'
               });
@@ -233,7 +236,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             if (updateError) {
               console.error('Failed to upsert user profile:', updateError);
             } else {
-              console.log('Successfully upserted user profile with correct role:', loginUserData.role);
+              console.log('Successfully upserted user profile with correct role:', userData.role);
             }
           } catch (updateErr) {
             console.error('Error upserting user profile:', updateErr);
@@ -241,17 +244,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         }
       }
 
-      // Check if user must change password
-      if (data.user) {
-        const { data: userData, error: userError } = await supabase
-          .from('users')
-          .select('must_change_password')
-          .eq('id', data.user.id)
-          .single();
-
-        if (!userError && userData?.must_change_password) {
-          return { error: null, mustChangePassword: true };
-        }
+      // Check if user must change password using data we already have
+      if (userData?.must_change_password) {
+        return { error: null, mustChangePassword: true };
       }
 
       // Track login

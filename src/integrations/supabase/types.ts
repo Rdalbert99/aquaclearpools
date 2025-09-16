@@ -935,6 +935,16 @@ export type Database = {
         Args: { login_input: string }
         Returns: string
       }
+      get_user_login_data: {
+        Args: { login_input: string }
+        Returns: {
+          login: string
+          must_change_password: boolean
+          name: string
+          role: string
+          user_id: string
+        }[]
+      }
       log_security_event: {
         Args: {
           p_event_type: string

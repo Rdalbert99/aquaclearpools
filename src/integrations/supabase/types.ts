@@ -872,7 +872,22 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      invitation_summary_admin: {
+        Row: {
+          access_count: number | null
+          client_id: string | null
+          created_at: string | null
+          customer: string | null
+          email_masked: string | null
+          expires_at: string | null
+          id: string | null
+          last_accessed: string | null
+          phone_masked: string | null
+          status: string | null
+          used_at: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       admin_access_message: {

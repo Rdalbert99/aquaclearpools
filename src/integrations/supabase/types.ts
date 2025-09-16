@@ -909,6 +909,10 @@ export type Database = {
         Args: { admin_reason: string; message_id: string }
         Returns: Json
       }
+      admin_view_message: {
+        Args: { message_id: string; reason: string }
+        Returns: Json
+      }
       allow_password_reset_request: {
         Args: { p_identifier: string }
         Returns: boolean

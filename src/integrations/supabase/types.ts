@@ -1020,6 +1020,10 @@ export type Database = {
         }
         Returns: boolean
       }
+      secure_admin_user_lookup: {
+        Args: { admin_reason: string; lookup_email: string }
+        Returns: Json
+      }
       validate_invitation_token: {
         Args: { token_input: string }
         Returns: string

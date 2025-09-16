@@ -910,6 +910,25 @@ export type Database = {
           used_at: string
         }[]
       }
+      admin_get_service_requests_with_contact_info: {
+        Args: { admin_reason: string }
+        Returns: {
+          city: string
+          client_id: string
+          contact_address: string
+          contact_email: string
+          contact_name: string
+          contact_phone: string
+          created_at: string
+          description: string
+          id: string
+          request_type: string
+          state: string
+          status: string
+          street_address: string
+          zip_code: string
+        }[]
+      }
       admin_lookup_user: {
         Args: { lookup_email: string; lookup_reason: string }
         Returns: Json

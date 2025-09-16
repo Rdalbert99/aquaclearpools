@@ -388,13 +388,6 @@ export type Database = {
             referencedRelation: "client_invitations"
             referencedColumns: ["id"]
           },
-          {
-            foreignKeyName: "invitation_access_log_invitation_id_fkey"
-            columns: ["invitation_id"]
-            isOneToOne: false
-            referencedRelation: "invitation_security_summary"
-            referencedColumns: ["id"]
-          },
         ]
       }
       password_reset_attempts: {
@@ -893,21 +886,29 @@ export type Database = {
           status: string | null
           used_at: string | null
         }
-        Relationships: [
-          {
-            foreignKeyName: "client_invitations_client_id_fkey"
-            columns: ["client_id"]
-            isOneToOne: false
-            referencedRelation: "clients"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
     }
     Functions: {
       admin_access_message: {
         Args: { admin_reason: string; message_id: string }
         Returns: Json
+      }
+      admin_get_invitation_security_summary: {
+        Args: { admin_reason: string }
+        Returns: {
+          access_count: number
+          client_id: string
+          created_at: string
+          customer: string
+          email_masked: string
+          expires_at: string
+          id: string
+          last_accessed: string
+          phone_masked: string
+          status: string
+          used_at: string
+        }[]
       }
       admin_lookup_user: {
         Args: { lookup_email: string; lookup_reason: string }

@@ -905,6 +905,10 @@ export type Database = {
       }
     }
     Functions: {
+      admin_access_message: {
+        Args: { admin_reason: string; message_id: string }
+        Returns: Json
+      }
       allow_password_reset_request: {
         Args: { p_identifier: string }
         Returns: boolean

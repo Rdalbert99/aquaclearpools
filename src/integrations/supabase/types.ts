@@ -872,22 +872,7 @@ export type Database = {
       }
     }
     Views: {
-      invitation_summary_admin: {
-        Row: {
-          access_count: number | null
-          client_id: string | null
-          created_at: string | null
-          customer: string | null
-          email_masked: string | null
-          expires_at: string | null
-          id: string | null
-          last_accessed: string | null
-          phone_masked: string | null
-          status: string | null
-          used_at: string | null
-        }
-        Relationships: []
-      }
+      [_ in never]: never
     }
     Functions: {
       admin_access_message: {
@@ -895,6 +880,22 @@ export type Database = {
         Returns: Json
       }
       admin_get_invitation_security_summary: {
+        Args: { admin_reason: string }
+        Returns: {
+          access_count: number
+          client_id: string
+          created_at: string
+          customer: string
+          email_masked: string
+          expires_at: string
+          id: string
+          last_accessed: string
+          phone_masked: string
+          status: string
+          used_at: string
+        }[]
+      }
+      admin_get_invitation_summary_secure: {
         Args: { admin_reason: string }
         Returns: {
           access_count: number
@@ -928,6 +929,10 @@ export type Database = {
           street_address: string
           zip_code: string
         }[]
+      }
+      admin_get_user_pii: {
+        Args: { admin_reason: string; user_lookup_id: string }
+        Returns: Json
       }
       admin_lookup_user: {
         Args: { lookup_email: string; lookup_reason: string }
@@ -1017,6 +1022,10 @@ export type Database = {
         Args: { user_id: string }
         Returns: Json
       }
+      get_user_public_safe: {
+        Args: { user_lookup_id: string }
+        Returns: Json
+      }
       hash_invitation_token: {
         Args: { token_input: string }
         Returns: string
@@ -1049,6 +1058,14 @@ export type Database = {
           invite_token: string
         }
         Returns: boolean
+      }
+      mask_email: {
+        Args: { email_input: string }
+        Returns: string
+      }
+      mask_phone: {
+        Args: { phone_input: string }
+        Returns: string
       }
       secure_admin_user_lookup: {
         Args: { admin_reason: string; lookup_email: string }

@@ -68,14 +68,22 @@ serve(async (req) => {
       console.warn('Rate limit RPC failed (continuing):', e);
     }
 
-    // Validate invite
+    // Validate invite using secure token validation
+    const { data: invitationId, error: validationError } = await admin.rpc('validate_invitation_token', { token_input: body.token });
+    
+    if (validationError || !invitationId) {
+      return new Response(JSON.stringify({ error: "Invalid or expired invitation" }), {
+        status: 400,
+        headers: { "Content-Type": "application/json", ...corsHeaders },
+      });
+    }
+
+    // Get the invitation details
     const { data: invite, error: invErr } = await admin
       .from("client_invitations")
       .select("*, clients:client_id(id, customer, user_id)")
-      .eq("token", body.token)
-      .is("used_at", null)
-      .gt("expires_at", new Date().toISOString())
-      .maybeSingle();
+      .eq("id", invitationId)
+      .single();
 
     if (invErr || !invite) {
       return new Response(JSON.stringify({ error: "Invalid or expired invitation" }), {
@@ -140,7 +148,7 @@ serve(async (req) => {
     const { error: usedErr } = await admin
       .from("client_invitations")
       .update({ used_at: new Date().toISOString() })
-      .eq("id", invite.id);
+      .eq("id", invitationId);
     if (usedErr) throw usedErr;
 
     return new Response(JSON.stringify({ success: true }), {

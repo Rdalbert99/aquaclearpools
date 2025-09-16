@@ -58,15 +58,17 @@ serve(async (req) => {
 
     // Skipping client lookup to avoid schema dependency; greeting will be generic.
 
-    // Generate a token and create invitation
+    // Generate a secure token and create invitation
     const token = crypto.randomUUID();
+    const tokenHash = await adminClient.rpc('hash_invitation_token', { token_input: token });
     const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
 
     const { data: invite, error: inviteError } = await adminClient
       .from("client_invitations")
       .insert({
         client_id: body.clientId,
-        token,
+        token, // Keep for backward compatibility during transition
+        token_hash: tokenHash.data, // New secure hashed token
         email: body.email || null,
         phone: body.phone || null,
         expires_at: expiresAt,

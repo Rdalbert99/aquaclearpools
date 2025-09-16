@@ -48,11 +48,9 @@ export default function ClientInvite() {
 
         const userAgent = navigator.userAgent;
 
-        // Use the secure function with audit logging
-        const { data, error } = await supabase.rpc("get_client_invite_payload_secure", { 
-          invite_token: token,
-          accessor_ip: clientIP,
-          accessor_user_agent: userAgent
+        // Use the non-secure function for invite completion to get full email
+        const { data, error } = await supabase.rpc("get_client_invite_payload", { 
+          invite_token: token
         });
         
         if (error || !data) {
@@ -60,8 +58,8 @@ export default function ClientInvite() {
         } else {
           setInvite(data as any);
           setName((data as any).customer || "");
-          // Don't pre-populate email since it comes masked from secure function
-          setEmail("");
+          // Pre-populate email from invitation if admin entered one
+          setEmail(((data as any).email as string) || "");
           setPhone(((data as any).phone as string) || "");
           setAddress(((data as any).address as string) || "");
         }

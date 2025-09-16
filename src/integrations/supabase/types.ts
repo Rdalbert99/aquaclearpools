@@ -879,6 +879,10 @@ export type Database = {
         Args: { admin_reason: string; message_id: string }
         Returns: Json
       }
+      admin_get_client_sensitive_data: {
+        Args: { admin_reason: string; client_lookup_id: string }
+        Returns: Json
+      }
       admin_get_invitation_security_summary: {
         Args: { admin_reason: string }
         Returns: {

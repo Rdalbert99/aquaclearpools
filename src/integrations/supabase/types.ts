@@ -977,6 +977,10 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: number
       }
+      emergency_lockdown_pii_access: {
+        Args: Record<PropertyKey, never>
+        Returns: boolean
+      }
       get_all_technicians: {
         Args: Record<PropertyKey, never>
         Returns: {
@@ -1008,18 +1012,8 @@ export type Database = {
         Args: { login_input: string }
         Returns: string
       }
-      get_user_login_data: {
-        Args: { login_input: string }
-        Returns: {
-          login: string
-          must_change_password: boolean
-          name: string
-          role: string
-          user_id: string
-        }[]
-      }
       get_user_public_info: {
-        Args: { user_id: string }
+        Args: { user_lookup_id: string }
         Returns: Json
       }
       get_user_public_safe: {

@@ -73,8 +73,8 @@ export default function ClientView() {
         .from('clients')
         .select(`
           *,
-          owner:users!clients_user_id_fkey(id, name, email, phone, address),
-          technician:users!clients_assigned_technician_id_fkey(id, name, email)
+          owner:users!user_id(id, name, email, phone, address),
+          technician:users!assigned_technician_id(id, name, email)
         `)
         .eq('id', clientId)
         .maybeSingle();

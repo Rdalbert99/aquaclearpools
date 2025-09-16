@@ -94,36 +94,54 @@ export type Database = {
       }
       client_invitations: {
         Row: {
+          access_count: number | null
           client_id: string
           created_at: string
           created_by: string | null
           email: string | null
+          email_encrypted: string | null
           expires_at: string
           id: string
+          last_access_at: string | null
+          last_access_ip: unknown | null
           phone: string | null
+          phone_encrypted: string | null
           token: string
+          token_hash: string | null
           used_at: string | null
         }
         Insert: {
+          access_count?: number | null
           client_id: string
           created_at?: string
           created_by?: string | null
           email?: string | null
+          email_encrypted?: string | null
           expires_at?: string
           id?: string
+          last_access_at?: string | null
+          last_access_ip?: unknown | null
           phone?: string | null
+          phone_encrypted?: string | null
           token: string
+          token_hash?: string | null
           used_at?: string | null
         }
         Update: {
+          access_count?: number | null
           client_id?: string
           created_at?: string
           created_by?: string | null
           email?: string | null
+          email_encrypted?: string | null
           expires_at?: string
           id?: string
+          last_access_at?: string | null
+          last_access_ip?: unknown | null
           phone?: string | null
+          phone_encrypted?: string | null
           token?: string
+          token_hash?: string | null
           used_at?: string | null
         }
         Relationships: [
@@ -904,6 +922,10 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: number
       }
+      cleanup_old_invitations: {
+        Args: Record<PropertyKey, never>
+        Returns: number
+      }
       get_all_technicians: {
         Args: Record<PropertyKey, never>
         Returns: {
@@ -945,6 +967,10 @@ export type Database = {
           user_id: string
         }[]
       }
+      hash_invitation_token: {
+        Args: { token_input: string }
+        Returns: string
+      }
       log_security_event: {
         Args: {
           p_event_type: string
@@ -973,6 +999,10 @@ export type Database = {
           invite_token: string
         }
         Returns: boolean
+      }
+      validate_invitation_token: {
+        Args: { token_input: string }
+        Returns: string
       }
     }
     Enums: {

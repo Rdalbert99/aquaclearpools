@@ -1079,6 +1079,10 @@ export type Database = {
         Args: { token_input: string }
         Returns: string
       }
+      validate_user_access_policies: {
+        Args: Record<PropertyKey, never>
+        Returns: boolean
+      }
     }
     Enums: {
       [_ in never]: never

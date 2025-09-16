@@ -388,13 +388,6 @@ export type Database = {
             referencedRelation: "client_invitations"
             referencedColumns: ["id"]
           },
-          {
-            foreignKeyName: "invitation_access_log_invitation_id_fkey"
-            columns: ["invitation_id"]
-            isOneToOne: false
-            referencedRelation: "invitation_security_summary"
-            referencedColumns: ["id"]
-          },
         ]
       }
       password_reset_attempts: {
@@ -879,30 +872,7 @@ export type Database = {
       }
     }
     Views: {
-      invitation_security_summary: {
-        Row: {
-          access_count: number | null
-          client_id: string | null
-          created_at: string | null
-          customer: string | null
-          email_masked: string | null
-          expires_at: string | null
-          id: string | null
-          last_accessed: string | null
-          phone_masked: string | null
-          status: string | null
-          used_at: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "client_invitations_client_id_fkey"
-            columns: ["client_id"]
-            isOneToOne: false
-            referencedRelation: "clients"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
+      [_ in never]: never
     }
     Functions: {
       admin_access_message: {

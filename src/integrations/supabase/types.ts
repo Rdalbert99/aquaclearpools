@@ -954,6 +954,16 @@ export type Database = {
         }
         Returns: boolean
       }
+      check_rate_limit_enhanced: {
+        Args: {
+          p_endpoint: string
+          p_identifier: string
+          p_log_violations?: boolean
+          p_max_requests?: number
+          p_window_minutes?: number
+        }
+        Returns: boolean
+      }
       cleanup_expired_invitations: {
         Args: Record<PropertyKey, never>
         Returns: number
@@ -1042,6 +1052,10 @@ export type Database = {
       }
       secure_admin_user_lookup: {
         Args: { admin_reason: string; lookup_email: string }
+        Returns: Json
+      }
+      security_health_check: {
+        Args: Record<PropertyKey, never>
         Returns: Json
       }
       validate_invitation_token: {

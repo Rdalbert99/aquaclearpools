@@ -184,6 +184,19 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
       if (loginError || !loginData || loginData.length === 0) {
         console.error('Login lookup failed:', loginError);
+        
+        // Log failed login attempt
+        try {
+          await supabase.rpc('log_security_event_enhanced', {
+            p_event_type: 'login_attempt_failed',
+            p_user_id: null,
+            p_payload: { login_attempt: login, reason: 'user_not_found' },
+            p_severity: 'warning'
+          });
+        } catch (logError) {
+          console.error('Failed to log security event:', logError);
+        }
+        
         throw new Error('Invalid username or password');
       }
 
@@ -198,6 +211,19 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
       if (lookupError || !emailResult) {
         console.error('Email lookup failed:', lookupError);
+        
+        // Log failed email lookup
+        try {
+          await supabase.rpc('log_security_event_enhanced', {
+            p_event_type: 'email_lookup_failed',
+            p_user_id: userData?.user_id || null,
+            p_payload: { login_attempt: login, reason: 'email_not_found' },
+            p_severity: 'warning'
+          });
+        } catch (logError) {
+          console.error('Failed to log security event:', logError);
+        }
+        
         throw new Error('Invalid username or password');
       }
 
@@ -210,6 +236,23 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       console.log('Auth response:', { data: !!data, error });
       if (error) {
         console.error('Authentication failed:', error.message);
+        
+        // Log authentication failure
+        try {
+          await supabase.rpc('log_security_event_enhanced', {
+            p_event_type: 'authentication_failed',
+            p_user_id: userData?.user_id || null,
+            p_payload: { 
+              login_attempt: login, 
+              email: emailResult,
+              error_message: error.message 
+            },
+            p_severity: 'warning'
+          });
+        } catch (logError) {
+          console.error('Failed to log security event:', logError);
+        }
+        
         throw error;
       }
 
@@ -242,6 +285,22 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             console.error('Error upserting user profile:', updateErr);
           }
         }
+        
+        // Log successful login
+        try {
+          await supabase.rpc('log_security_event_enhanced', {
+            p_event_type: 'user_login_success',
+            p_user_id: data.user.id,
+            p_payload: { 
+              login: login,
+              email: data.user.email,
+              method: 'password'
+            },
+            p_severity: 'info'
+          });
+        } catch (logError) {
+          console.error('Failed to log security event:', logError);
+        }
       }
 
       // Check if user must change password using data we already have
@@ -265,6 +324,21 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
       return {};
     } catch (error: any) {
+      // Log general login error
+      try {
+        await supabase.rpc('log_security_event_enhanced', {
+          p_event_type: 'login_error',
+          p_user_id: null,
+          p_payload: { 
+            login_attempt: login,
+            error: error.message 
+          },
+          p_severity: 'error'
+        });
+      } catch (logError) {
+        console.error('Failed to log security event:', logError);
+      }
+      
       return { error: error.message };
     }
   };
@@ -336,6 +410,20 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   const signOut = async () => {
+    // Log logout event before signing out
+    if (user?.id) {
+      try {
+        await supabase.rpc('log_security_event_enhanced', {
+          p_event_type: 'user_logout',
+          p_user_id: user.id,
+          p_payload: { timestamp: new Date().toISOString() },
+          p_severity: 'info'
+        });
+      } catch (logError) {
+        console.error('Failed to log logout event:', logError);
+      }
+    }
+    
     await supabase.auth.signOut();
     setUser(null);
     setSession(null);

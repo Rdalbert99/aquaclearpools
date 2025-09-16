@@ -909,6 +909,14 @@ export type Database = {
         Args: { admin_reason: string; message_id: string }
         Returns: Json
       }
+      admin_lookup_user: {
+        Args: { lookup_email: string; lookup_reason: string }
+        Returns: Json
+      }
+      admin_search_users: {
+        Args: { search_reason: string; search_term: string }
+        Returns: Json
+      }
       admin_view_message: {
         Args: { message_id: string; reason: string }
         Returns: Json
@@ -974,6 +982,10 @@ export type Database = {
           role: string
           user_id: string
         }[]
+      }
+      get_user_public_info: {
+        Args: { user_id: string }
+        Returns: Json
       }
       hash_invitation_token: {
         Args: { token_input: string }

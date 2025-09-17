@@ -915,6 +915,10 @@ export type Database = {
           used_at: string
         }[]
       }
+      admin_get_service_request_contact_info: {
+        Args: { admin_reason: string; request_id: string }
+        Returns: Json
+      }
       admin_get_service_requests_with_contact_info: {
         Args: { admin_reason: string }
         Returns: {

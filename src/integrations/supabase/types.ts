@@ -1077,6 +1077,10 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: Json
       }
+      validate_clients_anonymous_protection: {
+        Args: Record<PropertyKey, never>
+        Returns: boolean
+      }
       validate_invitation_token: {
         Args: { token_input: string }
         Returns: string

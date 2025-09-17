@@ -938,6 +938,10 @@ export type Database = {
           zip_code: string
         }[]
       }
+      admin_get_service_sensitive_data: {
+        Args: { admin_reason: string; service_id: string }
+        Returns: Json
+      }
       admin_get_user_pii: {
         Args: { admin_reason: string; user_lookup_id: string }
         Returns: Json

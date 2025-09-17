@@ -143,7 +143,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
       // If still no profile, create a minimal one
       console.log('No profile found, creating minimal profile');
-      const role = authUser.email === 'admin@poolcleaning.com' ? 'admin' : 'client';
+      const adminEmail = import.meta.env.VITE_ADMIN_EMAIL || 'admin@poolcleaning.com';
+      const role = authUser.email === adminEmail ? 'admin' : 'client';
       const name = authUser.email?.split('@')[0] || 'User';
       
       const { error: insertError } = await supabase
@@ -167,7 +168,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     } catch (error) {
       console.error('Error ensuring profile:', error);
       // Fallback to basic user info
-      const role = authUser.email === 'admin@poolcleaning.com' ? 'admin' : 'client';
+      const adminEmail = import.meta.env.VITE_ADMIN_EMAIL || 'admin@poolcleaning.com';
+      const role = authUser.email === adminEmail ? 'admin' : 'client';
       setUser({ ...authUser, role, name: authUser.email?.split('@')[0] || 'User' });
     }
   };

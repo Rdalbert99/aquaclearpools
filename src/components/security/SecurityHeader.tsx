@@ -72,16 +72,8 @@ export const SecurityHeader = ({ children }: SecurityHeaderProps) => {
 
     // Security monitoring setup
     const setupSecurityMonitoring = () => {
-      // Monitor for console access attempts in production
-      if (process.env.NODE_ENV === 'production') {
-        const originalLog = console.log;
-        console.log = function(...args) {
-          // Only log in development or for authorized users
-          if (localStorage.getItem('security_debug_enabled') === 'true') {
-            originalLog.apply(console, args);
-          }
-        };
-      }
+      // Remove production debug override for security
+      // Console logging is now properly controlled by build environment
       
       // Add security event listeners
       window.addEventListener('error', (event) => {

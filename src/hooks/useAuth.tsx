@@ -176,14 +176,14 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     try {
       console.log('SignIn attempt with login:', login);
       
-      // Use the secure function to lookup both email and user data by login
-      const { data: loginData, error: loginError } = await supabase
-        .rpc('get_user_login_data', { login_input: login });
+      // Use the secure function to lookup email by login
+      const { data: email, error: emailError } = await supabase
+        .rpc('get_email_by_login', { login_input: login });
 
-      console.log('Login data result:', { loginData, loginError });
+      console.log('Email lookup result:', { email, emailError });
 
-      if (loginError || !loginData || loginData.length === 0) {
-        console.error('Login lookup failed:', loginError);
+      if (emailError || !email) {
+        console.error('Email lookup failed:', emailError);
         
         // Log failed login attempt
         try {
@@ -200,36 +200,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         throw new Error('Invalid username or password');
       }
 
-      const userData = loginData[0];
-      console.log('Found user data for login:', userData);
-
-      // Get email for authentication
-      const { data: emailResult, error: lookupError } = await supabase
-        .rpc('get_email_by_login', { login_input: login });
-
-      console.log('Email lookup result:', { emailResult, lookupError });
-
-      if (lookupError || !emailResult) {
-        console.error('Email lookup failed:', lookupError);
-        
-        // Log failed email lookup
-        try {
-          await supabase.rpc('log_security_event_enhanced', {
-            p_event_type: 'email_lookup_failed',
-            p_user_id: userData?.user_id || null,
-            p_payload: { login_attempt: login, reason: 'email_not_found' },
-            p_severity: 'warning'
-          });
-        } catch (logError) {
-          console.error('Failed to log security event:', logError);
-        }
-        
-        throw new Error('Invalid username or password');
-      }
-
       // Now sign in with the email
       const { data, error } = await supabase.auth.signInWithPassword({
-        email: emailResult,
+        email: email,
         password,
       });
       
@@ -241,10 +214,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         try {
           await supabase.rpc('log_security_event_enhanced', {
             p_event_type: 'authentication_failed',
-            p_user_id: userData?.user_id || null,
+            p_user_id: null,
             p_payload: { 
               login_attempt: login, 
-              email: emailResult,
+              email: email,
               error_message: error.message 
             },
             p_severity: 'warning'
@@ -259,32 +232,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       // Ensure the user profile is correctly set up
       if (data.user) {
         await ensureProfile(data.user);
-        
-        // If we have specific login data, make sure the profile matches
-        if (userData) {
-          console.log('Updating user profile for auth ID:', data.user.id);
-          try {
-            const { error: updateError } = await supabase
-              .from('users')
-              .upsert({
-                id: data.user.id,
-                email: data.user.email,
-                role: userData.role,
-                name: userData.name,
-                login: userData.login
-              }, {
-                onConflict: 'id'
-              });
-            
-            if (updateError) {
-              console.error('Failed to upsert user profile:', updateError);
-            } else {
-              console.log('Successfully upserted user profile with correct role:', userData.role);
-            }
-          } catch (updateErr) {
-            console.error('Error upserting user profile:', updateErr);
-          }
-        }
         
         // Log successful login
         try {
@@ -303,10 +250,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         }
       }
 
-      // Check if user must change password using data we already have
-      if (userData?.must_change_password) {
-        return { error: null, mustChangePassword: true };
-      }
+      console.log('Login successful');
 
       // Track login
       if (data.user) {
@@ -321,6 +265,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           // Don't fail the login if tracking fails
         }
       }
+
+      return { error: null, mustChangePassword: false };
 
       return {};
     } catch (error: any) {

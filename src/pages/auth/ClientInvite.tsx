@@ -19,6 +19,13 @@ interface InvitePayload {
   expires_at: string;
 }
 
+interface InviteValidationResult {
+  valid: boolean;
+  reason?: 'expired' | 'used' | 'not_found';
+  expires_at?: string;
+  used_at?: string;
+}
+
 export default function ClientInvite() {
   const { token } = useParams();
   const navigate = useNavigate();
@@ -26,6 +33,7 @@ export default function ClientInvite() {
 
   const [loading, setLoading] = useState(true);
   const [invite, setInvite] = useState<InvitePayload | null>(null);
+  const [inviteError, setInviteError] = useState<InviteValidationResult | null>(null);
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
@@ -48,23 +56,51 @@ export default function ClientInvite() {
 
         const userAgent = navigator.userAgent;
 
-        // Use the non-secure function for invite completion to get full email
-        const { data, error } = await supabase.rpc("get_client_invite_payload", { 
-          invite_token: token
-        });
-        
-        if (error || !data) {
+        // First check if invitation exists and get validation details
+        const { data: validationData } = await supabase
+          .from('client_invitations')
+          .select('expires_at, used_at')
+          .eq('token', token)
+          .single();
+
+        if (!validationData) {
+          setInviteError({ valid: false, reason: 'not_found' });
+          setInvite(null);
+        } else if (validationData.used_at) {
+          setInviteError({ 
+            valid: false, 
+            reason: 'used', 
+            used_at: validationData.used_at 
+          });
+          setInvite(null);
+        } else if (new Date(validationData.expires_at) <= new Date()) {
+          setInviteError({ 
+            valid: false, 
+            reason: 'expired', 
+            expires_at: validationData.expires_at 
+          });
           setInvite(null);
         } else {
-          setInvite(data as any);
-          setName((data as any).customer || "");
-          // Pre-populate email from invitation if admin entered one
-          setEmail(((data as any).email as string) || "");
-          setPhone(((data as any).phone as string) || "");
-          setAddress(((data as any).address as string) || "");
+          // Invitation is valid, get full payload
+          const { data, error } = await supabase.rpc("get_client_invite_payload", { 
+            invite_token: token
+          });
+          
+          if (error || !data) {
+            setInviteError({ valid: false, reason: 'not_found' });
+            setInvite(null);
+          } else {
+            setInvite(data as any);
+            setName((data as any).customer || "");
+            // Pre-populate email from invitation if admin entered one
+            setEmail(((data as any).email as string) || "");
+            setPhone(((data as any).phone as string) || "");
+            setAddress(((data as any).address as string) || "");
+          }
         }
       } catch (error) {
         console.error('Error loading invite:', error);
+        setInviteError({ valid: false, reason: 'not_found' });
         setInvite(null);
       }
       setLoading(false);
@@ -117,14 +153,62 @@ export default function ClientInvite() {
   }
 
   if (!invite) {
+    const getErrorMessage = () => {
+      if (!inviteError) return "This invitation link is not valid. Please contact support.";
+      
+      switch (inviteError.reason) {
+        case 'expired':
+          const expireDate = inviteError.expires_at ? new Date(inviteError.expires_at).toLocaleDateString() : 'unknown date';
+          return `This invitation expired on ${expireDate}. Please request a new invitation from your administrator.`;
+        case 'used':
+          const usedDate = inviteError.used_at ? new Date(inviteError.used_at).toLocaleDateString() : 'previously';
+          return `This invitation was already used ${usedDate}. If you need to reset your account, please contact support.`;
+        case 'not_found':
+        default:
+          return "This invitation link is not valid. Please check the URL or contact support for a new invitation.";
+      }
+    };
+
+    const getTitle = () => {
+      if (!inviteError) return "Invalid Invitation";
+      
+      switch (inviteError.reason) {
+        case 'expired':
+          return "Invitation Expired";
+        case 'used':
+          return "Invitation Already Used";
+        case 'not_found':
+        default:
+          return "Invalid Invitation";
+      }
+    };
+
     return (
       <div className="p-6">
-        <Card>
-          <CardHeader>
-            <CardTitle>Invitation Invalid or Expired</CardTitle>
+        <Card className="max-w-md mx-auto">
+          <CardHeader className="text-center pb-4">
+            <div className="flex justify-center mb-4">
+              <img 
+                src="/lovable-uploads/ac1a09a4-823e-491c-bf59-fb76c8abb196.png" 
+                alt="Aqua Clear Pools" 
+                className="h-16 w-auto"
+              />
+            </div>
+            <CardTitle className="text-xl font-bold text-destructive">
+              {getTitle()}
+            </CardTitle>
           </CardHeader>
-          <CardContent>
-            <p className="text-sm text-muted-foreground">This invitation link is not valid or has expired. Please contact support.</p>
+          <CardContent className="text-center">
+            <p className="text-sm text-muted-foreground mb-4">
+              {getErrorMessage()}
+            </p>
+            <Button 
+              variant="outline" 
+              onClick={() => navigate('/auth/login')}
+              className="w-full"
+            >
+              Go to Login
+            </Button>
           </CardContent>
         </Card>
       </div>

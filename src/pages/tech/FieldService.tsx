@@ -14,12 +14,13 @@ import { ServicePhotoUpload } from '@/components/tech/ServicePhotoUpload';
 import { 
   Clock, Droplets, TestTube, CheckCircle, ArrowLeft,
 } from 'lucide-react';
+import { ArrivalNotification } from '@/components/tech/ArrivalNotification';
 
 type Client = {
   id: string;
   customer: string;
-  phone?: string | null;
-  email?: string | null;
+  contact_phone?: string | null;
+  contact_email?: string | null;
   pool_size?: number | null;
   pool_type?: string | null;
 };
@@ -87,26 +88,11 @@ export default function FieldService() {
   }
 
   function buildServiceMessage(clientName: string, data: ServiceData) {
-    const parts: string[] = [];
-    parts.push(`Hi, this is Randy with Aqua Clear Pools. I've just finished your pool.`);
+    const chlorine = data.chlorine_level != null ? data.chlorine_level : 'N/A';
+    const ph = data.ph_level != null ? data.ph_level : 'N/A';
+    const alk = data.alkalinity_level != null ? data.alkalinity_level : 'N/A';
 
-    const balanced =
-      (data.ph_level ?? 0) >= 7.2 && (data.ph_level ?? 0) <= 7.8 &&
-      (data.chlorine_level ?? 0) >= 1 && (data.chlorine_level ?? 0) <= 5;
-
-    parts.push(balanced ? `Water is balanced and clean.` : `Water is improving; final balance will settle as circulation runs.`);
-
-    const actions: string[] = [];
-    if (data.brushed) actions.push('brushed');
-    if (data.vacuumed) actions.push('vacuumed');
-    if (data.cleaned_filters) actions.push('cleaned filters');
-    if (data.robot_plugged_in) actions.push('plugged in your robot');
-    if (actions.length) parts.push(`Today: ${actions.join(', ')}.`);
-
-    if (data.chemicals_added?.trim()) parts.push(`Chemicals added: ${data.chemicals_added.trim()}.`);
-    if (data.notes?.trim()) parts.push(`Notes: ${data.notes.trim()}`);
-    parts.push(`Thanks — have a great week!`);
-    return parts.join(' ');
+    return `This is Aqua Clear Pools, your pool is clean and clear. Your chlorine is reading ${chlorine}, pH is ${ph}, alkalinity is ${alk}. Thank you!`;
   }
 
   async function completeService() {
@@ -146,31 +132,29 @@ export default function FieldService() {
       if (error) throw error;
 
       // Send actual SMS via Telnyx
-      if (client.phone) {
+      if (client.contact_phone) {
         try {
           const { error } = await supabase.functions.invoke('send-sms-via-telnyx', {
             body: {
-              to: client.phone,
+              to: client.contact_phone,
               message: message
             }
           });
           
           if (error) {
             console.error('SMS sending error:', error);
-            // Fall back to SMS intent if API fails
-            window.location.href = `sms:${client.phone}?&body=${encodeURIComponent(message)}`;
+            window.location.href = `sms:${client.contact_phone}?&body=${encodeURIComponent(message)}`;
             toast({ title: 'Service completed', description: 'SMS app opened with message.' });
           } else {
             toast({ title: 'Service completed', description: 'Saved and SMS sent to client.' });
           }
         } catch (smsError) {
           console.error('SMS API error:', smsError);
-          // Fall back to SMS intent if API fails
-          window.location.href = `sms:${client.phone}?&body=${encodeURIComponent(message)}`;
+          window.location.href = `sms:${client.contact_phone}?&body=${encodeURIComponent(message)}`;
           toast({ title: 'Service completed', description: 'SMS app opened with message.' });
         }
-      } else if (client.email) {
-        window.location.href = `mailto:${client.email}?subject=${encodeURIComponent('Aqua Clear Service Update')}&body=${encodeURIComponent(message)}`;
+      } else if (client.contact_email) {
+        window.location.href = `mailto:${client.contact_email}?subject=${encodeURIComponent('Aqua Clear Service Update')}&body=${encodeURIComponent(message)}`;
         toast({ title: 'Service completed', description: 'Email app opened with message.' });
       } else {
         toast({ title: 'Service completed', description: 'Service saved successfully.' });
@@ -217,6 +201,12 @@ export default function FieldService() {
           <ArrowLeft className="h-4 w-4 mr-2" /> Back
         </Button>
       </div>
+      {/* Arrival Notification */}
+      <ArrivalNotification
+        clientName={client.customer}
+        clientPhone={client.contact_phone}
+        clientEmail={client.contact_email}
+      />
 
       {/* Readings */}
       <Card>

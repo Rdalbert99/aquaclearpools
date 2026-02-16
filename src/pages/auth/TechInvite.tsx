@@ -66,7 +66,13 @@ export default function TechInvite() {
         body: { token, ...form },
       });
 
-      if (error) throw new Error(error.message);
+      if (error) {
+        // supabase.functions.invoke wraps non-2xx as FunctionsHttpError
+        const errorBody = typeof error === 'object' && 'context' in error
+          ? await (error as any).context?.json?.().catch(() => null)
+          : null;
+        throw new Error(errorBody?.error || data?.error || error.message || 'Failed to create account');
+      }
       if (data?.error) throw new Error(data.error);
 
       toast({ title: "Account Created!", description: "You can now log in with your credentials." });

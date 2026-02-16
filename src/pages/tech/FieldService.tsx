@@ -11,9 +11,11 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
 import { useToast } from '@/hooks/use-toast';
 import { ServicePhotoUpload } from '@/components/tech/ServicePhotoUpload';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { 
-  Clock, Droplets, TestTube, CheckCircle, ArrowLeft,
+  Clock, Droplets, TestTube, CheckCircle, ArrowLeft, AlertTriangle,
 } from 'lucide-react';
+import { isInRange, getDosageInstruction, type ChemicalId } from '@/lib/pool-chemistry';
 import { ArrivalNotification } from '@/components/tech/ArrivalNotification';
 
 type Client = {
@@ -231,14 +233,62 @@ export default function FieldService() {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2"><TestTube className="h-5 w-5" /> Readings</CardTitle>
-          <CardDescription>Enter quick test results.</CardDescription>
+          <CardDescription>Enter quick test results. Values turn <span className="text-green-600 font-medium">green</span> if in range, <span className="text-red-600 font-medium">red</span> if out.</CardDescription>
         </CardHeader>
-        <CardContent className="grid grid-cols-2 md:grid-cols-5 gap-4">
-          <div><Label>pH</Label><Input type="number" step="0.1" value={serviceData.ph_level ?? ''} onChange={e => handleInputChange('ph_level', parseFloat(e.target.value))} /></div>
-          <div><Label>TA</Label><Input type="number" value={serviceData.alkalinity_level ?? ''} onChange={e => handleInputChange('alkalinity_level', parseInt(e.target.value || '0'))} /></div>
-          <div><Label>FC</Label><Input type="number" step="0.1" value={serviceData.chlorine_level ?? ''} onChange={e => handleInputChange('chlorine_level', parseFloat(e.target.value))} /></div>
-          <div><Label>CYA</Label><Input type="number" value={serviceData.cya_level ?? ''} onChange={e => handleInputChange('cya_level', parseInt(e.target.value || '0'))} /></div>
-          <div><Label>Salt</Label><Input type="number" value={serviceData.salt_level ?? ''} onChange={e => handleInputChange('salt_level', parseInt(e.target.value || '0'))} /></div>
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+            {([
+              { id: 'ph' as ChemicalId, label: 'pH', field: 'ph_level' as const, step: '0.1', parse: parseFloat },
+              { id: 'alkalinity' as ChemicalId, label: 'TA', field: 'alkalinity_level' as const, step: '1', parse: (v: string) => parseInt(v || '0') },
+              { id: 'chlorine' as ChemicalId, label: 'FC', field: 'chlorine_level' as const, step: '0.1', parse: parseFloat },
+              { id: 'cya' as ChemicalId, label: 'CYA', field: 'cya_level' as const, step: '1', parse: (v: string) => parseInt(v || '0') },
+              { id: 'salt' as ChemicalId, label: 'Salt', field: 'salt_level' as const, step: '100', parse: (v: string) => parseInt(v || '0') },
+            ]).map(({ id, label, field, step, parse }) => {
+              const val = serviceData[field];
+              const status = isInRange(id, val);
+              const colorClass = status === 'in' ? 'text-green-600 border-green-500 ring-green-400'
+                : status === 'out' ? 'text-red-600 border-red-500 ring-red-400' : '';
+              return (
+                <div key={id}>
+                  <Label>{label}</Label>
+                  <Input
+                    type="number"
+                    step={step}
+                    value={val ?? ''}
+                    onChange={e => handleInputChange(field, parse(e.target.value))}
+                    className={colorClass ? `font-semibold ${colorClass}` : ''}
+                  />
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Dosage instructions for out-of-range readings */}
+          {client && (() => {
+            const poolGallons = client.pool_size ?? 10000;
+            const instructions = ([
+              { id: 'ph' as ChemicalId, field: 'ph_level' as const },
+              { id: 'alkalinity' as ChemicalId, field: 'alkalinity_level' as const },
+              { id: 'chlorine' as ChemicalId, field: 'chlorine_level' as const },
+              { id: 'cya' as ChemicalId, field: 'cya_level' as const },
+              { id: 'salt' as ChemicalId, field: 'salt_level' as const },
+            ])
+              .map(({ id, field }) => getDosageInstruction(id, serviceData[field], poolGallons))
+              .filter(Boolean) as string[];
+
+            if (!instructions.length) return null;
+            return (
+              <Alert variant="destructive" className="border-red-300 bg-red-50 text-red-900">
+                <AlertTriangle className="h-4 w-4" />
+                <AlertDescription>
+                  <p className="font-semibold mb-1">Chemical adjustments needed (based on {poolGallons.toLocaleString()} gal pool):</p>
+                  <ul className="list-disc pl-4 space-y-1 text-sm">
+                    {instructions.map((inst, i) => <li key={i}>{inst}</li>)}
+                  </ul>
+                </AlertDescription>
+              </Alert>
+            );
+          })()}
         </CardContent>
       </Card>
 

@@ -92,7 +92,23 @@ export default function FieldService() {
     const ph = data.ph_level != null ? data.ph_level : 'N/A';
     const alk = data.alkalinity_level != null ? data.alkalinity_level : 'N/A';
 
-    return `This is Aqua Clear Pools, your pool is clean and clear. Your chlorine is reading ${chlorine}, pH is ${ph}, alkalinity is ${alk}. Thank you!`;
+    const parts: string[] = [];
+    parts.push(`This is Aqua Clear Pools, your pool is clean and clear.`);
+
+    // Actions performed
+    const actions: string[] = [];
+    if (data.brushed) actions.push('brushed');
+    if (data.vacuumed) actions.push('vacuumed');
+    if (data.cleaned_filters) actions.push('cleaned filters');
+    if (data.robot_plugged_in) actions.push('plugged in your robot');
+    if (actions.length) parts.push(`Today we ${actions.join(', ')}.`);
+
+    parts.push(`Your chlorine is reading ${chlorine}, pH is ${ph}, alkalinity is ${alk}.`);
+
+    if (data.chemicals_added?.trim()) parts.push(`Chemicals added: ${data.chemicals_added.trim()}.`);
+
+    parts.push('Thank you!');
+    return parts.join(' ');
   }
 
   async function completeService() {
@@ -131,30 +147,32 @@ export default function FieldService() {
       const { error } = await supabase.from('services').insert(payload);
       if (error) throw error;
 
-      // Send actual SMS via Telnyx
-      if (client.contact_phone) {
+      // Re-fetch client to get any contact info added during this session
+      const { data: freshClient } = await supabase.from('clients').select('contact_phone, contact_email').eq('id', client.id).single();
+      const phone = freshClient?.contact_phone || client.contact_phone;
+      const email = freshClient?.contact_email || client.contact_email;
+
+      // Send completion SMS via Telnyx
+      if (phone) {
         try {
           const { error } = await supabase.functions.invoke('send-sms-via-telnyx', {
-            body: {
-              to: client.contact_phone,
-              message: message
-            }
+            body: { to: phone, message: message }
           });
           
           if (error) {
             console.error('SMS sending error:', error);
-            window.location.href = `sms:${client.contact_phone}?&body=${encodeURIComponent(message)}`;
+            window.location.href = `sms:${phone}?&body=${encodeURIComponent(message)}`;
             toast({ title: 'Service completed', description: 'SMS app opened with message.' });
           } else {
             toast({ title: 'Service completed', description: 'Saved and SMS sent to client.' });
           }
         } catch (smsError) {
           console.error('SMS API error:', smsError);
-          window.location.href = `sms:${client.contact_phone}?&body=${encodeURIComponent(message)}`;
+          window.location.href = `sms:${phone}?&body=${encodeURIComponent(message)}`;
           toast({ title: 'Service completed', description: 'SMS app opened with message.' });
         }
-      } else if (client.contact_email) {
-        window.location.href = `mailto:${client.contact_email}?subject=${encodeURIComponent('Aqua Clear Service Update')}&body=${encodeURIComponent(message)}`;
+      } else if (email) {
+        window.location.href = `mailto:${email}?subject=${encodeURIComponent('Aqua Clear Service Update')}&body=${encodeURIComponent(message)}`;
         toast({ title: 'Service completed', description: 'Email app opened with message.' });
       } else {
         toast({ title: 'Service completed', description: 'Service saved successfully.' });
@@ -204,6 +222,7 @@ export default function FieldService() {
       {/* Arrival Notification */}
       <ArrivalNotification
         clientName={client.customer}
+        clientId={client.id}
         clientPhone={client.contact_phone}
         clientEmail={client.contact_email}
       />

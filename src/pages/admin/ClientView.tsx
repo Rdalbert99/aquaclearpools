@@ -192,39 +192,39 @@ export default function ClientView() {
   const handleCreateUser = async () => {
     setUserLoading(true);
     try {
-      // Create user account
-      const { data: authData, error: signUpError } = await supabase.auth.admin.createUser({
-        email: newUserData.email,
-        password: newUserData.password,
-        email_confirm: true
+      // Use edge function for secure server-side user creation
+      const response = await supabase.functions.invoke('create-user-account', {
+        body: {
+          firstName: newUserData.name.split(' ')[0] || newUserData.name,
+          lastName: newUserData.name.split(' ').slice(1).join(' ') || '',
+          login: newUserData.email.split('@')[0],
+          email: newUserData.email,
+          password: newUserData.password,
+          role: 'client',
+          phone: '',
+          address: ''
+        }
       });
 
-      if (signUpError) throw signUpError;
+      if (response.error) throw new Error(response.error.message || 'Failed to create user');
+      if (response.data?.error) throw new Error(response.data.error);
+      if (!response.data?.success) throw new Error('Unexpected response from server');
 
-      // Create user profile
-      const { error: profileError } = await supabase
-        .from('users')
-        .insert({
-          id: authData.user.id,
-          email: newUserData.email,
-          name: newUserData.name,
-          login: newUserData.email.split('@')[0], // Use email prefix as login
-          role: 'client'
-        });
-
-      if (profileError) throw profileError;
+      const newUserId = response.data.user?.id;
 
       // Link user to client in junction table
-      const { error: clientUserError } = await supabase
-        .from('client_users')
-        .insert({
-          client_id: id,
-          user_id: authData.user.id,
-          role: newUserData.role,
-          is_primary: false
-        });
+      if (newUserId && id) {
+        const { error: clientUserError } = await supabase
+          .from('client_users')
+          .insert({
+            client_id: id,
+            user_id: newUserId,
+            role: newUserData.role,
+            is_primary: false
+          });
 
-      if (clientUserError) throw clientUserError;
+        if (clientUserError) throw clientUserError;
+      }
 
       toast({
         title: "Success",

@@ -19,6 +19,7 @@ import {
   MessageSquare
 } from 'lucide-react';
 import { PoolImageUpload } from '@/components/admin/PoolImageUpload';
+import { TechInviteDialog } from '@/components/admin/TechInviteDialog';
 
 interface DashboardStats {
   totalClients: number;
@@ -210,6 +211,7 @@ export default function AdminDashboard() {
                   <span className="text-sm">Add Tech</span>
                 </Link>
               </Button>
+              <TechInviteDialog />
               <Button asChild variant="outline" className="h-16 flex-col">
                 <Link to="/admin/calculator">
                   <BarChart3 className="h-5 w-5 mb-1" />

@@ -16,6 +16,7 @@ import Login from "./pages/auth/Login";
 import Signup from "./pages/auth/Signup";
 import ClientSignup from "./pages/auth/ClientSignup";
 import ClientInvite from "./pages/auth/ClientInvite";
+import TechInvite from "./pages/auth/TechInvite";
 import ChangePassword from "./pages/auth/ChangePassword";
 import ForgotPassword from "./pages/auth/ForgotPassword";
 import ResetPassword from "./pages/auth/ResetPassword";
@@ -83,6 +84,7 @@ const AppRoutes = () => {
         <Route path="/auth/signup" element={<Signup />} />
         <Route path="/auth/client-signup" element={<ClientSignup />} />
         <Route path="/auth/invite/:token" element={<ClientInvite />} />
+        <Route path="/auth/tech-invite/:token" element={<TechInvite />} />
         <Route path="/auth/change-password" element={<ChangePassword />} />
         <Route path="/auth/forgot-password" element={<ForgotPassword />} />
         <Route path="/auth/reset-password" element={<ResetPassword />} />

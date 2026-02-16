@@ -741,6 +741,50 @@ export type Database = {
           },
         ]
       }
+      tech_invitations: {
+        Row: {
+          created_at: string
+          email: string | null
+          expires_at: string
+          id: string
+          invited_by: string | null
+          phone: string | null
+          token: string
+          token_hash: string | null
+          used_at: string | null
+        }
+        Insert: {
+          created_at?: string
+          email?: string | null
+          expires_at?: string
+          id?: string
+          invited_by?: string | null
+          phone?: string | null
+          token: string
+          token_hash?: string | null
+          used_at?: string | null
+        }
+        Update: {
+          created_at?: string
+          email?: string | null
+          expires_at?: string
+          id?: string
+          invited_by?: string | null
+          phone?: string | null
+          token?: string
+          token_hash?: string | null
+          used_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tech_invitations_invited_by_fkey"
+            columns: ["invited_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_logins: {
         Row: {
           created_at: string
@@ -1052,6 +1096,10 @@ export type Database = {
       validate_invitation_token: {
         Args: { token_input: string }
         Returns: string
+      }
+      validate_tech_invitation_token: {
+        Args: { token_input: string }
+        Returns: Json
       }
       validate_user_access_policies: { Args: never; Returns: boolean }
     }

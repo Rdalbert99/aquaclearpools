@@ -48,40 +48,17 @@ export default function ClientInvite() {
       if (!token) return;
       
       try {
-        // Get client IP and user agent for security logging
-        const clientIP = await fetch('https://api.ipify.org?format=json')
-          .then(r => r.json())
-          .then(data => data.ip)
-          .catch(() => 'unknown');
+        // Use secure RPC function instead of direct table query to prevent PII exposure
+        const { data: invitationId, error: validationError } = await supabase.rpc('validate_invitation_token', { 
+          token_input: token 
+        });
 
-        const userAgent = navigator.userAgent;
-
-        // First check if invitation exists and get validation details
-        const { data: validationData } = await supabase
-          .from('client_invitations')
-          .select('expires_at, used_at')
-          .eq('token', token)
-          .single();
-
-        if (!validationData) {
+        if (validationError || !invitationId) {
+          // Token is invalid, expired, or already used
           setInviteError({ valid: false, reason: 'not_found' });
           setInvite(null);
-        } else if (validationData.used_at) {
-          setInviteError({ 
-            valid: false, 
-            reason: 'used', 
-            used_at: validationData.used_at 
-          });
-          setInvite(null);
-        } else if (new Date(validationData.expires_at) <= new Date()) {
-          setInviteError({ 
-            valid: false, 
-            reason: 'expired', 
-            expires_at: validationData.expires_at 
-          });
-          setInvite(null);
         } else {
-          // Invitation is valid, get full payload
+          // Invitation is valid, get full payload using secure function
           const { data, error } = await supabase.rpc("get_client_invite_payload", { 
             invite_token: token
           });
@@ -92,7 +69,6 @@ export default function ClientInvite() {
           } else {
             setInvite(data as any);
             setName((data as any).customer || "");
-            // Pre-populate email from invitation if admin entered one
             setEmail(((data as any).email as string) || "");
             setPhone(((data as any).phone as string) || "");
             setAddress(((data as any).address as string) || "");

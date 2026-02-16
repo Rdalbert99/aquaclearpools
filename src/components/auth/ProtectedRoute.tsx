@@ -18,8 +18,9 @@ export const ProtectedRoute = ({ children, allowedRoles }: ProtectedRouteProps) 
     return <Navigate to="/auth/login" replace />;
   }
 
+  // CLIENT-SIDE UX ONLY - Server-side RLS policies enforce actual access control
+  // These checks prevent UI confusion but cannot enforce security; all data access is protected by database RLS
   if (allowedRoles && user?.role && !allowedRoles.includes(user.role)) {
-    // Redirect based on user role
     if (user.role === 'client') {
       return <Navigate to="/client" replace />;
     } else if (user.role === 'admin') {

@@ -148,13 +148,15 @@ export default function TechInvite() {
                     type={showPassword ? 'text' : 'password'}
                     value={form.password}
                     onChange={(e) => setForm(p => ({ ...p, password: e.target.value }))}
+                    minLength={12}
+                    placeholder="Minimum 12 characters"
                     required
                   />
                   <Button type="button" variant="ghost" size="sm" className="absolute right-0 top-0 h-full px-3" onClick={() => setShowPassword(!showPassword)}>
                     {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                   </Button>
                 </div>
-                <p className="text-xs text-muted-foreground">Min 12 characters with uppercase, lowercase, and numbers.</p>
+                <p className="text-xs text-muted-foreground">Password must be at least 12 characters and include uppercase, lowercase, and numbers.</p>
               </div>
 
               <div className="space-y-2">

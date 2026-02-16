@@ -103,7 +103,7 @@ export type Database = {
           expires_at: string
           id: string
           last_access_at: string | null
-          last_access_ip: unknown | null
+          last_access_ip: unknown
           phone: string | null
           phone_encrypted: string | null
           token: string
@@ -120,7 +120,7 @@ export type Database = {
           expires_at?: string
           id?: string
           last_access_at?: string | null
-          last_access_ip?: unknown | null
+          last_access_ip?: unknown
           phone?: string | null
           phone_encrypted?: string | null
           token: string
@@ -137,7 +137,7 @@ export type Database = {
           expires_at?: string
           id?: string
           last_access_at?: string | null
-          last_access_ip?: unknown | null
+          last_access_ip?: unknown
           phone?: string | null
           phone_encrypted?: string | null
           token?: string
@@ -474,7 +474,7 @@ export type Database = {
           created_at: string | null
           event_type: string
           id: string
-          ip_address: unknown | null
+          ip_address: unknown
           new_values: Json | null
           old_values: Json | null
           target_table: string | null
@@ -486,7 +486,7 @@ export type Database = {
           created_at?: string | null
           event_type: string
           id?: string
-          ip_address?: unknown | null
+          ip_address?: unknown
           new_values?: Json | null
           old_values?: Json | null
           target_table?: string | null
@@ -498,7 +498,7 @@ export type Database = {
           created_at?: string | null
           event_type?: string
           id?: string
-          ip_address?: unknown | null
+          ip_address?: unknown
           new_values?: Json | null
           old_values?: Json | null
           target_table?: string | null
@@ -513,7 +513,7 @@ export type Database = {
           endpoint: string | null
           event_type: string
           id: string
-          ip_address: unknown | null
+          ip_address: unknown
           payload: Json | null
           session_id: string | null
           severity: string
@@ -525,7 +525,7 @@ export type Database = {
           endpoint?: string | null
           event_type: string
           id?: string
-          ip_address?: unknown | null
+          ip_address?: unknown
           payload?: Json | null
           session_id?: string | null
           severity?: string
@@ -537,7 +537,7 @@ export type Database = {
           endpoint?: string | null
           event_type?: string
           id?: string
-          ip_address?: unknown | null
+          ip_address?: unknown
           payload?: Json | null
           session_id?: string | null
           severity?: string
@@ -981,20 +981,11 @@ export type Database = {
         }
         Returns: boolean
       }
-      cleanup_expired_invitations: {
-        Args: Record<PropertyKey, never>
-        Returns: number
-      }
-      cleanup_old_invitations: {
-        Args: Record<PropertyKey, never>
-        Returns: number
-      }
-      emergency_lockdown_pii_access: {
-        Args: Record<PropertyKey, never>
-        Returns: boolean
-      }
+      cleanup_expired_invitations: { Args: never; Returns: number }
+      cleanup_old_invitations: { Args: never; Returns: number }
+      emergency_lockdown_pii_access: { Args: never; Returns: boolean }
       get_all_technicians: {
-        Args: Record<PropertyKey, never>
+        Args: never
         Returns: {
           created_at: string
           email: string
@@ -1016,26 +1007,11 @@ export type Database = {
         }
         Returns: Json
       }
-      get_current_user_role: {
-        Args: Record<PropertyKey, never>
-        Returns: string
-      }
-      get_email_by_login: {
-        Args: { login_input: string }
-        Returns: string
-      }
-      get_user_public_info: {
-        Args: { user_lookup_id: string }
-        Returns: Json
-      }
-      get_user_public_safe: {
-        Args: { user_lookup_id: string }
-        Returns: Json
-      }
-      hash_invitation_token: {
-        Args: { token_input: string }
-        Returns: string
-      }
+      get_current_user_role: { Args: never; Returns: string }
+      get_email_by_login: { Args: { login_input: string }; Returns: string }
+      get_user_public_info: { Args: { user_lookup_id: string }; Returns: Json }
+      get_user_public_safe: { Args: { user_lookup_id: string }; Returns: Json }
+      hash_invitation_token: { Args: { token_input: string }; Returns: string }
       log_security_event: {
         Args: {
           p_event_type: string
@@ -1065,34 +1041,19 @@ export type Database = {
         }
         Returns: boolean
       }
-      mask_email: {
-        Args: { email_input: string }
-        Returns: string
-      }
-      mask_phone: {
-        Args: { phone_input: string }
-        Returns: string
-      }
+      mask_email: { Args: { email_input: string }; Returns: string }
+      mask_phone: { Args: { phone_input: string }; Returns: string }
       secure_admin_user_lookup: {
         Args: { admin_reason: string; lookup_email: string }
         Returns: Json
       }
-      security_health_check: {
-        Args: Record<PropertyKey, never>
-        Returns: Json
-      }
-      validate_clients_anonymous_protection: {
-        Args: Record<PropertyKey, never>
-        Returns: boolean
-      }
+      security_health_check: { Args: never; Returns: Json }
+      validate_clients_anonymous_protection: { Args: never; Returns: boolean }
       validate_invitation_token: {
         Args: { token_input: string }
         Returns: string
       }
-      validate_user_access_policies: {
-        Args: Record<PropertyKey, never>
-        Returns: boolean
-      }
+      validate_user_access_policies: { Args: never; Returns: boolean }
     }
     Enums: {
       [_ in never]: never

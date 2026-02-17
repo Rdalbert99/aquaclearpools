@@ -333,6 +333,29 @@ export default function FieldService() {
           <CardDescription>Notes and chemicals added.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
+          {/* Auto-generated dosage suggestions */}
+          {(() => {
+            const poolGallons = client.pool_size ?? 10000;
+            const suggestions = ([
+              { id: 'ph' as ChemicalId, field: 'ph_level' as const },
+              { id: 'alkalinity' as ChemicalId, field: 'alkalinity_level' as const },
+              { id: 'chlorine' as ChemicalId, field: 'chlorine_level' as const },
+              { id: 'cya' as ChemicalId, field: 'cya_level' as const },
+              { id: 'salt' as ChemicalId, field: 'salt_level' as const },
+            ])
+              .map(({ id, field }) => getDosageInstruction(id, serviceData[field], poolGallons))
+              .filter(Boolean) as string[];
+
+            if (!suggestions.length) return null;
+            return (
+              <div className="p-3 rounded-lg border border-red-300 bg-red-50 text-red-900 text-sm space-y-1">
+                <p className="font-semibold flex items-center gap-1"><AlertTriangle className="h-4 w-4" /> Suggested additions ({poolGallons.toLocaleString()} gal):</p>
+                <ul className="list-disc pl-5 space-y-0.5">
+                  {suggestions.map((s, i) => <li key={i}>{s}</li>)}
+                </ul>
+              </div>
+            );
+          })()}
           <div>
             <Label htmlFor="chemicals">Chemicals Added</Label>
             <Textarea id="chemicals" rows={3}

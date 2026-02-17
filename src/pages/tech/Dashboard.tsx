@@ -13,7 +13,8 @@ import {
   Clock,
   CheckCircle,
   Plus,
-  MapPin
+  MapPin,
+  User
 } from 'lucide-react';
 import { BeforeAfterUpload } from '@/components/tech/BeforeAfterUpload';
 
@@ -182,6 +183,12 @@ export default function TechDashboard() {
               <Link to="/tech/services/new">
                 <Plus className="h-6 w-6 mb-2" />
                 Record New Service
+              </Link>
+            </Button>
+            <Button asChild variant="outline" className="h-20 flex-col">
+              <Link to="/admin/clients/new">
+                <User className="h-6 w-6 mb-2" />
+                New Client
               </Link>
             </Button>
           </div>

@@ -261,7 +261,7 @@ export default function NewClient() {
         customer: client.customer,
         contact_email: client.email || null,
         contact_phone: client.phone || null,
-        contact_address: client.street_address || null,
+        contact_address: [client.street_address, client.city, client.state, client.zip_code].filter(Boolean).join(', ') || null,
         pool_size: client.pool_size,
         pool_type: client.pool_type,
         liner_type: client.liner_type,
@@ -329,7 +329,7 @@ export default function NewClient() {
       });
       toast({
         title: "Error",
-        description: "Failed to create client",
+        description: `Failed to create client: ${error.message || error.details || 'Unknown error'}`,
         variant: "destructive"
       });
     } finally {
@@ -847,6 +847,17 @@ export default function NewClient() {
             </div>
           </CardContent>
         </Card>
+      </div>
+
+      {/* Bottom Save Button */}
+      <div className="flex justify-end space-x-2 pb-8">
+        <Button variant="outline" onClick={() => navigate(isTech ? '/tech' : '/admin/clients')}>
+          Cancel
+        </Button>
+        <Button onClick={handleSave} disabled={saving} size="lg">
+          <Save className="mr-2 h-4 w-4" />
+          {saving ? 'Creating...' : 'Save Client'}
+        </Button>
       </div>
 
       {/* Client Invite Dialog */}

@@ -793,7 +793,20 @@ export default function NewClient() {
             </div>
 
             <div className="space-y-4">
-              <Label className="text-base font-semibold">Included Services</Label>
+              <div className="flex items-center justify-between">
+                <Label className="text-base font-semibold">Included Services</Label>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    const allSelected = commonPoolServices.every(s => client.included_services.includes(s));
+                    handleInputChange('included_services', allSelected ? [] : [...commonPoolServices]);
+                  }}
+                >
+                  {commonPoolServices.every(s => client.included_services.includes(s)) ? 'Deselect All' : 'Select All'}
+                </Button>
+              </div>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
                 {commonPoolServices.map((service) => (
                   <div key={service} className="flex items-center space-x-2">

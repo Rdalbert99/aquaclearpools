@@ -97,8 +97,10 @@ export default function NewClient() {
   });
 
   useEffect(() => {
-    loadUsers();
-  }, []);
+    if (isAdmin) {
+      loadUsers();
+    }
+  }, [isAdmin]);
 
   const loadUsers = async () => {
     try {
@@ -146,7 +148,7 @@ export default function NewClient() {
     }
 
     // Validate new user creation fields
-    if (client.account_type === 'new') {
+    if (isAdmin && client.account_type === 'new') {
       console.log('🔍 Validating new user creation fields...');
       if (!client.new_user_username.trim()) {
         toast({
@@ -179,7 +181,7 @@ export default function NewClient() {
       let finalUserId = null;
 
       // Create new user if requested
-      if (client.account_type === 'new') {
+      if (isAdmin && client.account_type === 'new') {
         console.log('👤 Creating new user account...');
         console.log('📧 User email:', client.new_user_email);
         

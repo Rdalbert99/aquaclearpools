@@ -59,7 +59,7 @@ interface ClientFormData {
 
 export default function NewClient() {
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, isAdmin, isTech } = useAuth();
   const { toast } = useToast();
   const [saving, setSaving] = useState(false);
   const [users, setUsers] = useState<any[]>([]);
@@ -279,6 +279,11 @@ export default function NewClient() {
         updated_at: new Date().toISOString()
       };
 
+      // Auto-assign tech as the technician when they create a client
+      if (isTech && user?.id) {
+        insertData.assigned_technician_id = user.id;
+      }
+
       // Only include last_service_date if it's provided
       if (client.last_service_date) {
         insertData.last_service_date = client.last_service_date;
@@ -303,9 +308,11 @@ export default function NewClient() {
         description: "Client created successfully"
       });
 
-      // Show invite dialog if client has email or phone
-      if (client.email || client.phone) {
+      // Show invite dialog if client has email or phone (admin only)
+      if (isAdmin && (client.email || client.phone)) {
         setShowInviteDialog(true);
+      } else if (isTech) {
+        navigate('/tech');
       } else {
         navigate(`/admin/clients/${data.id}`);
       }
@@ -396,7 +403,7 @@ export default function NewClient() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-4">
-          <Button variant="outline" onClick={() => navigate('/admin/clients')}>
+          <Button variant="outline" onClick={() => navigate(isTech ? '/tech' : '/admin/clients')}>
             <ArrowLeft className="mr-2 h-4 w-4" />
             Back to Clients
           </Button>
@@ -406,7 +413,7 @@ export default function NewClient() {
           </div>
         </div>
         <div className="flex space-x-2">
-          <Button variant="outline" onClick={() => navigate('/admin/clients')}>
+          <Button variant="outline" onClick={() => navigate(isTech ? '/tech' : '/admin/clients')}>
             Cancel
           </Button>
           <Button onClick={handleSave} disabled={saving}>
@@ -537,6 +544,7 @@ export default function NewClient() {
               </Label>
             </div>
 
+            {isAdmin && (
             <div className="space-y-4">
               <Label>Associated User Account</Label>
               <div className="space-y-3">
@@ -634,6 +642,7 @@ export default function NewClient() {
                 )}
               </div>
             </div>
+            )}
 
             <div className="space-y-2">
               <Label htmlFor="status">Status</Label>

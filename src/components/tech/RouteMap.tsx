@@ -3,7 +3,7 @@ import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { Button } from '@/components/ui/button';
-import { Navigation, Phone, ExternalLink } from 'lucide-react';
+import { Navigation, Phone, GripVertical } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 // Fix Leaflet default marker icon issue
@@ -86,6 +86,31 @@ export function RouteMap({ clients }: RouteMapProps) {
   const [geocodedClients, setGeocodedClients] = useState<ClientWithCoords[]>([]);
   const [loading, setLoading] = useState(true);
   const [failedCount, setFailedCount] = useState(0);
+  const [dragIndex, setDragIndex] = useState<number | null>(null);
+  const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
+
+  const handleDragStart = (index: number) => {
+    setDragIndex(index);
+  };
+
+  const handleDragOver = (e: React.DragEvent, index: number) => {
+    e.preventDefault();
+    setDragOverIndex(index);
+  };
+
+  const handleDrop = (index: number) => {
+    if (dragIndex === null || dragIndex === index) {
+      setDragIndex(null);
+      setDragOverIndex(null);
+      return;
+    }
+    const updated = [...geocodedClients];
+    const [moved] = updated.splice(dragIndex, 1);
+    updated.splice(index, 0, moved);
+    setGeocodedClients(updated);
+    setDragIndex(null);
+    setDragOverIndex(null);
+  };
 
   useEffect(() => {
     let cancelled = false;
@@ -228,11 +253,22 @@ export function RouteMap({ clients }: RouteMapProps) {
 
       {/* Client list below map */}
       <div className="space-y-2">
-        <h4 className="font-semibold text-sm">Stop Order</h4>
+        <h4 className="font-semibold text-sm">Stop Order <span className="text-muted-foreground font-normal">(drag to reorder)</span></h4>
         {geocodedClients.map((client, index) => (
-          <div key={client.id} className="flex items-center justify-between p-2 border rounded-lg text-sm">
-            <div className="flex items-center space-x-3">
-              <div className="flex items-center justify-center w-7 h-7 rounded-full bg-primary text-primary-foreground font-bold text-xs">
+          <div
+            key={client.id}
+            draggable
+            onDragStart={() => handleDragStart(index)}
+            onDragOver={(e) => handleDragOver(e, index)}
+            onDrop={() => handleDrop(index)}
+            onDragEnd={() => { setDragIndex(null); setDragOverIndex(null); }}
+            className={`flex items-center justify-between p-2 border rounded-lg text-sm cursor-grab active:cursor-grabbing transition-colors ${
+              dragOverIndex === index ? 'border-primary bg-primary/5' : ''
+            } ${dragIndex === index ? 'opacity-50' : ''}`}
+          >
+            <div className="flex items-center space-x-2">
+              <GripVertical className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+              <div className="flex items-center justify-center w-7 h-7 rounded-full bg-primary text-primary-foreground font-bold text-xs flex-shrink-0">
                 {index + 1}
               </div>
               <div>

@@ -127,9 +127,9 @@ export default function ClientEdit() {
         included_services: (data as any).included_services || [],
         service_notes: (data as any).service_notes || '',
         service_days: (data as any).service_days || [],
-        address: userData?.address || '',
-        email: userData?.email || '',
-        phone: userData?.phone || '',
+        address: userData?.address || data.contact_address || '',
+        email: userData?.email || data.contact_email || '',
+        phone: userData?.phone || data.contact_phone || '',
         notify_on_confirmation: data.notify_on_confirmation ?? true,
         notify_on_assignment: data.notify_on_assignment ?? true,
         notification_method: data.notification_method || 'email'
@@ -213,6 +213,9 @@ export default function ClientEdit() {
         notify_on_confirmation: client.notify_on_confirmation,
         notify_on_assignment: client.notify_on_assignment,
         notification_method: client.notification_method,
+        contact_address: client.address || null,
+        contact_email: client.email || null,
+        contact_phone: client.phone || null,
         updated_at: new Date().toISOString()
       };
 

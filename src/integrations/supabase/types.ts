@@ -1092,6 +1092,10 @@ export type Database = {
         Returns: Json
       }
       security_health_check: { Args: never; Returns: Json }
+      tech_has_serviced_client: {
+        Args: { p_client_id: string; p_tech_id: string }
+        Returns: boolean
+      }
       validate_clients_anonymous_protection: { Args: never; Returns: boolean }
       validate_invitation_token: {
         Args: { token_input: string }

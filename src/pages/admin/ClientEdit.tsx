@@ -51,7 +51,10 @@ interface ClientFormData {
   included_services: string[];
   service_notes: string;
   service_days: string[];
-  address: string;
+  street_address: string;
+  city: string;
+  state: string;
+  zip_code: string;
   email: string;
   phone: string;
   notify_on_confirmation: boolean;
@@ -112,6 +115,12 @@ export default function ClientEdit() {
 
       const userData = (data as any).users;
       
+      // Parse address components - try structured fields first, fall back to contact_address
+      const streetAddr = userData?.street_address || (data as any).contact_address || '';
+      const cityVal = userData?.city || '';
+      const stateVal = userData?.state || '';
+      const zipVal = userData?.zip_code || '';
+
       setClient({
         customer: data.customer || '',
         pool_size: data.pool_size || 0,
@@ -127,7 +136,10 @@ export default function ClientEdit() {
         included_services: (data as any).included_services || [],
         service_notes: (data as any).service_notes || '',
         service_days: (data as any).service_days || [],
-        address: userData?.address || data.contact_address || '',
+        street_address: streetAddr,
+        city: cityVal,
+        state: stateVal,
+        zip_code: zipVal,
         email: userData?.email || data.contact_email || '',
         phone: userData?.phone || data.contact_phone || '',
         notify_on_confirmation: data.notify_on_confirmation ?? true,
@@ -196,6 +208,11 @@ export default function ClientEdit() {
 
     setSaving(true);
     try {
+      // Build full address string from components
+      const fullAddress = [client.street_address, client.city, client.state, client.zip_code]
+        .filter(Boolean)
+        .join(', ');
+
       const updateData: any = {
         customer: client.customer,
         pool_size: client.pool_size,
@@ -213,7 +230,7 @@ export default function ClientEdit() {
         notify_on_confirmation: client.notify_on_confirmation,
         notify_on_assignment: client.notify_on_assignment,
         notification_method: client.notification_method,
-        contact_address: client.address || null,
+        contact_address: fullAddress || null,
         contact_email: client.email || null,
         contact_phone: client.phone || null,
         updated_at: new Date().toISOString()
@@ -241,7 +258,11 @@ export default function ClientEdit() {
           .update({
             email: client.email,
             phone: client.phone,
-            address: client.address,
+            address: fullAddress || null,
+            street_address: client.street_address || null,
+            city: client.city || null,
+            state: client.state || null,
+            zip_code: client.zip_code || null,
             updated_at: new Date().toISOString()
           })
           .eq('id', client.user_id);
@@ -318,7 +339,7 @@ export default function ClientEdit() {
           password: newUserPassword,
           role: 'client',
           phone: client.phone || null,
-          address: client.address || null
+          address: [client.street_address, client.city, client.state, client.zip_code].filter(Boolean).join(', ') || null
         }
       });
 
@@ -559,14 +580,45 @@ export default function ClientEdit() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="address">Physical Address</Label>
-              <Textarea
-                id="address"
-                value={client.address}
-                onChange={(e) => handleInputChange('address', e.target.value)}
-                placeholder="Enter physical address"
-                rows={2}
+              <Label htmlFor="street_address">Street Address</Label>
+              <Input
+                id="street_address"
+                value={client.street_address}
+                onChange={(e) => handleInputChange('street_address', e.target.value)}
+                placeholder="123 Main St"
               />
+            </div>
+
+            <div className="grid grid-cols-3 gap-3">
+              <div className="space-y-2">
+                <Label htmlFor="city">City</Label>
+                <Input
+                  id="city"
+                  value={client.city}
+                  onChange={(e) => handleInputChange('city', e.target.value)}
+                  placeholder="City"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="state">State</Label>
+                <Input
+                  id="state"
+                  value={client.state}
+                  onChange={(e) => handleInputChange('state', e.target.value)}
+                  placeholder="CA"
+                  maxLength={2}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="zip_code">ZIP Code</Label>
+                <Input
+                  id="zip_code"
+                  value={client.zip_code}
+                  onChange={(e) => handleInputChange('zip_code', e.target.value)}
+                  placeholder="12345"
+                  maxLength={10}
+                />
+              </div>
             </div>
 
             {/* Website Login Access Section */}

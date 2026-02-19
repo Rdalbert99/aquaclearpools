@@ -211,18 +211,20 @@ export default function TechSchedule() {
             {(client.contact_phone || client.client_user?.phone) && (
               <Button size="sm" variant="outline" asChild>
                 <a href={`tel:${client.contact_phone || client.client_user?.phone}`}>
-                  <Phone className="h-3 w-3" />
+                  <Phone className="h-3 w-3 mr-1" />
+                  Call
                 </a>
               </Button>
             )}
             {(client.contact_address || client.client_user?.address) && (
-              <Button size="sm" variant="outline" asChild>
+              <Button size="sm" variant="default" asChild>
                 <a 
-                  href={`https://maps.google.com?q=${encodeURIComponent(client.contact_address || client.client_user?.address)}`}
+                  href={`https://maps.apple.com/?q=${encodeURIComponent(client.contact_address || client.client_user?.address)}`}
                   target="_blank"
                   rel="noopener noreferrer"
                 >
-                  <Navigation className="h-3 w-3" />
+                  <Navigation className="h-3 w-3 mr-1" />
+                  Map
                 </a>
               </Button>
             )}
@@ -480,14 +482,29 @@ export default function TechSchedule() {
                                   <p className="text-muted-foreground truncate">
                                     {item.pool_size?.toLocaleString()} gal
                                   </p>
-                                    {(item.contact_phone || item.client_user?.phone) && (
-                                     <Button size="sm" variant="outline" className="h-6 px-2 mt-1" asChild>
-                                       <a href={`tel:${item.contact_phone || item.client_user?.phone}`} className="text-xs">
-                                         <Phone className="h-2 w-2 mr-1" />
-                                         Call
-                                       </a>
-                                     </Button>
-                                   )}
+                                    <div className="flex space-x-1 mt-1">
+                                      {(item.contact_phone || item.client_user?.phone) && (
+                                        <Button size="sm" variant="outline" className="h-6 px-2" asChild>
+                                          <a href={`tel:${item.contact_phone || item.client_user?.phone}`} className="text-xs">
+                                            <Phone className="h-2 w-2 mr-1" />
+                                            Call
+                                          </a>
+                                        </Button>
+                                      )}
+                                      {(item.contact_address || item.client_user?.address) && (
+                                        <Button size="sm" variant="default" className="h-6 px-2" asChild>
+                                          <a 
+                                            href={`https://maps.apple.com/?q=${encodeURIComponent(item.contact_address || item.client_user?.address)}`}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="text-xs"
+                                          >
+                                            <Navigation className="h-2 w-2 mr-1" />
+                                            Map
+                                          </a>
+                                        </Button>
+                                      )}
+                                    </div>
                                 </div>
                               )}
                             </div>

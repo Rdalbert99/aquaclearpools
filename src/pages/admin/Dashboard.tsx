@@ -16,7 +16,10 @@ import {
   BarChart3,
   FileText,
   Shield,
-  MessageSquare
+  MessageSquare,
+  Mail,
+  Phone,
+  MapPin
 } from 'lucide-react';
 import { PoolImageUpload } from '@/components/admin/PoolImageUpload';
 import { TechInviteDialog } from '@/components/admin/TechInviteDialog';
@@ -251,27 +254,49 @@ export default function AdminDashboard() {
                 
                 return (
                   <div key={client.id} className="flex items-center justify-between p-3 border rounded-lg">
-                    <div>
-                      <p className="font-medium">{client.customer}</p>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between">
+                        <p className="font-medium">{client.customer}</p>
+                        <div className="flex items-center space-x-2">
+                          {needsService ? (
+                            <AlertCircle className="h-4 w-4 text-orange-500" />
+                          ) : (
+                            <CheckCircle className="h-4 w-4 text-green-500" />
+                          )}
+                          <Badge variant={needsService ? 'secondary' : 'default'}>
+                            {needsService ? 'Needs Service' : 'Good'}
+                          </Badge>
+                        </div>
+                      </div>
                       <p className="text-sm text-muted-foreground">
                         {client.pool_size?.toLocaleString()} gal • {client.pool_type}
                       </p>
-                      <p className="text-xs text-muted-foreground">
+                      <div className="flex flex-wrap gap-x-4 gap-y-1 mt-1">
+                        {client.contact_email && (
+                          <a href={`mailto:${client.contact_email}`} className="flex items-center gap-1 text-xs text-muted-foreground hover:text-primary transition-colors">
+                            <Mail className="h-3 w-3" />
+                            {client.contact_email}
+                          </a>
+                        )}
+                        {client.contact_phone && (
+                          <a href={`tel:${client.contact_phone}`} className="flex items-center gap-1 text-xs text-muted-foreground hover:text-primary transition-colors">
+                            <Phone className="h-3 w-3" />
+                            {client.contact_phone}
+                          </a>
+                        )}
+                        {client.contact_address && (
+                          <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                            <MapPin className="h-3 w-3" />
+                            {client.contact_address}
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-1">
                         Last service: {client.last_service_date 
                           ? new Date(client.last_service_date).toLocaleDateString()
                           : 'Never'
                         }
                       </p>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      {needsService ? (
-                        <AlertCircle className="h-4 w-4 text-orange-500" />
-                      ) : (
-                        <CheckCircle className="h-4 w-4 text-green-500" />
-                      )}
-                      <Badge variant={needsService ? 'secondary' : 'default'}>
-                        {needsService ? 'Needs Service' : 'Good'}
-                      </Badge>
                     </div>
                   </div>
                 );

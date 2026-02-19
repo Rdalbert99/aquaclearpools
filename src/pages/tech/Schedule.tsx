@@ -230,12 +230,16 @@ export default function TechSchedule() {
         </div>
         
         <div className="space-y-2 text-sm">
-          {(client.contact_address || client.client_user?.address) && (
-            <div className="flex items-center space-x-2">
-              <MapPin className="h-3 w-3 text-muted-foreground" />
+          <div className="flex items-center space-x-2">
+            <MapPin className="h-3 w-3 text-muted-foreground" />
+            {(client.contact_address || client.client_user?.address) ? (
               <span className="text-muted-foreground">{client.contact_address || client.client_user?.address}</span>
-            </div>
-          )}
+            ) : (
+              <Link to={`/admin/clients/${client.id}`} className="text-xs text-orange-500 hover:underline">
+                No address — tap to add
+              </Link>
+            )}
+          </div>
           {client.last_service_date && (
             <div className="flex items-center space-x-2">
               <Clock className="h-3 w-3 text-muted-foreground" />
@@ -463,6 +467,16 @@ export default function TechSchedule() {
                                     <span>{item.customer}</span>
                                     <ExternalLink className="h-2 w-2" />
                                   </Link>
+                                  {(item.contact_address || item.client_user?.address) ? (
+                                    <p className="text-muted-foreground truncate flex items-center space-x-1">
+                                      <MapPin className="h-2 w-2 flex-shrink-0" />
+                                      <span>{item.contact_address || item.client_user?.address}</span>
+                                    </p>
+                                  ) : (
+                                    <Link to={`/admin/clients/${item.id}`} className="text-[10px] text-orange-500 hover:underline">
+                                      No address
+                                    </Link>
+                                  )}
                                   <p className="text-muted-foreground truncate">
                                     {item.pool_size?.toLocaleString()} gal
                                   </p>

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, lazy, Suspense } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -19,6 +19,9 @@ import {
   ExternalLink
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { Map } from 'lucide-react';
+
+const RouteMap = lazy(() => import('@/components/tech/RouteMap').then(m => ({ default: m.RouteMap })));
 
 interface ScheduleData {
   todayClients: any[];
@@ -298,6 +301,7 @@ export default function TechSchedule() {
             <SelectItem value="calendar">Weekly Calendar</SelectItem>
             <SelectItem value="overdue">Overdue Clients</SelectItem>
             <SelectItem value="requests">Service Requests</SelectItem>
+            <SelectItem value="routemap">📍 Route Map</SelectItem>
           </SelectContent>
         </Select>
       </div>
@@ -611,6 +615,36 @@ export default function TechSchedule() {
                   </Card>
                 ))}
               </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
+      {selectedDay === 'routemap' && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center space-x-2">
+              <Navigation className="h-5 w-5" />
+              <span>Today's Route Map</span>
+            </CardTitle>
+            <CardDescription>
+              View all of today's clients on a map to plan your route ({new Date().toLocaleDateString()})
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {scheduleData?.todayClients.length === 0 ? (
+              <div className="text-center py-8">
+                <Navigation className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                <p className="text-muted-foreground">No clients scheduled for today</p>
+              </div>
+            ) : (
+              <Suspense fallback={
+                <div className="flex items-center justify-center py-12">
+                  <LoadingSpinner />
+                </div>
+              }>
+                <RouteMap clients={scheduleData?.todayClients || []} />
+              </Suspense>
             )}
           </CardContent>
         </Card>

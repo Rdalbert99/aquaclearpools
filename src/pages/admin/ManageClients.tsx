@@ -134,6 +134,7 @@ export default function ManageClients() {
         .select(`
           id, customer, pool_size, pool_type, status, user_id, assigned_technician_id,
           last_service_date, next_service_date, service_days, service_frequency, created_at,
+          contact_email, contact_phone, contact_address,
           assigned_technician:users!assigned_technician_id(id, name, email),
           users!clients_user_id_fkey(id, name, email, phone)
         `);
@@ -610,33 +611,41 @@ export default function ManageClients() {
                         
                          <td className="p-4">
                            <div className="space-y-1">
-                             {client.users?.email && (
-                               <div className="flex items-center space-x-2">
-                                 <Mail className="h-3 w-3 text-muted-foreground" />
-                                 <a 
-                                   href={`mailto:${client.users.email}`}
-                                   className="text-sm hover:text-blue-600 hover:underline transition-colors"
-                                 >
-                                   {client.users.email}
-                                 </a>
-                               </div>
-                             )}
-                             {client.users?.phone && (
-                               <div className="flex items-center space-x-2">
-                                 <Phone className="h-3 w-3 text-muted-foreground" />
-                                 <a 
-                                   href={`tel:${client.users.phone}`}
-                                   className="text-sm hover:text-blue-600 hover:underline transition-colors"
-                                 >
-                                   {client.users.phone}
-                                 </a>
-                               </div>
-                             )}
-                             {!client.users?.email && !client.users?.phone && (
-                               <span className="text-sm text-muted-foreground">No contact info</span>
-                             )}
+                              {(() => {
+                                const email = client.users?.email || (client as any).contact_email;
+                                const phone = client.users?.phone || (client as any).contact_phone;
+                                return (
+                                  <>
+                                    {email && (
+                                      <div className="flex items-center space-x-2">
+                                        <Mail className="h-3 w-3 text-muted-foreground" />
+                                        <a 
+                                          href={`mailto:${email}`}
+                                          className="text-sm hover:text-blue-600 hover:underline transition-colors"
+                                        >
+                                          {email}
+                                        </a>
+                                      </div>
+                                    )}
+                                    {phone && (
+                                      <div className="flex items-center space-x-2">
+                                        <Phone className="h-3 w-3 text-muted-foreground" />
+                                        <a 
+                                          href={`tel:${phone}`}
+                                          className="text-sm hover:text-blue-600 hover:underline transition-colors"
+                                        >
+                                          {phone}
+                                        </a>
+                                      </div>
+                                    )}
+                                    {!email && !phone && (
+                                      <span className="text-sm text-muted-foreground">No contact info</span>
+                                    )}
+                                  </>
+                                );
+                              })()}
                            </div>
-                         </td>
+                          </td>
                         
                         <td className="p-4">
                           <div>

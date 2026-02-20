@@ -24,6 +24,7 @@ import AdminDashboard from "./pages/admin/Dashboard";
 import TechDashboard from "./pages/tech/Dashboard";
 import FieldService from "./pages/tech/FieldService";
 import TechSchedule from "./pages/tech/Schedule";
+import MyClients from "./pages/tech/MyClients";
 import ManageClients from "./pages/admin/ManageClients";
 import ChemicalCalculator from "./pages/admin/ChemicalCalculator";
 import ServiceHistory from "./pages/admin/ServiceHistory";
@@ -155,6 +156,14 @@ const AppRoutes = () => {
           element={
             <ProtectedRoute allowedRoles={['admin', 'tech']}>
               <ChemicalCalculator />
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/tech/clients" 
+          element={
+            <ProtectedRoute allowedRoles={['tech']}>
+              <MyClients />
             </ProtectedRoute>
           } 
         />

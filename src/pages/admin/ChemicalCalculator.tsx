@@ -831,7 +831,7 @@ export default function ChemicalCalculator() {
                 <p className="text-xs text-muted-foreground">Target: {settings.calciumHardness.min}-{settings.calciumHardness.max} ppm</p>
               </div>
 
-              {poolInfo.type === 'Saltwater' && (
+              {(poolInfo.type === 'Saltwater' || poolInfo.type?.toLowerCase().includes('salt')) && (
                 <div className="space-y-2">
                   <Label htmlFor="salt">Salt / Salinity (ppm)</Label>
                   <Input

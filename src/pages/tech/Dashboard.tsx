@@ -17,6 +17,7 @@ import {
   User
 } from 'lucide-react';
 import { BeforeAfterUpload } from '@/components/tech/BeforeAfterUpload';
+import { RouteMap } from '@/components/tech/RouteMap';
 
 interface DashboardStats {
   assignedServices: any[];
@@ -197,6 +198,24 @@ export default function TechDashboard() {
 
       {/* Before/After Photo Upload */}
       <BeforeAfterUpload />
+
+      {/* Route Map */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center space-x-2">
+            <MapPin className="h-5 w-5" />
+            <span>Route Map</span>
+          </CardTitle>
+          <CardDescription>View and plan your service route</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {stats?.clientsNeedingService && stats.clientsNeedingService.length > 0 ? (
+            <RouteMap clients={stats.clientsNeedingService} />
+          ) : (
+            <p className="text-center text-muted-foreground py-4">No clients to map</p>
+          )}
+        </CardContent>
+      </Card>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Available Service Requests */}

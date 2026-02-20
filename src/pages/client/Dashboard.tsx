@@ -18,12 +18,14 @@ import {
   User,
   MessageCircle,
   Clock,
-  Star
+  Star,
+  TestTube
 } from 'lucide-react';
 import { YourPoolSection } from '@/components/client/YourPoolSection';
 import { ProfilePictureUpload } from '@/components/client/ProfilePictureUpload';
 import { TechnicianMessageDialog } from '@/components/client/TechnicianMessageDialog';
 import { ReviewDialog } from '@/components/client/ReviewDialog';
+import { isInRange, CHEMICAL_RANGES, type ChemicalId } from '@/lib/pool-chemistry';
 
 interface ClientDashboardData {
   client: any;
@@ -419,6 +421,55 @@ export default function ClientDashboard() {
                 )}
               </div>
             </div>
+
+            {/* Chemical Readings */}
+            {(() => {
+              const readings = dashboardData.lastService.readings as Record<string, number | null> | null;
+              const ph = readings?.ph ?? dashboardData.lastService.ph_level;
+              const fc = readings?.fc ?? dashboardData.lastService.chlorine_level;
+              const ta = readings?.ta ?? dashboardData.lastService.alkalinity_level;
+              const cya = readings?.cya ?? dashboardData.lastService.cyanuric_acid_level;
+              const salt = readings?.salt ?? null;
+
+              const items: { id: ChemicalId; label: string; value: number | null }[] = [
+                { id: 'ph', label: 'pH', value: ph },
+                { id: 'chlorine', label: 'Free Chlorine', value: fc },
+                { id: 'alkalinity', label: 'Alkalinity', value: ta },
+                { id: 'cya', label: 'CYA', value: cya },
+                { id: 'salt', label: 'Salt', value: salt },
+              ];
+
+              const hasAny = items.some(i => i.value != null);
+              if (!hasAny) return null;
+
+              return (
+                <div className="mt-6 pt-6 border-t">
+                  <h4 className="text-sm font-semibold flex items-center gap-1 mb-3">
+                    <TestTube className="h-4 w-4" /> Chemical Readings
+                  </h4>
+                  <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+                    {items.map(({ id, label, value }) => {
+                      if (value == null) return null;
+                      const status = isInRange(id, value);
+                      const range = CHEMICAL_RANGES[id];
+                      return (
+                        <div key={id} className={`p-3 rounded-lg border text-center ${
+                          status === 'in' ? 'border-green-300 bg-green-50 text-green-800' 
+                          : 'border-red-300 bg-red-50 text-red-800'
+                        }`}>
+                          <p className="text-xs font-medium">{label}</p>
+                          <p className="text-lg font-bold">{value}{range.unit ? ` ${range.unit}` : ''}</p>
+                          <p className="text-xs">
+                            {status === 'in' ? '✓ In Range' : '⚠ Out of Range'}
+                          </p>
+                          <p className="text-[10px] opacity-70">{range.min}–{range.max}{range.unit ? ` ${range.unit}` : ''}</p>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })()}
           </CardContent>
         </Card>
       )}

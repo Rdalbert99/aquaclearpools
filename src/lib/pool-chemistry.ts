@@ -98,7 +98,8 @@ export function getDosageInstruction(chemId: ChemicalId, value: number | null | 
         // Salt too low → add pool salt. ~30 lbs per 10k gal raises salt ~360 ppm
         const deficit = range.min - value;
         const lbs = Math.ceil((deficit / 360) * 30 * factor);
-        return `Salt is low (${value} ppm). Add ~${lbs} lbs of pool-grade salt.`;
+        const bags = Math.ceil(lbs / 40);
+        return `Salt is low (${value} ppm). Add ~${lbs} lbs of pool-grade salt (${bags} × 40 lb bag${bags > 1 ? 's' : ''}).`;
       } else {
         return `Salt is high (${value} ppm). Partially drain and refill to dilute.`;
       }

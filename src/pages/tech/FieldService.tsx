@@ -93,6 +93,7 @@ export default function FieldService() {
     const chlorine = data.chlorine_level != null ? data.chlorine_level : 'N/A';
     const ph = data.ph_level != null ? data.ph_level : 'N/A';
     const alk = data.alkalinity_level != null ? data.alkalinity_level : 'N/A';
+    const salt = data.salt_level != null ? data.salt_level : null;
 
     const parts: string[] = [];
     parts.push(`This is Aqua Clear Pools, your pool is clean and clear.`);
@@ -105,7 +106,10 @@ export default function FieldService() {
     if (data.robot_plugged_in) actions.push('plugged in your robot');
     if (actions.length) parts.push(`Today we ${actions.join(', ')}.`);
 
-    parts.push(`Your chlorine is reading ${chlorine}, pH is ${ph}, alkalinity is ${alk}.`);
+    let readingsStr = `Your chlorine is reading ${chlorine}, pH is ${ph}, alkalinity is ${alk}`;
+    if (salt != null) readingsStr += `, salt is ${salt} ppm`;
+    readingsStr += '.';
+    parts.push(readingsStr);
 
     if (data.chemicals_added?.trim()) parts.push(`Chemicals added: ${data.chemicals_added.trim()}.`);
 

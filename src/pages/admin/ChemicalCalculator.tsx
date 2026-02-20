@@ -17,6 +17,7 @@ interface TestResults {
   alkalinity: number;
   cyanuricAcid: number;
   calciumHardness: number;
+  salt: number;
 }
 
 interface PoolInfo {
@@ -65,6 +66,12 @@ interface CalculationSettings {
     target: number;
     calciumChlorideRatio: number;
   };
+  salt: {
+    min: number;
+    max: number;
+    target: number;
+    saltRatio: number;
+  };
 }
 
 export default function ChemicalCalculator() {
@@ -76,7 +83,8 @@ export default function ChemicalCalculator() {
     chlorine: 0,
     alkalinity: 0,
     cyanuricAcid: 0,
-    calciumHardness: 0
+    calciumHardness: 0,
+    salt: 0
   });
   const [recommendations, setRecommendations] = useState<ChemicalRecommendation[]>([]);
   const [loading, setLoading] = useState(false);
@@ -87,7 +95,8 @@ export default function ChemicalCalculator() {
     chlorine: { min: 1.0, max: 3.0, target: 2.0, calHypoRatio: 0.00013 },
     alkalinity: { min: 80, max: 120, target: 100, bakingSodaRatio: 0.00015, muriaticAcidRatio: 0.0002 },
     cyanuricAcid: { min: 30, max: 50, target: 40, stabilizerRatio: 0.00013 },
-    calciumHardness: { min: 150, max: 300, target: 200, calciumChlorideRatio: 0.00012 }
+    calciumHardness: { min: 150, max: 300, target: 200, calciumChlorideRatio: 0.00012 },
+    salt: { min: 2700, max: 3400, target: 3200, saltRatio: 0.000083 }
   });
   const [settingsOpen, setSettingsOpen] = useState(false);
 
@@ -205,6 +214,28 @@ export default function ChemicalCalculator() {
         reason: `Calcium hardness is too high (${testResults.calciumHardness} ppm). Target: ${settings.calciumHardness.min}-${settings.calciumHardness.max} ppm`,
         priority: 'medium'
       });
+    }
+
+    // Salt adjustments
+    if (testResults.salt > 0) {
+      if (testResults.salt < settings.salt.min) {
+        const deficit = settings.salt.target - testResults.salt;
+        const lbs = Math.ceil(deficit * poolVolume * settings.salt.saltRatio);
+        const bags = Math.ceil(lbs / 40);
+        recs.push({
+          chemical: 'Pool-Grade Salt',
+          amount: `${lbs} lbs (${bags} × 40 lb bag${bags > 1 ? 's' : ''})`,
+          reason: `Salt is too low (${testResults.salt} ppm). Target: ${settings.salt.min}-${settings.salt.max} ppm`,
+          priority: 'medium'
+        });
+      } else if (testResults.salt > settings.salt.max) {
+        recs.push({
+          chemical: 'Partial water replacement recommended',
+          amount: 'Drain and refill to dilute salt level',
+          reason: `Salt is too high (${testResults.salt} ppm). Target: ${settings.salt.min}-${settings.salt.max} ppm`,
+          priority: 'medium'
+        });
+      }
     }
 
     // If everything is balanced
@@ -598,6 +629,69 @@ export default function ChemicalCalculator() {
                   </div>
                 </CardContent>
               </Card>
+
+              {/* Salt Settings */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg">Salt / Salinity Settings</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="grid grid-cols-3 gap-2">
+                    <div>
+                      <Label htmlFor="salt-min">Min (ppm)</Label>
+                      <Input
+                        id="salt-min"
+                        type="number"
+                        step="100"
+                        value={settings.salt.min}
+                        onChange={(e) => setSettings({
+                          ...settings,
+                          salt: { ...settings.salt, min: parseInt(e.target.value) || 2700 }
+                        })}
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="salt-max">Max (ppm)</Label>
+                      <Input
+                        id="salt-max"
+                        type="number"
+                        step="100"
+                        value={settings.salt.max}
+                        onChange={(e) => setSettings({
+                          ...settings,
+                          salt: { ...settings.salt, max: parseInt(e.target.value) || 3400 }
+                        })}
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="salt-target">Target (ppm)</Label>
+                      <Input
+                        id="salt-target"
+                        type="number"
+                        step="100"
+                        value={settings.salt.target}
+                        onChange={(e) => setSettings({
+                          ...settings,
+                          salt: { ...settings.salt, target: parseInt(e.target.value) || 3200 }
+                        })}
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <Label htmlFor="salt-ratio">Salt Ratio</Label>
+                    <Input
+                      id="salt-ratio"
+                      type="number"
+                      step="0.000001"
+                      value={settings.salt.saltRatio}
+                      onChange={(e) => setSettings({
+                        ...settings,
+                        salt: { ...settings.salt, saltRatio: parseFloat(e.target.value) || 0.000083 }
+                      })}
+                    />
+                  </div>
+                </CardContent>
+              </Card>
             </div>
 
             <div className="flex justify-end space-x-2 mt-6">
@@ -735,6 +829,19 @@ export default function ChemicalCalculator() {
                   placeholder="200"
                 />
                 <p className="text-xs text-muted-foreground">Target: {settings.calciumHardness.min}-{settings.calciumHardness.max} ppm</p>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="salt">Salt / Salinity (ppm)</Label>
+                <Input
+                  id="salt"
+                  type="number"
+                  step="100"
+                  value={testResults.salt || ''}
+                  onChange={(e) => setTestResults({ ...testResults, salt: parseInt(e.target.value) || 0 })}
+                  placeholder="3200"
+                />
+                <p className="text-xs text-muted-foreground">Target: {settings.salt.min}-{settings.salt.max} ppm (saltwater pools)</p>
               </div>
 
               <Button onClick={handleCalculate} className="w-full">

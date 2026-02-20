@@ -831,18 +831,20 @@ export default function ChemicalCalculator() {
                 <p className="text-xs text-muted-foreground">Target: {settings.calciumHardness.min}-{settings.calciumHardness.max} ppm</p>
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="salt">Salt / Salinity (ppm)</Label>
-                <Input
-                  id="salt"
-                  type="number"
-                  step="100"
-                  value={testResults.salt || ''}
-                  onChange={(e) => setTestResults({ ...testResults, salt: parseInt(e.target.value) || 0 })}
-                  placeholder="3200"
-                />
-                <p className="text-xs text-muted-foreground">Target: {settings.salt.min}-{settings.salt.max} ppm (saltwater pools)</p>
-              </div>
+              {poolInfo.type === 'Saltwater' && (
+                <div className="space-y-2">
+                  <Label htmlFor="salt">Salt / Salinity (ppm)</Label>
+                  <Input
+                    id="salt"
+                    type="number"
+                    step="100"
+                    value={testResults.salt || ''}
+                    onChange={(e) => setTestResults({ ...testResults, salt: parseInt(e.target.value) || 0 })}
+                    placeholder="3200"
+                  />
+                  <p className="text-xs text-muted-foreground">Target: {settings.salt.min}-{settings.salt.max} ppm</p>
+                </div>
+              )}
 
               <Button onClick={handleCalculate} className="w-full">
                 <Calculator className="mr-2 h-4 w-4" />

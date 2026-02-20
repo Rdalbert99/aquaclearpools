@@ -14,7 +14,8 @@ import {
   CheckCircle,
   Plus,
   MapPin,
-  User
+  User,
+  Users
 } from 'lucide-react';
 import { BeforeAfterUpload } from '@/components/tech/BeforeAfterUpload';
 import { RouteMap } from '@/components/tech/RouteMap';
@@ -178,6 +179,12 @@ export default function TechDashboard() {
               <Link to="/tech/calculator">
                 <Droplets className="h-6 w-6 mb-2" />
                 Chemical Calculator
+              </Link>
+            </Button>
+            <Button asChild variant="outline" className="h-20 flex-col">
+              <Link to="/tech/clients">
+                <Users className="h-6 w-6 mb-2" />
+                My Clients
               </Link>
             </Button>
             <Button asChild variant="outline" className="h-20 flex-col">

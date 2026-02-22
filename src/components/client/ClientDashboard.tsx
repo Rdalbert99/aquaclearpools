@@ -154,6 +154,92 @@ export default function ClientDashboard({ clientId }: { clientId: string }) {
         </Badge>
       </div>
 
+      {/* Last Service Summary */}
+      {services.length > 0 && (() => {
+        const latest = services[0];
+        const readingCards = getReadingCards(latest.readings, client?.pool_type);
+        return (
+          <Card className="border-l-4 border-l-primary">
+            <CardHeader className="pb-3">
+              <CardTitle className="flex items-center gap-2 text-lg">
+                <Calendar className="h-5 w-5" />
+                Last Service — {new Date(latest.performed_at || latest.service_date).toLocaleDateString()}
+              </CardTitle>
+              {latest.users?.name && (
+                <CardDescription>Technician: {latest.users.name}</CardDescription>
+              )}
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {/* Service Message */}
+              {latest.message_preview && (
+                <div className="p-3 bg-muted/50 rounded-lg">
+                  <p className="text-sm">{latest.message_preview}</p>
+                </div>
+              )}
+
+              {/* Water Chemistry Cards */}
+              {readingCards && (
+                <div>
+                  <div className="flex items-center gap-2 mb-2">
+                    <TestTube className="h-4 w-4" />
+                    <span className="text-sm font-medium">Water Chemistry</span>
+                  </div>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2">
+                    {readingCards.map((card) => {
+                      const raw = latest.readings?.[card.chemId === 'chlorine' ? 'fc' : card.chemId === 'alkalinity' ? 'ta' : card.chemId];
+                      const status = isInRange(card.chemId, raw);
+                      const statusBorder = status === 'in' ? 'border-green-500/50' : status === 'out' ? 'border-red-500/50' : card.color.split(' ').pop();
+                      const statusDot = status === 'in' ? 'bg-green-500' : status === 'out' ? 'bg-red-500' : 'bg-muted';
+                      return (
+                        <div key={card.chemId} className={`rounded-lg border bg-gradient-to-br ${card.color} ${statusBorder} p-3 text-center`}>
+                          <div className="flex items-center justify-center gap-1.5 mb-1">
+                            <div className={`w-2 h-2 rounded-full ${statusDot}`} />
+                            <span className="text-xs font-medium text-muted-foreground">{card.label}</span>
+                          </div>
+                          <span className="text-lg font-bold">{card.value}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* Actions & Chemicals */}
+              {formatActions(latest.actions) && (
+                <div>
+                  <span className="text-sm font-medium">Performed: </span>
+                  <span className="text-sm text-muted-foreground">{formatActions(latest.actions)}</span>
+                </div>
+              )}
+              {latest.chemicals_added && (
+                <div>
+                  <span className="text-sm font-medium">Chemicals: </span>
+                  <span className="text-sm text-muted-foreground">{latest.chemicals_added}</span>
+                </div>
+              )}
+
+              {/* Photos */}
+              {(latest.before_photo_url || latest.after_photo_url) && (
+                <div className="flex gap-4">
+                  {latest.before_photo_url && (
+                    <div>
+                      <p className="text-xs text-muted-foreground mb-1">Before</p>
+                      <img src={latest.before_photo_url} alt="Before service" className="w-24 h-24 object-cover rounded-lg shadow-sm" />
+                    </div>
+                  )}
+                  {latest.after_photo_url && (
+                    <div>
+                      <p className="text-xs text-muted-foreground mb-1">After</p>
+                      <img src={latest.after_photo_url} alt="After service" className="w-24 h-24 object-cover rounded-lg shadow-sm" />
+                    </div>
+                  )}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        );
+      })()}
+
       {/* Invoice Link */}
       {client.qb_invoice_link && (
         <Card>

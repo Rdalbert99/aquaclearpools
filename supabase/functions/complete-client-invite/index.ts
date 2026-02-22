@@ -116,6 +116,16 @@ serve(async (req) => {
       });
       if (createErr || !created.user) throw createErr || new Error("Failed to create auth user");
       authUserId = created.user.id;
+    } else {
+      // Existing auth user found — update their password to the one the client just entered
+      const { error: pwdErr } = await admin.auth.admin.updateUserById(authUserId, {
+        password: body.password,
+        email_confirm: true,
+      });
+      if (pwdErr) {
+        console.error("Failed to update existing auth user password:", pwdErr);
+        throw new Error("Failed to set password for existing account");
+      }
     }
 
     // Upsert into public.users profile with email as the login/username

@@ -13,6 +13,7 @@ import {
   Clock,
   TestTube
 } from "lucide-react";
+import { isInRange } from "@/lib/pool-chemistry";
 
 type Client = {
   id: string;
@@ -90,14 +91,19 @@ export default function ClientDashboard({ clientId }: { clientId: string }) {
     }
   }
 
-  function formatReadings(readings: any) {
+  function getReadingCards(readings: any, poolType?: string) {
     if (!readings) return null;
-    const items = [];
-    if (readings.ph) items.push(`pH: ${readings.ph}`);
-    if (readings.fc) items.push(`FC: ${readings.fc}`);
-    if (readings.ta) items.push(`TA: ${readings.ta}`);
-    if (readings.cya) items.push(`CYA: ${readings.cya}`);
-    return items.join(' • ');
+    const cards: { label: string; value: string; chemId: 'ph' | 'alkalinity' | 'chlorine' | 'cya' | 'salt'; color: string }[] = [];
+    
+    if (readings.ph != null) cards.push({ label: 'pH', value: String(readings.ph), chemId: 'ph', color: 'from-blue-500/20 to-blue-600/20 border-blue-500/30' });
+    if (readings.fc != null) cards.push({ label: 'Free Chlorine', value: `${readings.fc} ppm`, chemId: 'chlorine', color: 'from-cyan-500/20 to-cyan-600/20 border-cyan-500/30' });
+    if (readings.ta != null) cards.push({ label: 'Alkalinity', value: `${readings.ta} ppm`, chemId: 'alkalinity', color: 'from-violet-500/20 to-violet-600/20 border-violet-500/30' });
+    if (readings.cya != null) cards.push({ label: 'CYA', value: `${readings.cya} ppm`, chemId: 'cya', color: 'from-amber-500/20 to-amber-600/20 border-amber-500/30' });
+    if (readings.salt != null && (poolType?.toLowerCase().includes('salt') || true)) {
+      cards.push({ label: 'Salt', value: `${readings.salt} ppm`, chemId: 'salt', color: 'from-emerald-500/20 to-emerald-600/20 border-emerald-500/30' });
+    }
+    
+    return cards.length > 0 ? cards : null;
   }
 
   function formatActions(actions: any) {
@@ -227,15 +233,38 @@ export default function ClientDashboard({ clientId }: { clientId: string }) {
                     )}
 
                     {/* Water Readings */}
-                    {formatReadings(service.readings) && (
-                      <div className="flex items-center gap-2 mb-2">
-                        <TestTube className="h-4 w-4" />
-                        <span className="text-sm font-medium">Readings:</span>
-                        <span className="text-sm text-muted-foreground">
-                          {formatReadings(service.readings)}
-                        </span>
-                      </div>
-                    )}
+                    {(() => {
+                      const cards = getReadingCards(service.readings, client?.pool_type);
+                      if (!cards) return null;
+                      return (
+                        <div className="mb-3">
+                          <div className="flex items-center gap-2 mb-2">
+                            <TestTube className="h-4 w-4" />
+                            <span className="text-sm font-medium">Water Chemistry</span>
+                          </div>
+                          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2">
+                            {cards.map((card) => {
+                              const raw = service.readings?.[card.chemId === 'chlorine' ? 'fc' : card.chemId === 'alkalinity' ? 'ta' : card.chemId];
+                              const status = isInRange(card.chemId, raw);
+                              const statusBorder = status === 'in' ? 'border-green-500/50' : status === 'out' ? 'border-red-500/50' : card.color.split(' ').pop();
+                              const statusDot = status === 'in' ? 'bg-green-500' : status === 'out' ? 'bg-red-500' : 'bg-muted';
+                              return (
+                                <div
+                                  key={card.chemId}
+                                  className={`rounded-lg border bg-gradient-to-br ${card.color} ${statusBorder} p-3 text-center`}
+                                >
+                                  <div className="flex items-center justify-center gap-1.5 mb-1">
+                                    <div className={`w-2 h-2 rounded-full ${statusDot}`} />
+                                    <span className="text-xs font-medium text-muted-foreground">{card.label}</span>
+                                  </div>
+                                  <span className="text-lg font-bold">{card.value}</span>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      );
+                    })()}
 
                     {/* Actions Performed */}
                     {formatActions(service.actions) && (

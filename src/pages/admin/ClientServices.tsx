@@ -13,8 +13,10 @@ import {
   Clock,
   DollarSign,
   TestTube,
-  Droplets
+  Droplets,
+  AlertTriangle
 } from 'lucide-react';
+import { type ChemicalId, isInRange, getDosageInstruction } from '@/lib/pool-chemistry';
 
 interface Service {
   id: string;
@@ -25,6 +27,9 @@ interface Service {
   ph_level: number | null;
   chlorine_level: number | null;
   alkalinity_level: number | null;
+  cyanuric_acid_level: number | null;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  readings: any;
   notes: string | null;
   services_performed: string | null;
   chemicals_added: string | null;
@@ -213,14 +218,27 @@ export default function ClientServices() {
                     </div>
                   )}
 
-                  {(service.ph_level || service.chlorine_level) && (
+                  {(service.ph_level || service.chlorine_level || service.alkalinity_level) && (
                     <div className="flex items-center space-x-2">
                       <TestTube className="h-4 w-4 text-muted-foreground" />
                       <div>
                         <p className="text-sm font-medium">Chemical Levels</p>
                         <div className="text-sm text-muted-foreground">
-                          {service.ph_level && <p>pH: {service.ph_level}</p>}
-                          {service.chlorine_level && <p>Cl: {service.chlorine_level}</p>}
+                          {service.ph_level != null && (
+                            <p className={isInRange('ph', service.ph_level) === 'out' ? 'text-red-600 font-medium' : ''}>
+                              pH: {service.ph_level}
+                            </p>
+                          )}
+                          {service.chlorine_level != null && (
+                            <p className={isInRange('chlorine', service.chlorine_level) === 'out' ? 'text-red-600 font-medium' : ''}>
+                              Cl: {service.chlorine_level}
+                            </p>
+                          )}
+                          {service.alkalinity_level != null && (
+                            <p className={isInRange('alkalinity', service.alkalinity_level) === 'out' ? 'text-red-600 font-medium' : ''}>
+                              Alk: {service.alkalinity_level}
+                            </p>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -250,6 +268,37 @@ export default function ClientServices() {
                     <p className="text-sm text-muted-foreground">{service.notes}</p>
                   </div>
                 )}
+
+                {/* Chemical Dosage Recommendations */}
+                {client && (() => {
+                  const poolGallons = client.pool_size;
+                  const readings: { chemId: ChemicalId; value: number | null }[] = [
+                    { chemId: 'ph', value: service.readings?.ph ?? service.ph_level },
+                    { chemId: 'chlorine', value: service.readings?.fc ?? service.chlorine_level },
+                    { chemId: 'alkalinity', value: service.readings?.ta ?? service.alkalinity_level },
+                    { chemId: 'cya', value: service.readings?.cya ?? service.cyanuric_acid_level },
+                    { chemId: 'salt', value: service.readings?.salt ?? null },
+                  ];
+                  const instructions = readings
+                    .map(r => getDosageInstruction(r.chemId, r.value, poolGallons))
+                    .filter(Boolean) as string[];
+                  
+                  if (instructions.length === 0) return null;
+                  
+                  return (
+                    <div className="rounded-lg border border-amber-200 bg-amber-50 dark:bg-amber-950/20 dark:border-amber-800 p-3">
+                      <div className="flex items-center gap-2 mb-2">
+                        <AlertTriangle className="h-4 w-4 text-amber-600" />
+                        <p className="text-sm font-semibold text-amber-800 dark:text-amber-400">Chemicals Needed</p>
+                      </div>
+                      <ul className="space-y-1">
+                        {instructions.map((inst, i) => (
+                          <li key={i} className="text-sm text-amber-700 dark:text-amber-300">• {inst}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  );
+                })()}
               </CardContent>
             </Card>
           ))

@@ -352,6 +352,60 @@ export type Database = {
           },
         ]
       }
+      inbound_sms_messages: {
+        Row: {
+          client_id: string | null
+          client_name: string | null
+          created_at: string
+          forwarded_to_tech: boolean | null
+          from_number: string
+          id: string
+          message_text: string
+          read_at: string | null
+          technician_id: string | null
+          technician_name: string | null
+        }
+        Insert: {
+          client_id?: string | null
+          client_name?: string | null
+          created_at?: string
+          forwarded_to_tech?: boolean | null
+          from_number: string
+          id?: string
+          message_text: string
+          read_at?: string | null
+          technician_id?: string | null
+          technician_name?: string | null
+        }
+        Update: {
+          client_id?: string | null
+          client_name?: string | null
+          created_at?: string
+          forwarded_to_tech?: boolean | null
+          from_number?: string
+          id?: string
+          message_text?: string
+          read_at?: string | null
+          technician_id?: string | null
+          technician_name?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inbound_sms_messages_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inbound_sms_messages_technician_id_fkey"
+            columns: ["technician_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       invitation_access_log: {
         Row: {
           access_type: string | null

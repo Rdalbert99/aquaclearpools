@@ -45,6 +45,7 @@ type ServiceData = {
 };
 
 export default function FieldService() {
+  const [sendingPoolNeeds, setSendingPoolNeeds] = useState(false);
   const { clientId } = useParams();
   const navigate = useNavigate();
   const { user } = useAuth();

@@ -350,8 +350,6 @@ export default function FieldService() {
                   </Button>
                 </AlertDescription>
               </Alert>
-                </AlertDescription>
-              </Alert>
             );
           })()}
         </CardContent>

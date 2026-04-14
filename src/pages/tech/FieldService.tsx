@@ -338,6 +338,18 @@ export default function FieldService() {
                   <ul className="list-disc pl-4 space-y-1 text-sm">
                     {instructions.map((inst, i) => <li key={i}>{inst}</li>)}
                   </ul>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="mt-3 border-red-400 text-red-800 hover:bg-red-100"
+                    disabled={sendingPoolNeeds}
+                    onClick={sendPoolNeedsToAdmin}
+                  >
+                    <Send className="h-4 w-4 mr-1.5" />
+                    {sendingPoolNeeds ? 'Sending...' : 'Send Pool Needs to Admin'}
+                  </Button>
+                </AlertDescription>
+              </Alert>
                 </AlertDescription>
               </Alert>
             );

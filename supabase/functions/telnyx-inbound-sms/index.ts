@@ -20,7 +20,6 @@ serve(async (req: Request) => {
     const body = await req.json();
     console.log("Webhook payload:", JSON.stringify(body, null, 2));
 
-    // Telnyx sends events in data.event_type
     const event = body?.data;
     if (!event || event.event_type !== "message.received") {
       console.log("Ignoring non-message event:", event?.event_type);
@@ -45,14 +44,12 @@ serve(async (req: Request) => {
     console.log(`Inbound SMS from: ${fromNumber}`);
     console.log(`Message: ${messageText}`);
 
-    // Create Supabase admin client to look up client and tech
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     // Normalize the inbound phone number for matching
     const cleanedFrom = fromNumber.replace(/\D/g, "");
-    // Try matching with various formats
     const phoneVariants = [
       fromNumber,
       cleanedFrom,
@@ -80,99 +77,76 @@ serve(async (req: Request) => {
       }
     }
 
+    // Get tech info if client found
+    let tech: { id: string; name: string; phone: string } | null = null;
+    if (client?.assigned_technician_id) {
+      const { data: techData } = await supabase
+        .from("users")
+        .select("id, name, phone")
+        .eq("id", client.assigned_technician_id)
+        .single();
+      if (techData) tech = techData;
+    }
+
+    // Forward SMS to tech if possible
+    let forwarded = false;
+    if (client && tech?.phone) {
+      const telnyxApiKey = Deno.env.get("TELNYX_API_KEY");
+      if (telnyxApiKey) {
+        let techPhone = tech.phone.replace(/\D/g, "");
+        if (techPhone.length === 10) techPhone = "1" + techPhone;
+        if (!techPhone.startsWith("+")) techPhone = "+" + techPhone;
+
+        const forwardMessage = `Reply from ${client.customer}: "${messageText}"`;
+        const smsResponse = await fetch(TELNYX_API_URL, {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${telnyxApiKey}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ from: DEFAULT_FROM_NUMBER, to: techPhone, text: forwardMessage }),
+        });
+
+        const smsResult = await smsResponse.json();
+        console.log("Telnyx forward response:", JSON.stringify(smsResult, null, 2));
+        forwarded = smsResponse.ok;
+      } else {
+        console.error("TELNYX_API_KEY not configured");
+      }
+    }
+
+    // Store message in database for admin viewing
+    const { error: insertError } = await supabase
+      .from("inbound_sms_messages")
+      .insert({
+        from_number: fromNumber,
+        message_text: messageText,
+        client_id: client?.id || null,
+        client_name: client?.customer || null,
+        technician_id: tech?.id || null,
+        technician_name: tech?.name || null,
+        forwarded_to_tech: forwarded,
+      });
+
+    if (insertError) {
+      console.error("Failed to store inbound SMS:", insertError);
+    } else {
+      console.log("Inbound SMS stored in database");
+    }
+
     if (!client) {
       console.log("No client found matching phone:", fromNumber);
-      return new Response(JSON.stringify({ ok: true, no_client_match: true }), {
-        status: 200,
-        headers: { "Content-Type": "application/json", ...corsHeaders },
-      });
     }
-
-    console.log(`Matched client: ${client.customer} (${client.id})`);
-
-    if (!client.assigned_technician_id) {
-      console.log("Client has no assigned technician");
-      return new Response(JSON.stringify({ ok: true, no_tech_assigned: true }), {
-        status: 200,
-        headers: { "Content-Type": "application/json", ...corsHeaders },
-      });
-    }
-
-    // Get the assigned tech's phone number
-    const { data: tech } = await supabase
-      .from("users")
-      .select("id, name, phone")
-      .eq("id", client.assigned_technician_id)
-      .single();
-
-    if (!tech || !tech.phone) {
-      console.log("Tech not found or has no phone:", client.assigned_technician_id);
-      return new Response(JSON.stringify({ ok: true, tech_no_phone: true }), {
-        status: 200,
-        headers: { "Content-Type": "application/json", ...corsHeaders },
-      });
-    }
-
-    console.log(`Forwarding to tech: ${tech.name} at ${tech.phone}`);
-
-    // Format the forwarded message
-    const forwardMessage = `Reply from ${client.customer}: "${messageText}"`;
-
-    // Clean tech phone number
-    let techPhone = tech.phone.replace(/\D/g, "");
-    if (techPhone.length === 10) techPhone = "1" + techPhone;
-    if (!techPhone.startsWith("+")) techPhone = "+" + techPhone;
-
-    // Send SMS to tech via Telnyx
-    const telnyxApiKey = Deno.env.get("TELNYX_API_KEY");
-    if (!telnyxApiKey) {
-      console.error("TELNYX_API_KEY not configured");
-      throw new Error("TELNYX_API_KEY not configured");
-    }
-
-    const smsPayload = {
-      from: DEFAULT_FROM_NUMBER,
-      to: techPhone,
-      text: forwardMessage,
-    };
-
-    console.log("Sending forwarded SMS:", JSON.stringify(smsPayload, null, 2));
-
-    const smsResponse = await fetch(TELNYX_API_URL, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${telnyxApiKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(smsPayload),
-    });
-
-    const smsResult = await smsResponse.json();
-    console.log("Telnyx forward response:", JSON.stringify(smsResult, null, 2));
-
-    if (!smsResponse.ok) {
-      console.error("Failed to forward SMS:", smsResult);
-      throw new Error(`Telnyx error: ${smsResult.errors?.[0]?.detail || "Unknown"}`);
-    }
-
-    console.log("Successfully forwarded customer reply to tech!");
 
     return new Response(
-      JSON.stringify({ ok: true, forwarded: true, tech: tech.name }),
-      {
-        status: 200,
-        headers: { "Content-Type": "application/json", ...corsHeaders },
-      }
+      JSON.stringify({ ok: true, forwarded, stored: !insertError, client: client?.customer }),
+      { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
     );
   } catch (error: any) {
     console.error("Error in telnyx-inbound-sms:", error);
-    // Always return 200 to Telnyx to prevent retries
     return new Response(
       JSON.stringify({ ok: false, error: error.message }),
-      {
-        status: 200,
-        headers: { "Content-Type": "application/json", ...corsHeaders },
-      }
+      { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
     );
   }
 });

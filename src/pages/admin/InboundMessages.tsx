@@ -157,10 +157,10 @@ export default function InboundMessages() {
                         </Badge>
                       )}
                       {!msg.client_name && (
-                        <Badge variant="outline" className="text-xs text-amber-600">Unknown sender</Badge>
+                        <Badge variant="outline" className="text-xs text-warning">Unknown sender</Badge>
                       )}
                       {msg.read_at && (
-                        <Badge variant="outline" className="text-xs text-green-600">Read</Badge>
+                        <Badge variant="outline" className="text-xs text-primary">Read</Badge>
                       )}
                     </div>
                   </div>

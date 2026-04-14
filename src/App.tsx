@@ -55,6 +55,7 @@ import Contact from "./pages/Contact";
 import OptinProof from "./pages/OptinProof";
 import MailjetTest from "./pages/admin/MailjetTest";
 import SMSTest from "./pages/admin/SMSTest";
+import InboundMessages from "./pages/admin/InboundMessages";
 
 const queryClient = new QueryClient();
 

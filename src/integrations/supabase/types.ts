@@ -468,6 +468,63 @@ export type Database = {
         }
         Relationships: []
       }
+      pool_needs_messages: {
+        Row: {
+          chemical_needs: Json
+          client_id: string | null
+          client_name: string
+          created_at: string
+          id: string
+          pool_size: number | null
+          pool_type: string | null
+          read_at: string | null
+          technician_id: string | null
+          technician_name: string
+          test_results: Json | null
+        }
+        Insert: {
+          chemical_needs?: Json
+          client_id?: string | null
+          client_name: string
+          created_at?: string
+          id?: string
+          pool_size?: number | null
+          pool_type?: string | null
+          read_at?: string | null
+          technician_id?: string | null
+          technician_name: string
+          test_results?: Json | null
+        }
+        Update: {
+          chemical_needs?: Json
+          client_id?: string | null
+          client_name?: string
+          created_at?: string
+          id?: string
+          pool_size?: number | null
+          pool_type?: string | null
+          read_at?: string | null
+          technician_id?: string | null
+          technician_name?: string
+          test_results?: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pool_needs_messages_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pool_needs_messages_technician_id_fkey"
+            columns: ["technician_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       reviews: {
         Row: {
           approved_at: string | null

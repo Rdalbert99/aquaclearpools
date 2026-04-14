@@ -13,7 +13,7 @@ import { useToast } from '@/hooks/use-toast';
 import { ServicePhotoUpload } from '@/components/tech/ServicePhotoUpload';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { 
-  Clock, Droplets, TestTube, CheckCircle, ArrowLeft, AlertTriangle,
+  Clock, Droplets, TestTube, CheckCircle, ArrowLeft, AlertTriangle, Send,
 } from 'lucide-react';
 import { isInRange, getDosageInstruction, type ChemicalId } from '@/lib/pool-chemistry';
 import { ArrivalNotification } from '@/components/tech/ArrivalNotification';
@@ -45,6 +45,7 @@ type ServiceData = {
 };
 
 export default function FieldService() {
+  const [sendingPoolNeeds, setSendingPoolNeeds] = useState(false);
   const { clientId } = useParams();
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -115,6 +116,54 @@ export default function FieldService() {
 
     parts.push('Thank you!');
     return parts.join(' ');
+  }
+
+  async function sendPoolNeedsToAdmin() {
+    if (!client || !user) return;
+    setSendingPoolNeeds(true);
+    try {
+      const poolGallons = client.pool_size ?? 10000;
+      const instructions = ([
+        { id: 'ph' as ChemicalId, field: 'ph_level' as const },
+        { id: 'alkalinity' as ChemicalId, field: 'alkalinity_level' as const },
+        { id: 'chlorine' as ChemicalId, field: 'chlorine_level' as const },
+        { id: 'cya' as ChemicalId, field: 'cya_level' as const },
+        { id: 'salt' as ChemicalId, field: 'salt_level' as const },
+      ])
+        .map(({ id, field }) => getDosageInstruction(id, serviceData[field], poolGallons))
+        .filter(Boolean) as string[];
+
+      if (!instructions.length) {
+        toast({ title: 'No Needs', description: 'All readings are in range — nothing to send.', variant: 'default' });
+        setSendingPoolNeeds(false);
+        return;
+      }
+
+      const { error } = await supabase.from('pool_needs_messages').insert({
+        client_id: client.id,
+        client_name: client.customer,
+        technician_id: user.id,
+        technician_name: user.name || 'Unknown Tech',
+        pool_size: client.pool_size,
+        pool_type: client.pool_type,
+        chemical_needs: instructions,
+        test_results: {
+          ph: serviceData.ph_level ?? null,
+          ta: serviceData.alkalinity_level ?? null,
+          fc: serviceData.chlorine_level ?? null,
+          cya: serviceData.cya_level ?? null,
+          salt: serviceData.salt_level ?? null,
+        },
+      } as any);
+
+      if (error) throw error;
+      toast({ title: 'Sent!', description: 'Pool needs sent to admin.' });
+    } catch (e: any) {
+      console.error(e);
+      toast({ title: 'Error', description: e.message || 'Failed to send pool needs', variant: 'destructive' });
+    } finally {
+      setSendingPoolNeeds(false);
+    }
   }
 
   async function completeService() {
@@ -289,6 +338,16 @@ export default function FieldService() {
                   <ul className="list-disc pl-4 space-y-1 text-sm">
                     {instructions.map((inst, i) => <li key={i}>{inst}</li>)}
                   </ul>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="mt-3 border-red-400 text-red-800 hover:bg-red-100"
+                    disabled={sendingPoolNeeds}
+                    onClick={sendPoolNeedsToAdmin}
+                  >
+                    <Send className="h-4 w-4 mr-1.5" />
+                    {sendingPoolNeeds ? 'Sending...' : 'Send Pool Needs to Admin'}
+                  </Button>
                 </AlertDescription>
               </Alert>
             );

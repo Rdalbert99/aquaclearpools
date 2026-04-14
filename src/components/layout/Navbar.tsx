@@ -27,12 +27,13 @@ export const Navbar = () => {
     if (!isAdmin) return;
     
     const loadUnread = async () => {
-      const { count, error } = await supabase
-        .from('inbound_sms_messages')
-        .select('*', { count: 'exact', head: true })
-        .is('read_at', null);
+      const [smsRes, poolRes] = await Promise.all([
+        supabase.from('inbound_sms_messages').select('*', { count: 'exact', head: true }).is('read_at', null),
+        supabase.from('pool_needs_messages').select('*', { count: 'exact', head: true }).is('read_at', null),
+      ]);
       
-      if (!error && count !== null) setUnreadCount(count);
+      const total = (smsRes.count ?? 0) + (poolRes.count ?? 0);
+      setUnreadCount(total);
     };
 
     loadUnread();

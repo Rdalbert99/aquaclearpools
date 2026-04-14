@@ -328,6 +328,14 @@ const AppRoutes = () => {
             </ProtectedRoute>
           } 
         />
+        <Route 
+          path="/admin/inbound-messages" 
+          element={
+            <ProtectedRoute allowedRoles={['admin']}>
+              <InboundMessages />
+            </ProtectedRoute>
+          } 
+        />
         
         {/* Client routes */}
         <Route 

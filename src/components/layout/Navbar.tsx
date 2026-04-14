@@ -1,9 +1,11 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
+import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
+import { Badge } from '@/components/ui/badge';
 import { 
   DropdownMenu, 
   DropdownMenuContent, 
@@ -12,12 +14,31 @@ import {
   DropdownMenuSeparator, 
   DropdownMenuTrigger 
 } from '@/components/ui/dropdown-menu';
-import { Droplets, Home, Calculator, Users, FileText, LogOut, User, Star, Calendar, BarChart3, Mail, Menu } from 'lucide-react';
+import { Droplets, Home, Calculator, Users, FileText, LogOut, User, Star, Calendar, BarChart3, Mail, Menu, MessageSquare } from 'lucide-react';
 
 export const Navbar = () => {
   const { user, signOut, isAdmin, isTech, isClient } = useAuth();
   const navigate = useNavigate();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
+
+  // Load unread message count for admins
+  useEffect(() => {
+    if (!isAdmin) return;
+    
+    const loadUnread = async () => {
+      const { count, error } = await supabase
+        .from('inbound_sms_messages')
+        .select('*', { count: 'exact', head: true })
+        .is('read_at', null);
+      
+      if (!error && count !== null) setUnreadCount(count);
+    };
+
+    loadUnread();
+    const interval = setInterval(loadUnread, 30000); // refresh every 30s
+    return () => clearInterval(interval);
+  }, [isAdmin]);
 
   const handleLogout = async () => {
     await signOut();
@@ -33,13 +54,13 @@ export const Navbar = () => {
       .slice(0, 2);
   };
 
-  // Navigation items based on user role
   const getNavigationItems = () => {
     if (isAdmin) {
       return [
         { label: 'Dashboard', icon: Home, path: '/admin' },
         { label: 'Clients', icon: Users, path: '/admin/clients' },
         { label: 'Requests', icon: FileText, path: '/admin/service-request-management' },
+        { label: 'Messages', icon: MessageSquare, path: '/admin/inbound-messages', badge: unreadCount },
         { label: 'Reviews', icon: Star, path: '/admin/reviews' },
         { label: 'Calculator', icon: Calculator, path: '/admin/calculator' },
         { label: 'Reports', icon: BarChart3, path: '/admin/reports' },
@@ -87,9 +108,14 @@ export const Navbar = () => {
             <div className="hidden lg:flex items-center space-x-1">
               {navigationItems.map((item) => (
                 <Button key={item.path} variant="ghost" size="sm" asChild>
-                  <Link to={item.path} className="flex items-center space-x-1">
+                  <Link to={item.path} className="flex items-center space-x-1 relative">
                     <item.icon className="h-4 w-4" />
                     <span>{item.label}</span>
+                    {'badge' in item && item.badge > 0 && (
+                      <Badge variant="destructive" className="absolute -top-2 -right-3 h-5 min-w-[20px] px-1 text-[10px] flex items-center justify-center">
+                        {item.badge}
+                      </Badge>
+                    )}
                   </Link>
                 </Button>
               ))}
@@ -99,8 +125,13 @@ export const Navbar = () => {
             <div className="lg:hidden">
               <Sheet open={isMobileMenuOpen} onOpenChange={setIsMobileMenuOpen}>
                 <SheetTrigger asChild>
-                  <Button variant="ghost" size="sm">
+                  <Button variant="ghost" size="sm" className="relative">
                     <Menu className="h-5 w-5" />
+                    {unreadCount > 0 && isAdmin && (
+                      <Badge variant="destructive" className="absolute -top-1 -right-1 h-4 min-w-[16px] px-1 text-[9px] flex items-center justify-center">
+                        {unreadCount}
+                      </Badge>
+                    )}
                   </Button>
                 </SheetTrigger>
                 <SheetContent 
@@ -108,7 +139,6 @@ export const Navbar = () => {
                   className="bg-background border-l w-80 z-[100]"
                 >
                   <div className="flex flex-col h-full pt-8">
-                    {/* Mobile Navigation Links */}
                     <nav className="flex flex-col space-y-2 mb-8">
                       {navigationItems.map((item) => (
                         <Button
@@ -122,12 +152,16 @@ export const Navbar = () => {
                           <Link to={item.path} className="flex items-center space-x-3">
                             <item.icon className="h-5 w-5" />
                             <span className="text-lg">{item.label}</span>
+                            {'badge' in item && item.badge > 0 && (
+                              <Badge variant="destructive" className="ml-auto text-xs">
+                                {item.badge}
+                              </Badge>
+                            )}
                           </Link>
                         </Button>
                       ))}
                     </nav>
 
-                    {/* Mobile User Actions */}
                     <div className="flex flex-col space-y-3 mt-auto border-t pt-4">
                       <Button
                         variant="ghost"
@@ -183,6 +217,19 @@ export const Navbar = () => {
                   </div>
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
+                {isAdmin && (
+                  <DropdownMenuItem asChild>
+                    <Link to="/admin/inbound-messages" className="flex items-center">
+                      <MessageSquare className="mr-2 h-4 w-4" />
+                      <span>Messages</span>
+                      {unreadCount > 0 && (
+                        <Badge variant="destructive" className="ml-auto text-xs">
+                          {unreadCount}
+                        </Badge>
+                      )}
+                    </Link>
+                  </DropdownMenuItem>
+                )}
                 <DropdownMenuItem asChild>
                   <Link to="/profile" className="flex items-center">
                     <User className="mr-2 h-4 w-4" />

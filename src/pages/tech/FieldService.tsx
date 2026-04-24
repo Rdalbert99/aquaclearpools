@@ -232,7 +232,7 @@ export default function FieldService() {
       } else {
         toast({ title: 'Service completed', description: 'Service saved successfully.' });
       }
-      navigate('/tech');
+      navigate((user as any)?.role === 'admin' ? '/admin' : '/tech');
     } catch (e: any) {
       console.error(e);
       toast({ title: 'Error', description: e.message || 'Could not complete service', variant: 'destructive' });
@@ -256,7 +256,7 @@ export default function FieldService() {
           <CardContent className="py-12 text-center">
             <p className="text-muted-foreground">Client not found.</p>
             <Button asChild className="mt-4">
-              <Link to="/tech"><ArrowLeft className="h-4 w-4 mr-2" />Back to Tech</Link>
+              <Link to={(user as any)?.role === 'admin' ? '/admin' : '/tech'}><ArrowLeft className="h-4 w-4 mr-2" />Back</Link>
             </Button>
           </CardContent>
         </Card>
@@ -270,7 +270,7 @@ export default function FieldService() {
         <h1 className="text-2xl font-bold flex items-center gap-2">
           <Droplets className="h-5 w-5" /> {client.customer}
         </h1>
-        <Button variant="outline" onClick={() => navigate('/tech')}>
+        <Button variant="outline" onClick={() => navigate((user as any)?.role === 'admin' ? '/admin' : '/tech')}>
           <ArrowLeft className="h-4 w-4 mr-2" /> Back
         </Button>
       </div>

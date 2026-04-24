@@ -139,7 +139,7 @@ const AppRoutes = () => {
         <Route 
           path="/tech/service/:clientId" 
           element={
-            <ProtectedRoute allowedRoles={['tech']}>
+            <ProtectedRoute allowedRoles={['tech', 'admin']}>
               <FieldService />
             </ProtectedRoute>
           } 

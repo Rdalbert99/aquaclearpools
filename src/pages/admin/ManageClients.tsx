@@ -712,6 +712,13 @@ export default function ManageClients() {
                         <td className="p-4">
                           <div className="flex space-x-2">
                             <Button
+                              variant="default"
+                              size="sm"
+                              onClick={() => navigate(`/tech/service/${client.id}`)}
+                            >
+                              Start Service
+                            </Button>
+                            <Button
                               variant="outline"
                               size="sm"
                               onClick={() => navigate(`/admin/clients/${client.id}`)}

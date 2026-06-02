@@ -99,8 +99,22 @@ export default function FieldService() {
     const alk = data.alkalinity_level != null ? data.alkalinity_level : 'N/A';
     const salt = data.salt_level != null ? data.salt_level : null;
 
+    // Determine if balance is off (any reading out of range)
+    const checks: Array<{ id: ChemicalId; val: number | null | undefined }> = [
+      { id: 'ph', val: data.ph_level },
+      { id: 'alkalinity', val: data.alkalinity_level },
+      { id: 'chlorine', val: data.chlorine_level },
+      { id: 'cya', val: data.cya_level },
+      { id: 'salt', val: data.salt_level },
+    ];
+    const anyOut = checks.some(c => isInRange(c.id, c.val) === 'out');
+
     const parts: string[] = [];
-    parts.push(`This is Aqua Clear Pools, your pool is clean and clear.`);
+    parts.push(
+      anyOut
+        ? `This is Aqua Clear Pools. We serviced your pool today and added chemicals to bring it back into balance.`
+        : `This is Aqua Clear Pools, your pool is clean and clear.`
+    );
 
     // Actions performed
     const actions: string[] = [];
@@ -119,6 +133,12 @@ export default function FieldService() {
 
     parts.push('Thank you!');
     return parts.join(' ');
+  }
+
+  function openReview() {
+    if (!client) return;
+    setReviewMessage(buildServiceMessage(client.customer, serviceData));
+    setReviewOpen(true);
   }
 
   async function sendPoolNeedsToAdmin() {

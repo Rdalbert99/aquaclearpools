@@ -62,6 +62,8 @@ export default function FieldService() {
     cleaned_filters: false,
     robot_plugged_in: false,
   });
+  const [reviewOpen, setReviewOpen] = useState(false);
+  const [reviewMessage, setReviewMessage] = useState('');
 
   useEffect(() => {
     let mounted = true;

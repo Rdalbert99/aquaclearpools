@@ -78,20 +78,23 @@ export function ArrivalNotification({ clientName, clientId, clientPhone, clientE
   async function sendViaSMS() {
     const phone = activePhone;
     if (!phone) return;
+    const message = reviewMessage.trim() || ARRIVAL_MESSAGE;
     setSending(true);
     try {
       const { error } = await supabase.functions.invoke('send-sms-via-telnyx', {
-        body: { to: phone, message: ARRIVAL_MESSAGE },
+        body: { to: phone, message },
       });
       if (error) {
         console.error('SMS error, falling back to native:', error);
-        window.location.href = `sms:${phone}?&body=${encodeURIComponent(ARRIVAL_MESSAGE)}`;
+        window.location.href = `sms:${phone}?&body=${encodeURIComponent(message)}`;
       }
       setSent(true);
+      setReviewOpen(false);
       toast({ title: 'Arrival notification sent', description: `SMS sent to ${clientName}.` });
     } catch {
-      window.location.href = `sms:${phone}?&body=${encodeURIComponent(ARRIVAL_MESSAGE)}`;
+      window.location.href = `sms:${phone}?&body=${encodeURIComponent(message)}`;
       setSent(true);
+      setReviewOpen(false);
       toast({ title: 'SMS app opened', description: 'Send the message from your messaging app.' });
     } finally {
       setSending(false);
@@ -101,10 +104,13 @@ export function ArrivalNotification({ clientName, clientId, clientPhone, clientE
   function sendViaEmail() {
     const email = activeEmail;
     if (!email) return;
-    window.location.href = `mailto:${email}?subject=${encodeURIComponent('Aqua Clear Pools - Service Visit')}&body=${encodeURIComponent(ARRIVAL_MESSAGE)}`;
+    const message = reviewMessage.trim() || ARRIVAL_MESSAGE;
+    window.location.href = `mailto:${email}?subject=${encodeURIComponent('Aqua Clear Pools - Service Visit')}&body=${encodeURIComponent(message)}`;
     setSent(true);
+    setReviewOpen(false);
     toast({ title: 'Email app opened', description: 'Send the message from your email app.' });
   }
+
 
   if (sent) {
     return (

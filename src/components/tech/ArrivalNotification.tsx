@@ -33,6 +33,18 @@ export function ArrivalNotification({ clientName, clientId, clientPhone, clientE
   const [activePhone, setActivePhone] = useState(clientPhone || '');
   const [activeEmail, setActiveEmail] = useState(clientEmail || '');
 
+  // Review dialog state
+  const [reviewOpen, setReviewOpen] = useState(false);
+  const [reviewChannel, setReviewChannel] = useState<'sms' | 'email'>('sms');
+  const [reviewMessage, setReviewMessage] = useState(ARRIVAL_MESSAGE);
+
+  function openReview(channel: 'sms' | 'email') {
+    setReviewChannel(channel);
+    setReviewMessage(ARRIVAL_MESSAGE);
+    setReviewOpen(true);
+  }
+
+
   async function saveContact() {
     if (!newPhone && !newEmail) {
       toast({ title: 'Enter a phone or email', variant: 'destructive' });

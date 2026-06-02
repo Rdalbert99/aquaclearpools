@@ -468,12 +468,43 @@ export default function FieldService() {
             </div>
           </div>
           <div className="pt-2">
-            <Button onClick={completeService} disabled={saving} className="min-w-[160px]">
-              {saving ? <LoadingSpinner /> : (<><CheckCircle className="h-4 w-4 mr-2" /> Complete Service</>)}
+            <Button onClick={openReview} disabled={saving} className="min-w-[160px]">
+              <CheckCircle className="h-4 w-4 mr-2" /> Review & Send
             </Button>
           </div>
         </CardContent>
       </Card>
+
+      <Dialog open={reviewOpen} onOpenChange={(o) => !saving && setReviewOpen(o)}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Review Customer Message</DialogTitle>
+            <DialogDescription>
+              Edit the message below before sending it to the customer. This text will be sent via SMS (or email if no phone).
+            </DialogDescription>
+          </DialogHeader>
+          <Textarea
+            rows={8}
+            value={reviewMessage}
+            onChange={(e) => setReviewMessage(e.target.value)}
+            className="font-mono text-sm"
+          />
+          <div className="text-xs text-muted-foreground">{reviewMessage.length} characters</div>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setReviewOpen(false)} disabled={saving}>Cancel</Button>
+            <Button
+              variant="ghost"
+              onClick={() => client && setReviewMessage(buildServiceMessage(client.customer, serviceData))}
+              disabled={saving}
+            >
+              Reset
+            </Button>
+            <Button onClick={completeService} disabled={saving || !reviewMessage.trim()}>
+              {saving ? <LoadingSpinner /> : (<><Send className="h-4 w-4 mr-2" /> Send & Complete</>)}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

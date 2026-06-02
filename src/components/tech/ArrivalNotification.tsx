@@ -4,9 +4,12 @@ import { Button } from '@/components/ui/button';
 
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { MessageSquare, Mail, CheckCircle, Send, UserPlus, Phone } from 'lucide-react';
+
 
 interface ArrivalNotificationProps {
   clientName: string;
@@ -29,6 +32,18 @@ export function ArrivalNotification({ clientName, clientId, clientPhone, clientE
   // Use local overrides if the tech added contact info
   const [activePhone, setActivePhone] = useState(clientPhone || '');
   const [activeEmail, setActiveEmail] = useState(clientEmail || '');
+
+  // Review dialog state
+  const [reviewOpen, setReviewOpen] = useState(false);
+  const [reviewChannel, setReviewChannel] = useState<'sms' | 'email'>('sms');
+  const [reviewMessage, setReviewMessage] = useState(ARRIVAL_MESSAGE);
+
+  function openReview(channel: 'sms' | 'email') {
+    setReviewChannel(channel);
+    setReviewMessage(ARRIVAL_MESSAGE);
+    setReviewOpen(true);
+  }
+
 
   async function saveContact() {
     if (!newPhone && !newEmail) {
@@ -63,20 +78,23 @@ export function ArrivalNotification({ clientName, clientId, clientPhone, clientE
   async function sendViaSMS() {
     const phone = activePhone;
     if (!phone) return;
+    const message = reviewMessage.trim() || ARRIVAL_MESSAGE;
     setSending(true);
     try {
       const { error } = await supabase.functions.invoke('send-sms-via-telnyx', {
-        body: { to: phone, message: ARRIVAL_MESSAGE },
+        body: { to: phone, message },
       });
       if (error) {
         console.error('SMS error, falling back to native:', error);
-        window.location.href = `sms:${phone}?&body=${encodeURIComponent(ARRIVAL_MESSAGE)}`;
+        window.location.href = `sms:${phone}?&body=${encodeURIComponent(message)}`;
       }
       setSent(true);
+      setReviewOpen(false);
       toast({ title: 'Arrival notification sent', description: `SMS sent to ${clientName}.` });
     } catch {
-      window.location.href = `sms:${phone}?&body=${encodeURIComponent(ARRIVAL_MESSAGE)}`;
+      window.location.href = `sms:${phone}?&body=${encodeURIComponent(message)}`;
       setSent(true);
+      setReviewOpen(false);
       toast({ title: 'SMS app opened', description: 'Send the message from your messaging app.' });
     } finally {
       setSending(false);
@@ -86,10 +104,13 @@ export function ArrivalNotification({ clientName, clientId, clientPhone, clientE
   function sendViaEmail() {
     const email = activeEmail;
     if (!email) return;
-    window.location.href = `mailto:${email}?subject=${encodeURIComponent('Aqua Clear Pools - Service Visit')}&body=${encodeURIComponent(ARRIVAL_MESSAGE)}`;
+    const message = reviewMessage.trim() || ARRIVAL_MESSAGE;
+    window.location.href = `mailto:${email}?subject=${encodeURIComponent('Aqua Clear Pools - Service Visit')}&body=${encodeURIComponent(message)}`;
     setSent(true);
+    setReviewOpen(false);
     toast({ title: 'Email app opened', description: 'Send the message from your email app.' });
   }
+
 
   if (sent) {
     return (
@@ -174,15 +195,15 @@ export function ArrivalNotification({ clientName, clientId, clientPhone, clientE
         {/* Send buttons */}
         <div className="flex flex-wrap gap-3">
           {activePhone && (
-            <Button onClick={sendViaSMS} disabled={sending} variant="default" size="sm">
+            <Button onClick={() => openReview('sms')} disabled={sending} variant="default" size="sm">
               <MessageSquare className="h-4 w-4 mr-2" />
-              {sending ? 'Sending…' : 'Send Text'}
+              Review & Send Text
             </Button>
           )}
           {activeEmail && (
-            <Button onClick={sendViaEmail} variant="outline" size="sm">
+            <Button onClick={() => openReview('email')} variant="outline" size="sm">
               <Mail className="h-4 w-4 mr-2" />
-              Send Email
+              Review & Send Email
             </Button>
           )}
           {hasContact && (
@@ -195,6 +216,37 @@ export function ArrivalNotification({ clientName, clientId, clientPhone, clientE
           </Button>
         </div>
       </CardContent>
+
+      <Dialog open={reviewOpen} onOpenChange={(o) => !sending && setReviewOpen(o)}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Review Message</DialogTitle>
+            <DialogDescription>
+              Edit the message before sending it to {clientName} via {reviewChannel === 'sms' ? 'text' : 'email'}.
+            </DialogDescription>
+          </DialogHeader>
+          <Textarea
+            rows={6}
+            value={reviewMessage}
+            onChange={(e) => setReviewMessage(e.target.value)}
+            className="font-mono text-sm"
+          />
+          <div className="text-xs text-muted-foreground">{reviewMessage.length} characters</div>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setReviewOpen(false)} disabled={sending}>Cancel</Button>
+            <Button variant="ghost" onClick={() => setReviewMessage(ARRIVAL_MESSAGE)} disabled={sending}>
+              Reset
+            </Button>
+            <Button
+              onClick={() => (reviewChannel === 'sms' ? sendViaSMS() : sendViaEmail())}
+              disabled={sending || !reviewMessage.trim()}
+            >
+              <Send className="h-4 w-4 mr-2" />
+              {sending ? 'Sending…' : 'Send'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Card>
   );
 }

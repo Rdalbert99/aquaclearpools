@@ -195,15 +195,15 @@ export function ArrivalNotification({ clientName, clientId, clientPhone, clientE
         {/* Send buttons */}
         <div className="flex flex-wrap gap-3">
           {activePhone && (
-            <Button onClick={sendViaSMS} disabled={sending} variant="default" size="sm">
+            <Button onClick={() => openReview('sms')} disabled={sending} variant="default" size="sm">
               <MessageSquare className="h-4 w-4 mr-2" />
-              {sending ? 'Sending…' : 'Send Text'}
+              Review & Send Text
             </Button>
           )}
           {activeEmail && (
-            <Button onClick={sendViaEmail} variant="outline" size="sm">
+            <Button onClick={() => openReview('email')} variant="outline" size="sm">
               <Mail className="h-4 w-4 mr-2" />
-              Send Email
+              Review & Send Email
             </Button>
           )}
           {hasContact && (
@@ -216,6 +216,37 @@ export function ArrivalNotification({ clientName, clientId, clientPhone, clientE
           </Button>
         </div>
       </CardContent>
+
+      <Dialog open={reviewOpen} onOpenChange={(o) => !sending && setReviewOpen(o)}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Review Message</DialogTitle>
+            <DialogDescription>
+              Edit the message before sending it to {clientName} via {reviewChannel === 'sms' ? 'text' : 'email'}.
+            </DialogDescription>
+          </DialogHeader>
+          <Textarea
+            rows={6}
+            value={reviewMessage}
+            onChange={(e) => setReviewMessage(e.target.value)}
+            className="font-mono text-sm"
+          />
+          <div className="text-xs text-muted-foreground">{reviewMessage.length} characters</div>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setReviewOpen(false)} disabled={sending}>Cancel</Button>
+            <Button variant="ghost" onClick={() => setReviewMessage(ARRIVAL_MESSAGE)} disabled={sending}>
+              Reset
+            </Button>
+            <Button
+              onClick={() => (reviewChannel === 'sms' ? sendViaSMS() : sendViaEmail())}
+              disabled={sending || !reviewMessage.trim()}
+            >
+              <Send className="h-4 w-4 mr-2" />
+              {sending ? 'Sending…' : 'Send'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Card>
   );
 }

@@ -255,6 +255,7 @@ export default function FieldService() {
       } else {
         toast({ title: 'Service completed', description: 'Service saved successfully.' });
       }
+      setReviewOpen(false);
       navigate((user as any)?.role === 'admin' ? '/admin' : '/tech');
     } catch (e: any) {
       console.error(e);

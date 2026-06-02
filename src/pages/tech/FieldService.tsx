@@ -12,6 +12,7 @@ import { LoadingSpinner } from '@/components/ui/loading-spinner';
 import { useToast } from '@/hooks/use-toast';
 import { ServicePhotoUpload } from '@/components/tech/ServicePhotoUpload';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { 
   Clock, Droplets, TestTube, CheckCircle, ArrowLeft, AlertTriangle, Send,
 } from 'lucide-react';
@@ -61,6 +62,8 @@ export default function FieldService() {
     cleaned_filters: false,
     robot_plugged_in: false,
   });
+  const [reviewOpen, setReviewOpen] = useState(false);
+  const [reviewMessage, setReviewMessage] = useState('');
 
   useEffect(() => {
     let mounted = true;
@@ -96,8 +99,22 @@ export default function FieldService() {
     const alk = data.alkalinity_level != null ? data.alkalinity_level : 'N/A';
     const salt = data.salt_level != null ? data.salt_level : null;
 
+    // Determine if balance is off (any reading out of range)
+    const checks: Array<{ id: ChemicalId; val: number | null | undefined }> = [
+      { id: 'ph', val: data.ph_level },
+      { id: 'alkalinity', val: data.alkalinity_level },
+      { id: 'chlorine', val: data.chlorine_level },
+      { id: 'cya', val: data.cya_level },
+      { id: 'salt', val: data.salt_level },
+    ];
+    const anyOut = checks.some(c => isInRange(c.id, c.val) === 'out');
+
     const parts: string[] = [];
-    parts.push(`This is Aqua Clear Pools, your pool is clean and clear.`);
+    parts.push(
+      anyOut
+        ? `This is Aqua Clear Pools. We serviced your pool today and added chemicals to bring it back into balance.`
+        : `This is Aqua Clear Pools, your pool is clean and clear.`
+    );
 
     // Actions performed
     const actions: string[] = [];
@@ -116,6 +133,12 @@ export default function FieldService() {
 
     parts.push('Thank you!');
     return parts.join(' ');
+  }
+
+  function openReview() {
+    if (!client) return;
+    setReviewMessage(buildServiceMessage(client.customer, serviceData));
+    setReviewOpen(true);
   }
 
   async function sendPoolNeedsToAdmin() {
@@ -172,7 +195,7 @@ export default function FieldService() {
     try {
       calculateDuration();
 
-      const message = buildServiceMessage(client.customer, serviceData);
+      const message = reviewMessage.trim() || buildServiceMessage(client.customer, serviceData);
 
       const payload = {
         client_id: client.id,
@@ -232,6 +255,7 @@ export default function FieldService() {
       } else {
         toast({ title: 'Service completed', description: 'Service saved successfully.' });
       }
+      setReviewOpen(false);
       navigate((user as any)?.role === 'admin' ? '/admin' : '/tech');
     } catch (e: any) {
       console.error(e);
@@ -444,12 +468,43 @@ export default function FieldService() {
             </div>
           </div>
           <div className="pt-2">
-            <Button onClick={completeService} disabled={saving} className="min-w-[160px]">
-              {saving ? <LoadingSpinner /> : (<><CheckCircle className="h-4 w-4 mr-2" /> Complete Service</>)}
+            <Button onClick={openReview} disabled={saving} className="min-w-[160px]">
+              <CheckCircle className="h-4 w-4 mr-2" /> Review & Send
             </Button>
           </div>
         </CardContent>
       </Card>
+
+      <Dialog open={reviewOpen} onOpenChange={(o) => !saving && setReviewOpen(o)}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Review Customer Message</DialogTitle>
+            <DialogDescription>
+              Edit the message below before sending it to the customer. This text will be sent via SMS (or email if no phone).
+            </DialogDescription>
+          </DialogHeader>
+          <Textarea
+            rows={8}
+            value={reviewMessage}
+            onChange={(e) => setReviewMessage(e.target.value)}
+            className="font-mono text-sm"
+          />
+          <div className="text-xs text-muted-foreground">{reviewMessage.length} characters</div>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setReviewOpen(false)} disabled={saving}>Cancel</Button>
+            <Button
+              variant="ghost"
+              onClick={() => client && setReviewMessage(buildServiceMessage(client.customer, serviceData))}
+              disabled={saving}
+            >
+              Reset
+            </Button>
+            <Button onClick={completeService} disabled={saving || !reviewMessage.trim()}>
+              {saving ? <LoadingSpinner /> : (<><Send className="h-4 w-4 mr-2" /> Send & Complete</>)}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

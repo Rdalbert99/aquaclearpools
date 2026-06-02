@@ -195,7 +195,7 @@ export default function FieldService() {
     try {
       calculateDuration();
 
-      const message = buildServiceMessage(client.customer, serviceData);
+      const message = reviewMessage.trim() || buildServiceMessage(client.customer, serviceData);
 
       const payload = {
         client_id: client.id,

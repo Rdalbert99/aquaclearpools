@@ -12,6 +12,7 @@ import { LoadingSpinner } from '@/components/ui/loading-spinner';
 import { useToast } from '@/hooks/use-toast';
 import { ServicePhotoUpload } from '@/components/tech/ServicePhotoUpload';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { 
   Clock, Droplets, TestTube, CheckCircle, ArrowLeft, AlertTriangle, Send,
 } from 'lucide-react';

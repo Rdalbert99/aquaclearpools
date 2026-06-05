@@ -133,7 +133,12 @@ export default function FieldService() {
     readingsStr += '.';
     parts.push(readingsStr);
 
-    if (data.chemicals_added?.trim()) parts.push(`Chemicals added: ${data.chemicals_added.trim()}.`);
+    const chemExplain = entriesToCustomerExplanation(data.chemical_entries ?? []);
+    if (chemExplain) {
+      parts.push(chemExplain);
+    } else if (data.chemicals_added?.trim()) {
+      parts.push(`Chemicals added: ${data.chemicals_added.trim()}.`);
+    }
 
     parts.push('Thank you!');
     return parts.join(' ');

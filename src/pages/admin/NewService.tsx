@@ -542,10 +542,18 @@ export default function NewService() {
                               size="sm"
                               variant="outline"
                               onClick={() => {
-                                const addition = `${rec.chemical}: ${rec.amount} ${rec.unit}`;
-                                const current = formData.chemicals_added;
-                                const newValue = current ? `${current}\n${addition}` : addition;
-                                handleInputChange('chemicals_added', newValue);
+                                const match = CHEMICAL_OPTIONS.find(c =>
+                                  c.label.toLowerCase().includes(rec.chemical.toLowerCase()) ||
+                                  rec.chemical.toLowerCase().includes(c.label.toLowerCase())
+                                );
+                                const unit = (['lbs', 'oz', 'gal', 'qt'].includes(rec.unit) ? rec.unit : (match?.units[0] ?? 'lbs')) as ChemicalUnit;
+                                const entry: ChemicalEntry = {
+                                  chemicalId: match?.id ?? 'other',
+                                  amount: String(rec.amount),
+                                  unit,
+                                  otherName: match ? undefined : rec.chemical,
+                                };
+                                handleInputChange('chemical_entries', [...formData.chemical_entries, entry]);
                               }}
                             >
                               Add

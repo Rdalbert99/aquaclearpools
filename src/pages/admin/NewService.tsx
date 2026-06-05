@@ -59,6 +59,7 @@ export default function NewService() {
   const [searchParams] = useSearchParams();
   const { user } = useAuth();
   const { toast } = useToast();
+  const { options: chemCatalog } = useChemicalCatalog();
   
   const [clients, setClients] = useState<Client[]>([]);
   const [technicians, setTechnicians] = useState<User[]>([]);

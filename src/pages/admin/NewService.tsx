@@ -79,6 +79,7 @@ export default function NewService() {
     cyanuric_acid_level: null,
     calcium_hardness_level: null,
     chemicals_added: '',
+    chemical_entries: [],
     services_performed: [],
     notes: ''
   });

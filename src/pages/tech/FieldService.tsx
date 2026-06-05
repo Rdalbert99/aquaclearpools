@@ -135,7 +135,7 @@ export default function FieldService() {
     readingsStr += '.';
     parts.push(readingsStr);
 
-    const chemExplain = entriesToCustomerExplanation(data.chemical_entries ?? []);
+    const chemExplain = entriesToCustomerExplanation(data.chemical_entries ?? [], chemCatalog);
     if (chemExplain) {
       parts.push(chemExplain);
     } else if (data.chemicals_added?.trim()) {

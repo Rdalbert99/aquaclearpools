@@ -255,16 +255,19 @@ export default function NewService() {
 
     setSaving(true);
     try {
+      const { chemical_entries, ...rest } = formData;
+      const combinedChemicals = entriesToString(chemical_entries) || rest.chemicals_added;
       const serviceData = {
-        ...formData,
-        duration: Number(formData.duration),
-        cost: Number(formData.cost),
-        ph_level: formData.ph_level ? Number(formData.ph_level) : null,
-        chlorine_level: formData.chlorine_level ? Number(formData.chlorine_level) : null,
-        alkalinity_level: formData.alkalinity_level ? Number(formData.alkalinity_level) : null,
-        cyanuric_acid_level: formData.cyanuric_acid_level ? Number(formData.cyanuric_acid_level) : null,
-        calcium_hardness_level: formData.calcium_hardness_level ? Number(formData.calcium_hardness_level) : null,
-        services_performed: formData.services_performed.join(', ') || null,
+        ...rest,
+        chemicals_added: combinedChemicals,
+        duration: Number(rest.duration),
+        cost: Number(rest.cost),
+        ph_level: rest.ph_level ? Number(rest.ph_level) : null,
+        chlorine_level: rest.chlorine_level ? Number(rest.chlorine_level) : null,
+        alkalinity_level: rest.alkalinity_level ? Number(rest.alkalinity_level) : null,
+        cyanuric_acid_level: rest.cyanuric_acid_level ? Number(rest.cyanuric_acid_level) : null,
+        calcium_hardness_level: rest.calcium_hardness_level ? Number(rest.calcium_hardness_level) : null,
+        services_performed: rest.services_performed.join(', ') || null,
       };
 
       const { error } = await supabase

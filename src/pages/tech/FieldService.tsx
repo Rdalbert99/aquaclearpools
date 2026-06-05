@@ -453,11 +453,13 @@ export default function FieldService() {
             );
           })()}
           <div>
-            <Label htmlFor="chemicals">Chemicals Added</Label>
-            <Textarea id="chemicals" rows={3}
-              value={serviceData.chemicals_added ?? ''}
-              onChange={e => handleInputChange('chemicals_added', e.target.value)}
-              placeholder="e.g., 2 lbs cal-hypo, 1 lb pH down..."
+            <Label>Chemicals Added</Label>
+            <p className="text-xs text-muted-foreground mb-2">
+              Add each chemical you applied. The customer message will explain what each one does.
+            </p>
+            <ChemicalsAddedInput
+              value={serviceData.chemical_entries ?? []}
+              onChange={(entries) => handleInputChange('chemical_entries', entries)}
             />
           </div>
           <div>

@@ -64,6 +64,7 @@ export default function FieldService() {
     vacuumed: false,
     cleaned_filters: false,
     robot_plugged_in: false,
+    chemical_entries: [],
   });
   const [reviewOpen, setReviewOpen] = useState(false);
   const [reviewMessage, setReviewMessage] = useState('');

@@ -258,7 +258,7 @@ export default function NewService() {
     setSaving(true);
     try {
       const { chemical_entries, ...rest } = formData;
-      const combinedChemicals = entriesToString(chemical_entries) || rest.chemicals_added;
+      const combinedChemicals = entriesToString(chemical_entries, chemCatalog) || rest.chemicals_added;
       const serviceData = {
         ...rest,
         chemicals_added: combinedChemicals,

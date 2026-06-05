@@ -37,7 +37,7 @@ export function ChemicalsAddedInput({ value, onChange }: Props) {
       )}
 
       {entries.map((entry, i) => {
-        const opt = getChemicalOption(entry.chemicalId);
+        const opt = getChemicalOption(entry.chemicalId, CATALOG);
         const units = opt?.units ?? (['lbs', 'oz', 'gal', 'qt'] as ChemicalUnit[]);
         return (
           <div

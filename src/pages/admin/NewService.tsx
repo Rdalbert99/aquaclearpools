@@ -543,7 +543,7 @@ export default function NewService() {
                               size="sm"
                               variant="outline"
                               onClick={() => {
-                                const match = CHEMICAL_OPTIONS.find(c =>
+                                const match = chemCatalog.find(c =>
                                   c.label.toLowerCase().includes(rec.chemical.toLowerCase()) ||
                                   rec.chemical.toLowerCase().includes(c.label.toLowerCase())
                                 );

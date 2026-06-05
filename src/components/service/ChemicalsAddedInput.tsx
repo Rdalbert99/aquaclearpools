@@ -50,7 +50,7 @@ export function ChemicalsAddedInput({ value, onChange }: Props) {
                 <Select
                   value={entry.chemicalId}
                   onValueChange={(id) => {
-                    const newOpt = getChemicalOption(id);
+                    const newOpt = getChemicalOption(id, CATALOG);
                     update(i, {
                       chemicalId: id,
                       unit: newOpt?.units[0] ?? entry.unit,
@@ -60,7 +60,7 @@ export function ChemicalsAddedInput({ value, onChange }: Props) {
                 >
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    {CHEMICAL_OPTIONS.map(c => (
+                    {CATALOG.map(c => (
                       <SelectItem key={c.id} value={c.id}>{c.label}</SelectItem>
                     ))}
                   </SelectContent>

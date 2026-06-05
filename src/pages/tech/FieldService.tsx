@@ -18,6 +18,8 @@ import {
 } from 'lucide-react';
 import { isInRange, getDosageInstruction, type ChemicalId } from '@/lib/pool-chemistry';
 import { ArrivalNotification } from '@/components/tech/ArrivalNotification';
+import { ChemicalsAddedInput } from '@/components/service/ChemicalsAddedInput';
+import { ChemicalEntry, entriesToString, entriesToCustomerExplanation } from '@/lib/chemicals-added';
 
 type Client = {
   id: string;
@@ -39,6 +41,7 @@ type ServiceData = {
   cleaned_filters?: boolean;
   robot_plugged_in?: boolean;
   chemicals_added?: string;
+  chemical_entries?: ChemicalEntry[];
   notes?: string;
   duration?: number | null;
   beforePhotoUrl?: string | null;
@@ -61,6 +64,7 @@ export default function FieldService() {
     vacuumed: false,
     cleaned_filters: false,
     robot_plugged_in: false,
+    chemical_entries: [],
   });
   const [reviewOpen, setReviewOpen] = useState(false);
   const [reviewMessage, setReviewMessage] = useState('');
@@ -129,7 +133,12 @@ export default function FieldService() {
     readingsStr += '.';
     parts.push(readingsStr);
 
-    if (data.chemicals_added?.trim()) parts.push(`Chemicals added: ${data.chemicals_added.trim()}.`);
+    const chemExplain = entriesToCustomerExplanation(data.chemical_entries ?? []);
+    if (chemExplain) {
+      parts.push(chemExplain);
+    } else if (data.chemicals_added?.trim()) {
+      parts.push(`Chemicals added: ${data.chemicals_added.trim()}.`);
+    }
 
     parts.push('Thank you!');
     return parts.join(' ');
@@ -213,7 +222,7 @@ export default function FieldService() {
           cleaned_filters: !!serviceData.cleaned_filters,
           robot_plugged_in: !!serviceData.robot_plugged_in,
         },
-        chemicals_added: serviceData.chemicals_added || null,
+        chemicals_added: entriesToString(serviceData.chemical_entries ?? []) || serviceData.chemicals_added || null,
         notes: serviceData.notes || null,
         duration_minutes: serviceData.duration ?? null,
         before_photo_url: serviceData.beforePhotoUrl || null,
@@ -444,11 +453,13 @@ export default function FieldService() {
             );
           })()}
           <div>
-            <Label htmlFor="chemicals">Chemicals Added</Label>
-            <Textarea id="chemicals" rows={3}
-              value={serviceData.chemicals_added ?? ''}
-              onChange={e => handleInputChange('chemicals_added', e.target.value)}
-              placeholder="e.g., 2 lbs cal-hypo, 1 lb pH down..."
+            <Label>Chemicals Added</Label>
+            <p className="text-xs text-muted-foreground mb-2">
+              Add each chemical you applied. The customer message will explain what each one does.
+            </p>
+            <ChemicalsAddedInput
+              value={serviceData.chemical_entries ?? []}
+              onChange={(entries) => handleInputChange('chemical_entries', entries)}
             />
           </div>
           <div>

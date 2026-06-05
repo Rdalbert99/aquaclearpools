@@ -12,6 +12,8 @@ import { LoadingSpinner } from '@/components/ui/loading-spinner';
 import { useToast } from '@/hooks/use-toast';
 import { ArrowLeft, Calendar, DollarSign, Clock, TestTube, FlaskConical, Calculator, Wrench } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
+import { ChemicalsAddedInput } from '@/components/service/ChemicalsAddedInput';
+import { ChemicalEntry, CHEMICAL_OPTIONS, ChemicalUnit, entriesToString } from '@/lib/chemicals-added';
 
 interface Client {
   id: string;
@@ -39,6 +41,7 @@ interface ServiceFormData {
   cyanuric_acid_level: number | null;
   calcium_hardness_level: number | null;
   chemicals_added: string;
+  chemical_entries: ChemicalEntry[];
   services_performed: string[];
   notes: string;
 }
@@ -76,6 +79,7 @@ export default function NewService() {
     cyanuric_acid_level: null,
     calcium_hardness_level: null,
     chemicals_added: '',
+    chemical_entries: [],
     services_performed: [],
     notes: ''
   });
@@ -251,16 +255,19 @@ export default function NewService() {
 
     setSaving(true);
     try {
+      const { chemical_entries, ...rest } = formData;
+      const combinedChemicals = entriesToString(chemical_entries) || rest.chemicals_added;
       const serviceData = {
-        ...formData,
-        duration: Number(formData.duration),
-        cost: Number(formData.cost),
-        ph_level: formData.ph_level ? Number(formData.ph_level) : null,
-        chlorine_level: formData.chlorine_level ? Number(formData.chlorine_level) : null,
-        alkalinity_level: formData.alkalinity_level ? Number(formData.alkalinity_level) : null,
-        cyanuric_acid_level: formData.cyanuric_acid_level ? Number(formData.cyanuric_acid_level) : null,
-        calcium_hardness_level: formData.calcium_hardness_level ? Number(formData.calcium_hardness_level) : null,
-        services_performed: formData.services_performed.join(', ') || null,
+        ...rest,
+        chemicals_added: combinedChemicals,
+        duration: Number(rest.duration),
+        cost: Number(rest.cost),
+        ph_level: rest.ph_level ? Number(rest.ph_level) : null,
+        chlorine_level: rest.chlorine_level ? Number(rest.chlorine_level) : null,
+        alkalinity_level: rest.alkalinity_level ? Number(rest.alkalinity_level) : null,
+        cyanuric_acid_level: rest.cyanuric_acid_level ? Number(rest.cyanuric_acid_level) : null,
+        calcium_hardness_level: rest.calcium_hardness_level ? Number(rest.calcium_hardness_level) : null,
+        services_performed: rest.services_performed.join(', ') || null,
       };
 
       const { error } = await supabase
@@ -535,10 +542,18 @@ export default function NewService() {
                               size="sm"
                               variant="outline"
                               onClick={() => {
-                                const addition = `${rec.chemical}: ${rec.amount} ${rec.unit}`;
-                                const current = formData.chemicals_added;
-                                const newValue = current ? `${current}\n${addition}` : addition;
-                                handleInputChange('chemicals_added', newValue);
+                                const match = CHEMICAL_OPTIONS.find(c =>
+                                  c.label.toLowerCase().includes(rec.chemical.toLowerCase()) ||
+                                  rec.chemical.toLowerCase().includes(c.label.toLowerCase())
+                                );
+                                const unit = (['lbs', 'oz', 'gal', 'qt'].includes(rec.unit) ? rec.unit : (match?.units[0] ?? 'lbs')) as ChemicalUnit;
+                                const entry: ChemicalEntry = {
+                                  chemicalId: match?.id ?? 'other',
+                                  amount: String(rec.amount),
+                                  unit,
+                                  otherName: match ? undefined : rec.chemical,
+                                };
+                                handleInputChange('chemical_entries', [...formData.chemical_entries, entry]);
                               }}
                             >
                               Add
@@ -615,13 +630,13 @@ export default function NewService() {
           </CardHeader>
           <CardContent className="space-y-4">
             <div>
-              <Label htmlFor="chemicals_added">Chemicals Added</Label>
-              <Textarea
-                id="chemicals_added"
-                value={formData.chemicals_added}
-                onChange={(e) => handleInputChange('chemicals_added', e.target.value)}
-                placeholder="List any chemicals added during service (e.g., 2 lbs shock, 1 cup algaecide)"
-                rows={3}
+              <Label>Chemicals Added</Label>
+              <p className="text-xs text-muted-foreground mb-2">
+                Pick each chemical added and the amount. The customer message will explain what each one does.
+              </p>
+              <ChemicalsAddedInput
+                value={formData.chemical_entries}
+                onChange={(entries) => handleInputChange('chemical_entries', entries)}
               />
             </div>
 

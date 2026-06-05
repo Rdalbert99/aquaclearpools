@@ -13,7 +13,8 @@ import { useToast } from '@/hooks/use-toast';
 import { ArrowLeft, Calendar, DollarSign, Clock, TestTube, FlaskConical, Calculator, Wrench } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
 import { ChemicalsAddedInput } from '@/components/service/ChemicalsAddedInput';
-import { ChemicalEntry, CHEMICAL_OPTIONS, ChemicalUnit, entriesToString } from '@/lib/chemicals-added';
+import { ChemicalEntry, ChemicalUnit, entriesToString } from '@/lib/chemicals-added';
+import { useChemicalCatalog } from '@/hooks/useChemicalCatalog';
 
 interface Client {
   id: string;

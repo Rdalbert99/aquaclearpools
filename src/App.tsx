@@ -193,6 +193,14 @@ const AppRoutes = () => {
             </ProtectedRoute>
           } 
         />
+        <Route
+          path="/admin/chemical-catalog"
+          element={
+            <ProtectedRoute allowedRoles={['admin']}>
+              <ChemicalCatalog />
+            </ProtectedRoute>
+          }
+        />
         <Route 
           path="/admin/clients/new" 
           element={

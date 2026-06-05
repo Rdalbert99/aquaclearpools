@@ -630,13 +630,13 @@ export default function NewService() {
           </CardHeader>
           <CardContent className="space-y-4">
             <div>
-              <Label htmlFor="chemicals_added">Chemicals Added</Label>
-              <Textarea
-                id="chemicals_added"
-                value={formData.chemicals_added}
-                onChange={(e) => handleInputChange('chemicals_added', e.target.value)}
-                placeholder="List any chemicals added during service (e.g., 2 lbs shock, 1 cup algaecide)"
-                rows={3}
+              <Label>Chemicals Added</Label>
+              <p className="text-xs text-muted-foreground mb-2">
+                Pick each chemical added and the amount. The customer message will explain what each one does.
+              </p>
+              <ChemicalsAddedInput
+                value={formData.chemical_entries}
+                onChange={(entries) => handleInputChange('chemical_entries', entries)}
               />
             </div>
 

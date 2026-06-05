@@ -224,7 +224,7 @@ export default function FieldService() {
           cleaned_filters: !!serviceData.cleaned_filters,
           robot_plugged_in: !!serviceData.robot_plugged_in,
         },
-        chemicals_added: entriesToString(serviceData.chemical_entries ?? []) || serviceData.chemicals_added || null,
+        chemicals_added: entriesToString(serviceData.chemical_entries ?? [], chemCatalog) || serviceData.chemicals_added || null,
         notes: serviceData.notes || null,
         duration_minutes: serviceData.duration ?? null,
         before_photo_url: serviceData.beforePhotoUrl || null,

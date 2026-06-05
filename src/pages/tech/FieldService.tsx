@@ -55,6 +55,7 @@ export default function FieldService() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { toast } = useToast();
+  const { options: chemCatalog } = useChemicalCatalog();
 
   const [client, setClient] = useState<Client | null>(null);
   const [loading, setLoading] = useState(true);

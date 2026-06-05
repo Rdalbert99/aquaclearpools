@@ -41,6 +41,7 @@ type ServiceData = {
   cleaned_filters?: boolean;
   robot_plugged_in?: boolean;
   chemicals_added?: string;
+  chemical_entries?: ChemicalEntry[];
   notes?: string;
   duration?: number | null;
   beforePhotoUrl?: string | null;

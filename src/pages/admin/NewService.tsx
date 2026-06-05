@@ -41,6 +41,7 @@ interface ServiceFormData {
   cyanuric_acid_level: number | null;
   calcium_hardness_level: number | null;
   chemicals_added: string;
+  chemical_entries: ChemicalEntry[];
   services_performed: string[];
   notes: string;
 }

@@ -18,6 +18,8 @@ import {
 } from 'lucide-react';
 import { isInRange, getDosageInstruction, type ChemicalId } from '@/lib/pool-chemistry';
 import { ArrivalNotification } from '@/components/tech/ArrivalNotification';
+import { ChemicalsAddedInput } from '@/components/service/ChemicalsAddedInput';
+import { ChemicalEntry, entriesToString, entriesToCustomerExplanation } from '@/lib/chemicals-added';
 
 type Client = {
   id: string;

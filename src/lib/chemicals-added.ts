@@ -42,41 +42,40 @@ export function newChemicalEntry(): ChemicalEntry {
   return { chemicalId: 'liquid_chlorine', amount: '', unit: 'gal' };
 }
 
-export function getChemicalOption(id: string): ChemicalOption | undefined {
-  return CHEMICAL_OPTIONS.find(c => c.id === id);
+export function getChemicalOption(id: string, catalog: ChemicalOption[] = CHEMICAL_OPTIONS): ChemicalOption | undefined {
+  return catalog.find(c => c.id === id);
 }
 
 /** Display name for an entry (resolves "other" to its custom name). */
-export function entryDisplayName(entry: ChemicalEntry): string {
+export function entryDisplayName(entry: ChemicalEntry, catalog: ChemicalOption[] = CHEMICAL_OPTIONS): string {
   if (entry.chemicalId === 'other') return entry.otherName?.trim() || 'Other chemical';
-  return getChemicalOption(entry.chemicalId)?.label ?? entry.chemicalId;
+  return getChemicalOption(entry.chemicalId, catalog)?.label ?? entry.chemicalId;
 }
 
 /** "2 lbs Sodium Bicarbonate" */
-export function formatEntry(entry: ChemicalEntry): string {
-  const name = entryDisplayName(entry);
+export function formatEntry(entry: ChemicalEntry, catalog: ChemicalOption[] = CHEMICAL_OPTIONS): string {
+  const name = entryDisplayName(entry, catalog);
   const amt = entry.amount?.trim();
   if (!amt) return name;
   return `${amt} ${entry.unit} ${name}`;
 }
 
 /** Multi-line string for storage in services.chemicals_added. */
-export function entriesToString(entries: ChemicalEntry[]): string {
+export function entriesToString(entries: ChemicalEntry[], catalog: ChemicalOption[] = CHEMICAL_OPTIONS): string {
   return entries
-    .filter(e => e.amount.trim() || e.chemicalId !== 'liquid_chlorine' || e.otherName?.trim())
-    .filter(e => e.amount.trim()) // only keep entries with an amount
-    .map(formatEntry)
+    .filter(e => e.amount.trim())
+    .map(e => formatEntry(e, catalog))
     .join('\n');
 }
 
 /** Sentence describing what each added chemical is for, for the customer SMS. */
-export function entriesToCustomerExplanation(entries: ChemicalEntry[]): string {
+export function entriesToCustomerExplanation(entries: ChemicalEntry[], catalog: ChemicalOption[] = CHEMICAL_OPTIONS): string {
   const valid = entries.filter(e => e.amount.trim());
   if (!valid.length) return '';
   const lines = valid.map(e => {
-    const opt = getChemicalOption(e.chemicalId);
-    const purpose = opt?.purpose || (e.chemicalId === 'other' ? '' : '');
-    const base = `${formatEntry(e)}`;
+    const opt = getChemicalOption(e.chemicalId, catalog);
+    const purpose = opt?.purpose || '';
+    const base = formatEntry(e, catalog);
     return purpose ? `${base} — ${purpose}` : base;
   });
   return `Chemicals added:\n• ${lines.join('\n• ')}`;

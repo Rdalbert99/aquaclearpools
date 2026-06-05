@@ -13,7 +13,8 @@ import { useToast } from '@/hooks/use-toast';
 import { ArrowLeft, Calendar, DollarSign, Clock, TestTube, FlaskConical, Calculator, Wrench } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
 import { ChemicalsAddedInput } from '@/components/service/ChemicalsAddedInput';
-import { ChemicalEntry, CHEMICAL_OPTIONS, ChemicalUnit, entriesToString } from '@/lib/chemicals-added';
+import { ChemicalEntry, ChemicalUnit, entriesToString } from '@/lib/chemicals-added';
+import { useChemicalCatalog } from '@/hooks/useChemicalCatalog';
 
 interface Client {
   id: string;
@@ -58,6 +59,7 @@ export default function NewService() {
   const [searchParams] = useSearchParams();
   const { user } = useAuth();
   const { toast } = useToast();
+  const { options: chemCatalog } = useChemicalCatalog();
   
   const [clients, setClients] = useState<Client[]>([]);
   const [technicians, setTechnicians] = useState<User[]>([]);
@@ -256,7 +258,7 @@ export default function NewService() {
     setSaving(true);
     try {
       const { chemical_entries, ...rest } = formData;
-      const combinedChemicals = entriesToString(chemical_entries) || rest.chemicals_added;
+      const combinedChemicals = entriesToString(chemical_entries, chemCatalog) || rest.chemicals_added;
       const serviceData = {
         ...rest,
         chemicals_added: combinedChemicals,
@@ -542,7 +544,7 @@ export default function NewService() {
                               size="sm"
                               variant="outline"
                               onClick={() => {
-                                const match = CHEMICAL_OPTIONS.find(c =>
+                                const match = chemCatalog.find(c =>
                                   c.label.toLowerCase().includes(rec.chemical.toLowerCase()) ||
                                   rec.chemical.toLowerCase().includes(c.label.toLowerCase())
                                 );

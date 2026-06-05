@@ -222,6 +222,12 @@ export default function AdminDashboard() {
                 </Link>
               </Button>
               <Button asChild variant="outline" className="h-16 flex-col">
+                <Link to="/admin/chemical-catalog">
+                  <BarChart3 className="h-5 w-5 mb-1" />
+                  <span className="text-sm">Chemical Catalog</span>
+                </Link>
+              </Button>
+              <Button asChild variant="outline" className="h-16 flex-col">
                 <Link to="/admin/services">
                   <FileText className="h-5 w-5 mb-1" />
                   <span className="text-sm">Service History</span>

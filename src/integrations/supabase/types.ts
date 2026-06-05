@@ -92,6 +92,45 @@ export type Database = {
           },
         ]
       }
+      chemical_catalog: {
+        Row: {
+          active: boolean
+          created_at: string
+          id: string
+          is_other: boolean
+          label: string
+          purpose: string
+          slug: string
+          sort_order: number
+          units: string[]
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          id?: string
+          is_other?: boolean
+          label: string
+          purpose?: string
+          slug: string
+          sort_order?: number
+          units?: string[]
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          id?: string
+          is_other?: boolean
+          label?: string
+          purpose?: string
+          slug?: string
+          sort_order?: number
+          units?: string[]
+          updated_at?: string
+        }
+        Relationships: []
+      }
       client_invitations: {
         Row: {
           access_count: number | null

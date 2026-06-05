@@ -20,6 +20,7 @@ import { isInRange, getDosageInstruction, type ChemicalId } from '@/lib/pool-che
 import { ArrivalNotification } from '@/components/tech/ArrivalNotification';
 import { ChemicalsAddedInput } from '@/components/service/ChemicalsAddedInput';
 import { ChemicalEntry, entriesToString, entriesToCustomerExplanation } from '@/lib/chemicals-added';
+import { useChemicalCatalog } from '@/hooks/useChemicalCatalog';
 
 type Client = {
   id: string;
@@ -54,6 +55,7 @@ export default function FieldService() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { toast } = useToast();
+  const { options: chemCatalog } = useChemicalCatalog();
 
   const [client, setClient] = useState<Client | null>(null);
   const [loading, setLoading] = useState(true);
@@ -133,7 +135,7 @@ export default function FieldService() {
     readingsStr += '.';
     parts.push(readingsStr);
 
-    const chemExplain = entriesToCustomerExplanation(data.chemical_entries ?? []);
+    const chemExplain = entriesToCustomerExplanation(data.chemical_entries ?? [], chemCatalog);
     if (chemExplain) {
       parts.push(chemExplain);
     } else if (data.chemicals_added?.trim()) {
@@ -222,7 +224,7 @@ export default function FieldService() {
           cleaned_filters: !!serviceData.cleaned_filters,
           robot_plugged_in: !!serviceData.robot_plugged_in,
         },
-        chemicals_added: entriesToString(serviceData.chemical_entries ?? []) || serviceData.chemicals_added || null,
+        chemicals_added: entriesToString(serviceData.chemical_entries ?? [], chemCatalog) || serviceData.chemicals_added || null,
         notes: serviceData.notes || null,
         duration_minutes: serviceData.duration ?? null,
         before_photo_url: serviceData.beforePhotoUrl || null,

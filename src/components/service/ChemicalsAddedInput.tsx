@@ -4,12 +4,12 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Plus, Trash2 } from 'lucide-react';
 import {
-  CHEMICAL_OPTIONS,
   ChemicalEntry,
   ChemicalUnit,
   getChemicalOption,
   newChemicalEntry,
 } from '@/lib/chemicals-added';
+import { useChemicalCatalog } from '@/hooks/useChemicalCatalog';
 
 interface Props {
   value: ChemicalEntry[];
@@ -17,6 +17,7 @@ interface Props {
 }
 
 export function ChemicalsAddedInput({ value, onChange }: Props) {
+  const { options: CATALOG } = useChemicalCatalog();
   const entries = value.length ? value : [];
 
   const update = (i: number, patch: Partial<ChemicalEntry>) => {

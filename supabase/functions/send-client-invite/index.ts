@@ -49,14 +49,30 @@ serve(async (req) => {
     }
 
     const body = (await req.json()) as SendInviteRequest;
-    if (!body.clientId || !body.baseUrl || !body.channels?.length) {
+    if (!body.clientId || !body.channels?.length) {
       return new Response(JSON.stringify({ error: "Invalid request" }), {
         status: 400,
         headers: { "Content-Type": "application/json", ...corsHeaders },
       });
     }
 
-    // Skipping client lookup to avoid schema dependency; greeting will be generic.
+    // Always use the production custom domain for the invite link,
+    // regardless of where the admin sent the request from.
+    const PUBLIC_BASE_URL = "https://getaquaclear.com";
+
+    // Look up the client's name so the greeting can be personal.
+    let customerName = "";
+    try {
+      const { data: clientRow } = await adminClient
+        .from("clients")
+        .select("customer")
+        .eq("id", body.clientId)
+        .maybeSingle();
+      customerName = (clientRow?.customer || "").trim();
+    } catch (e) {
+      console.warn("client lookup failed (continuing):", e);
+    }
+    const firstName = customerName.split(/\s+/)[0] || "there";
 
     // Generate a secure token and create invitation
     const token = crypto.randomUUID();

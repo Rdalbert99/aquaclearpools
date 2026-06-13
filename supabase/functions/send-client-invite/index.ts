@@ -139,8 +139,8 @@ serve(async (req) => {
 
       const mjJson = await mjRes.json();
       if (!mjRes.ok) {
-        console.error("Mailjet API error:", mjJson);
-        throw new Error("Mailjet send failed");
+        console.error("Mailjet API error:", mjRes.status, JSON.stringify(mjJson));
+        throw new Error(`Mailjet send failed (${mjRes.status}): ${JSON.stringify(mjJson)}`);
       }
       emailStatus = mjJson;
     }

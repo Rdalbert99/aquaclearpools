@@ -167,17 +167,17 @@ export default function Login() {
         <CardContent className="space-y-4">
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="login">Username</Label>
+              <Label htmlFor="login">Username or email</Label>
               <Input
                 id="login"
                 type="text"
-                placeholder="Enter your username (not email)"
+                placeholder="Enter your username or email"
                 value={login}
                 onChange={(e) => setLogin(e.target.value)}
                 required
               />
               <p className="text-xs text-muted-foreground">
-                Use your username, not your email address. For admin, use "admin", for Randy, use "Randy"
+                Customers can use the username they created or their email address.
               </p>
             </div>
 

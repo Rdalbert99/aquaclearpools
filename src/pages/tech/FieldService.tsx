@@ -143,18 +143,23 @@ export default function FieldService() {
         : `This is Aqua Clear Pools, your pool is clean and clear.`
     );
 
-    // Actions performed
-    const actions: string[] = [];
-    if (data.brushed) actions.push('brushed');
-    if (data.vacuumed) actions.push('vacuumed');
-    if (data.cleaned_filters) actions.push('cleaned filters');
-    if (data.robot_plugged_in) actions.push('plugged in your robot');
-    if (actions.length) parts.push(`Today we ${actions.join(', ')}.`);
+    // Actions performed (services + robot tasks)
+    const performed = [...(data.services_performed ?? [])];
+    if (data.cleaned_robot) performed.push('Cleaned Robot');
+    if (data.robot_plugged_in) performed.push('Plugged in Robot');
+    if (data.robot_in_water) performed.push('Put Robot in Water');
+    if (performed.length) {
+      const lower = performed.map(s => s.toLowerCase());
+      parts.push(`Today we ${lower.join(', ')}.`);
+    }
 
-    let readingsStr = `Your chlorine is reading ${chlorine}, pH is ${ph}, alkalinity is ${alk}`;
-    if (salt != null) readingsStr += `, salt is ${salt} ppm`;
-    readingsStr += '.';
-    parts.push(readingsStr);
+    const testedChem = (data.services_performed ?? []).includes(CHEM_TEST_SERVICE);
+    if (testedChem) {
+      let readingsStr = `Your chlorine is reading ${chlorine}, pH is ${ph}, alkalinity is ${alk}`;
+      if (salt != null) readingsStr += `, salt is ${salt} ppm`;
+      readingsStr += '.';
+      parts.push(readingsStr);
+    }
 
     const chemExplain = entriesToCustomerExplanation(data.chemical_entries ?? [], chemCatalog);
     if (chemExplain) {

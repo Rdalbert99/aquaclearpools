@@ -82,7 +82,7 @@ serve(async (req) => {
         token,
         token_hash: tokenHashData,
         email: body.email || null,
-        phone: body.phone || null,
+        phone: normalizedPhone,
         expires_at: expiresAt,
         created_by: userData.user.id,
       })

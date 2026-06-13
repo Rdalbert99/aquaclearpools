@@ -451,20 +451,53 @@ export default function NewClient() {
               
               <div className="space-y-2">
                 <Label htmlFor="street_address">Street Address</Label>
-                <AddressInput
-                  value={client.street_address}
-                  onChange={(value, components) => {
-                    handleInputChange('street_address', value);
-                    if (components) {
-                      handleAddressValidation(components);
-                    }
-                  }}
-                  placeholder="Enter street address"
-                  className={client.address_validated ? 'border-green-500' : ''}
-                />
+                <div className="flex gap-2">
+                  <Input
+                    id="street_address"
+                    value={client.street_address}
+                    onChange={(e) => {
+                      handleInputChange('street_address', e.target.value);
+                      if (client.address_validated) {
+                        setClient(prev => ({ ...prev, street_address: e.target.value, address_validated: false }));
+                      }
+                    }}
+                    placeholder="123 Main St"
+                    className={client.address_validated ? 'border-green-500' : ''}
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={async () => {
+                      const full = `${client.street_address}, ${client.city}, ${client.state} ${client.zip_code}`.trim();
+                      if (!client.street_address || !client.city || !client.state || !client.zip_code) {
+                        toast({
+                          title: "Missing fields",
+                          description: "Enter street, city, state, and ZIP before verifying.",
+                          variant: "destructive",
+                        });
+                        return;
+                      }
+                      const result = await validateAddress(full);
+                      if (result.isValid && result.components) {
+                        handleAddressValidation(result.components);
+                      } else {
+                        toast({
+                          title: "Address not valid",
+                          description: result.error || "Please check the address fields.",
+                          variant: "destructive",
+                        });
+                      }
+                    }}
+                  >
+                    Verify
+                  </Button>
+                </div>
                 {client.address_validated && (
                   <p className="text-sm text-green-600">✓ Address verified</p>
                 )}
+                <p className="text-xs text-muted-foreground">
+                  Enter just the street here — city, state, and ZIP go in the fields below.
+                </p>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">

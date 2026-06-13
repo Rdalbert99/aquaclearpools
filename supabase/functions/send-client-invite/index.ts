@@ -67,6 +67,14 @@ serve(async (req) => {
     }
     const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
 
+    // Normalize phone to E.164 (e.g. +16014105392) to satisfy DB check constraint
+    let normalizedPhone: string | null = null;
+    if (body.phone) {
+      const digits = body.phone.replace(/\D/g, "");
+      const withCountry = digits.length === 10 ? "1" + digits : digits;
+      normalizedPhone = "+" + withCountry;
+    }
+
     const { data: invite, error: inviteError } = await adminClient
       .from("client_invitations")
       .insert({

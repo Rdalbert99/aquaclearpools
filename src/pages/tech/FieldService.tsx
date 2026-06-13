@@ -343,7 +343,78 @@ export default function FieldService() {
         clientEmail={client.contact_email}
       />
 
-      {/* Readings */}
+      {/* Actions */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2"><Clock className="h-5 w-5" /> Actions</CardTitle>
+          <CardDescription>Check off everything you did today. Items reflect this customer's regular service plan.</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-5">
+          {(() => {
+            const planServices = (client.included_services && client.included_services.length > 0)
+              ? client.included_services
+              : ALL_SERVICES;
+            const performed = serviceData.services_performed ?? [];
+            const toggle = (svc: string, checked: boolean) => {
+              const next = checked
+                ? Array.from(new Set([...performed, svc]))
+                : performed.filter(s => s !== svc);
+              handleInputChange('services_performed', next);
+            };
+            return (
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <Label className="text-sm font-semibold">Services performed</Label>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    onClick={() => {
+                      const all = planServices.every(s => performed.includes(s));
+                      handleInputChange('services_performed', all ? [] : [...planServices]);
+                    }}
+                  >
+                    {planServices.every(s => performed.includes(s)) ? 'Deselect All' : 'Select All'}
+                  </Button>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  {planServices.map(svc => (
+                    <div key={svc} className="flex items-center gap-2">
+                      <Checkbox
+                        id={`svc-${svc}`}
+                        checked={performed.includes(svc)}
+                        onCheckedChange={v => toggle(svc, !!v)}
+                      />
+                      <Label htmlFor={`svc-${svc}`} className="text-sm font-normal cursor-pointer">{svc}</Label>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            );
+          })()}
+
+          <div className="pt-2 border-t">
+            <Label className="text-sm font-semibold">Robot</Label>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mt-2">
+              <div className="flex items-center gap-2">
+                <Checkbox id="robot-cleaned" checked={!!serviceData.cleaned_robot} onCheckedChange={v => handleInputChange('cleaned_robot', !!v)} />
+                <Label htmlFor="robot-cleaned" className="text-sm font-normal cursor-pointer">Cleaned Robot</Label>
+              </div>
+              <div className="flex items-center gap-2">
+                <Checkbox id="robot-plugged" checked={!!serviceData.robot_plugged_in} onCheckedChange={v => handleInputChange('robot_plugged_in', !!v)} />
+                <Label htmlFor="robot-plugged" className="text-sm font-normal cursor-pointer">Plugged in Robot</Label>
+              </div>
+              <div className="flex items-center gap-2">
+                <Checkbox id="robot-water" checked={!!serviceData.robot_in_water} onCheckedChange={v => handleInputChange('robot_in_water', !!v)} />
+                <Label htmlFor="robot-water" className="text-sm font-normal cursor-pointer">Put Robot in Water</Label>
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Readings — only when chemical testing was performed */}
+      {(serviceData.services_performed ?? []).includes(CHEM_TEST_SERVICE) && (
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2"><TestTube className="h-5 w-5" /> Readings</CardTitle>
@@ -415,20 +486,7 @@ export default function FieldService() {
           })()}
         </CardContent>
       </Card>
-
-      {/* Actions */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2"><Clock className="h-5 w-5" /> Actions</CardTitle>
-          <CardDescription>What you did today.</CardDescription>
-        </CardHeader>
-        <CardContent className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <div className="flex items-center gap-2"><Checkbox checked={!!serviceData.brushed} onCheckedChange={v => handleInputChange('brushed', !!v)} /><Label>Brushed</Label></div>
-          <div className="flex items-center gap-2"><Checkbox checked={!!serviceData.vacuumed} onCheckedChange={v => handleInputChange('vacuumed', !!v)} /><Label>Vacuumed</Label></div>
-          <div className="flex items-center gap-2"><Checkbox checked={!!serviceData.cleaned_filters} onCheckedChange={v => handleInputChange('cleaned_filters', !!v)} /><Label>Cleaned Filters</Label></div>
-          <div className="flex items-center gap-2"><Checkbox checked={!!serviceData.robot_plugged_in} onCheckedChange={v => handleInputChange('robot_plugged_in', !!v)} /><Label>Plugged in Robot</Label></div>
-        </CardContent>
-      </Card>
+      )}
 
       {/* Photos */}
       <Card>

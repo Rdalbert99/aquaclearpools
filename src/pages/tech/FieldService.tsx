@@ -29,7 +29,28 @@ type Client = {
   contact_email?: string | null;
   pool_size?: number | null;
   pool_type?: string | null;
+  included_services?: string[] | null;
 };
+
+const ALL_SERVICES = [
+  'Chemical Testing & Balancing',
+  'Skimming Surface Debris',
+  'Emptying Skimmer Baskets',
+  'Brushing Pool Walls & Steps',
+  'Vacuuming Pool Floor',
+  'Cleaning Waterline Tile',
+  'Backwashing Filter',
+  'Equipment Inspection',
+  'Pool Equipment Cleaning',
+  'Adding Chlorine/Chemicals',
+  'Shock Treatment',
+  'Algae Prevention',
+  'pH Adjustment',
+  'Filter Cleaning',
+  'Pump Maintenance',
+];
+
+const CHEM_TEST_SERVICE = 'Chemical Testing & Balancing';
 
 type ServiceData = {
   ph_level?: number | null;
@@ -37,10 +58,10 @@ type ServiceData = {
   chlorine_level?: number | null;
   cya_level?: number | null;
   salt_level?: number | null;
-  brushed?: boolean;
-  vacuumed?: boolean;
-  cleaned_filters?: boolean;
+  services_performed?: string[];
+  cleaned_robot?: boolean;
   robot_plugged_in?: boolean;
+  robot_in_water?: boolean;
   chemicals_added?: string;
   chemical_entries?: ChemicalEntry[];
   notes?: string;

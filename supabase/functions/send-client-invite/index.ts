@@ -60,15 +60,19 @@ serve(async (req) => {
 
     // Generate a secure token and create invitation
     const token = crypto.randomUUID();
-    const tokenHash = await adminClient.rpc('hash_invitation_token', { token_input: token });
+    const { data: tokenHashData, error: hashErr } = await adminClient.rpc('hash_invitation_token', { token_input: token });
+    if (hashErr) {
+      console.error('hash_invitation_token error:', hashErr);
+      throw new Error(`Failed to hash token: ${hashErr.message}`);
+    }
     const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
 
     const { data: invite, error: inviteError } = await adminClient
       .from("client_invitations")
       .insert({
         client_id: body.clientId,
-        token, // Keep for backward compatibility during transition
-        token_hash: tokenHash.data, // New secure hashed token
+        token,
+        token_hash: tokenHashData,
         email: body.email || null,
         phone: body.phone || null,
         expires_at: expiresAt,
@@ -77,7 +81,10 @@ serve(async (req) => {
       .select()
       .single();
 
-    if (inviteError) throw inviteError;
+    if (inviteError) {
+      console.error('client_invitations insert error:', inviteError);
+      throw new Error(`Failed to create invitation: ${inviteError.message}`);
+    }
 
     const link = `${body.baseUrl.replace(/\/$/, "")}/auth/invite/${token}`;
 

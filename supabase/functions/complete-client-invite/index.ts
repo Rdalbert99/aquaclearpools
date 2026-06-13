@@ -10,6 +10,7 @@ interface CompleteInviteRequest {
   token: string;
   name?: string;
   email?: string;
+  login?: string;
   phone?: string;
   address?: string;
   password: string;
@@ -128,9 +129,31 @@ serve(async (req) => {
       }
     }
 
-    // Upsert into public.users profile with email as the login/username
+    // Upsert into public.users profile with the username the customer chose.
     const normalizedEmail = email.toLowerCase().trim();
-    const login = normalizedEmail; // Enforce email as unique username
+    const login = (body.login?.trim() || normalizedEmail).toLowerCase();
+    if (!login) {
+      return new Response(JSON.stringify({ error: "A username is required" }), {
+        status: 400,
+        headers: { "Content-Type": "application/json", ...corsHeaders },
+      });
+    }
+
+    const { data: existingLogin, error: loginLookupErr } = await admin
+      .from("users")
+      .select("id")
+      .eq("login", login)
+      .neq("id", authUserId)
+      .maybeSingle();
+
+    if (loginLookupErr) throw loginLookupErr;
+    if (existingLogin) {
+      return new Response(JSON.stringify({ error: "That username is already taken. Please choose another." }), {
+        status: 409,
+        headers: { "Content-Type": "application/json", ...corsHeaders },
+      });
+    }
+
     const name = body.name || invite.clients.customer || normalizedEmail.split("@")[0];
 
     const { error: upsertErr } = await admin
@@ -141,6 +164,7 @@ serve(async (req) => {
         role: "client",
         name,
         login,
+        must_change_password: false,
         address: body.address || null,
         phone: body.phone || invite.phone || null,
         updated_at: new Date().toISOString(),

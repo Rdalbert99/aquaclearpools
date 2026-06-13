@@ -49,14 +49,30 @@ serve(async (req) => {
     }
 
     const body = (await req.json()) as SendInviteRequest;
-    if (!body.clientId || !body.baseUrl || !body.channels?.length) {
+    if (!body.clientId || !body.channels?.length) {
       return new Response(JSON.stringify({ error: "Invalid request" }), {
         status: 400,
         headers: { "Content-Type": "application/json", ...corsHeaders },
       });
     }
 
-    // Skipping client lookup to avoid schema dependency; greeting will be generic.
+    // Always use the production custom domain for the invite link,
+    // regardless of where the admin sent the request from.
+    const PUBLIC_BASE_URL = "https://getaquaclear.com";
+
+    // Look up the client's name so the greeting can be personal.
+    let customerName = "";
+    try {
+      const { data: clientRow } = await adminClient
+        .from("clients")
+        .select("customer")
+        .eq("id", body.clientId)
+        .maybeSingle();
+      customerName = (clientRow?.customer || "").trim();
+    } catch (e) {
+      console.warn("client lookup failed (continuing):", e);
+    }
+    const firstName = customerName.split(/\s+/)[0] || "there";
 
     // Generate a secure token and create invitation
     const token = crypto.randomUUID();
@@ -94,7 +110,7 @@ serve(async (req) => {
       throw new Error(`Failed to create invitation: ${inviteError.message}`);
     }
 
-    const link = `${body.baseUrl.replace(/\/$/, "")}/auth/invite/${token}`;
+    const link = `${PUBLIC_BASE_URL}/auth/invite/${token}`;
 
     // Send Email via Mailjet if requested
     let emailStatus: any = null;
@@ -103,19 +119,23 @@ serve(async (req) => {
         throw new Error("Email channel selected but no email provided");
       }
       const html = `
-        <div style="font-family:system-ui,Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:#111">
-          <h2>Complete Your Aqua Clear Account</h2>
-          <p>Hello!</p>
-          <p>An administrator invited you to create your client account. Review your details and set a password here:</p>
-          <p><a href="${link}" target="_blank" style="display:inline-block;padding:10px 16px;background:#0ea5e9;color:#fff;border-radius:6px;text-decoration:none">Create My Account</a></p>
-          <p>If the button doesn't work, copy this link into your browser:</p>
+        <div style="font-family:system-ui,Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:#111;max-width:560px;margin:0 auto;padding:8px">
+          <h2 style="margin:0 0 16px">Welcome to Aqua Clear Pools, ${firstName}!</h2>
+          <p>Hi ${firstName},</p>
+          <p>This is Randy with Aqua Clear Pools. Thanks for trusting us with your pool — we're excited to have you on board.</p>
+          <p>I've set up a customer account for you so you can see your service history, water chemistry readings, before &amp; after photos, request extra visits, and message me directly. Go ahead and finish creating your account using the button below:</p>
+          <p style="text-align:center;margin:24px 0">
+            <a href="${link}" target="_blank" style="display:inline-block;padding:12px 22px;background:#0ea5e9;color:#fff;border-radius:6px;text-decoration:none;font-weight:600">Create My Account</a>
+          </p>
+          <p>If the button doesn't work, copy and paste this link into your browser:</p>
           <p style="word-break:break-all"><a href="${link}">${link}</a></p>
-          <p>This link expires in 7 days.</p>
+          <p>This link expires in 7 days. If you have any questions, just reply to this email or text me anytime.</p>
+          <p style="margin-top:24px">Thanks again,<br/>Randy<br/><strong>Aqua Clear Pools</strong></p>
         </div>`;
 
-      const replyToEmail = Deno.env.get("RESEND_REPLY_TO") || undefined;
+      const replyToEmail = Deno.env.get("RESEND_REPLY_TO") || "randy@getaquaclear.com";
       const defaultFromEmail = "randy@getaquaclear.com";
-      const defaultFromName = "AquaClear Pools";
+      const defaultFromName = "Randy at Aqua Clear Pools";
 
       const apiKey = Deno.env.get("MAILJET_API_KEY");
       const apiSecret = Deno.env.get("MAILJET_API_SECRET");
@@ -133,11 +153,11 @@ serve(async (req) => {
               { Email: "rdalbert99@gmail.com" },
               { Email: "untoothers@hotmail.com" }
             ],
-            Subject: "Create your Aqua Clear client account",
-            TextPart: `You've been invited to create your Aqua Clear client account. Use this link: ${link}`,
+            Subject: `${firstName}, finish setting up your Aqua Clear Pools account`,
+            TextPart: `Hi ${firstName},\n\nThis is Randy with Aqua Clear Pools. I've set up a customer account for you so you can see your service history, water readings, photos, and message me directly. Finish creating your account here:\n\n${link}\n\nThis link expires in 7 days.\n\nThanks,\nRandy — Aqua Clear Pools`,
             HTMLPart: html,
-            ...(replyToEmail ? { ReplyTo: { Email: replyToEmail, Name: defaultFromName } } : {}),
-            Headers: { "List-Unsubscribe": replyToEmail ? `<mailto:${replyToEmail}>` : `<mailto:support@getaquaclear.com>` }
+            ReplyTo: { Email: replyToEmail, Name: defaultFromName },
+            Headers: { "List-Unsubscribe": `<mailto:${replyToEmail}>` }
           }
         ]
       };

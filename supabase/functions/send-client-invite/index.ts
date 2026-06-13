@@ -118,24 +118,54 @@ serve(async (req) => {
       if (!body.email) {
         throw new Error("Email channel selected but no email provided");
       }
+      const logoUrl = `${PUBLIC_BASE_URL}/aqua-clear-logo-3d.png`;
+      const primary = "#0099E5";
+      const secondary = "#005B96";
       const html = `
-        <div style="font-family:system-ui,Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:#111;max-width:560px;margin:0 auto;padding:8px">
-          <h2 style="margin:0 0 16px">Welcome to Aqua Clear Pools, ${firstName}!</h2>
-          <p>Hi ${firstName},</p>
-          <p>This is Randy with Aqua Clear Pools. Thanks for trusting us with your pool — we're excited to have you on board.</p>
-          <p>I've set up a customer account for you so you can see your service history, water chemistry readings, before &amp; after photos, request extra visits, and message me directly. Go ahead and finish creating your account using the button below:</p>
-          <p style="text-align:center;margin:24px 0">
-            <a href="${link}" target="_blank" style="display:inline-block;padding:12px 22px;background:#0ea5e9;color:#fff;border-radius:6px;text-decoration:none;font-weight:600">Create My Account</a>
+        <div style="font-family:system-ui,Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:#111;max-width:600px;margin:0 auto;padding:8px">
+          <div style="text-align:center;margin-bottom:20px">
+            <img src="${logoUrl}" alt="Aqua Clear Pools" style="max-width:220px;height:auto" />
+          </div>
+          <h2 style="margin:0 0 16px;color:${primary}">Welcome to Aqua Clear Pools!</h2>
+          <p>Thank you for choosing Aqua Clear Pools for your pool care.</p>
+          <p>Your customer portal gives you access to:</p>
+          <ul style="padding-left:20px;margin:12px 0">
+            <li>Service history</li>
+            <li>Water test results</li>
+            <li>Chemical additions</li>
+            <li>Photos from each visit</li>
+            <li>Billing and invoices</li>
+            <li>Service schedule updates</li>
+            <li>Direct communication with our team</li>
+          </ul>
+          <p>To activate your account, click the button below and create your password.</p>
+          <p style="text-align:center;margin:28px 0">
+            <a href="${link}" target="_blank" style="display:inline-block;padding:14px 28px;background:${primary};color:#fff;border-radius:8px;text-decoration:none;font-weight:600;font-size:16px">Create My Account</a>
           </p>
-          <p>If the button doesn't work, copy and paste this link into your browser:</p>
-          <p style="word-break:break-all"><a href="${link}">${link}</a></p>
-          <p>This link expires in 7 days. If you have any questions, just reply to this email or text me anytime.</p>
-          <p style="margin-top:24px">Thanks again,<br/>Randy<br/><strong>Aqua Clear Pools</strong></p>
+          <p style="text-align:center;margin:12px 0">Once your account is active, you can log in anytime to view your pool information and upcoming service visits.</p>
+          <hr style="border:none;border-top:1px solid #e5e7eb;margin:24px 0" />
+          <h3 style="margin:0 0 12px;color:${secondary}">What Happens Next?</h3>
+          <ol style="padding-left:20px;margin:12px 0">
+            <li>Create your password.</li>
+            <li>Log into your customer portal.</li>
+            <li>Verify your contact information.</li>
+            <li>Review your service schedule.</li>
+            <li>Receive visit reports after every pool cleaning.</li>
+          </ol>
+          <hr style="border:none;border-top:1px solid #e5e7eb;margin:24px 0" />
+          <p style="margin:0"><strong>Need help?</strong></p>
+          <p style="margin:4px 0">Call or text us at <a href="tel:+16014470399">(601) 447-0399</a></p>
+          <p style="margin:4px 0">Email: <a href="mailto:randy@getaquaclear.com">randy@getaquaclear.com</a></p>
+          <p style="margin-top:20px;font-style:italic;color:${secondary}">Making Your Pool Aqua Clear</p>
+          <p style="margin:4px 0"><strong>Aqua Clear Pools</strong></p>
+          <p style="margin:4px 0;color:#6b7280;font-size:13px">Serving Hattiesburg, Sumrall, Petal, Purvis, and surrounding areas.</p>
+          <hr style="border:none;border-top:1px solid #e5e7eb;margin:24px 0" />
+          <p style="font-size:12px;color:#9ca3af;text-align:center">This invitation expires in 7 days. If you need a new invitation, contact Aqua Clear Pools.</p>
         </div>`;
 
       const replyToEmail = Deno.env.get("RESEND_REPLY_TO") || "randy@getaquaclear.com";
       const defaultFromEmail = "randy@getaquaclear.com";
-      const defaultFromName = "Randy at Aqua Clear Pools";
+      const defaultFromName = "Aqua Clear Pools";
 
       const apiKey = Deno.env.get("MAILJET_API_KEY");
       const apiSecret = Deno.env.get("MAILJET_API_SECRET");
@@ -153,8 +183,8 @@ serve(async (req) => {
               { Email: "rdalbert99@gmail.com" },
               { Email: "untoothers@hotmail.com" }
             ],
-            Subject: `${firstName}, finish setting up your Aqua Clear Pools account`,
-            TextPart: `Hi ${firstName},\n\nThis is Randy with Aqua Clear Pools. I've set up a customer account for you so you can see your service history, water readings, photos, and message me directly. Finish creating your account here:\n\n${link}\n\nThis link expires in 7 days.\n\nThanks,\nRandy — Aqua Clear Pools`,
+            Subject: "Welcome to Aqua Clear Pools – Let's Get Your Account Ready",
+            TextPart: `Welcome to Aqua Clear Pools!\n\nThank you for choosing Aqua Clear Pools for your pool care.\n\nYour customer portal gives you access to:\n- Service history\n- Water test results\n- Chemical additions\n- Photos from each visit\n- Billing and invoices\n- Service schedule updates\n- Direct communication with our team\n\nTo activate your account, create your password here:\n${link}\n\nOnce your account is active, you can log in anytime to view your pool information and upcoming service visits.\n\nWhat Happens Next?\n1. Create your password.\n2. Log into your customer portal.\n3. Verify your contact information.\n4. Review your service schedule.\n5. Receive visit reports after every pool cleaning.\n\nNeed help?\nCall or text us at (601) 447-0399\nEmail: randy@getaquaclear.com\n\nMaking Your Pool Aqua Clear\nAqua Clear Pools\nServing Hattiesburg, Sumrall, Petal, Purvis, and surrounding areas.\n\nThis invitation expires in 7 days. If you need a new invitation, contact Aqua Clear Pools.`,
             HTMLPart: html,
             ReplyTo: { Email: replyToEmail, Name: defaultFromName },
             Headers: { "List-Unsubscribe": `<mailto:${replyToEmail}>` }

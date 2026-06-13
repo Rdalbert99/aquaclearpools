@@ -83,10 +83,10 @@ export default function FieldService() {
   const [saving, setSaving] = useState(false);
   const [startTime] = useState(new Date());
   const [serviceData, setServiceData] = useState<ServiceData>({
-    brushed: false,
-    vacuumed: false,
-    cleaned_filters: false,
+    services_performed: [],
+    cleaned_robot: false,
     robot_plugged_in: false,
+    robot_in_water: false,
     chemical_entries: [],
   });
   const [reviewOpen, setReviewOpen] = useState(false);

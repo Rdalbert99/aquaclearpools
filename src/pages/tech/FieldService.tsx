@@ -29,7 +29,28 @@ type Client = {
   contact_email?: string | null;
   pool_size?: number | null;
   pool_type?: string | null;
+  included_services?: string[] | null;
 };
+
+const ALL_SERVICES = [
+  'Chemical Testing & Balancing',
+  'Skimming Surface Debris',
+  'Emptying Skimmer Baskets',
+  'Brushing Pool Walls & Steps',
+  'Vacuuming Pool Floor',
+  'Cleaning Waterline Tile',
+  'Backwashing Filter',
+  'Equipment Inspection',
+  'Pool Equipment Cleaning',
+  'Adding Chlorine/Chemicals',
+  'Shock Treatment',
+  'Algae Prevention',
+  'pH Adjustment',
+  'Filter Cleaning',
+  'Pump Maintenance',
+];
+
+const CHEM_TEST_SERVICE = 'Chemical Testing & Balancing';
 
 type ServiceData = {
   ph_level?: number | null;
@@ -37,10 +58,10 @@ type ServiceData = {
   chlorine_level?: number | null;
   cya_level?: number | null;
   salt_level?: number | null;
-  brushed?: boolean;
-  vacuumed?: boolean;
-  cleaned_filters?: boolean;
+  services_performed?: string[];
+  cleaned_robot?: boolean;
   robot_plugged_in?: boolean;
+  robot_in_water?: boolean;
   chemicals_added?: string;
   chemical_entries?: ChemicalEntry[];
   notes?: string;
@@ -62,10 +83,10 @@ export default function FieldService() {
   const [saving, setSaving] = useState(false);
   const [startTime] = useState(new Date());
   const [serviceData, setServiceData] = useState<ServiceData>({
-    brushed: false,
-    vacuumed: false,
-    cleaned_filters: false,
+    services_performed: [],
+    cleaned_robot: false,
     robot_plugged_in: false,
+    robot_in_water: false,
     chemical_entries: [],
   });
   const [reviewOpen, setReviewOpen] = useState(false);
@@ -122,18 +143,23 @@ export default function FieldService() {
         : `This is Aqua Clear Pools, your pool is clean and clear.`
     );
 
-    // Actions performed
-    const actions: string[] = [];
-    if (data.brushed) actions.push('brushed');
-    if (data.vacuumed) actions.push('vacuumed');
-    if (data.cleaned_filters) actions.push('cleaned filters');
-    if (data.robot_plugged_in) actions.push('plugged in your robot');
-    if (actions.length) parts.push(`Today we ${actions.join(', ')}.`);
+    // Actions performed (services + robot tasks)
+    const performed = [...(data.services_performed ?? [])];
+    if (data.cleaned_robot) performed.push('Cleaned Robot');
+    if (data.robot_plugged_in) performed.push('Plugged in Robot');
+    if (data.robot_in_water) performed.push('Put Robot in Water');
+    if (performed.length) {
+      const lower = performed.map(s => s.toLowerCase());
+      parts.push(`Today we ${lower.join(', ')}.`);
+    }
 
-    let readingsStr = `Your chlorine is reading ${chlorine}, pH is ${ph}, alkalinity is ${alk}`;
-    if (salt != null) readingsStr += `, salt is ${salt} ppm`;
-    readingsStr += '.';
-    parts.push(readingsStr);
+    const testedChem = (data.services_performed ?? []).includes(CHEM_TEST_SERVICE);
+    if (testedChem) {
+      let readingsStr = `Your chlorine is reading ${chlorine}, pH is ${ph}, alkalinity is ${alk}`;
+      if (salt != null) readingsStr += `, salt is ${salt} ppm`;
+      readingsStr += '.';
+      parts.push(readingsStr);
+    }
 
     const chemExplain = entriesToCustomerExplanation(data.chemical_entries ?? [], chemCatalog);
     if (chemExplain) {
@@ -219,10 +245,10 @@ export default function FieldService() {
           salt: serviceData.salt_level ?? null,
         },
         actions: {
-          brushed: !!serviceData.brushed,
-          vacuumed: !!serviceData.vacuumed,
-          cleaned_filters: !!serviceData.cleaned_filters,
+          services_performed: serviceData.services_performed ?? [],
+          cleaned_robot: !!serviceData.cleaned_robot,
           robot_plugged_in: !!serviceData.robot_plugged_in,
+          robot_in_water: !!serviceData.robot_in_water,
         },
         chemicals_added: entriesToString(serviceData.chemical_entries ?? [], chemCatalog) || serviceData.chemicals_added || null,
         notes: serviceData.notes || null,
@@ -317,7 +343,78 @@ export default function FieldService() {
         clientEmail={client.contact_email}
       />
 
-      {/* Readings */}
+      {/* Actions */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2"><Clock className="h-5 w-5" /> Actions</CardTitle>
+          <CardDescription>Check off everything you did today. Items reflect this customer's regular service plan.</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-5">
+          {(() => {
+            const planServices = (client.included_services && client.included_services.length > 0)
+              ? client.included_services
+              : ALL_SERVICES;
+            const performed = serviceData.services_performed ?? [];
+            const toggle = (svc: string, checked: boolean) => {
+              const next = checked
+                ? Array.from(new Set([...performed, svc]))
+                : performed.filter(s => s !== svc);
+              handleInputChange('services_performed', next);
+            };
+            return (
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <Label className="text-sm font-semibold">Services performed</Label>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    onClick={() => {
+                      const all = planServices.every(s => performed.includes(s));
+                      handleInputChange('services_performed', all ? [] : [...planServices]);
+                    }}
+                  >
+                    {planServices.every(s => performed.includes(s)) ? 'Deselect All' : 'Select All'}
+                  </Button>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  {planServices.map(svc => (
+                    <div key={svc} className="flex items-center gap-2">
+                      <Checkbox
+                        id={`svc-${svc}`}
+                        checked={performed.includes(svc)}
+                        onCheckedChange={v => toggle(svc, !!v)}
+                      />
+                      <Label htmlFor={`svc-${svc}`} className="text-sm font-normal cursor-pointer">{svc}</Label>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            );
+          })()}
+
+          <div className="pt-2 border-t">
+            <Label className="text-sm font-semibold">Robot</Label>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mt-2">
+              <div className="flex items-center gap-2">
+                <Checkbox id="robot-cleaned" checked={!!serviceData.cleaned_robot} onCheckedChange={v => handleInputChange('cleaned_robot', !!v)} />
+                <Label htmlFor="robot-cleaned" className="text-sm font-normal cursor-pointer">Cleaned Robot</Label>
+              </div>
+              <div className="flex items-center gap-2">
+                <Checkbox id="robot-plugged" checked={!!serviceData.robot_plugged_in} onCheckedChange={v => handleInputChange('robot_plugged_in', !!v)} />
+                <Label htmlFor="robot-plugged" className="text-sm font-normal cursor-pointer">Plugged in Robot</Label>
+              </div>
+              <div className="flex items-center gap-2">
+                <Checkbox id="robot-water" checked={!!serviceData.robot_in_water} onCheckedChange={v => handleInputChange('robot_in_water', !!v)} />
+                <Label htmlFor="robot-water" className="text-sm font-normal cursor-pointer">Put Robot in Water</Label>
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Readings — only when chemical testing was performed */}
+      {(serviceData.services_performed ?? []).includes(CHEM_TEST_SERVICE) && (
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2"><TestTube className="h-5 w-5" /> Readings</CardTitle>
@@ -389,20 +486,7 @@ export default function FieldService() {
           })()}
         </CardContent>
       </Card>
-
-      {/* Actions */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2"><Clock className="h-5 w-5" /> Actions</CardTitle>
-          <CardDescription>What you did today.</CardDescription>
-        </CardHeader>
-        <CardContent className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <div className="flex items-center gap-2"><Checkbox checked={!!serviceData.brushed} onCheckedChange={v => handleInputChange('brushed', !!v)} /><Label>Brushed</Label></div>
-          <div className="flex items-center gap-2"><Checkbox checked={!!serviceData.vacuumed} onCheckedChange={v => handleInputChange('vacuumed', !!v)} /><Label>Vacuumed</Label></div>
-          <div className="flex items-center gap-2"><Checkbox checked={!!serviceData.cleaned_filters} onCheckedChange={v => handleInputChange('cleaned_filters', !!v)} /><Label>Cleaned Filters</Label></div>
-          <div className="flex items-center gap-2"><Checkbox checked={!!serviceData.robot_plugged_in} onCheckedChange={v => handleInputChange('robot_plugged_in', !!v)} /><Label>Plugged in Robot</Label></div>
-        </CardContent>
-      </Card>
+      )}
 
       {/* Photos */}
       <Card>

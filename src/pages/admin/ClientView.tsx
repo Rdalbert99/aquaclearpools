@@ -679,12 +679,6 @@ export default function ClientView() {
               <p>{client.liner_type}</p>
             </div>
 
-            <div>
-              <p className="text-sm font-medium text-muted-foreground">Currently In Balance</p>
-              <Badge variant={client.in_balance ? 'default' : 'secondary'}>
-                {client.in_balance ? 'Yes' : 'No'}
-              </Badge>
-            </div>
 
             {(() => {
               const readings = getLatestReadings();

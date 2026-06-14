@@ -263,6 +263,43 @@ export default function FieldService() {
       const { error } = await supabase.from('services').insert(payload);
       if (error) throw error;
 
+      // Auto-notify admin if any out-of-range readings weren't addressed by chemicals added
+      try {
+        const chemsText = entriesToString(serviceData.chemical_entries ?? [], chemCatalog) || serviceData.chemicals_added || '';
+        const missing = getMissingFixes(
+          {
+            ph: serviceData.ph_level ?? null,
+            alkalinity: serviceData.alkalinity_level ?? null,
+            chlorine: serviceData.chlorine_level ?? null,
+            cya: serviceData.cya_level ?? null,
+            salt: serviceData.salt_level ?? null,
+          },
+          chemsText,
+          client.pool_size ?? 10000,
+        );
+        if (missing.length > 0) {
+          await supabase.from('pool_needs_messages').insert({
+            client_id: client.id,
+            client_name: client.customer,
+            technician_id: user?.id ?? null,
+            technician_name: user?.name || 'Unknown Tech',
+            pool_size: client.pool_size,
+            pool_type: client.pool_type,
+            chemical_needs: missing,
+            test_results: {
+              ph: serviceData.ph_level ?? null,
+              ta: serviceData.alkalinity_level ?? null,
+              fc: serviceData.chlorine_level ?? null,
+              cya: serviceData.cya_level ?? null,
+              salt: serviceData.salt_level ?? null,
+            },
+          } as any);
+        }
+      } catch (notifyErr) {
+        console.error('Pool needs auto-notify failed:', notifyErr);
+      }
+
+
       // Re-fetch client to get any contact info added during this session
       const { data: freshClient } = await supabase.from('clients').select('contact_phone, contact_email').eq('id', client.id).single();
       const phone = freshClient?.contact_phone || client.contact_phone;

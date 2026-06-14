@@ -20,6 +20,7 @@ import { isInRange, getDosageInstruction, type ChemicalId } from '@/lib/pool-che
 import { ArrivalNotification } from '@/components/tech/ArrivalNotification';
 import { ChemicalsAddedInput } from '@/components/service/ChemicalsAddedInput';
 import { ChemicalEntry, entriesToString, entriesToCustomerExplanation } from '@/lib/chemicals-added';
+import { getMissingFixes } from '@/lib/pool-status';
 import { useChemicalCatalog } from '@/hooks/useChemicalCatalog';
 
 type Client = {

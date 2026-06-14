@@ -799,7 +799,75 @@ export default function ClientView() {
       </div>
 
       {/* Water Chemistry Trends */}
-      <ClientReadingsChart services={services} />
+      <ClientReadingsChart services={services} onPointClick={(id) => setSelectedServiceId(id)} />
+
+      {/* Service Reading Detail Dialog */}
+      <Dialog open={!!selectedServiceId} onOpenChange={(open) => !open && setSelectedServiceId(null)}>
+        <DialogContent className="max-w-lg">
+          {(() => {
+            const svc = services.find((s: any) => s.id === selectedServiceId);
+            if (!svc) return null;
+            const readings = [
+              { label: 'pH',           value: svc.readings?.ph   ?? svc.ph_level },
+              { label: 'Chlorine',     value: svc.readings?.fc   ?? svc.chlorine_level,        unit: 'ppm' },
+              { label: 'Alkalinity',   value: svc.readings?.ta   ?? svc.alkalinity_level,      unit: 'ppm' },
+              { label: 'CYA',          value: svc.readings?.cya  ?? svc.cyanuric_acid_level,   unit: 'ppm' },
+              { label: 'Calcium Hard.',value: svc.calcium_hardness_level,                       unit: 'ppm' },
+              { label: 'Salt',         value: svc.readings?.salt ?? svc.salt_level,             unit: 'ppm' },
+            ].filter(r => r.value != null && r.value !== '');
+            return (
+              <>
+                <DialogHeader>
+                  <DialogTitle>
+                    Service — {new Date(svc.service_date).toLocaleDateString()}
+                  </DialogTitle>
+                  <DialogDescription>
+                    Technician: {svc.users?.name || 'Unknown'}
+                    {svc.status ? ` · Status: ${svc.status}` : ''}
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="space-y-4">
+                  <div>
+                    <h4 className="text-sm font-medium mb-2 flex items-center">
+                      <TestTube className="h-4 w-4 mr-2" /> Readings recorded
+                    </h4>
+                    {readings.length > 0 ? (
+                      <div className="grid grid-cols-2 gap-2 text-sm">
+                        {readings.map(r => (
+                          <div key={r.label} className="flex justify-between border rounded px-2 py-1">
+                            <span className="text-muted-foreground">{r.label}</span>
+                            <span className="font-medium">{r.value}{r.unit ? ` ${r.unit}` : ''}</span>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-sm text-muted-foreground">No readings recorded for this service.</p>
+                    )}
+                  </div>
+                  {svc.chemicals_added && (
+                    <div className="text-sm">
+                      <span className="font-medium">Chemicals Added: </span>
+                      <span>{svc.chemicals_added}</span>
+                    </div>
+                  )}
+                  {svc.notes && (
+                    <div className="text-sm">
+                      <span className="font-medium">Notes: </span>
+                      <span>{svc.notes}</span>
+                    </div>
+                  )}
+                  <div className="flex justify-end gap-2 pt-2">
+                    <Button variant="outline" onClick={() => setSelectedServiceId(null)}>Close</Button>
+                    <Button onClick={() => { setSelectedServiceId(null); navigate(`/admin/services?service=${svc.id}`); }}>
+                      Open in Service History
+                    </Button>
+                  </div>
+                </div>
+              </>
+            );
+          })()}
+        </DialogContent>
+      </Dialog>
 
       {/* Service History */}
       <Card>

@@ -58,6 +58,7 @@ export default function ClientView() {
   const [newUserData, setNewUserData] = useState({ email: '', name: '', password: '', role: 'member' });
   const [userLoading, setUserLoading] = useState(false);
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
+  const [selectedServiceId, setSelectedServiceId] = useState<string | null>(null);
 
   useEffect(() => {
     console.log('DEBUG: Current user:', user);

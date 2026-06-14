@@ -185,11 +185,23 @@ export default function ClientView() {
   };
 
   const getPoolStatus = () => {
-    if (!clientData?.lastServiceDate) return 'needs_service';
-    const lastService = new Date(clientData.lastServiceDate);
-    const weekAgo = new Date();
-    weekAgo.setDate(weekAgo.getDate() - 7);
-    return lastService < weekAgo ? 'needs_service' : 'good';
+    return getPoolServiceStatus(
+      clientData?.client?.service_days,
+      clientData?.lastServiceDate,
+      clientData?.client?.next_service_date,
+    );
+  };
+
+  const getLatestReadings = (): Partial<Record<ChemicalId, number | null>> => {
+    const svc = clientData?.services?.[0];
+    if (!svc) return {};
+    return {
+      ph: svc.readings?.ph ?? svc.ph_level ?? null,
+      chlorine: svc.readings?.fc ?? svc.chlorine_level ?? null,
+      alkalinity: svc.readings?.ta ?? svc.alkalinity_level ?? null,
+      cya: svc.readings?.cya ?? svc.cyanuric_acid_level ?? null,
+      salt: svc.readings?.salt ?? svc.salt_level ?? null,
+    };
   };
 
   const handleCreateUser = async () => {

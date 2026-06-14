@@ -7,6 +7,7 @@ import { CHEMICAL_RANGES, type ChemicalId, isInRange } from '@/lib/pool-chemistr
 import { TrendingUp, TrendingDown, Minus } from 'lucide-react';
 
 interface ServiceRow {
+  id: string;
   service_date: string;
   ph_level: number | null;
   chlorine_level: number | null;
@@ -18,6 +19,7 @@ interface ServiceRow {
 
 interface Props {
   services: ServiceRow[];
+  onPointClick?: (serviceId: string) => void;
 }
 
 const CHEM_ORDER: { id: ChemicalId; field: keyof ServiceRow; readingKey: string; color: string }[] = [
@@ -25,6 +27,7 @@ const CHEM_ORDER: { id: ChemicalId; field: keyof ServiceRow; readingKey: string;
   { id: 'chlorine',   field: 'chlorine_level',        readingKey: 'fc',   color: 'hsl(140 70% 40%)' },
   { id: 'alkalinity', field: 'alkalinity_level',      readingKey: 'ta',   color: 'hsl(280 60% 50%)' },
   { id: 'cya',        field: 'cyanuric_acid_level',   readingKey: 'cya',  color: 'hsl(30 90% 50%)'  },
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   { id: 'salt',       field: 'salt_level' as any,     readingKey: 'salt', color: 'hsl(0 70% 50%)'   },
 ];
 
@@ -36,13 +39,14 @@ function extractValue(svc: ServiceRow, chem: typeof CHEM_ORDER[number]): number 
   return v != null && !isNaN(Number(v)) ? Number(v) : null;
 }
 
-export function ClientReadingsChart({ services }: Props) {
+export function ClientReadingsChart({ services, onPointClick }: Props) {
   const data = useMemo(() => {
     return [...services]
       .filter(s => s.service_date)
       .sort((a, b) => new Date(a.service_date).getTime() - new Date(b.service_date).getTime())
       .map(s => {
         const row: Record<string, number | string | null> = {
+          serviceId: s.id,
           date: new Date(s.service_date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }),
         };
         CHEM_ORDER.forEach(c => { row[c.id] = extractValue(s, c); });
@@ -54,11 +58,25 @@ export function ClientReadingsChart({ services }: Props) {
     return null;
   }
 
+  const handlePointClick = (payload: unknown) => {
+    if (!onPointClick) return;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const p: any = payload;
+    const id = p?.payload?.serviceId ?? p?.serviceId;
+    if (id) onPointClick(id);
+  };
+
+  const clickable = !!onPointClick;
+  const cursorClass = clickable ? 'cursor-pointer' : '';
+
   return (
     <Card>
       <CardHeader>
         <CardTitle>Water Chemistry Trends</CardTitle>
-        <CardDescription>Track readings over time. Shaded bands show the ideal range.</CardDescription>
+        <CardDescription>
+          Track readings over time. Shaded bands show the ideal range.
+          {clickable && ' Click any point to view that service record.'}
+        </CardDescription>
       </CardHeader>
       <CardContent>
         {/* Sparkline cards per chemical */}
@@ -87,7 +105,7 @@ export function ClientReadingsChart({ services }: Props) {
                 <p className="text-[10px] text-muted-foreground">
                   Ideal {range.min}–{range.max}{range.unit ? ' ' + range.unit : ''}
                 </p>
-                <div className="h-8 mt-1">
+                <div className={`h-8 mt-1 ${cursorClass}`}>
                   <ResponsiveContainer width="100%" height="100%">
                     <LineChart data={data}>
                       <Line
@@ -96,6 +114,7 @@ export function ClientReadingsChart({ services }: Props) {
                         stroke={chem.color}
                         strokeWidth={1.5}
                         dot={false}
+                        activeDot={clickable ? { r: 4, onClick: (_e, p) => handlePointClick(p) } : false}
                         isAnimationActive={false}
                       />
                     </LineChart>
@@ -113,7 +132,7 @@ export function ClientReadingsChart({ services }: Props) {
             const hasData = data.some(d => d[chem.id] != null);
             if (!hasData) return null;
             return (
-              <div key={chem.id} className="h-48">
+              <div key={chem.id} className={`h-48 ${cursorClass}`}>
                 <p className="text-sm font-medium mb-1">{range.label}</p>
                 <ResponsiveContainer width="100%" height="100%">
                   <LineChart data={data} margin={{ top: 5, right: 10, left: -10, bottom: 0 }}>
@@ -129,7 +148,9 @@ export function ClientReadingsChart({ services }: Props) {
                       stroke={chem.color}
                       strokeWidth={2}
                       connectNulls
-                      dot={{ r: 3 }}
+                      dot={clickable ? { r: 3, style: { cursor: 'pointer' } } : { r: 3 }}
+                      activeDot={clickable ? { r: 5, onClick: (_e, p) => handlePointClick(p) } : { r: 5 }}
+                      onClick={clickable ? (p) => handlePointClick(p) : undefined}
                     />
                   </LineChart>
                 </ResponsiveContainer>

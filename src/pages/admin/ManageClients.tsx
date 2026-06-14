@@ -842,6 +842,8 @@ export default function ManageClients() {
           )}
         </CardContent>
       </Card>
+        </TabsContent>
+      </Tabs>
 
       {/* Client Invite Dialog */}
       {inviteClient && (

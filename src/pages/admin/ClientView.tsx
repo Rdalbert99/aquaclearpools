@@ -32,6 +32,9 @@ import {
   Activity,
   MoreVertical
 } from 'lucide-react';
+import { getPoolServiceStatus, getBalanceStatus, getNextDueDate } from '@/lib/pool-status';
+import { ClientReadingsChart } from '@/components/admin/ClientReadingsChart';
+import type { ChemicalId } from '@/lib/pool-chemistry';
 
 interface ClientData {
   client: any;

@@ -397,7 +397,7 @@ export default function ClientView() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Pool Status</CardTitle>
-            {poolStatus === 'good' ? (
+            {poolStatus === 'current' ? (
               <CheckCircle className="h-4 w-4 text-green-600" />
             ) : (
               <AlertTriangle className="h-4 w-4 text-orange-600" />
@@ -405,7 +405,7 @@ export default function ClientView() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {poolStatus === 'good' ? 'Current' : 'Needs Service'}
+              {poolStatus === 'current' ? 'Current' : 'Needs Service'}
             </div>
           </CardContent>
         </Card>

@@ -32,6 +32,9 @@ import {
   Activity,
   MoreVertical
 } from 'lucide-react';
+import { getPoolServiceStatus, getBalanceStatus, getNextDueDate } from '@/lib/pool-status';
+import { ClientReadingsChart } from '@/components/admin/ClientReadingsChart';
+import type { ChemicalId } from '@/lib/pool-chemistry';
 
 interface ClientData {
   client: any;
@@ -182,11 +185,23 @@ export default function ClientView() {
   };
 
   const getPoolStatus = () => {
-    if (!clientData?.lastServiceDate) return 'needs_service';
-    const lastService = new Date(clientData.lastServiceDate);
-    const weekAgo = new Date();
-    weekAgo.setDate(weekAgo.getDate() - 7);
-    return lastService < weekAgo ? 'needs_service' : 'good';
+    return getPoolServiceStatus(
+      clientData?.client?.service_days,
+      clientData?.lastServiceDate,
+      clientData?.client?.next_service_date,
+    );
+  };
+
+  const getLatestReadings = (): Partial<Record<ChemicalId, number | null>> => {
+    const svc = clientData?.services?.[0];
+    if (!svc) return {};
+    return {
+      ph: svc.readings?.ph ?? svc.ph_level ?? null,
+      chlorine: svc.readings?.fc ?? svc.chlorine_level ?? null,
+      alkalinity: svc.readings?.ta ?? svc.alkalinity_level ?? null,
+      cya: svc.readings?.cya ?? svc.cyanuric_acid_level ?? null,
+      salt: svc.readings?.salt ?? svc.salt_level ?? null,
+    };
   };
 
   const handleCreateUser = async () => {
@@ -382,7 +397,7 @@ export default function ClientView() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Pool Status</CardTitle>
-            {poolStatus === 'good' ? (
+            {poolStatus === 'current' ? (
               <CheckCircle className="h-4 w-4 text-green-600" />
             ) : (
               <AlertTriangle className="h-4 w-4 text-orange-600" />
@@ -390,7 +405,7 @@ export default function ClientView() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {poolStatus === 'good' ? 'Current' : 'Needs Service'}
+              {poolStatus === 'current' ? 'Current' : 'Needs Service'}
             </div>
           </CardContent>
         </Card>
@@ -664,20 +679,48 @@ export default function ClientView() {
               <p>{client.liner_type}</p>
             </div>
 
-            <div>
-              <p className="text-sm font-medium text-muted-foreground">Currently In Balance</p>
-              <Badge variant={client.in_balance ? 'default' : 'secondary'}>
-                {client.in_balance ? 'Yes' : 'No'}
-              </Badge>
-            </div>
+
+            {(() => {
+              const readings = getLatestReadings();
+              const latestSvc = services[0];
+              const bal = getBalanceStatus(readings, latestSvc?.chemicals_added);
+              return (
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">Currently In Balance</p>
+                  <Badge variant={bal.inBalance ? 'default' : 'destructive'}>
+                    {bal.inBalance ? 'Yes' : 'Out of balance'}
+                  </Badge>
+                  {!bal.inBalance && (
+                    <ul className="mt-2 text-xs text-muted-foreground space-y-0.5">
+                      {bal.outOfRange.map(r => (
+                        <li key={r.chemId}>
+                          • {r.chemId.toUpperCase()}: {r.value}
+                          {r.addressed ? ' (chemical added)' : ' — needs treatment'}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              );
+            })()}
 
             <div>
               <p className="text-sm font-medium text-muted-foreground">Last Service</p>
-              <p>{client.last_service_date 
+              <p>{client.last_service_date
                 ? new Date(client.last_service_date).toLocaleDateString()
                 : 'No services on record'
               }</p>
             </div>
+
+            {(() => {
+              const next = getNextDueDate(client.service_days);
+              return next ? (
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">Next Service Due</p>
+                  <p>{next.toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' })}</p>
+                </div>
+              ) : null;
+            })()}
           </CardContent>
         </Card>
 
@@ -753,6 +796,9 @@ export default function ClientView() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Water Chemistry Trends */}
+      <ClientReadingsChart services={services} />
 
       {/* Service History */}
       <Card>

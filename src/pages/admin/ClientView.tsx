@@ -797,6 +797,9 @@ export default function ClientView() {
         </Card>
       </div>
 
+      {/* Water Chemistry Trends */}
+      <ClientReadingsChart services={services} />
+
       {/* Service History */}
       <Card>
         <CardHeader>

@@ -34,7 +34,9 @@ import {
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { ClientInviteDialog } from '@/components/admin/ClientInviteDialog';
+import { ClientsCalendarView } from '@/components/clients/ClientsCalendarView';
 
 interface Client {
   id: string;

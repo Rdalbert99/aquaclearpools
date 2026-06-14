@@ -686,13 +686,47 @@ export default function ClientView() {
               </Badge>
             </div>
 
+            {(() => {
+              const readings = getLatestReadings();
+              const latestSvc = services[0];
+              const bal = getBalanceStatus(readings, latestSvc?.chemicals_added);
+              return (
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">Currently In Balance</p>
+                  <Badge variant={bal.inBalance ? 'default' : 'destructive'}>
+                    {bal.inBalance ? 'Yes' : 'Out of balance'}
+                  </Badge>
+                  {!bal.inBalance && (
+                    <ul className="mt-2 text-xs text-muted-foreground space-y-0.5">
+                      {bal.outOfRange.map(r => (
+                        <li key={r.chemId}>
+                          • {r.chemId.toUpperCase()}: {r.value}
+                          {r.addressed ? ' (chemical added)' : ' — needs treatment'}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              );
+            })()}
+
             <div>
               <p className="text-sm font-medium text-muted-foreground">Last Service</p>
-              <p>{client.last_service_date 
+              <p>{client.last_service_date
                 ? new Date(client.last_service_date).toLocaleDateString()
                 : 'No services on record'
               }</p>
             </div>
+
+            {(() => {
+              const next = getNextDueDate(client.service_days);
+              return next ? (
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">Next Service Due</p>
+                  <p>{next.toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' })}</p>
+                </div>
+              ) : null;
+            })()}
           </CardContent>
         </Card>
 

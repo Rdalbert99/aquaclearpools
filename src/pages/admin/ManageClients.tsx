@@ -504,6 +504,17 @@ export default function ManageClients() {
         </Card>
       </div>
 
+      <Tabs defaultValue="calendar" className="space-y-4">
+        <TabsList>
+          <TabsTrigger value="calendar">Calendar</TabsTrigger>
+          <TabsTrigger value="list">List</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="calendar">
+          <ClientsCalendarView clients={clients} adminMode />
+        </TabsContent>
+
+        <TabsContent value="list" className="space-y-6">
       {/* Filters */}
       <Card>
         <CardContent className="p-4">

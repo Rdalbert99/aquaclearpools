@@ -34,7 +34,9 @@ import {
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { ClientInviteDialog } from '@/components/admin/ClientInviteDialog';
+import { ClientsCalendarView } from '@/components/clients/ClientsCalendarView';
 
 interface Client {
   id: string;
@@ -502,6 +504,17 @@ export default function ManageClients() {
         </Card>
       </div>
 
+      <Tabs defaultValue="calendar" className="space-y-4">
+        <TabsList>
+          <TabsTrigger value="calendar">Calendar</TabsTrigger>
+          <TabsTrigger value="list">List</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="calendar">
+          <ClientsCalendarView clients={clients} adminMode />
+        </TabsContent>
+
+        <TabsContent value="list" className="space-y-6">
       {/* Filters */}
       <Card>
         <CardContent className="p-4">
@@ -829,6 +842,8 @@ export default function ManageClients() {
           )}
         </CardContent>
       </Card>
+        </TabsContent>
+      </Tabs>
 
       {/* Client Invite Dialog */}
       {inviteClient && (

@@ -25,14 +25,58 @@ interface Props {
 const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 const DAY_SHORT = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
 
-function clientScheduledOn(client: CalendarClient, date: Date): boolean {
-  if (!client.service_days?.length) return false;
-  const dayName = DAY_NAMES[date.getDay()].toLowerCase();
-  const short = dayName.slice(0, 3);
-  return client.service_days.some(d => {
-    const v = (d || '').toLowerCase();
-    return v === dayName || v === short || v.startsWith(short);
+function scheduledDows(client: CalendarClient): number[] {
+  if (!client.service_days?.length) return [];
+  const out = new Set<number>();
+  client.service_days.forEach(d => {
+    const v = (d || '').toLowerCase().slice(0, 3);
+    const idx = DAY_NAMES.findIndex(n => n.toLowerCase().startsWith(v));
+    if (idx >= 0) out.add(idx);
   });
+  return [...out];
+}
+
+function clientScheduledOn(client: CalendarClient, date: Date): boolean {
+  const dows = scheduledDows(client);
+  return dows.includes(date.getDay());
+}
+
+/** Minimum gap (in days) between scheduled visits. Defaults to 7 if single/none. */
+function minScheduleGap(dows: number[]): number {
+  if (dows.length <= 1) return 7;
+  const sorted = [...dows].sort((a, b) => a - b);
+  let min = 7;
+  for (let i = 0; i < sorted.length; i++) {
+    const next = sorted[(i + 1) % sorted.length];
+    const gap = i + 1 < sorted.length ? next - sorted[i] : 7 - sorted[i] + sorted[0];
+    if (gap > 0 && gap < min) min = gap;
+  }
+  return min;
+}
+
+function startOfDay(d: Date) {
+  return new Date(d.getFullYear(), d.getMonth(), d.getDate());
+}
+
+/**
+ * A scheduled day D is "covered" (already serviced) if the last service date
+ * falls within the most recent service cycle ending at D — specifically
+ * (D - cycle, D]. This makes early services (e.g. doing Tuesday's client on
+ * Monday) count toward that visit, so the client disappears until their next
+ * scheduled day after the service.
+ */
+function isCovered(client: CalendarClient, date: Date): boolean {
+  if (!client.last_service_date) return false;
+  const last = startOfDay(new Date(client.last_service_date));
+  const d = startOfDay(date);
+  const gap = minScheduleGap(scheduledDows(client));
+  const windowStart = new Date(d);
+  windowStart.setDate(d.getDate() - gap);
+  return last > windowStart && last <= d;
+}
+
+function clientDueOn(client: CalendarClient, date: Date): boolean {
+  return clientScheduledOn(client, date) && !isCovered(client, date);
 }
 
 function sameDay(a: Date, b: Date) {
@@ -61,14 +105,14 @@ export function ClientsCalendarView({ clients, adminMode = false }: Props) {
     const map = new Map<string, number>();
     monthGrid.forEach(d => {
       if (!d) return;
-      const n = clients.filter(c => clientScheduledOn(c, d)).length;
+      const n = clients.filter(c => clientDueOn(c, d)).length;
       if (n) map.set(d.toDateString(), n);
     });
     return map;
   }, [monthGrid, clients]);
 
   const dueSelected = useMemo(
-    () => clients.filter(c => clientScheduledOn(c, selectedDate)),
+    () => clients.filter(c => clientDueOn(c, selectedDate)),
     [clients, selectedDate]
   );
 

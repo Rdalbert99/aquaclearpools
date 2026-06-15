@@ -2,8 +2,11 @@ import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { ChevronLeft, ChevronRight, CalendarDays, Users, Eye } from 'lucide-react';
+import { ChevronLeft, ChevronRight, CalendarDays, Users, Eye, RotateCcw, CheckCircle2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
+
 
 export interface CalendarClient {
   id: string;

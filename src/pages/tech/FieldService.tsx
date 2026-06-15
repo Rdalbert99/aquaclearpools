@@ -263,6 +263,15 @@ export default function FieldService() {
       const { error } = await supabase.from('services').insert(payload);
       if (error) throw error;
 
+      // Mark the client as serviced today so the calendar updates for everyone
+      // (admin + all techs). Use local date (YYYY-MM-DD).
+      const today = new Date();
+      const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+      await supabase
+        .from('clients')
+        .update({ last_service_date: todayStr })
+        .eq('id', client.id);
+
       // Auto-notify admin if any out-of-range readings weren't addressed by chemicals added
       try {
         const chemsText = entriesToString(serviceData.chemical_entries ?? [], chemCatalog) || serviceData.chemicals_added || '';

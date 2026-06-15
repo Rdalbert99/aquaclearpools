@@ -105,7 +105,7 @@ export function ClientsCalendarView({ clients, adminMode = false }: Props) {
     const map = new Map<string, number>();
     monthGrid.forEach(d => {
       if (!d) return;
-      const n = clients.filter(c => clientScheduledOn(c, d)).length;
+      const n = clients.filter(c => clientDueOn(c, d)).length;
       if (n) map.set(d.toDateString(), n);
     });
     return map;

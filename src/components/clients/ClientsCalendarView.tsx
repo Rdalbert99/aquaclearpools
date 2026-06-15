@@ -114,13 +114,72 @@ export function ClientsCalendarView({ clients, adminMode = false }: Props) {
     return map;
   }, [monthGrid, clients]);
 
-  const dueSelected = useMemo(
-    () => clients.filter(c => clientDueOn(c, selectedDate)),
+  const scheduledSelected = useMemo(
+    () => clients.filter(c => clientScheduledOn(c, selectedDate)),
     [clients, selectedDate]
+  );
+  const dueSelected = useMemo(
+    () => scheduledSelected.filter(c => !isCovered(c, selectedDate)),
+    [scheduledSelected, selectedDate]
+  );
+  const completedSelected = useMemo(
+    () => scheduledSelected.filter(c => isCovered(c, selectedDate)),
+    [scheduledSelected, selectedDate]
   );
 
   const today = new Date();
   const monthLabel = viewMonth.toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
+  const { toast } = useToast();
+  const [clearingId, setClearingId] = useState<string | null>(null);
+
+  async function clearService(client: CalendarClient) {
+    if (!confirm(`Clear the most recent service for ${client.customer}? They will move back to their next scheduled day.`)) return;
+    setClearingId(client.id);
+    try {
+      // Find most recent service record for this client
+      const { data: latest, error: latestErr } = await supabase
+        .from('services')
+        .select('id, service_date')
+        .eq('client_id', client.id)
+        .order('service_date', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (latestErr) throw latestErr;
+
+      if (latest?.id) {
+        const { error: delErr } = await supabase.from('services').delete().eq('id', latest.id);
+        if (delErr) throw delErr;
+      }
+
+      // Recompute last_service_date from remaining services
+      const { data: prev } = await supabase
+        .from('services')
+        .select('service_date')
+        .eq('client_id', client.id)
+        .order('service_date', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      const newDate = prev?.service_date
+        ? String(prev.service_date).split('T')[0]
+        : null;
+
+      await supabase
+        .from('clients')
+        .update({ last_service_date: newDate })
+        .eq('id', client.id);
+
+      // Mutate local copy so the UI updates immediately
+      client.last_service_date = newDate;
+
+      toast({ title: 'Service cleared', description: `${client.customer} moved back to next scheduled day.` });
+    } catch (e: any) {
+      console.error(e);
+      toast({ title: 'Error', description: e.message || 'Failed to clear service', variant: 'destructive' });
+    } finally {
+      setClearingId(null);
+    }
+  }
 
   return (
     <div className="space-y-6">
@@ -189,7 +248,7 @@ export function ClientsCalendarView({ clients, adminMode = false }: Props) {
             {selectedDate.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })}
           </CardTitle>
           <CardDescription>
-            {dueSelected.length} client{dueSelected.length === 1 ? '' : 's'} scheduled
+            {dueSelected.length} due · {completedSelected.length} completed
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -223,7 +282,49 @@ export function ClientsCalendarView({ clients, adminMode = false }: Props) {
                 </div>
               </div>
             ))}
-            {dueSelected.length === 0 && (
+
+            {completedSelected.length > 0 && (
+              <div className="pt-2">
+                <p className="text-xs font-medium uppercase text-muted-foreground mb-2">Completed</p>
+                <div className="space-y-3">
+                  {completedSelected.map((client) => (
+                    <div key={client.id} className="flex items-center justify-between p-4 border rounded-lg gap-3 bg-muted/30">
+                      <div className="min-w-0">
+                        <p className="font-medium truncate flex items-center gap-2">
+                          <CheckCircle2 className="h-4 w-4 text-primary" />
+                          {client.customer}
+                        </p>
+                        <p className="text-sm text-muted-foreground">
+                          Serviced: {client.last_service_date
+                            ? new Date(client.last_service_date).toLocaleDateString()
+                            : '—'}
+                        </p>
+                      </div>
+                      <div className="flex gap-2 shrink-0">
+                        {adminMode && (
+                          <Button variant="outline" size="sm" asChild>
+                            <Link to={`/admin/clients/${client.id}`}>
+                              <Eye className="h-3 w-3 mr-1" /> View
+                            </Link>
+                          </Button>
+                        )}
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          disabled={clearingId === client.id}
+                          onClick={() => clearService(client)}
+                        >
+                          <RotateCcw className="h-3 w-3 mr-1" />
+                          {clearingId === client.id ? 'Clearing…' : 'Clear'}
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {scheduledSelected.length === 0 && (
               <p className="text-center text-muted-foreground py-6">No clients scheduled this day</p>
             )}
           </div>
@@ -232,3 +333,4 @@ export function ClientsCalendarView({ clients, adminMode = false }: Props) {
     </div>
   );
 }
+

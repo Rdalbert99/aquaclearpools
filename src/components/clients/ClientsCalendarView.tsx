@@ -112,7 +112,7 @@ export function ClientsCalendarView({ clients, adminMode = false }: Props) {
   }, [monthGrid, clients]);
 
   const dueSelected = useMemo(
-    () => clients.filter(c => clientScheduledOn(c, selectedDate)),
+    () => clients.filter(c => clientDueOn(c, selectedDate)),
     [clients, selectedDate]
   );
 

@@ -290,6 +290,7 @@ export default function FieldService() {
           cleaned_robot: !!serviceData.cleaned_robot,
           robot_plugged_in: !!serviceData.robot_plugged_in,
           robot_in_water: !!serviceData.robot_in_water,
+          salt_cell_cleaned: !!serviceData.salt_cell_cleaned,
         },
         chemicals_added: entriesToString(serviceData.chemical_entries ?? [], chemCatalog) || serviceData.chemicals_added || null,
         notes: serviceData.notes || null,

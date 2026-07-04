@@ -188,6 +188,7 @@ export default function FieldService() {
     if (data.cleaned_robot) performed.push('Cleaned Robot');
     if (data.robot_plugged_in) performed.push('Plugged in Robot');
     if (data.robot_in_water) performed.push('Put Robot in Water');
+    if (data.salt_cell_cleaned) performed.push('Cleaned Salt Cell');
     if (performed.length) {
       const lower = performed.map(s => s.toLowerCase());
       parts.push(`Today we ${lower.join(', ')}.`);

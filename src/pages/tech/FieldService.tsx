@@ -498,8 +498,69 @@ export default function FieldService() {
               </div>
             </div>
           </div>
+
+          {isSaltPool && (
+            <div className="pt-2 border-t">
+              <div className="flex items-center justify-between mb-2 gap-2 flex-wrap">
+                <Label className="text-sm font-semibold flex items-center gap-2">
+                  <Zap className="h-4 w-4 text-blue-500" /> Salt Cell
+                </Label>
+                <Button type="button" size="sm" variant="outline" onClick={() => setSaltInstructionsOpen(true)}>
+                  <Info className="h-4 w-4 mr-1" /> Cleaning Instructions
+                </Button>
+              </div>
+              {saltCellDue && (
+                <Alert className="mb-2 border-orange-300 bg-orange-50 dark:bg-orange-950/30">
+                  <AlertTriangle className="h-4 w-4 text-orange-600" />
+                  <AlertDescription className="text-sm">
+                    Salt cell cleaning is due (recommended every 6 months).{' '}
+                    {lastSaltCleaning
+                      ? `Last cleaned ${new Date(lastSaltCleaning).toLocaleDateString()}.`
+                      : 'No prior cleaning on record.'}
+                  </AlertDescription>
+                </Alert>
+              )}
+              <div className="flex items-center gap-2">
+                <Checkbox
+                  id="salt-cell-cleaned"
+                  checked={!!serviceData.salt_cell_cleaned}
+                  onCheckedChange={v => handleInputChange('salt_cell_cleaned', !!v)}
+                />
+                <Label htmlFor="salt-cell-cleaned" className="text-sm font-normal cursor-pointer">
+                  Cleaned Salt Cell
+                </Label>
+              </div>
+              {!saltCellDue && lastSaltCleaning && (
+                <p className="text-xs text-muted-foreground mt-1">
+                  Last cleaned {new Date(lastSaltCleaning).toLocaleDateString()}.
+                </p>
+              )}
+            </div>
+          )}
         </CardContent>
       </Card>
+
+      {/* Salt cell cleaning instructions */}
+      <Dialog open={saltInstructionsOpen} onOpenChange={setSaltInstructionsOpen}>
+        <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Zap className="h-5 w-5 text-blue-500" /> Salt Cell Cleaning — Step by Step
+            </DialogTitle>
+            <DialogDescription>
+              Perform every 6 months on all salt pools. Always wear gloves and eye protection when handling acid.
+            </DialogDescription>
+          </DialogHeader>
+          <ol className="list-decimal list-outside pl-5 space-y-2 text-sm">
+            {SALT_CELL_STEPS.map((step, i) => (
+              <li key={i}>{step}</li>
+            ))}
+          </ol>
+          <DialogFooter>
+            <Button onClick={() => setSaltInstructionsOpen(false)}>Got it</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Readings — only when chemical testing was performed */}
       {(serviceData.services_performed ?? []).includes(CHEM_TEST_SERVICE) && (

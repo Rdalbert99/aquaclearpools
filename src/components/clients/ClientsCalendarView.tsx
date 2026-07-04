@@ -309,6 +309,7 @@ export function ClientsCalendarView({ clients, adminMode = false }: Props) {
           </CardTitle>
           <CardDescription>
             {dueSelected.length} due · {completedSelected.length} completed
+            {saltDueIdSet.size > 0 && ` · ${saltDueIdSet.size} salt cell due`}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -316,7 +317,14 @@ export function ClientsCalendarView({ clients, adminMode = false }: Props) {
             {dueSelected.map((client) => (
               <div key={client.id} className="flex items-center justify-between p-4 border rounded-lg gap-3">
                 <div className="min-w-0">
-                  <p className="font-medium truncate">{client.customer}</p>
+                  <p className="font-medium truncate flex items-center gap-2">
+                    {client.customer}
+                    {saltDueIdSet.has(client.id) && (
+                      <Badge variant="outline" className="border-orange-400 text-orange-600 gap-1">
+                        <Zap className="h-3 w-3" /> Salt cell due
+                      </Badge>
+                    )}
+                  </p>
                   {(client.pool_size || client.pool_type) && (
                     <p className="text-sm text-muted-foreground">
                       Pool: {client.pool_size?.toLocaleString()} gal{client.pool_type ? `, ${client.pool_type}` : ''}
@@ -342,6 +350,48 @@ export function ClientsCalendarView({ clients, adminMode = false }: Props) {
                 </div>
               </div>
             ))}
+
+            {saltDueSelected.length > 0 && (
+              <div className="pt-2">
+                <p className="text-xs font-medium uppercase text-muted-foreground mb-2 flex items-center gap-1">
+                  <Zap className="h-3 w-3 text-orange-500" /> Salt cell cleaning due
+                </p>
+                <div className="space-y-3">
+                  {saltDueSelected.map((client) => {
+                    const last = saltCleanMap.get(client.id);
+                    return (
+                      <div key={client.id} className="flex items-center justify-between p-4 border rounded-lg gap-3 border-orange-300 bg-orange-50/40 dark:bg-orange-950/20">
+                        <div className="min-w-0">
+                          <p className="font-medium truncate flex items-center gap-2">
+                            <Zap className="h-4 w-4 text-orange-500" />
+                            {client.customer}
+                          </p>
+                          <p className="text-sm text-muted-foreground">
+                            {client.pool_type || 'Salt'} pool
+                            {client.pool_size ? ` · ${client.pool_size.toLocaleString()} gal` : ''}
+                          </p>
+                          <p className="text-sm text-muted-foreground">
+                            Salt cell last cleaned: {last ? new Date(last).toLocaleDateString() : 'Never'}
+                          </p>
+                        </div>
+                        <div className="flex gap-2 shrink-0">
+                          {adminMode && (
+                            <Button variant="outline" size="sm" asChild>
+                              <Link to={`/admin/clients/${client.id}`}>
+                                <Eye className="h-3 w-3 mr-1" /> View
+                              </Link>
+                            </Button>
+                          )}
+                          <Button size="sm" asChild>
+                            <Link to={`/tech/service/${client.id}`}>Start Service</Link>
+                          </Button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
 
             {completedSelected.length > 0 && (
               <div className="pt-2">

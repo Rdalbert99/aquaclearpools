@@ -483,6 +483,42 @@ export type Database = {
           },
         ]
       }
+      notifications: {
+        Row: {
+          body: string | null
+          client_id: string | null
+          created_at: string
+          id: string
+          link_url: string | null
+          read_at: string | null
+          title: string
+          type: string
+          user_id: string
+        }
+        Insert: {
+          body?: string | null
+          client_id?: string | null
+          created_at?: string
+          id?: string
+          link_url?: string | null
+          read_at?: string | null
+          title: string
+          type: string
+          user_id: string
+        }
+        Update: {
+          body?: string | null
+          client_id?: string | null
+          created_at?: string
+          id?: string
+          link_url?: string | null
+          read_at?: string | null
+          title?: string
+          type?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       password_reset_attempts: {
         Row: {
           created_at: string
@@ -617,6 +653,27 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      salt_cell_alert_log: {
+        Row: {
+          client_id: string
+          created_at: string
+          cycle_key: string
+          id: string
+        }
+        Insert: {
+          client_id: string
+          created_at?: string
+          cycle_key: string
+          id?: string
+        }
+        Update: {
+          client_id?: string
+          created_at?: string
+          cycle_key?: string
+          id?: string
+        }
+        Relationships: []
       }
       security_audit_log: {
         Row: {

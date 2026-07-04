@@ -15,6 +15,7 @@ import {
   DropdownMenuTrigger 
 } from '@/components/ui/dropdown-menu';
 import { Home, Calculator, Users, FileText, LogOut, User, Star, Calendar, BarChart3, Mail, Menu, MessageSquare } from 'lucide-react';
+import { NotificationBell } from '@/components/notifications/NotificationBell';
 
 export const Navbar = () => {
   const { user, signOut, isAdmin, isTech, isClient } = useAuth();
@@ -193,6 +194,10 @@ export const Navbar = () => {
                 </SheetContent>
               </Sheet>
             </div>
+
+            {/* User Menu */}
+            {/* Notification Bell */}
+            {(isAdmin || isTech) && <NotificationBell />}
 
             {/* User Menu */}
             <DropdownMenu>

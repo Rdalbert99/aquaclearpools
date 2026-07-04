@@ -156,11 +156,15 @@ export function ClientsCalendarView({ clients, adminMode = false }: Props) {
     const map = new Map<string, number>();
     monthGrid.forEach(d => {
       if (!d) return;
-      const n = clients.filter(c => clientDueOn(c, d)).length;
-      if (n) map.set(d.toDateString(), n);
+      const ids = new Set<string>();
+      clients.forEach(c => {
+        if (clientDueOn(c, d) || saltCellDueOn(c, d)) ids.add(c.id);
+      });
+      if (ids.size) map.set(d.toDateString(), ids.size);
     });
     return map;
-  }, [monthGrid, clients]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [monthGrid, clients, saltCleanMap]);
 
   const scheduledSelected = useMemo(
     () => clients.filter(c => clientScheduledOn(c, selectedDate)),
@@ -174,6 +178,14 @@ export function ClientsCalendarView({ clients, adminMode = false }: Props) {
     () => scheduledSelected.filter(c => isCovered(c, selectedDate)),
     [scheduledSelected, selectedDate]
   );
+  const saltDueSelected = useMemo(
+    () => clients.filter(c => saltCellDueOn(c, selectedDate) && !scheduledSelected.some(s => s.id === c.id)),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [clients, selectedDate, saltCleanMap, scheduledSelected]
+  );
+  const saltDueIdSet = useMemo(() => new Set(clients.filter(c => saltCellDueOn(c, selectedDate)).map(c => c.id)),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [clients, selectedDate, saltCleanMap]);
 
   const today = new Date();
   const monthLabel = viewMonth.toLocaleDateString(undefined, { month: 'long', year: 'numeric' });

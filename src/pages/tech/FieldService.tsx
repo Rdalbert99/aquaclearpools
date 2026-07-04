@@ -14,7 +14,7 @@ import { ServicePhotoUpload } from '@/components/tech/ServicePhotoUpload';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { 
-  Clock, Droplets, TestTube, CheckCircle, ArrowLeft, AlertTriangle, Send,
+  Clock, Droplets, TestTube, CheckCircle, ArrowLeft, AlertTriangle, Send, Zap, Info,
 } from 'lucide-react';
 import { isInRange, getDosageInstruction, type ChemicalId } from '@/lib/pool-chemistry';
 import { ArrivalNotification } from '@/components/tech/ArrivalNotification';

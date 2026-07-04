@@ -1,8 +1,9 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { ChevronLeft, ChevronRight, CalendarDays, Users, Eye, RotateCcw, CheckCircle2 } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { ChevronLeft, ChevronRight, CalendarDays, Users, Eye, RotateCcw, CheckCircle2, Zap } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -86,12 +87,59 @@ function sameDay(a: Date, b: Date) {
   return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
 }
 
+const SALT_CELL_INTERVAL_DAYS = 180;
+
+function isSaltPool(client: CalendarClient): boolean {
+  return !!client.pool_type && /salt/i.test(client.pool_type);
+}
+
 export function ClientsCalendarView({ clients, adminMode = false }: Props) {
   const [viewMonth, setViewMonth] = useState(() => {
     const d = new Date();
     return new Date(d.getFullYear(), d.getMonth(), 1);
   });
   const [selectedDate, setSelectedDate] = useState<Date>(() => new Date());
+  const [saltCleanMap, setSaltCleanMap] = useState<Map<string, string>>(new Map());
+
+  // Fetch most recent salt cell cleaning per salt-pool client
+  useEffect(() => {
+    const saltClientIds = clients.filter(isSaltPool).map(c => c.id);
+    if (!saltClientIds.length) { setSaltCleanMap(new Map()); return; }
+    let cancelled = false;
+    (async () => {
+      const { data, error } = await supabase
+        .from('services')
+        .select('client_id, service_date, actions')
+        .in('client_id', saltClientIds)
+        .contains('actions', { salt_cell_cleaned: true })
+        .order('service_date', { ascending: false });
+      if (cancelled || error || !data) return;
+      const m = new Map<string, string>();
+      data.forEach((row: any) => {
+        if (!m.has(row.client_id)) m.set(row.client_id, row.service_date);
+      });
+      setSaltCleanMap(m);
+    })();
+    return () => { cancelled = true; };
+  }, [clients]);
+
+  function saltCellDueDate(client: CalendarClient): Date | null {
+    if (!isSaltPool(client)) return null;
+    const last = saltCleanMap.get(client.id);
+    if (!last) return startOfDay(new Date(0)); // never cleaned → always due
+    const d = startOfDay(new Date(last));
+    d.setDate(d.getDate() + SALT_CELL_INTERVAL_DAYS);
+    return d;
+  }
+
+  function saltCellDueOn(client: CalendarClient, date: Date): boolean {
+    const due = saltCellDueDate(client);
+    if (!due) return false;
+    const d = startOfDay(date);
+    const today = startOfDay(new Date());
+    // Flag from the due date through today (don't project into future months)
+    return d <= today && d >= due;
+  }
 
   const monthGrid = useMemo(() => {
     const first = new Date(viewMonth.getFullYear(), viewMonth.getMonth(), 1);
@@ -108,11 +156,15 @@ export function ClientsCalendarView({ clients, adminMode = false }: Props) {
     const map = new Map<string, number>();
     monthGrid.forEach(d => {
       if (!d) return;
-      const n = clients.filter(c => clientDueOn(c, d)).length;
-      if (n) map.set(d.toDateString(), n);
+      const ids = new Set<string>();
+      clients.forEach(c => {
+        if (clientDueOn(c, d) || saltCellDueOn(c, d)) ids.add(c.id);
+      });
+      if (ids.size) map.set(d.toDateString(), ids.size);
     });
     return map;
-  }, [monthGrid, clients]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [monthGrid, clients, saltCleanMap]);
 
   const scheduledSelected = useMemo(
     () => clients.filter(c => clientScheduledOn(c, selectedDate)),
@@ -126,6 +178,14 @@ export function ClientsCalendarView({ clients, adminMode = false }: Props) {
     () => scheduledSelected.filter(c => isCovered(c, selectedDate)),
     [scheduledSelected, selectedDate]
   );
+  const saltDueSelected = useMemo(
+    () => clients.filter(c => saltCellDueOn(c, selectedDate) && !scheduledSelected.some(s => s.id === c.id)),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [clients, selectedDate, saltCleanMap, scheduledSelected]
+  );
+  const saltDueIdSet = useMemo(() => new Set(clients.filter(c => saltCellDueOn(c, selectedDate)).map(c => c.id)),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [clients, selectedDate, saltCleanMap]);
 
   const today = new Date();
   const monthLabel = viewMonth.toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
@@ -249,6 +309,7 @@ export function ClientsCalendarView({ clients, adminMode = false }: Props) {
           </CardTitle>
           <CardDescription>
             {dueSelected.length} due · {completedSelected.length} completed
+            {saltDueIdSet.size > 0 && ` · ${saltDueIdSet.size} salt cell due`}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -256,7 +317,14 @@ export function ClientsCalendarView({ clients, adminMode = false }: Props) {
             {dueSelected.map((client) => (
               <div key={client.id} className="flex items-center justify-between p-4 border rounded-lg gap-3">
                 <div className="min-w-0">
-                  <p className="font-medium truncate">{client.customer}</p>
+                  <p className="font-medium truncate flex items-center gap-2">
+                    {client.customer}
+                    {saltDueIdSet.has(client.id) && (
+                      <Badge variant="outline" className="border-orange-400 text-orange-600 gap-1">
+                        <Zap className="h-3 w-3" /> Salt cell due
+                      </Badge>
+                    )}
+                  </p>
                   {(client.pool_size || client.pool_type) && (
                     <p className="text-sm text-muted-foreground">
                       Pool: {client.pool_size?.toLocaleString()} gal{client.pool_type ? `, ${client.pool_type}` : ''}
@@ -282,6 +350,48 @@ export function ClientsCalendarView({ clients, adminMode = false }: Props) {
                 </div>
               </div>
             ))}
+
+            {saltDueSelected.length > 0 && (
+              <div className="pt-2">
+                <p className="text-xs font-medium uppercase text-muted-foreground mb-2 flex items-center gap-1">
+                  <Zap className="h-3 w-3 text-orange-500" /> Salt cell cleaning due
+                </p>
+                <div className="space-y-3">
+                  {saltDueSelected.map((client) => {
+                    const last = saltCleanMap.get(client.id);
+                    return (
+                      <div key={client.id} className="flex items-center justify-between p-4 border rounded-lg gap-3 border-orange-300 bg-orange-50/40 dark:bg-orange-950/20">
+                        <div className="min-w-0">
+                          <p className="font-medium truncate flex items-center gap-2">
+                            <Zap className="h-4 w-4 text-orange-500" />
+                            {client.customer}
+                          </p>
+                          <p className="text-sm text-muted-foreground">
+                            {client.pool_type || 'Salt'} pool
+                            {client.pool_size ? ` · ${client.pool_size.toLocaleString()} gal` : ''}
+                          </p>
+                          <p className="text-sm text-muted-foreground">
+                            Salt cell last cleaned: {last ? new Date(last).toLocaleDateString() : 'Never'}
+                          </p>
+                        </div>
+                        <div className="flex gap-2 shrink-0">
+                          {adminMode && (
+                            <Button variant="outline" size="sm" asChild>
+                              <Link to={`/admin/clients/${client.id}`}>
+                                <Eye className="h-3 w-3 mr-1" /> View
+                              </Link>
+                            </Button>
+                          )}
+                          <Button size="sm" asChild>
+                            <Link to={`/tech/service/${client.id}`}>Start Service</Link>
+                          </Button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
 
             {completedSelected.length > 0 && (
               <div className="pt-2">
@@ -324,7 +434,7 @@ export function ClientsCalendarView({ clients, adminMode = false }: Props) {
               </div>
             )}
 
-            {scheduledSelected.length === 0 && (
+            {scheduledSelected.length === 0 && saltDueSelected.length === 0 && (
               <p className="text-center text-muted-foreground py-6">No clients scheduled this day</p>
             )}
           </div>

@@ -14,7 +14,7 @@ import { ServicePhotoUpload } from '@/components/tech/ServicePhotoUpload';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { 
-  Clock, Droplets, TestTube, CheckCircle, ArrowLeft, AlertTriangle, Send,
+  Clock, Droplets, TestTube, CheckCircle, ArrowLeft, AlertTriangle, Send, Zap, Info,
 } from 'lucide-react';
 import { isInRange, getDosageInstruction, type ChemicalId } from '@/lib/pool-chemistry';
 import { ArrivalNotification } from '@/components/tech/ArrivalNotification';
@@ -63,6 +63,7 @@ type ServiceData = {
   cleaned_robot?: boolean;
   robot_plugged_in?: boolean;
   robot_in_water?: boolean;
+  salt_cell_cleaned?: boolean;
   chemicals_added?: string;
   chemical_entries?: ChemicalEntry[];
   notes?: string;
@@ -70,6 +71,20 @@ type ServiceData = {
   beforePhotoUrl?: string | null;
   afterPhotoUrl?: string | null;
 };
+
+const SALT_CELL_STEPS = [
+  'Turn off power to the pool pump and the salt chlorine generator at the breaker.',
+  'Close the valves before and after the salt cell to isolate it from the plumbing.',
+  'Unscrew the unions on both ends of the salt cell and carefully remove it.',
+  'Inspect the plates — light dusty scale is normal; heavy white/crusty buildup means it needs cleaning.',
+  'Rinse the inside of the cell with a garden hose to flush loose debris. If it looks clean, skip acid washing.',
+  'If scale remains, mix a cleaning solution: 4 parts water to 1 part muriatic acid (ALWAYS add acid to water, never the reverse). Wear gloves and eye protection.',
+  'Cap one end of the cell, pour the solution in, and let it foam for no more than 10–15 minutes. Do not soak longer or you will damage the plates.',
+  'Pour the used solution into a safe container for disposal. Rinse the cell thoroughly with a hose.',
+  'Reinstall the cell, hand-tighten the unions (do not over-tighten — no tools), and open the isolation valves.',
+  'Turn power back on, run the pump, and check for leaks at the unions.',
+  'Verify the generator shows normal salt/voltage readings. Log the cleaning in the service notes.',
+];
 
 export default function FieldService() {
   const [sendingPoolNeeds, setSendingPoolNeeds] = useState(false);
@@ -88,10 +103,22 @@ export default function FieldService() {
     cleaned_robot: false,
     robot_plugged_in: false,
     robot_in_water: false,
+    salt_cell_cleaned: false,
     chemical_entries: [],
   });
   const [reviewOpen, setReviewOpen] = useState(false);
   const [reviewMessage, setReviewMessage] = useState('');
+  const [saltInstructionsOpen, setSaltInstructionsOpen] = useState(false);
+  const [lastSaltCleaning, setLastSaltCleaning] = useState<string | null>(null);
+
+  const isSaltPool = !!client?.pool_type && /salt/i.test(client.pool_type);
+  const saltCellDueDays = (() => {
+    if (!isSaltPool) return null;
+    if (!lastSaltCleaning) return Infinity;
+    const days = Math.floor((Date.now() - new Date(lastSaltCleaning).getTime()) / 86400000);
+    return days;
+  })();
+  const saltCellDue = isSaltPool && (saltCellDueDays === Infinity || (typeof saltCellDueDays === 'number' && saltCellDueDays >= 180));
 
   useEffect(() => {
     let mounted = true;
@@ -101,6 +128,18 @@ export default function FieldService() {
         const { data, error } = await supabase.from('clients').select('*').eq('id', clientId).single();
         if (error) throw error;
         if (mounted) setClient(data as Client);
+
+        // Look up the most recent salt cell cleaning for this client
+        const { data: prior } = await supabase
+          .from('services')
+          .select('service_date, actions')
+          .eq('client_id', clientId)
+          .order('service_date', { ascending: false })
+          .limit(50);
+        if (mounted && prior) {
+          const hit = prior.find((s: any) => s?.actions?.salt_cell_cleaned);
+          setLastSaltCleaning(hit?.service_date ?? null);
+        }
       } catch (e) {
         console.error(e);
         toast({ title: "Error", description: "Failed to load client info", variant: "destructive" });
@@ -149,6 +188,7 @@ export default function FieldService() {
     if (data.cleaned_robot) performed.push('Cleaned Robot');
     if (data.robot_plugged_in) performed.push('Plugged in Robot');
     if (data.robot_in_water) performed.push('Put Robot in Water');
+    if (data.salt_cell_cleaned) performed.push('Cleaned Salt Cell');
     if (performed.length) {
       const lower = performed.map(s => s.toLowerCase());
       parts.push(`Today we ${lower.join(', ')}.`);
@@ -250,6 +290,7 @@ export default function FieldService() {
           cleaned_robot: !!serviceData.cleaned_robot,
           robot_plugged_in: !!serviceData.robot_plugged_in,
           robot_in_water: !!serviceData.robot_in_water,
+          salt_cell_cleaned: !!serviceData.salt_cell_cleaned,
         },
         chemicals_added: entriesToString(serviceData.chemical_entries ?? [], chemCatalog) || serviceData.chemicals_added || null,
         notes: serviceData.notes || null,
@@ -457,8 +498,69 @@ export default function FieldService() {
               </div>
             </div>
           </div>
+
+          {isSaltPool && (
+            <div className="pt-2 border-t">
+              <div className="flex items-center justify-between mb-2 gap-2 flex-wrap">
+                <Label className="text-sm font-semibold flex items-center gap-2">
+                  <Zap className="h-4 w-4 text-blue-500" /> Salt Cell
+                </Label>
+                <Button type="button" size="sm" variant="outline" onClick={() => setSaltInstructionsOpen(true)}>
+                  <Info className="h-4 w-4 mr-1" /> Cleaning Instructions
+                </Button>
+              </div>
+              {saltCellDue && (
+                <Alert className="mb-2 border-orange-300 bg-orange-50 dark:bg-orange-950/30">
+                  <AlertTriangle className="h-4 w-4 text-orange-600" />
+                  <AlertDescription className="text-sm">
+                    Salt cell cleaning is due (recommended every 6 months).{' '}
+                    {lastSaltCleaning
+                      ? `Last cleaned ${new Date(lastSaltCleaning).toLocaleDateString()}.`
+                      : 'No prior cleaning on record.'}
+                  </AlertDescription>
+                </Alert>
+              )}
+              <div className="flex items-center gap-2">
+                <Checkbox
+                  id="salt-cell-cleaned"
+                  checked={!!serviceData.salt_cell_cleaned}
+                  onCheckedChange={v => handleInputChange('salt_cell_cleaned', !!v)}
+                />
+                <Label htmlFor="salt-cell-cleaned" className="text-sm font-normal cursor-pointer">
+                  Cleaned Salt Cell
+                </Label>
+              </div>
+              {!saltCellDue && lastSaltCleaning && (
+                <p className="text-xs text-muted-foreground mt-1">
+                  Last cleaned {new Date(lastSaltCleaning).toLocaleDateString()}.
+                </p>
+              )}
+            </div>
+          )}
         </CardContent>
       </Card>
+
+      {/* Salt cell cleaning instructions */}
+      <Dialog open={saltInstructionsOpen} onOpenChange={setSaltInstructionsOpen}>
+        <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Zap className="h-5 w-5 text-blue-500" /> Salt Cell Cleaning — Step by Step
+            </DialogTitle>
+            <DialogDescription>
+              Perform every 6 months on all salt pools. Always wear gloves and eye protection when handling acid.
+            </DialogDescription>
+          </DialogHeader>
+          <ol className="list-decimal list-outside pl-5 space-y-2 text-sm">
+            {SALT_CELL_STEPS.map((step, i) => (
+              <li key={i}>{step}</li>
+            ))}
+          </ol>
+          <DialogFooter>
+            <Button onClick={() => setSaltInstructionsOpen(false)}>Got it</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Readings — only when chemical testing was performed */}
       {(serviceData.services_performed ?? []).includes(CHEM_TEST_SERVICE) && (

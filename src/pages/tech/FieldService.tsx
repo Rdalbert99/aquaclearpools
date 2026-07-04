@@ -63,6 +63,7 @@ type ServiceData = {
   cleaned_robot?: boolean;
   robot_plugged_in?: boolean;
   robot_in_water?: boolean;
+  salt_cell_cleaned?: boolean;
   chemicals_added?: string;
   chemical_entries?: ChemicalEntry[];
   notes?: string;
@@ -70,6 +71,20 @@ type ServiceData = {
   beforePhotoUrl?: string | null;
   afterPhotoUrl?: string | null;
 };
+
+const SALT_CELL_STEPS = [
+  'Turn off power to the pool pump and the salt chlorine generator at the breaker.',
+  'Close the valves before and after the salt cell to isolate it from the plumbing.',
+  'Unscrew the unions on both ends of the salt cell and carefully remove it.',
+  'Inspect the plates — light dusty scale is normal; heavy white/crusty buildup means it needs cleaning.',
+  'Rinse the inside of the cell with a garden hose to flush loose debris. If it looks clean, skip acid washing.',
+  'If scale remains, mix a cleaning solution: 4 parts water to 1 part muriatic acid (ALWAYS add acid to water, never the reverse). Wear gloves and eye protection.',
+  'Cap one end of the cell, pour the solution in, and let it foam for no more than 10–15 minutes. Do not soak longer or you will damage the plates.',
+  'Pour the used solution into a safe container for disposal. Rinse the cell thoroughly with a hose.',
+  'Reinstall the cell, hand-tighten the unions (do not over-tighten — no tools), and open the isolation valves.',
+  'Turn power back on, run the pump, and check for leaks at the unions.',
+  'Verify the generator shows normal salt/voltage readings. Log the cleaning in the service notes.',
+];
 
 export default function FieldService() {
   const [sendingPoolNeeds, setSendingPoolNeeds] = useState(false);

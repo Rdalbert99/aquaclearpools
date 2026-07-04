@@ -103,10 +103,22 @@ export default function FieldService() {
     cleaned_robot: false,
     robot_plugged_in: false,
     robot_in_water: false,
+    salt_cell_cleaned: false,
     chemical_entries: [],
   });
   const [reviewOpen, setReviewOpen] = useState(false);
   const [reviewMessage, setReviewMessage] = useState('');
+  const [saltInstructionsOpen, setSaltInstructionsOpen] = useState(false);
+  const [lastSaltCleaning, setLastSaltCleaning] = useState<string | null>(null);
+
+  const isSaltPool = !!client?.pool_type && /salt/i.test(client.pool_type);
+  const saltCellDueDays = (() => {
+    if (!isSaltPool) return null;
+    if (!lastSaltCleaning) return Infinity;
+    const days = Math.floor((Date.now() - new Date(lastSaltCleaning).getTime()) / 86400000);
+    return days;
+  })();
+  const saltCellDue = isSaltPool && (saltCellDueDays === Infinity || (typeof saltCellDueDays === 'number' && saltCellDueDays >= 180));
 
   useEffect(() => {
     let mounted = true;
@@ -116,6 +128,18 @@ export default function FieldService() {
         const { data, error } = await supabase.from('clients').select('*').eq('id', clientId).single();
         if (error) throw error;
         if (mounted) setClient(data as Client);
+
+        // Look up the most recent salt cell cleaning for this client
+        const { data: prior } = await supabase
+          .from('services')
+          .select('service_date, actions')
+          .eq('client_id', clientId)
+          .order('service_date', { ascending: false })
+          .limit(50);
+        if (mounted && prior) {
+          const hit = prior.find((s: any) => s?.actions?.salt_cell_cleaned);
+          setLastSaltCleaning(hit?.service_date ?? null);
+        }
       } catch (e) {
         console.error(e);
         toast({ title: "Error", description: "Failed to load client info", variant: "destructive" });

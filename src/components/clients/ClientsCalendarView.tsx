@@ -434,7 +434,7 @@ export function ClientsCalendarView({ clients, adminMode = false }: Props) {
               </div>
             )}
 
-            {scheduledSelected.length === 0 && (
+            {scheduledSelected.length === 0 && saltDueSelected.length === 0 && (
               <p className="text-center text-muted-foreground py-6">No clients scheduled this day</p>
             )}
           </div>

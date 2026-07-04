@@ -87,12 +87,59 @@ function sameDay(a: Date, b: Date) {
   return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
 }
 
+const SALT_CELL_INTERVAL_DAYS = 180;
+
+function isSaltPool(client: CalendarClient): boolean {
+  return !!client.pool_type && /salt/i.test(client.pool_type);
+}
+
 export function ClientsCalendarView({ clients, adminMode = false }: Props) {
   const [viewMonth, setViewMonth] = useState(() => {
     const d = new Date();
     return new Date(d.getFullYear(), d.getMonth(), 1);
   });
   const [selectedDate, setSelectedDate] = useState<Date>(() => new Date());
+  const [saltCleanMap, setSaltCleanMap] = useState<Map<string, string>>(new Map());
+
+  // Fetch most recent salt cell cleaning per salt-pool client
+  useEffect(() => {
+    const saltClientIds = clients.filter(isSaltPool).map(c => c.id);
+    if (!saltClientIds.length) { setSaltCleanMap(new Map()); return; }
+    let cancelled = false;
+    (async () => {
+      const { data, error } = await supabase
+        .from('services')
+        .select('client_id, service_date, actions')
+        .in('client_id', saltClientIds)
+        .contains('actions', { salt_cell_cleaned: true })
+        .order('service_date', { ascending: false });
+      if (cancelled || error || !data) return;
+      const m = new Map<string, string>();
+      data.forEach((row: any) => {
+        if (!m.has(row.client_id)) m.set(row.client_id, row.service_date);
+      });
+      setSaltCleanMap(m);
+    })();
+    return () => { cancelled = true; };
+  }, [clients]);
+
+  function saltCellDueDate(client: CalendarClient): Date | null {
+    if (!isSaltPool(client)) return null;
+    const last = saltCleanMap.get(client.id);
+    if (!last) return startOfDay(new Date(0)); // never cleaned → always due
+    const d = startOfDay(new Date(last));
+    d.setDate(d.getDate() + SALT_CELL_INTERVAL_DAYS);
+    return d;
+  }
+
+  function saltCellDueOn(client: CalendarClient, date: Date): boolean {
+    const due = saltCellDueDate(client);
+    if (!due) return false;
+    const d = startOfDay(date);
+    const today = startOfDay(new Date());
+    // Flag from the due date through today (don't project into future months)
+    return d <= today && d >= due;
+  }
 
   const monthGrid = useMemo(() => {
     const first = new Date(viewMonth.getFullYear(), viewMonth.getMonth(), 1);

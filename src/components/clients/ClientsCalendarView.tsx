@@ -120,6 +120,8 @@ export function ClientsCalendarView({ clients, adminMode = false }: Props) {
       });
       setSaltCleanMap(m);
     })();
+    // Fire-and-forget: trigger backend alert scan for newly-due salt cells
+    supabase.functions.invoke('check-salt-cell-due').catch(() => { /* silent */ });
     return () => { cancelled = true; };
   }, [clients]);
 

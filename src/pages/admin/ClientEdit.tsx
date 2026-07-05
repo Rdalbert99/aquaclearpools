@@ -60,6 +60,7 @@ interface ClientFormData {
   notify_on_confirmation: boolean;
   notify_on_assignment: boolean;
   notification_method: string;
+  salt_cell_last_cleaned: string;
 }
 
 export default function ClientEdit() {
@@ -87,6 +88,7 @@ export default function ClientEdit() {
   const [newUserConfirmPassword, setNewUserConfirmPassword] = useState('');
   const [showNewUserPassword, setShowNewUserPassword] = useState(false);
   const [creatingUser, setCreatingUser] = useState(false);
+  const [notifyingCustomer, setNotifyingCustomer] = useState(false);
   
   const { isValidating: isValidatingUsername, isAvailable: isUsernameAvailable } = useUsernameValidation({
     username: newUserLogin
@@ -144,7 +146,8 @@ export default function ClientEdit() {
         phone: userData?.phone || data.contact_phone || '',
         notify_on_confirmation: data.notify_on_confirmation ?? true,
         notify_on_assignment: data.notify_on_assignment ?? true,
-        notification_method: data.notification_method || 'email'
+        notification_method: data.notification_method || 'email',
+        salt_cell_last_cleaned: (data as any).salt_cell_last_cleaned ? String((data as any).salt_cell_last_cleaned).split('T')[0] : ''
       });
 
       setMustChangePassword(userData?.must_change_password || false);
@@ -233,6 +236,7 @@ export default function ClientEdit() {
         contact_address: fullAddress || null,
         contact_email: client.email || null,
         contact_phone: client.phone || null,
+        salt_cell_last_cleaned: client.salt_cell_last_cleaned || null,
         updated_at: new Date().toISOString()
       };
 
@@ -289,6 +293,49 @@ export default function ClientEdit() {
       });
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleNotifySaltCellCleaned = async () => {
+    if (!client || !id) return;
+    if (!client.salt_cell_last_cleaned) {
+      toast({
+        title: "Set a date first",
+        description: "Please pick the salt cell cleaning date before sending a notification.",
+        variant: "destructive"
+      });
+      return;
+    }
+    if (!client.email && !client.phone) {
+      toast({
+        title: "No contact info",
+        description: "This customer has no email or phone on file.",
+        variant: "destructive"
+      });
+      return;
+    }
+    setNotifyingCustomer(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('notify-salt-cell-cleaned', {
+        body: {
+          client_id: id,
+          cleaned_date: client.salt_cell_last_cleaned
+        }
+      });
+      if (error) throw error;
+      toast({
+        title: "Customer notified",
+        description: `Sent via ${(data?.channels || []).join(' & ') || 'available channels'}.`
+      });
+    } catch (err: any) {
+      console.error('notify-salt-cell-cleaned error', err);
+      toast({
+        title: "Notification failed",
+        description: err?.message || "Could not send the notification.",
+        variant: "destructive"
+      });
+    } finally {
+      setNotifyingCustomer(false);
     }
   };
 
@@ -810,6 +857,53 @@ export default function ClientEdit() {
             </div>
           </CardContent>
         </Card>
+
+        {/* Salt Cell Cleaning */}
+        {(client.pool_type === 'Salt' || client.pool_type === 'Saltwater') && (
+          <Card className="lg:col-span-2">
+            <CardHeader>
+              <CardTitle className="flex items-center space-x-2">
+                <Droplets className="h-5 w-5" />
+                <span>Salt Cell Cleaning</span>
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <p className="text-sm text-muted-foreground">
+                Record when this customer's salt cell was last cleaned — including cleanings done by another company or before service started. This resets the 6-month cleaning reminder.
+              </p>
+              <div className="grid gap-4 md:grid-cols-[minmax(0,260px)_auto_auto] md:items-end">
+                <div className="space-y-2">
+                  <Label htmlFor="saltCellLastCleaned">Last cleaned on</Label>
+                  <Input
+                    id="saltCellLastCleaned"
+                    type="date"
+                    value={client.salt_cell_last_cleaned || ''}
+                    max={new Date().toISOString().split('T')[0]}
+                    onChange={(e) => handleInputChange('salt_cell_last_cleaned', e.target.value)}
+                  />
+                </div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => handleInputChange('salt_cell_last_cleaned', new Date().toISOString().split('T')[0])}
+                >
+                  Set to today
+                </Button>
+                <Button
+                  type="button"
+                  onClick={handleNotifySaltCellCleaned}
+                  disabled={notifyingCustomer || !client.salt_cell_last_cleaned}
+                >
+                  <Send className="h-4 w-4 mr-2" />
+                  {notifyingCustomer ? 'Sending…' : 'Notify customer'}
+                </Button>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Save the client to persist the date. The notification lets the customer know their salt cell has been cleaned and is back in service.
+              </p>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Last Tech Visit */}
         {lastTechVisit && (

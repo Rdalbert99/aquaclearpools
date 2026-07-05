@@ -51,3 +51,7 @@ verify_jwt = false
 
 [functions.check-salt-cell-due]
 verify_jwt = false
+
+[functions.notify-salt-cell-cleaned]
+verify_jwt = true
+

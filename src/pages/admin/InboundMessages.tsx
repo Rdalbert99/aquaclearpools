@@ -406,7 +406,7 @@ export default function InboundMessages() {
 
         {/* POOL NEEDS TAB */}
         <TabsContent value="pool-needs" className="space-y-4 mt-4">
-          <div className="flex gap-2 flex-wrap">
+          <div className="flex gap-2 flex-wrap items-center">
             <Button variant="outline" size="sm" onClick={loadPoolNeeds}>
               <RefreshCw className="h-4 w-4 mr-1" /> Refresh
             </Button>
@@ -414,7 +414,18 @@ export default function InboundMessages() {
               {poolNeedsFilter === 'unread' ? 'Show All' : 'Unread Only'}
             </Button>
             {poolNeedsUnread > 0 && (
-              <Button size="sm" onClick={markAllPoolNeedsRead}>
+              <Button variant="outline" size="sm" onClick={selectAllVisiblePoolNeeds}>
+                <CheckSquare className="h-4 w-4 mr-1" />
+                {selectedPoolNeeds.size === poolNeeds.filter(m => !m.read_at).length && poolNeedsUnread > 0 ? 'Clear Selection' : 'Select All Unread'}
+              </Button>
+            )}
+            {selectedPoolNeeds.size > 0 && (
+              <Button size="sm" onClick={markSelectedPoolNeedsRead}>
+                <Check className="h-4 w-4 mr-1" /> Mark Selected Read ({selectedPoolNeeds.size})
+              </Button>
+            )}
+            {poolNeedsUnread > 0 && (
+              <Button variant="secondary" size="sm" onClick={markAllPoolNeedsRead}>
                 <Check className="h-4 w-4 mr-1" /> Mark All Read
               </Button>
             )}

@@ -67,6 +67,7 @@ export const Navbar = () => {
         { label: 'Calculator', icon: Calculator, path: '/admin/calculator' },
         { label: 'Reports', icon: BarChart3, path: '/admin/reports' },
         { label: 'Mailjet Test', icon: Mail, path: '/admin/mailjet-test' },
+        { label: 'Templates', icon: MessageSquare, path: '/admin/notification-templates' },
       ];
     }
     

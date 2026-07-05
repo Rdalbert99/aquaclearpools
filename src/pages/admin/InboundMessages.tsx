@@ -327,6 +327,14 @@ export default function InboundMessages() {
                 <Card key={msg.id} className={`transition-colors ${!msg.read_at ? 'border-primary/50 bg-primary/5' : ''}`}>
                   <CardContent className="p-4">
                     <div className="flex items-start justify-between gap-3">
+                      {!msg.read_at && (
+                        <Checkbox
+                          className="mt-1"
+                          checked={selectedSms.has(msg.id)}
+                          onCheckedChange={() => toggleSmsSelect(msg.id)}
+                          aria-label="Select message"
+                        />
+                      )}
                       <div className="flex-1 min-w-0 space-y-2">
                         <div className="flex flex-wrap items-center gap-2 text-sm">
                           <span className="flex items-center gap-1 font-medium">

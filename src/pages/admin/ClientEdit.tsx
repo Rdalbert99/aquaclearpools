@@ -235,6 +235,7 @@ export default function ClientEdit() {
         contact_address: fullAddress || null,
         contact_email: client.email || null,
         contact_phone: client.phone || null,
+        salt_cell_last_cleaned: client.salt_cell_last_cleaned || null,
         updated_at: new Date().toISOString()
       };
 

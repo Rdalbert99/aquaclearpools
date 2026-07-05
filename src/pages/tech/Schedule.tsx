@@ -422,7 +422,7 @@ export default function TechSchedule() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7 gap-3 sm:gap-4">
+            <div className="grid grid-cols-1 2xs:grid-cols-1 xs:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7 gap-2 2xs:gap-2 xs:gap-3 sm:gap-4">
               {(() => {
                 const today = new Date();
                 const weekDays = [];
@@ -434,9 +434,9 @@ export default function TechSchedule() {
                   const clients = scheduleData?.weeklySchedule?.[dayName] || [];
                   
                   weekDays.push(
-                    <div key={dayName + i} className={`p-2 sm:p-3 rounded-lg border min-w-0 ${isToday ? 'bg-primary/5 border-primary' : 'bg-card'}`}>
+                    <div key={dayName + i} className={`p-2 2xs:p-1.5 xs:p-2 sm:p-3 rounded-lg border min-w-0 overflow-hidden ${isToday ? 'bg-primary/5 border-primary' : 'bg-card'}`}>
                       <div className="mb-2 min-w-0">
-                        <h4 className={`font-semibold text-xs leading-tight ${isToday ? 'text-primary' : ''}`}>
+                        <h4 className={`font-semibold text-[10px] xs:text-xs leading-tight ${isToday ? 'text-primary' : ''}`}>
                           {dayName}
                           {isToday && <span className="text-[10px] ml-1">(Today)</span>}
                         </h4>
@@ -449,12 +449,12 @@ export default function TechSchedule() {
                           <p className="text-[10px] text-muted-foreground">No clients</p>
                         ) : (
                           clients.map((item, itemIndex) => (
-                            <div key={item.id || itemIndex} className="text-[10px] border rounded p-1.5 hover:bg-muted/50 min-w-0">
+                            <div key={item.id || itemIndex} className="text-[10px] xs:text-xs border rounded p-1.5 hover:bg-muted/50 min-w-0 overflow-hidden">
                               {item.isServiceRequest ? (
                                 <div className="min-w-0">
                                   <Link 
                                     to={`/admin/service-request/${item.id}`}
-                                    className="font-medium text-orange-600 hover:underline break-words leading-tight"
+                                    className="font-medium text-orange-600 hover:underline break-words leading-tight block"
                                   >
                                     {item.customer} (Request)
                                   </Link>
@@ -469,7 +469,7 @@ export default function TechSchedule() {
                                 <div className="min-w-0">
                                   <Link 
                                     to={`/admin/clients/${item.id}`}
-                                    className="font-medium text-primary hover:underline break-words leading-tight"
+                                    className="font-medium text-primary hover:underline break-words leading-tight block"
                                   >
                                     {item.customer}
                                   </Link>
@@ -488,7 +488,7 @@ export default function TechSchedule() {
                                   </p>
                                   <div className="flex flex-col gap-1 mt-1">
                                     {(item.contact_phone || item.client_user?.phone) && (
-                                      <Button size="sm" variant="outline" className="h-5 px-1.5 text-[10px] w-full" asChild>
+                                      <Button size="sm" variant="outline" className="h-5 px-1.5 text-[10px] xs:text-xs w-full" asChild>
                                         <a href={`tel:${item.contact_phone || item.client_user?.phone}`}>
                                           <Phone className="h-2 w-2 mr-1" />
                                           Call
@@ -496,7 +496,7 @@ export default function TechSchedule() {
                                       </Button>
                                     )}
                                     {(item.contact_address || item.client_user?.address) && (
-                                      <Button size="sm" variant="default" className="h-5 px-1.5 text-[10px] w-full" asChild>
+                                      <Button size="sm" variant="default" className="h-5 px-1.5 text-[10px] xs:text-xs w-full" asChild>
                                         <a 
                                           href={`https://maps.apple.com/?q=${encodeURIComponent(item.contact_address || item.client_user?.address)}`}
                                           target="_blank"

@@ -346,6 +346,15 @@ const AppRoutes = () => {
             </ProtectedRoute>
           } 
         />
+        <Route 
+          path="/admin/notification-templates" 
+          element={
+            <ProtectedRoute allowedRoles={['admin']}>
+              <NotificationTemplates />
+            </ProtectedRoute>
+          } 
+        />
+        
         
         {/* Client routes */}
         <Route 

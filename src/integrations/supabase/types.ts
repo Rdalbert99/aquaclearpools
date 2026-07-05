@@ -300,6 +300,7 @@ export type Database = {
           pool_type: string
           qb_customer_id: string | null
           qb_invoice_link: string | null
+          salt_cell_last_cleaned: string | null
           service_days: string[] | null
           service_frequency: string | null
           service_notes: string | null
@@ -333,6 +334,7 @@ export type Database = {
           pool_type: string
           qb_customer_id?: string | null
           qb_invoice_link?: string | null
+          salt_cell_last_cleaned?: string | null
           service_days?: string[] | null
           service_frequency?: string | null
           service_notes?: string | null
@@ -366,6 +368,7 @@ export type Database = {
           pool_type?: string
           qb_customer_id?: string | null
           qb_invoice_link?: string | null
+          salt_cell_last_cleaned?: string | null
           service_days?: string[] | null
           service_frequency?: string | null
           service_notes?: string | null

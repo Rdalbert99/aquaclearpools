@@ -3,8 +3,9 @@ import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { MessageSquare, Check, RefreshCw, Phone, User, ArrowRight, Droplets, Wrench } from 'lucide-react';
+import { MessageSquare, Check, RefreshCw, Phone, User, ArrowRight, Droplets, Wrench, CheckSquare } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { Link } from 'react-router-dom';
@@ -46,6 +47,62 @@ export default function InboundMessages() {
   const [filter, setFilter] = useState<'all' | 'unread'>('unread');
   const [poolNeedsFilter, setPoolNeedsFilter] = useState<'all' | 'unread'>('unread');
   const [activeTab, setActiveTab] = useState('text-messages');
+  const [selectedSms, setSelectedSms] = useState<Set<string>>(new Set());
+  const [selectedPoolNeeds, setSelectedPoolNeeds] = useState<Set<string>>(new Set());
+
+  const toggleSmsSelect = (id: string) => {
+    setSelectedSms(prev => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  };
+  const togglePoolNeedSelect = (id: string) => {
+    setSelectedPoolNeeds(prev => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  };
+  const selectAllVisibleSms = () => {
+    const unreadVisible = messages.filter(m => !m.read_at).map(m => m.id);
+    setSelectedSms(prev => prev.size === unreadVisible.length ? new Set() : new Set(unreadVisible));
+  };
+  const selectAllVisiblePoolNeeds = () => {
+    const unreadVisible = poolNeeds.filter(m => !m.read_at).map(m => m.id);
+    setSelectedPoolNeeds(prev => prev.size === unreadVisible.length ? new Set() : new Set(unreadVisible));
+  };
+
+  const markSelectedSmsRead = async () => {
+    const ids = Array.from(selectedSms);
+    if (!ids.length) return;
+    const { error } = await supabase
+      .from('inbound_sms_messages')
+      .update({ read_at: new Date().toISOString() } as any)
+      .in('id', ids);
+    if (error) {
+      toast.error('Failed to mark selected as read');
+    } else {
+      toast.success(`Marked ${ids.length} message${ids.length === 1 ? '' : 's'} as read`);
+      setSelectedSms(new Set());
+      loadMessages();
+    }
+  };
+  const markSelectedPoolNeedsRead = async () => {
+    const ids = Array.from(selectedPoolNeeds);
+    if (!ids.length) return;
+    const { error } = await supabase
+      .from('pool_needs_messages')
+      .update({ read_at: new Date().toISOString() } as any)
+      .in('id', ids);
+    if (error) {
+      toast.error('Failed to mark selected as read');
+    } else {
+      toast.success(`Marked ${ids.length} pool need${ids.length === 1 ? '' : 's'} as read`);
+      setSelectedPoolNeeds(new Set());
+      loadPoolNeeds();
+    }
+  };
 
   const loadMessages = async () => {
     setLoading(true);
@@ -230,7 +287,7 @@ export default function InboundMessages() {
 
         {/* TEXT MESSAGES TAB */}
         <TabsContent value="text-messages" className="space-y-4 mt-4">
-          <div className="flex gap-2 flex-wrap">
+          <div className="flex gap-2 flex-wrap items-center">
             <Button variant="outline" size="sm" onClick={loadMessages}>
               <RefreshCw className="h-4 w-4 mr-1" /> Refresh
             </Button>
@@ -238,7 +295,18 @@ export default function InboundMessages() {
               {filter === 'unread' ? 'Show All' : 'Unread Only'}
             </Button>
             {smsUnread > 0 && (
-              <Button size="sm" onClick={markAllRead}>
+              <Button variant="outline" size="sm" onClick={selectAllVisibleSms}>
+                <CheckSquare className="h-4 w-4 mr-1" />
+                {selectedSms.size === messages.filter(m => !m.read_at).length && smsUnread > 0 ? 'Clear Selection' : 'Select All Unread'}
+              </Button>
+            )}
+            {selectedSms.size > 0 && (
+              <Button size="sm" onClick={markSelectedSmsRead}>
+                <Check className="h-4 w-4 mr-1" /> Mark Selected Read ({selectedSms.size})
+              </Button>
+            )}
+            {smsUnread > 0 && (
+              <Button variant="secondary" size="sm" onClick={markAllRead}>
                 <Check className="h-4 w-4 mr-1" /> Mark All Read
               </Button>
             )}
@@ -259,6 +327,14 @@ export default function InboundMessages() {
                 <Card key={msg.id} className={`transition-colors ${!msg.read_at ? 'border-primary/50 bg-primary/5' : ''}`}>
                   <CardContent className="p-4">
                     <div className="flex items-start justify-between gap-3">
+                      {!msg.read_at && (
+                        <Checkbox
+                          className="mt-1"
+                          checked={selectedSms.has(msg.id)}
+                          onCheckedChange={() => toggleSmsSelect(msg.id)}
+                          aria-label="Select message"
+                        />
+                      )}
                       <div className="flex-1 min-w-0 space-y-2">
                         <div className="flex flex-wrap items-center gap-2 text-sm">
                           <span className="flex items-center gap-1 font-medium">
@@ -330,7 +406,7 @@ export default function InboundMessages() {
 
         {/* POOL NEEDS TAB */}
         <TabsContent value="pool-needs" className="space-y-4 mt-4">
-          <div className="flex gap-2 flex-wrap">
+          <div className="flex gap-2 flex-wrap items-center">
             <Button variant="outline" size="sm" onClick={loadPoolNeeds}>
               <RefreshCw className="h-4 w-4 mr-1" /> Refresh
             </Button>
@@ -338,7 +414,18 @@ export default function InboundMessages() {
               {poolNeedsFilter === 'unread' ? 'Show All' : 'Unread Only'}
             </Button>
             {poolNeedsUnread > 0 && (
-              <Button size="sm" onClick={markAllPoolNeedsRead}>
+              <Button variant="outline" size="sm" onClick={selectAllVisiblePoolNeeds}>
+                <CheckSquare className="h-4 w-4 mr-1" />
+                {selectedPoolNeeds.size === poolNeeds.filter(m => !m.read_at).length && poolNeedsUnread > 0 ? 'Clear Selection' : 'Select All Unread'}
+              </Button>
+            )}
+            {selectedPoolNeeds.size > 0 && (
+              <Button size="sm" onClick={markSelectedPoolNeedsRead}>
+                <Check className="h-4 w-4 mr-1" /> Mark Selected Read ({selectedPoolNeeds.size})
+              </Button>
+            )}
+            {poolNeedsUnread > 0 && (
+              <Button variant="secondary" size="sm" onClick={markAllPoolNeedsRead}>
                 <Check className="h-4 w-4 mr-1" /> Mark All Read
               </Button>
             )}
@@ -359,6 +446,14 @@ export default function InboundMessages() {
                 <Card key={pn.id} className={`transition-colors ${!pn.read_at ? 'border-primary/50 bg-primary/5' : ''}`}>
                   <CardContent className="p-4">
                     <div className="flex items-start justify-between gap-3">
+                      {!pn.read_at && (
+                        <Checkbox
+                          className="mt-1"
+                          checked={selectedPoolNeeds.has(pn.id)}
+                          onCheckedChange={() => togglePoolNeedSelect(pn.id)}
+                          aria-label="Select pool need"
+                        />
+                      )}
                       <div className="flex-1 min-w-0 space-y-2">
                         <div className="flex flex-wrap items-center gap-2 text-sm">
                           <span className="flex items-center gap-1 font-medium text-primary">

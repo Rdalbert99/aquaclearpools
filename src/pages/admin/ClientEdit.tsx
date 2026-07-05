@@ -60,6 +60,7 @@ interface ClientFormData {
   notify_on_confirmation: boolean;
   notify_on_assignment: boolean;
   notification_method: string;
+  salt_cell_last_cleaned: string;
 }
 
 export default function ClientEdit() {

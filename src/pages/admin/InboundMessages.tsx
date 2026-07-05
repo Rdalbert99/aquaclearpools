@@ -17,6 +17,8 @@ interface InboundMessage {
   technician_id: string | null;
   technician_name: string | null;
   forwarded_to_tech: boolean;
+  forwarded_to_recipients?: string[] | null;
+  forward_error?: string | null;
   read_at: string | null;
   created_at: string;
 }
@@ -256,6 +258,16 @@ export default function InboundMessages() {
                           {msg.forwarded_to_tech && msg.technician_name && (
                             <Badge variant="secondary" className="text-xs">
                               Forwarded to {msg.technician_name}
+                            </Badge>
+                          )}
+                          {Array.isArray(msg.forwarded_to_recipients) && msg.forwarded_to_recipients.length > 0 && (
+                            <Badge variant="secondary" className="text-xs">
+                              Forwarded to {msg.forwarded_to_recipients.join(', ')}
+                            </Badge>
+                          )}
+                          {msg.forward_error && (
+                            <Badge variant="destructive" className="text-xs">
+                              Forwarding issue
                             </Badge>
                           )}
                           {!msg.client_name && (

@@ -9,6 +9,30 @@ const corsHeaders = {
 const TELNYX_API_URL = "https://api.telnyx.com/v2/messages";
 const DEFAULT_FROM_NUMBER = "+16014198527";
 
+type ForwardRecipient = {
+  id: string;
+  recipient_type: "assigned_tech" | "admin_user" | "tech_user" | "custom";
+  label: string;
+  user_id: string | null;
+  phone_number: string | null;
+  is_enabled: boolean;
+};
+
+type ResolvedRecipient = {
+  key: string;
+  label: string;
+  phone: string;
+  isAssignedTech: boolean;
+};
+
+const normalizePhone = (value?: string | null) => {
+  if (!value) return null;
+  let cleaned = value.replace(/\D/g, "");
+  if (cleaned.length === 10) cleaned = `1${cleaned}`;
+  if (!cleaned || cleaned.length < 10) return null;
+  return `+${cleaned}`;
+};
+
 serve(async (req: Request) => {
   console.log("=== Telnyx Inbound SMS Webhook ===");
 
@@ -88,31 +112,119 @@ serve(async (req: Request) => {
       if (techData) tech = techData;
     }
 
-    // Forward SMS to tech if possible
-    let forwarded = false;
-    if (client && tech?.phone) {
-      const telnyxApiKey = Deno.env.get("TELNYX_API_KEY");
-      if (telnyxApiKey) {
-        let techPhone = tech.phone.replace(/\D/g, "");
-        if (techPhone.length === 10) techPhone = "1" + techPhone;
-        if (!techPhone.startsWith("+")) techPhone = "+" + techPhone;
+    const { data: forwardingSettings, error: settingsError } = await supabase
+      .from("sms_forwarding_recipients")
+      .select("id, recipient_type, label, user_id, phone_number, is_enabled")
+      .eq("is_enabled", true);
 
-        const forwardMessage = `Reply from ${client.customer}: "${messageText}"`;
+    if (settingsError) {
+      console.error("Failed to load SMS forwarding settings:", settingsError);
+    }
+
+    const enabledSettings = ((forwardingSettings || []) as ForwardRecipient[]).length
+      ? ((forwardingSettings || []) as ForwardRecipient[])
+      : [{
+          id: "assigned-tech-fallback",
+          recipient_type: "assigned_tech",
+          label: "Assigned technician",
+          user_id: null,
+          phone_number: null,
+          is_enabled: true,
+        }];
+
+    const userIds = enabledSettings
+      .filter((recipient) => recipient.recipient_type !== "assigned_tech" && recipient.user_id)
+      .map((recipient) => recipient.user_id as string);
+
+    const usersById = new Map<string, { id: string; name: string; phone: string | null; role: string }>();
+    if (userIds.length) {
+      const { data: recipientUsers, error: usersError } = await supabase
+        .from("users")
+        .select("id, name, phone, role")
+        .in("id", userIds);
+
+      if (usersError) {
+        console.error("Failed to load SMS forwarding users:", usersError);
+      }
+
+      for (const recipientUser of recipientUsers || []) {
+        usersById.set(recipientUser.id, recipientUser);
+      }
+    }
+
+    const recipients = new Map<string, ResolvedRecipient>();
+    for (const setting of enabledSettings) {
+      if (setting.recipient_type === "assigned_tech") {
+        const phone = normalizePhone(tech?.phone);
+        if (!client || !tech || !phone) continue;
+        recipients.set(phone, {
+          key: setting.id,
+          label: `Assigned tech: ${tech.name}`,
+          phone,
+          isAssignedTech: true,
+        });
+        continue;
+      }
+
+      if (setting.user_id) {
+        const recipientUser = usersById.get(setting.user_id);
+        const phone = normalizePhone(recipientUser?.phone || setting.phone_number);
+        if (!phone) continue;
+        recipients.set(phone, {
+          key: setting.id,
+          label: recipientUser?.name || setting.label,
+          phone,
+          isAssignedTech: false,
+        });
+        continue;
+      }
+
+      const phone = normalizePhone(setting.phone_number);
+      if (!phone) continue;
+      recipients.set(phone, {
+        key: setting.id,
+        label: setting.label,
+        phone,
+        isAssignedTech: false,
+      });
+    }
+
+    let forwarded = false;
+    let assignedTechForwarded = false;
+    const forwardedToRecipients: string[] = [];
+    const forwardErrors: string[] = [];
+    const telnyxApiKey = Deno.env.get("TELNYX_API_KEY");
+
+    if (recipients.size && telnyxApiKey) {
+      const senderName = client?.customer || fromNumber;
+      const forwardMessage = `Customer reply from ${senderName}: "${messageText}"`;
+
+      for (const recipient of recipients.values()) {
         const smsResponse = await fetch(TELNYX_API_URL, {
           method: "POST",
           headers: {
             Authorization: `Bearer ${telnyxApiKey}`,
             "Content-Type": "application/json",
           },
-          body: JSON.stringify({ from: DEFAULT_FROM_NUMBER, to: techPhone, text: forwardMessage }),
+          body: JSON.stringify({ from: DEFAULT_FROM_NUMBER, to: recipient.phone, text: forwardMessage }),
         });
 
         const smsResult = await smsResponse.json();
-        console.log("Telnyx forward response:", JSON.stringify(smsResult, null, 2));
-        forwarded = smsResponse.ok;
-      } else {
-        console.error("TELNYX_API_KEY not configured");
+        console.log(`Telnyx forward response for ${recipient.label}:`, JSON.stringify(smsResult, null, 2));
+
+        if (smsResponse.ok) {
+          forwarded = true;
+          assignedTechForwarded = assignedTechForwarded || recipient.isAssignedTech;
+          forwardedToRecipients.push(recipient.label);
+        } else {
+          forwardErrors.push(`${recipient.label}: ${smsResult?.errors?.[0]?.detail || smsResponse.statusText}`);
+        }
       }
+    } else if (recipients.size && !telnyxApiKey) {
+      console.error("TELNYX_API_KEY not configured");
+      forwardErrors.push("TELNYX_API_KEY not configured");
+    } else {
+      console.log("No enabled SMS forwarding recipients with valid phone numbers");
     }
 
     // Store message in database for admin viewing
@@ -125,7 +237,9 @@ serve(async (req: Request) => {
         client_name: client?.customer || null,
         technician_id: tech?.id || null,
         technician_name: tech?.name || null,
-        forwarded_to_tech: forwarded,
+        forwarded_to_tech: assignedTechForwarded,
+        forwarded_to_recipients: forwardedToRecipients,
+        forward_error: forwardErrors.length ? forwardErrors.join("; ") : null,
       });
 
     if (insertError) {
@@ -139,7 +253,7 @@ serve(async (req: Request) => {
     }
 
     return new Response(
-      JSON.stringify({ ok: true, forwarded, stored: !insertError, client: client?.customer }),
+      JSON.stringify({ ok: true, forwarded, forwarded_to: forwardedToRecipients, stored: !insertError, client: client?.customer }),
       { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
     );
   } catch (error: any) {

@@ -88,6 +88,7 @@ export default function ClientEdit() {
   const [newUserConfirmPassword, setNewUserConfirmPassword] = useState('');
   const [showNewUserPassword, setShowNewUserPassword] = useState(false);
   const [creatingUser, setCreatingUser] = useState(false);
+  const [notifyingCustomer, setNotifyingCustomer] = useState(false);
   
   const { isValidating: isValidatingUsername, isAvailable: isUsernameAvailable } = useUsernameValidation({
     username: newUserLogin

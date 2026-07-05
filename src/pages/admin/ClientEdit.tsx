@@ -858,6 +858,53 @@ export default function ClientEdit() {
           </CardContent>
         </Card>
 
+        {/* Salt Cell Cleaning */}
+        {(client.pool_type === 'Salt' || client.pool_type === 'Saltwater') && (
+          <Card className="lg:col-span-2">
+            <CardHeader>
+              <CardTitle className="flex items-center space-x-2">
+                <Droplets className="h-5 w-5" />
+                <span>Salt Cell Cleaning</span>
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <p className="text-sm text-muted-foreground">
+                Record when this customer's salt cell was last cleaned — including cleanings done by another company or before service started. This resets the 6-month cleaning reminder.
+              </p>
+              <div className="grid gap-4 md:grid-cols-[minmax(0,260px)_auto_auto] md:items-end">
+                <div className="space-y-2">
+                  <Label htmlFor="saltCellLastCleaned">Last cleaned on</Label>
+                  <Input
+                    id="saltCellLastCleaned"
+                    type="date"
+                    value={client.salt_cell_last_cleaned || ''}
+                    max={new Date().toISOString().split('T')[0]}
+                    onChange={(e) => handleInputChange('salt_cell_last_cleaned', e.target.value)}
+                  />
+                </div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => handleInputChange('salt_cell_last_cleaned', new Date().toISOString().split('T')[0])}
+                >
+                  Set to today
+                </Button>
+                <Button
+                  type="button"
+                  onClick={handleNotifySaltCellCleaned}
+                  disabled={notifyingCustomer || !client.salt_cell_last_cleaned}
+                >
+                  <Send className="h-4 w-4 mr-2" />
+                  {notifyingCustomer ? 'Sending…' : 'Notify customer'}
+                </Button>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Save the client to persist the date. The notification lets the customer know their salt cell has been cleaned and is back in service.
+              </p>
+            </CardContent>
+          </Card>
+        )}
+
         {/* Last Tech Visit */}
         {lastTechVisit && (
           <Card className="lg:col-span-2">

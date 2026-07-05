@@ -47,6 +47,62 @@ export default function InboundMessages() {
   const [filter, setFilter] = useState<'all' | 'unread'>('unread');
   const [poolNeedsFilter, setPoolNeedsFilter] = useState<'all' | 'unread'>('unread');
   const [activeTab, setActiveTab] = useState('text-messages');
+  const [selectedSms, setSelectedSms] = useState<Set<string>>(new Set());
+  const [selectedPoolNeeds, setSelectedPoolNeeds] = useState<Set<string>>(new Set());
+
+  const toggleSmsSelect = (id: string) => {
+    setSelectedSms(prev => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  };
+  const togglePoolNeedSelect = (id: string) => {
+    setSelectedPoolNeeds(prev => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  };
+  const selectAllVisibleSms = () => {
+    const unreadVisible = messages.filter(m => !m.read_at).map(m => m.id);
+    setSelectedSms(prev => prev.size === unreadVisible.length ? new Set() : new Set(unreadVisible));
+  };
+  const selectAllVisiblePoolNeeds = () => {
+    const unreadVisible = poolNeeds.filter(m => !m.read_at).map(m => m.id);
+    setSelectedPoolNeeds(prev => prev.size === unreadVisible.length ? new Set() : new Set(unreadVisible));
+  };
+
+  const markSelectedSmsRead = async () => {
+    const ids = Array.from(selectedSms);
+    if (!ids.length) return;
+    const { error } = await supabase
+      .from('inbound_sms_messages')
+      .update({ read_at: new Date().toISOString() } as any)
+      .in('id', ids);
+    if (error) {
+      toast.error('Failed to mark selected as read');
+    } else {
+      toast.success(`Marked ${ids.length} message${ids.length === 1 ? '' : 's'} as read`);
+      setSelectedSms(new Set());
+      loadMessages();
+    }
+  };
+  const markSelectedPoolNeedsRead = async () => {
+    const ids = Array.from(selectedPoolNeeds);
+    if (!ids.length) return;
+    const { error } = await supabase
+      .from('pool_needs_messages')
+      .update({ read_at: new Date().toISOString() } as any)
+      .in('id', ids);
+    if (error) {
+      toast.error('Failed to mark selected as read');
+    } else {
+      toast.success(`Marked ${ids.length} pool need${ids.length === 1 ? '' : 's'} as read`);
+      setSelectedPoolNeeds(new Set());
+      loadPoolNeeds();
+    }
+  };
 
   const loadMessages = async () => {
     setLoading(true);

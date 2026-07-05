@@ -57,6 +57,7 @@ import OptinProof from "./pages/OptinProof";
 import MailjetTest from "./pages/admin/MailjetTest";
 import SMSTest from "./pages/admin/SMSTest";
 import InboundMessages from "./pages/admin/InboundMessages";
+import NotificationTemplates from "./pages/admin/NotificationTemplates";
 
 const queryClient = new QueryClient();
 

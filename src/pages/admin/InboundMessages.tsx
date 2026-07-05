@@ -255,7 +255,7 @@ export default function InboundMessages() {
                         <p className="text-sm whitespace-pre-wrap">{msg.message_text}</p>
 
                         <div className="flex flex-wrap gap-2">
-                          {msg.forwarded_to_tech && msg.technician_name && (
+                          {msg.forwarded_to_tech && msg.technician_name && (!Array.isArray(msg.forwarded_to_recipients) || msg.forwarded_to_recipients.length === 0) && (
                             <Badge variant="secondary" className="text-xs">
                               Forwarded to {msg.technician_name}
                             </Badge>

@@ -422,7 +422,7 @@ export default function TechSchedule() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-7 gap-3 sm:gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7 gap-3 sm:gap-4">
               {(() => {
                 const today = new Date();
                 const weekDays = [];
@@ -434,81 +434,80 @@ export default function TechSchedule() {
                   const clients = scheduleData?.weeklySchedule?.[dayName] || [];
                   
                   weekDays.push(
-                    <div key={dayName + i} className={`p-3 rounded-lg border ${isToday ? 'bg-primary/5 border-primary' : 'bg-card'}`}>
-                      <h4 className={`font-semibold text-sm mb-2 ${isToday ? 'text-primary' : ''}`}>
-                        {dayName}
-                        {isToday && <span className="text-xs ml-1">(Today)</span>}
-                        <div className="text-xs text-muted-foreground">
+                    <div key={dayName + i} className={`p-2 sm:p-3 rounded-lg border min-w-0 ${isToday ? 'bg-primary/5 border-primary' : 'bg-card'}`}>
+                      <div className="mb-2 min-w-0">
+                        <h4 className={`font-semibold text-xs leading-tight ${isToday ? 'text-primary' : ''}`}>
+                          {dayName}
+                          {isToday && <span className="text-[10px] ml-1">(Today)</span>}
+                        </h4>
+                        <div className="text-[10px] text-muted-foreground">
                           {date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
                         </div>
-                      </h4>
-                      <div className="space-y-2">
+                      </div>
+                      <div className="space-y-1.5">
                         {clients.length === 0 ? (
-                          <p className="text-xs text-muted-foreground">No clients</p>
+                          <p className="text-[10px] text-muted-foreground">No clients</p>
                         ) : (
                           clients.map((item, itemIndex) => (
-                            <div key={item.id || itemIndex} className="text-xs border rounded p-2 hover:bg-muted/50">
+                            <div key={item.id || itemIndex} className="text-[10px] border rounded p-1.5 hover:bg-muted/50 min-w-0">
                               {item.isServiceRequest ? (
-                                <div>
+                                <div className="min-w-0">
                                   <Link 
                                     to={`/admin/service-request/${item.id}`}
-                                    className="font-medium text-orange-600 hover:underline flex items-center space-x-1"
+                                    className="font-medium text-orange-600 hover:underline break-words leading-tight"
                                   >
-                                    <span>{item.customer} (Request)</span>
-                                    <ExternalLink className="h-2 w-2" />
+                                    {item.customer} (Request)
                                   </Link>
-                                  <p className="text-muted-foreground truncate">
+                                  <p className="text-muted-foreground break-words leading-tight">
                                     {item.request_type} - {item.pool_type}
                                   </p>
-                                  <p className="text-xs text-muted-foreground">
+                                  <p className="text-[10px] text-muted-foreground">
                                     {new Date(item.preferred_date).toLocaleDateString()}
                                   </p>
                                 </div>
                               ) : (
-                                <div>
+                                <div className="min-w-0">
                                   <Link 
                                     to={`/admin/clients/${item.id}`}
-                                    className="font-medium text-primary hover:underline flex items-center space-x-1"
+                                    className="font-medium text-primary hover:underline break-words leading-tight"
                                   >
-                                    <span>{item.customer}</span>
-                                    <ExternalLink className="h-2 w-2" />
+                                    {item.customer}
                                   </Link>
                                   {(item.contact_address || item.client_user?.address) ? (
-                                    <p className="text-muted-foreground truncate flex items-center space-x-1">
-                                      <MapPin className="h-2 w-2 flex-shrink-0" />
+                                    <p className="text-muted-foreground break-words leading-tight flex items-start gap-1">
+                                      <MapPin className="h-2 w-2 flex-shrink-0 mt-0.5" />
                                       <span>{item.contact_address || item.client_user?.address}</span>
                                     </p>
                                   ) : (
-                                    <Link to={`/admin/clients/${item.id}`} className="text-[10px] text-orange-500 hover:underline">
+                                    <Link to={`/admin/clients/${item.id}`} className="text-[10px] text-orange-500 hover:underline block">
                                       No address
                                     </Link>
                                   )}
-                                  <p className="text-muted-foreground truncate">
+                                  <p className="text-muted-foreground break-words leading-tight">
                                     {item.pool_size?.toLocaleString()} gal
                                   </p>
-                                    <div className="flex space-x-1 mt-1">
-                                      {(item.contact_phone || item.client_user?.phone) && (
-                                        <Button size="sm" variant="outline" className="h-6 px-2" asChild>
-                                          <a href={`tel:${item.contact_phone || item.client_user?.phone}`} className="text-xs">
-                                            <Phone className="h-2 w-2 mr-1" />
-                                            Call
-                                          </a>
-                                        </Button>
-                                      )}
-                                      {(item.contact_address || item.client_user?.address) && (
-                                        <Button size="sm" variant="default" className="h-6 px-2" asChild>
-                                          <a 
-                                            href={`https://maps.apple.com/?q=${encodeURIComponent(item.contact_address || item.client_user?.address)}`}
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                            className="text-xs"
-                                          >
-                                            <Navigation className="h-2 w-2 mr-1" />
-                                            Map
-                                          </a>
-                                        </Button>
-                                      )}
-                                    </div>
+                                  <div className="flex flex-col gap-1 mt-1">
+                                    {(item.contact_phone || item.client_user?.phone) && (
+                                      <Button size="sm" variant="outline" className="h-5 px-1.5 text-[10px] w-full" asChild>
+                                        <a href={`tel:${item.contact_phone || item.client_user?.phone}`}>
+                                          <Phone className="h-2 w-2 mr-1" />
+                                          Call
+                                        </a>
+                                      </Button>
+                                    )}
+                                    {(item.contact_address || item.client_user?.address) && (
+                                      <Button size="sm" variant="default" className="h-5 px-1.5 text-[10px] w-full" asChild>
+                                        <a 
+                                          href={`https://maps.apple.com/?q=${encodeURIComponent(item.contact_address || item.client_user?.address)}`}
+                                          target="_blank"
+                                          rel="noopener noreferrer"
+                                        >
+                                          <Navigation className="h-2 w-2 mr-1" />
+                                          Map
+                                        </a>
+                                      </Button>
+                                    )}
+                                  </div>
                                 </div>
                               )}
                             </div>

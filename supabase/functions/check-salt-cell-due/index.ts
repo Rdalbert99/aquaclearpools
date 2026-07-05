@@ -52,10 +52,19 @@ serve(async (req) => {
     const today = new Date();
     const dueList: { client: any; cycleKey: string }[] = [];
     for (const client of clients) {
-      const last = lastClean.get(client.id);
+      const serviceLast = lastClean.get(client.id);
+      const manualLast = (client as any).salt_cell_last_cleaned as string | null;
+      // Use the most recent of service-recorded cleaning and manually entered cleaning date
+      let effectiveLast: string | null = null;
+      if (serviceLast && manualLast) {
+        effectiveLast = new Date(serviceLast) > new Date(manualLast) ? serviceLast : manualLast;
+      } else {
+        effectiveLast = serviceLast || manualLast || null;
+      }
+
       let isDue = false;
       let cycleKey = "";
-      if (!last) {
+      if (!effectiveLast) {
         // Never cleaned — flag only if we have some service history at least 180d old
         if (client.last_service_date) {
           const first = new Date(client.last_service_date);
@@ -65,10 +74,10 @@ serve(async (req) => {
           }
         }
       } else {
-        const lastD = new Date(last);
+        const lastD = new Date(effectiveLast);
         if (daysBetween(today, lastD) >= SALT_INTERVAL_DAYS) {
           isDue = true;
-          cycleKey = last;
+          cycleKey = effectiveLast;
         }
       }
       if (isDue) dueList.push({ client, cycleKey });

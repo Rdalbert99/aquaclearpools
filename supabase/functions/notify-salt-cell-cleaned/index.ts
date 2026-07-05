@@ -99,23 +99,44 @@ serve(async (req) => {
     }
 
     const prettyDate = formatDate(cleaned_date);
-    const firstName = (client.customer || "there").split(/\s+/)[0];
+    const fullName = client.customer || "there";
+    const firstName = fullName.split(/\s+/)[0];
+    const businessName = "Aqua Clear Pools";
 
-    const smsBody = `Aqua Clear Pools: Hi ${firstName}, your salt cell was cleaned on ${prettyDate} and is back in service. Thanks for choosing us! Reply STOP to opt out.`;
+    // Load admin-customizable template with sensible defaults
+    const { data: tpl } = await admin
+      .from("notification_templates")
+      .select("sms_body, email_subject, email_text, email_html")
+      .eq("key", "salt_cell_cleaned")
+      .maybeSingle();
 
-    const subject = "Your salt cell has been cleaned";
-    const textBody =
-      `Hi ${firstName},\n\n` +
-      `Just a quick note to let you know your salt cell was cleaned on ${prettyDate} and is back in service. ` +
-      `Regular cleanings keep your cell producing chlorine efficiently and extend its lifespan.\n\n` +
-      `If you have any questions, just reply to this email or give us a call.\n\n` +
-      `Thanks for choosing Aqua Clear Pools!`;
-    const htmlBody =
-      `<p>Hi ${firstName},</p>` +
-      `<p>Just a quick note to let you know your salt cell was cleaned on <strong>${prettyDate}</strong> and is back in service. ` +
-      `Regular cleanings keep your cell producing chlorine efficiently and extend its lifespan.</p>` +
-      `<p>If you have any questions, just reply to this email or give us a call.</p>` +
-      `<p>Thanks for choosing <strong>Aqua Clear Pools</strong>!</p>`;
+    const defaults = {
+      sms_body:
+        "Aqua Clear Pools: Hi {first_name}, your salt cell was cleaned on {cleaned_date} and is back in service. Thanks for choosing us! Reply STOP to opt out.",
+      email_subject: "Your salt cell has been cleaned",
+      email_text:
+        "Hi {first_name},\n\nJust a quick note to let you know your salt cell was cleaned on {cleaned_date} and is back in service. Regular cleanings keep your cell producing chlorine efficiently and extend its lifespan.\n\nIf you have any questions, just reply to this email or give us a call.\n\nThanks for choosing {business_name}!",
+      email_html:
+        "<p>Hi {first_name},</p><p>Just a quick note to let you know your salt cell was cleaned on <strong>{cleaned_date}</strong> and is back in service. Regular cleanings keep your cell producing chlorine efficiently and extend its lifespan.</p><p>If you have any questions, just reply to this email or give us a call.</p><p>Thanks for choosing <strong>{business_name}</strong>!</p>",
+    };
+
+    const render = (s: string | null | undefined, fallback: string) =>
+      (s && s.trim().length ? s : fallback)
+        .replaceAll("{first_name}", firstName)
+        .replaceAll("{customer}", fullName)
+        .replaceAll("{cleaned_date}", prettyDate)
+        .replaceAll("{business_name}", businessName);
+
+    const smsBody = render(tpl?.sms_body, defaults.sms_body);
+    const subject = render(tpl?.email_subject, defaults.email_subject);
+    const textBody = render(tpl?.email_text, defaults.email_text);
+    const htmlSource = tpl?.email_html && tpl.email_html.trim().length
+      ? tpl.email_html
+      : (tpl?.email_text && tpl.email_text.trim().length
+        ? tpl.email_text.split(/\n+/).map((p) => `<p>${p}</p>`).join("")
+        : defaults.email_html);
+    const htmlBody = render(htmlSource, defaults.email_html);
+
 
     const channels: string[] = [];
     const errors: string[] = [];

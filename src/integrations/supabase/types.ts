@@ -486,6 +486,45 @@ export type Database = {
           },
         ]
       }
+      notification_templates: {
+        Row: {
+          created_at: string
+          description: string | null
+          email_html: string | null
+          email_subject: string | null
+          email_text: string | null
+          key: string
+          label: string
+          sms_body: string | null
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          email_html?: string | null
+          email_subject?: string | null
+          email_text?: string | null
+          key: string
+          label: string
+          sms_body?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          email_html?: string | null
+          email_subject?: string | null
+          email_text?: string | null
+          key?: string
+          label?: string
+          sms_body?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
       notifications: {
         Row: {
           body: string | null

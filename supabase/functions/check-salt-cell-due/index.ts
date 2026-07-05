@@ -24,7 +24,7 @@ serve(async (req) => {
     // 1. Load salt pools
     const { data: clients, error: cErr } = await supabase
       .from("clients")
-      .select("id, customer, pool_type, assigned_technician_id, last_service_date")
+      .select("id, customer, pool_type, assigned_technician_id, last_service_date, salt_cell_last_cleaned")
       .ilike("pool_type", "%salt%");
     if (cErr) throw cErr;
     if (!clients?.length) {

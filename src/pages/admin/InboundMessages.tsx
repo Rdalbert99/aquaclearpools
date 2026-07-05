@@ -287,7 +287,7 @@ export default function InboundMessages() {
 
         {/* TEXT MESSAGES TAB */}
         <TabsContent value="text-messages" className="space-y-4 mt-4">
-          <div className="flex gap-2 flex-wrap">
+          <div className="flex gap-2 flex-wrap items-center">
             <Button variant="outline" size="sm" onClick={loadMessages}>
               <RefreshCw className="h-4 w-4 mr-1" /> Refresh
             </Button>
@@ -295,7 +295,18 @@ export default function InboundMessages() {
               {filter === 'unread' ? 'Show All' : 'Unread Only'}
             </Button>
             {smsUnread > 0 && (
-              <Button size="sm" onClick={markAllRead}>
+              <Button variant="outline" size="sm" onClick={selectAllVisibleSms}>
+                <CheckSquare className="h-4 w-4 mr-1" />
+                {selectedSms.size === messages.filter(m => !m.read_at).length && smsUnread > 0 ? 'Clear Selection' : 'Select All Unread'}
+              </Button>
+            )}
+            {selectedSms.size > 0 && (
+              <Button size="sm" onClick={markSelectedSmsRead}>
+                <Check className="h-4 w-4 mr-1" /> Mark Selected Read ({selectedSms.size})
+              </Button>
+            )}
+            {smsUnread > 0 && (
+              <Button variant="secondary" size="sm" onClick={markAllRead}>
                 <Check className="h-4 w-4 mr-1" /> Mark All Read
               </Button>
             )}

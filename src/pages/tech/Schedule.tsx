@@ -422,7 +422,7 @@ export default function TechSchedule() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-1 xs:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7 gap-2 xs:gap-3 sm:gap-4">
+            <div className="grid grid-cols-1 2xs:grid-cols-1 xs:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7 gap-2 2xs:gap-2 xs:gap-3 sm:gap-4">
               {(() => {
                 const today = new Date();
                 const weekDays = [];
@@ -434,7 +434,7 @@ export default function TechSchedule() {
                   const clients = scheduleData?.weeklySchedule?.[dayName] || [];
                   
                   weekDays.push(
-                    <div key={dayName + i} className={`p-2 xs:p-2 sm:p-3 rounded-lg border min-w-0 overflow-hidden ${isToday ? 'bg-primary/5 border-primary' : 'bg-card'}`}>
+                    <div key={dayName + i} className={`p-2 2xs:p-1.5 xs:p-2 sm:p-3 rounded-lg border min-w-0 overflow-hidden ${isToday ? 'bg-primary/5 border-primary' : 'bg-card'}`}>
                       <div className="mb-2 min-w-0">
                         <h4 className={`font-semibold text-[10px] xs:text-xs leading-tight ${isToday ? 'text-primary' : ''}`}>
                           {dayName}

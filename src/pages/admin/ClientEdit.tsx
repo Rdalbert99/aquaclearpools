@@ -296,6 +296,49 @@ export default function ClientEdit() {
     }
   };
 
+  const handleNotifySaltCellCleaned = async () => {
+    if (!client || !id) return;
+    if (!client.salt_cell_last_cleaned) {
+      toast({
+        title: "Set a date first",
+        description: "Please pick the salt cell cleaning date before sending a notification.",
+        variant: "destructive"
+      });
+      return;
+    }
+    if (!client.email && !client.phone) {
+      toast({
+        title: "No contact info",
+        description: "This customer has no email or phone on file.",
+        variant: "destructive"
+      });
+      return;
+    }
+    setNotifyingCustomer(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('notify-salt-cell-cleaned', {
+        body: {
+          client_id: id,
+          cleaned_date: client.salt_cell_last_cleaned
+        }
+      });
+      if (error) throw error;
+      toast({
+        title: "Customer notified",
+        description: `Sent via ${(data?.channels || []).join(' & ') || 'available channels'}.`
+      });
+    } catch (err: any) {
+      console.error('notify-salt-cell-cleaned error', err);
+      toast({
+        title: "Notification failed",
+        description: err?.message || "Could not send the notification.",
+        variant: "destructive"
+      });
+    } finally {
+      setNotifyingCustomer(false);
+    }
+  };
+
   const generatePassword = () => {
     const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*';
     let password = '';

@@ -98,6 +98,38 @@ export default function InboundMessages() {
   useEffect(() => { loadMessages(); }, [filter]);
   useEffect(() => { loadPoolNeeds(); }, [poolNeedsFilter]);
 
+  // Realtime: auto-refresh when new inbound SMS or pool needs arrive
+  useEffect(() => {
+    const channel = supabase
+      .channel('admin-inbound-messages')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'inbound_sms_messages' },
+        (payload) => {
+          loadMessages();
+          if (payload.eventType === 'INSERT') {
+            toast.info('New customer message received');
+          }
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'pool_needs_messages' },
+        (payload) => {
+          loadPoolNeeds();
+          if (payload.eventType === 'INSERT') {
+            toast.info('New pool needs report received');
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filter, poolNeedsFilter]);
+
   const markAsRead = async (id: string) => {
     const { error } = await supabase
       .from('inbound_sms_messages')

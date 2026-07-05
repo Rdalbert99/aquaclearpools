@@ -399,6 +399,8 @@ export type Database = {
           client_id: string | null
           client_name: string | null
           created_at: string
+          forward_error: string | null
+          forwarded_to_recipients: string[]
           forwarded_to_tech: boolean | null
           from_number: string
           id: string
@@ -411,6 +413,8 @@ export type Database = {
           client_id?: string | null
           client_name?: string | null
           created_at?: string
+          forward_error?: string | null
+          forwarded_to_recipients?: string[]
           forwarded_to_tech?: boolean | null
           from_number: string
           id?: string
@@ -423,6 +427,8 @@ export type Database = {
           client_id?: string | null
           client_name?: string | null
           created_at?: string
+          forward_error?: string | null
+          forwarded_to_recipients?: string[]
           forwarded_to_tech?: boolean | null
           from_number?: string
           id?: string
@@ -984,6 +990,47 @@ export type Database = {
           {
             foreignKeyName: "services_technician_id_fkey"
             columns: ["technician_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sms_forwarding_recipients: {
+        Row: {
+          created_at: string
+          id: string
+          is_enabled: boolean
+          label: string
+          phone_number: string | null
+          recipient_type: string
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_enabled?: boolean
+          label: string
+          phone_number?: string | null
+          recipient_type: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_enabled?: boolean
+          label?: string
+          phone_number?: string | null
+          recipient_type?: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sms_forwarding_recipients_user_id_fkey"
+            columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "users"
             referencedColumns: ["id"]

@@ -58,6 +58,7 @@ import MailjetTest from "./pages/admin/MailjetTest";
 import SMSTest from "./pages/admin/SMSTest";
 import InboundMessages from "./pages/admin/InboundMessages";
 import NotificationTemplates from "./pages/admin/NotificationTemplates";
+import SMSForwardingSettings from "./pages/admin/SMSForwardingSettings";
 
 const queryClient = new QueryClient();
 
@@ -351,6 +352,14 @@ const AppRoutes = () => {
           element={
             <ProtectedRoute allowedRoles={['admin']}>
               <NotificationTemplates />
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/admin/sms-forwarding" 
+          element={
+            <ProtectedRoute allowedRoles={['admin']}>
+              <SMSForwardingSettings />
             </ProtectedRoute>
           } 
         />

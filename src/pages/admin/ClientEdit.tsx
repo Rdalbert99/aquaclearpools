@@ -145,7 +145,8 @@ export default function ClientEdit() {
         phone: userData?.phone || data.contact_phone || '',
         notify_on_confirmation: data.notify_on_confirmation ?? true,
         notify_on_assignment: data.notify_on_assignment ?? true,
-        notification_method: data.notification_method || 'email'
+        notification_method: data.notification_method || 'email',
+        salt_cell_last_cleaned: (data as any).salt_cell_last_cleaned ? String((data as any).salt_cell_last_cleaned).split('T')[0] : ''
       });
 
       setMustChangePassword(userData?.must_change_password || false);

@@ -7,6 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { MessageSquare, Check, RefreshCw, Phone, User, ArrowRight, Droplets, Wrench } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
+import { Link } from 'react-router-dom';
 
 interface InboundMessage {
   id: string;
@@ -168,6 +169,9 @@ export default function InboundMessages() {
           </h1>
           <p className="text-muted-foreground text-sm">Customer SMS replies &amp; tech pool needs</p>
         </div>
+        <Button variant="outline" asChild>
+          <Link to="/admin/sms-forwarding">SMS Forwarding</Link>
+        </Button>
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>

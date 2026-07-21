@@ -531,8 +531,6 @@ export function RouteMap({ clients }: RouteMapProps) {
 
 
   const hasCoords = geocodedClients.length > 0;
-  const appleRouteUrl = buildAppleMapsRouteUrl(displayList);
-  const googleRouteUrl = buildGoogleMapsRouteUrl(displayList);
 
   return (
     <div className="space-y-3">

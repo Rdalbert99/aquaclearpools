@@ -280,7 +280,7 @@ export function RouteMap({ clients }: RouteMapProps) {
     let cancelled = false;
     const missingAddressIds = Array.from(new Set(
       clients
-        .filter(client => !addressFor(client) && clientRecordId(client))
+        .filter(client => !isCompleteRouteAddress(addressFor(client)) && clientRecordId(client))
         .map(clientRecordId)
     ));
 

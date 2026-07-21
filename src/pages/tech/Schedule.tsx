@@ -163,7 +163,8 @@ export default function TechSchedule() {
         tomorrowClients,
         weekClients: weekClients.slice(0, 10), // Limit to 10 for display
         pendingRequests: allPendingRequests,
-        weeklySchedule
+        weeklySchedule,
+        allClients: assignedClients || [],
       });
     } catch (error) {
       console.error('Error loading schedule data:', error);

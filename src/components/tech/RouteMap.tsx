@@ -234,70 +234,95 @@ export function RouteMap({ clients }: RouteMapProps) {
   }
 
 
+  const hasCoords = geocodedClients.length > 0;
+  const appleRouteUrl = buildAppleMapsRouteUrl(displayList);
+  const googleRouteUrl = buildGoogleMapsRouteUrl(displayList);
+
   return (
     <div className="space-y-3">
       {failedCount > 0 && (
         <p className="text-sm text-orange-500">
-          {failedCount} client(s) couldn't be mapped (missing or invalid address).
+          {failedCount} client(s) couldn't be pinned on the map (address wasn't recognized), but they're still in the route list below.
         </p>
       )}
 
-      <div className="rounded-lg overflow-hidden border" style={{ height: '500px' }}>
-        <MapContainer
-          center={defaultCenter}
-          zoom={12}
-          style={{ height: '100%', width: '100%' }}
-          scrollWheelZoom={true}
-        >
-          <TileLayer
-            attribution='&copy; <a href="https://openstreetmap.org/copyright">OpenStreetMap</a>'
-            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-          />
-          <FitBounds positions={positions} />
-          {geocodedClients.map((client, index) => (
-            <Marker
-              key={client.id}
-              position={[client.lat, client.lng]}
-              icon={createNumberedIcon(index + 1)}
-            >
-              <Popup>
-                <div className="space-y-2 min-w-[200px]">
-                  <div className="font-semibold text-sm">{index + 1}. {client.customer}</div>
-                  <div className="text-xs text-gray-600">{client.address}</div>
-                  {client.pool_size && (
-                    <div className="text-xs text-gray-500">
-                      {client.pool_size.toLocaleString()} gal • {client.pool_type}
-                    </div>
-                  )}
-                  <div className="flex gap-1 pt-1">
-                    {client.phone && (
-                      <a
-                        href={`tel:${client.phone}`}
-                        className="inline-flex items-center text-xs bg-gray-100 hover:bg-gray-200 rounded px-2 py-1"
-                      >
-                        📞 Call
-                      </a>
-                    )}
-                    <a
-                      href={`https://maps.apple.com/?daddr=${encodeURIComponent(client.address)}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center text-xs bg-blue-100 hover:bg-blue-200 text-blue-700 rounded px-2 py-1"
-                    >
-                      🧭 Navigate
-                    </a>
-                  </div>
-                </div>
-              </Popup>
-            </Marker>
-          ))}
-        </MapContainer>
+      {/* Full-route navigation buttons — routes from current location through every stop in order */}
+      <div className="flex flex-wrap gap-2">
+        <Button asChild className="flex-1 min-w-[160px]">
+          <a href={appleRouteUrl} target="_blank" rel="noopener noreferrer">
+            <Navigation className="h-4 w-4 mr-2" />
+            Open Route in Apple Maps
+          </a>
+        </Button>
+        <Button asChild variant="outline" className="flex-1 min-w-[160px]">
+          <a href={googleRouteUrl} target="_blank" rel="noopener noreferrer">
+            <Navigation className="h-4 w-4 mr-2" />
+            Open in Google Maps
+          </a>
+        </Button>
       </div>
+      <p className="text-xs text-muted-foreground">
+        Routes from your current location through all {displayList.length} stop{displayList.length === 1 ? '' : 's'} in the order shown. Drag stops below to reorder.
+      </p>
+
+      {hasCoords && (
+        <div className="rounded-lg overflow-hidden border" style={{ height: '500px' }}>
+          <MapContainer
+            center={defaultCenter}
+            zoom={12}
+            style={{ height: '100%', width: '100%' }}
+            scrollWheelZoom={true}
+          >
+            <TileLayer
+              attribution='&copy; <a href="https://openstreetmap.org/copyright">OpenStreetMap</a>'
+              url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+            />
+            <FitBounds positions={positions} />
+            {geocodedClients.map((client, index) => (
+              <Marker
+                key={client.id}
+                position={[client.lat, client.lng]}
+                icon={createNumberedIcon(index + 1)}
+              >
+                <Popup>
+                  <div className="space-y-2 min-w-[200px]">
+                    <div className="font-semibold text-sm">{index + 1}. {client.customer}</div>
+                    <div className="text-xs text-gray-600">{client.address}</div>
+                    {client.pool_size && (
+                      <div className="text-xs text-gray-500">
+                        {client.pool_size.toLocaleString()} gal • {client.pool_type}
+                      </div>
+                    )}
+                    <div className="flex gap-1 pt-1">
+                      {client.phone && (
+                        <a
+                          href={`tel:${client.phone}`}
+                          className="inline-flex items-center text-xs bg-gray-100 hover:bg-gray-200 rounded px-2 py-1"
+                        >
+                          📞 Call
+                        </a>
+                      )}
+                      <a
+                        href={`https://maps.apple.com/?daddr=${encodeURIComponent(client.address)}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center text-xs bg-blue-100 hover:bg-blue-200 text-blue-700 rounded px-2 py-1"
+                      >
+                        🧭 Navigate
+                      </a>
+                    </div>
+                  </div>
+                </Popup>
+              </Marker>
+            ))}
+          </MapContainer>
+        </div>
+      )}
 
       {/* Client list below map */}
       <div className="space-y-2">
         <h4 className="font-semibold text-sm">Stop Order <span className="text-muted-foreground font-normal">(drag to reorder)</span></h4>
-        {geocodedClients.map((client, index) => (
+        {displayList.map((client, index) => (
           <div
             key={client.id}
             draggable
@@ -346,3 +371,4 @@ export function RouteMap({ clients }: RouteMapProps) {
     </div>
   );
 }
+

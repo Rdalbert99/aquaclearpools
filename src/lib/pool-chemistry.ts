@@ -36,46 +36,52 @@ export function getDosageInstruction(chemId: ChemicalId, value: number | null | 
   // Normalize pool size to 10,000-gallon units for dosage math
   const factor = poolGallons / 10000;
 
+  // Round to nearest 0.1, with a sensible minimum so we never suggest "0.0"
+  const round1 = (n: number) => {
+    const r = Math.round(n * 10) / 10;
+    return r < 0.1 ? 0.1 : r;
+  };
+
   switch (chemId) {
     case 'ph': {
       if (value < range.min) {
-        // pH too low → add soda ash (sodium carbonate). ~6 oz per 10k gal raises pH ~0.2
+        // pH too low → add soda ash (powder). ~6 oz per 10k gal raises pH ~0.2 → 0.375 lbs
         const deficit = range.min - value;
         const doses = Math.ceil(deficit / 0.2);
-        const oz = (doses * 6 * factor).toFixed(1);
-        return `pH is low (${value}). Add ~${oz} oz of soda ash to raise pH.`;
+        const lbs = round1(doses * 0.375 * factor);
+        return `pH is low (${value}). Add ~${lbs} lbs of soda ash to raise pH.`;
       } else {
-        // pH too high → add muriatic acid. ~12 oz per 10k gal lowers pH ~0.2
+        // pH too high → add muriatic acid (liquid). ~12 oz per 10k gal lowers pH ~0.2 → 0.094 gal
         const excess = value - range.max;
         const doses = Math.ceil(excess / 0.2);
-        const oz = (doses * 12 * factor).toFixed(1);
-        return `pH is high (${value}). Add ~${oz} oz of muriatic acid to lower pH.`;
+        const gal = round1(doses * (12 / 128) * factor);
+        return `pH is high (${value}). Add ~${gal} gal of muriatic acid to lower pH.`;
       }
     }
 
     case 'alkalinity': {
       if (value < range.min) {
-        // TA too low → add sodium bicarbonate (baking soda). ~1.5 lbs per 10k gal raises TA ~10 ppm
+        // TA too low → sodium bicarbonate (powder). ~1.5 lbs per 10k gal raises TA ~10 ppm
         const deficit = range.min - value;
         const doses = Math.ceil(deficit / 10);
-        const lbs = (doses * 1.5 * factor).toFixed(1);
+        const lbs = round1(doses * 1.5 * factor);
         return `Alkalinity is low (${value} ppm). Add ~${lbs} lbs of sodium bicarbonate.`;
       } else {
-        // TA too high → add muriatic acid. ~26 oz per 10k gal lowers TA ~10 ppm
+        // TA too high → muriatic acid (liquid). ~26 oz per 10k gal lowers TA ~10 ppm → 0.203 gal
         const excess = value - range.max;
         const doses = Math.ceil(excess / 10);
-        const oz = (doses * 26 * factor).toFixed(1);
-        return `Alkalinity is high (${value} ppm). Add ~${oz} oz of muriatic acid.`;
+        const gal = round1(doses * (26 / 128) * factor);
+        return `Alkalinity is high (${value} ppm). Add ~${gal} gal of muriatic acid.`;
       }
     }
 
     case 'chlorine': {
       if (value < range.min) {
-        // FC too low → add cal-hypo (65%). ~2 oz per 10k gal raises FC ~1 ppm
+        // FC too low → cal-hypo powder (65%). ~2 oz per 10k gal raises FC ~1 ppm → 0.125 lbs
         const deficit = range.min - value;
         const doses = Math.ceil(deficit / 1);
-        const oz = (doses * 2 * factor).toFixed(1);
-        return `Chlorine is low (${value} ppm). Add ~${oz} oz of cal-hypo (65%).`;
+        const lbs = round1(doses * (2 / 16) * factor);
+        return `Chlorine is low (${value} ppm). Add ~${lbs} lbs of granular cal-hypo (65%).`;
       } else {
         return `Chlorine is high (${value} ppm). Allow to dissipate naturally or dilute.`;
       }
@@ -83,11 +89,11 @@ export function getDosageInstruction(chemId: ChemicalId, value: number | null | 
 
     case 'cya': {
       if (value < range.min) {
-        // CYA too low → add stabilizer (cyanuric acid). ~13 oz per 10k gal raises CYA ~10 ppm
+        // CYA too low → stabilizer (powder). ~13 oz per 10k gal raises CYA ~10 ppm → 0.813 lbs
         const deficit = range.min - value;
         const doses = Math.ceil(deficit / 10);
-        const oz = (doses * 13 * factor).toFixed(1);
-        return `CYA is low (${value} ppm). Add ~${oz} oz of stabilizer (cyanuric acid).`;
+        const lbs = round1(doses * (13 / 16) * factor);
+        return `CYA is low (${value} ppm). Add ~${lbs} lbs of stabilizer (cyanuric acid).`;
       } else {
         return `CYA is high (${value} ppm). Partially drain and refill to dilute.`;
       }

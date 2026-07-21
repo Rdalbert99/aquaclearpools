@@ -321,7 +321,7 @@ export function RouteMap({ clients }: RouteMapProps) {
     const fetchedById = new Map(fetchedClients.map(client => [client.id, client]));
     const merged = clients.map(client => {
       const id = clientRecordId(client);
-      if (!id || addressFor(client)) return client;
+      if (!id || isCompleteRouteAddress(addressFor(client))) return client;
       return fetchedById.get(id) || client;
     });
     return applyOverrides(merged.length > 0 ? merged : fetchedClients);

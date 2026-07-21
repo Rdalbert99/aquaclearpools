@@ -1,7 +1,11 @@
 import { useEffect, useState, useMemo } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
+import MarkerClusterGroup from 'react-leaflet-cluster';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
+import 'leaflet.markercluster/dist/MarkerCluster.css';
+import 'leaflet.markercluster/dist/MarkerCluster.Default.css';
+
 import { Button } from '@/components/ui/button';
 import { Navigation, Phone, GripVertical } from 'lucide-react';
 import { Link } from 'react-router-dom';
@@ -278,43 +282,63 @@ export function RouteMap({ clients }: RouteMapProps) {
               url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
             />
             <FitBounds positions={positions} />
-            {geocodedClients.map((client, index) => (
-              <Marker
-                key={client.id}
-                position={[client.lat, client.lng]}
-                icon={createNumberedIcon(index + 1)}
-              >
-                <Popup>
-                  <div className="space-y-2 min-w-[200px]">
-                    <div className="font-semibold text-sm">{index + 1}. {client.customer}</div>
-                    <div className="text-xs text-gray-600">{client.address}</div>
-                    {client.pool_size && (
-                      <div className="text-xs text-gray-500">
-                        {client.pool_size.toLocaleString()} gal • {client.pool_type}
-                      </div>
-                    )}
-                    <div className="flex gap-1 pt-1">
-                      {client.phone && (
-                        <a
-                          href={`tel:${client.phone}`}
+            <MarkerClusterGroup
+              chunkedLoading
+              spiderfyOnMaxZoom
+              showCoverageOnHover={false}
+              spiderfyDistanceMultiplier={1.6}
+              maxClusterRadius={45}
+            >
+              {geocodedClients.map((client, index) => (
+                <Marker
+                  key={client.id}
+                  position={[client.lat, client.lng]}
+                  icon={createNumberedIcon(index + 1)}
+                >
+                  <Popup>
+                    <div className="space-y-2 min-w-[200px]">
+                      <div className="font-semibold text-sm">{index + 1}. {client.customer}</div>
+                      <div className="text-xs text-gray-600">{client.address}</div>
+                      {client.pool_size && (
+                        <div className="text-xs text-gray-500">
+                          {client.pool_size.toLocaleString()} gal • {client.pool_type}
+                        </div>
+                      )}
+                      {client.last_service_date && (
+                        <div className="text-xs text-gray-500">
+                          Last service: {new Date(client.last_service_date).toLocaleDateString()}
+                        </div>
+                      )}
+                      <div className="flex flex-wrap gap-1 pt-1">
+                        <Link
+                          to={`/admin/clients/${client.id}`}
                           className="inline-flex items-center text-xs bg-gray-100 hover:bg-gray-200 rounded px-2 py-1"
                         >
-                          📞 Call
+                          👤 Details
+                        </Link>
+                        {client.phone && (
+                          <a
+                            href={`tel:${client.phone}`}
+                            className="inline-flex items-center text-xs bg-gray-100 hover:bg-gray-200 rounded px-2 py-1"
+                          >
+                            📞 Call
+                          </a>
+                        )}
+                        <a
+                          href={`https://maps.apple.com/?daddr=${encodeURIComponent(client.address)}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center text-xs bg-blue-100 hover:bg-blue-200 text-blue-700 rounded px-2 py-1"
+                        >
+                          🧭 Navigate
                         </a>
-                      )}
-                      <a
-                        href={`https://maps.apple.com/?daddr=${encodeURIComponent(client.address)}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex items-center text-xs bg-blue-100 hover:bg-blue-200 text-blue-700 rounded px-2 py-1"
-                      >
-                        🧭 Navigate
-                      </a>
+                      </div>
                     </div>
-                  </div>
-                </Popup>
-              </Marker>
-            ))}
+                  </Popup>
+                </Marker>
+              ))}
+            </MarkerClusterGroup>
+
           </MapContainer>
         </div>
       )}

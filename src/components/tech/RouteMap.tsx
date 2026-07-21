@@ -339,7 +339,7 @@ export function RouteMap({ clients }: RouteMapProps) {
     let cancelled = false;
     const missingUserIds = Array.from(new Set(
       sourceClients
-        .filter(client => !addressFor(client) && cleanText(client?.user_id))
+        .filter(client => !isCompleteRouteAddress(addressFor(client)) && cleanText(client?.user_id))
         .map(client => client.user_id as string)
     ));
 
@@ -411,7 +411,7 @@ export function RouteMap({ clients }: RouteMapProps) {
 
       for (const client of sourceClients) {
         const routeClient = routeClientFor(client, linkedUsers);
-        if (!routeClient) {
+        if (!routeClient || !isCompleteRouteAddress(routeClient.address)) {
           failed++;
           continue;
         }

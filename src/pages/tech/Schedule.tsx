@@ -29,6 +29,7 @@ interface ScheduleData {
   weekClients: any[];
   pendingRequests: any[];
   weeklySchedule: { [key: string]: any[] };
+  allClients: any[];
 }
 
 const daysOfWeek = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
@@ -39,6 +40,7 @@ export default function TechSchedule() {
   const [scheduleData, setScheduleData] = useState<ScheduleData | null>(null);
   const [loading, setLoading] = useState(true);
   const [selectedDay, setSelectedDay] = useState('today');
+  const [mapScope, setMapScope] = useState<string>('today');
 
   useEffect(() => {
     loadScheduleData();
@@ -162,7 +164,8 @@ export default function TechSchedule() {
         tomorrowClients,
         weekClients: weekClients.slice(0, 10), // Limit to 10 for display
         pendingRequests: allPendingRequests,
-        weeklySchedule
+        weeklySchedule,
+        allClients: assignedClients || [],
       });
     } catch (error) {
       console.error('Error loading schedule data:', error);
@@ -622,29 +625,61 @@ export default function TechSchedule() {
       {selectedDay === 'routemap' && (
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center space-x-2">
-              <Navigation className="h-5 w-5" />
-              <span>Today's Route Map</span>
-            </CardTitle>
-            <CardDescription>
-              View all of today's clients on a map to plan your route ({new Date().toLocaleDateString()})
-            </CardDescription>
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+              <div>
+                <CardTitle className="flex items-center space-x-2">
+                  <Navigation className="h-5 w-5" />
+                  <span>Route Map</span>
+                </CardTitle>
+                <CardDescription>
+                  Plan the most efficient route for your visits
+                </CardDescription>
+              </div>
+              <Select value={mapScope} onValueChange={setMapScope}>
+                <SelectTrigger className="w-full sm:w-56">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="today">Today's clients</SelectItem>
+                  <SelectItem value="tomorrow">Tomorrow's clients</SelectItem>
+                  {daysOfWeek.map(d => (
+                    <SelectItem key={d} value={`day:${d}`}>{d} (this week)</SelectItem>
+                  ))}
+                  <SelectItem value="all">All assigned clients</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </CardHeader>
           <CardContent>
-            {scheduleData?.todayClients.length === 0 ? (
-              <div className="text-center py-8">
-                <Navigation className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-                <p className="text-muted-foreground">No clients scheduled for today</p>
-              </div>
-            ) : (
-              <Suspense fallback={
-                <div className="flex items-center justify-center py-12">
-                  <LoadingSpinner />
-                </div>
-              }>
-                <RouteMap clients={scheduleData?.todayClients || []} />
-              </Suspense>
-            )}
+            {(() => {
+              let mapClients: any[] = [];
+              if (mapScope === 'today') mapClients = scheduleData?.todayClients || [];
+              else if (mapScope === 'tomorrow') mapClients = scheduleData?.tomorrowClients || [];
+              else if (mapScope === 'all') mapClients = scheduleData?.allClients || [];
+              else if (mapScope.startsWith('day:')) {
+                const day = mapScope.slice(4);
+                mapClients = scheduleData?.weeklySchedule?.[day] || [];
+              }
+
+              if (mapClients.length === 0) {
+                return (
+                  <div className="text-center py-8">
+                    <Navigation className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                    <p className="text-muted-foreground">No clients to map for this selection</p>
+                  </div>
+                );
+              }
+
+              return (
+                <Suspense fallback={
+                  <div className="flex items-center justify-center py-12">
+                    <LoadingSpinner />
+                  </div>
+                }>
+                  <RouteMap clients={mapClients} />
+                </Suspense>
+              );
+            })()}
           </CardContent>
         </Card>
       )}

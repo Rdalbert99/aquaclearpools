@@ -40,6 +40,7 @@ export default function TechSchedule() {
   const [scheduleData, setScheduleData] = useState<ScheduleData | null>(null);
   const [loading, setLoading] = useState(true);
   const [selectedDay, setSelectedDay] = useState('today');
+  const [mapScope, setMapScope] = useState<string>('today');
 
   useEffect(() => {
     loadScheduleData();

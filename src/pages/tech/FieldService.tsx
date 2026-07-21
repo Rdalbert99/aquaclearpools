@@ -747,7 +747,14 @@ export default function FieldService() {
             >
               Reset
             </Button>
-            <Button onClick={completeService} disabled={saving || !reviewMessage.trim()}>
+            <Button
+              variant="secondary"
+              onClick={() => completeService(false)}
+              disabled={saving}
+            >
+              Complete without notifying
+            </Button>
+            <Button onClick={() => completeService(true)} disabled={saving || !reviewMessage.trim()}>
               {saving ? <LoadingSpinner /> : (<><Send className="h-4 w-4 mr-2" /> Send & Complete</>)}
             </Button>
           </DialogFooter>

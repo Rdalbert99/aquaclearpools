@@ -9,6 +9,8 @@ import { cn } from '@/lib/utils';
 
 interface AddressAutocompleteProps {
   onAddressSelect: (components: AddressComponents) => void;
+  value?: string;
+  onInputChange?: (value: string) => void;
   placeholder?: string;
   required?: boolean;
   className?: string;
@@ -16,8 +18,8 @@ interface AddressAutocompleteProps {
 }
 
 export const AddressAutocomplete = React.forwardRef<HTMLInputElement, AddressAutocompleteProps>(
-  ({ onAddressSelect, placeholder = "Start typing an address...", required, className, label = "Address", ...props }, ref) => {
-    const [input, setInput] = useState('');
+  ({ onAddressSelect, value, onInputChange, placeholder = "Start typing an address...", required, className, label = "Address", ...props }, ref) => {
+    const [input, setInput] = useState(value || '');
     const [suggestions, setSuggestions] = useState<AddressSuggestion[]>([]);
     const [isLoading, setIsLoading] = useState(false);
     const [isOpen, setIsOpen] = useState(false);
@@ -25,6 +27,7 @@ export const AddressAutocomplete = React.forwardRef<HTMLInputElement, AddressAut
 
     const handleInputChange = useCallback(async (value: string) => {
       setInput(value);
+      onInputChange?.(value);
       
       // Clear previous timeout
       if (timeoutRef.current) {
@@ -51,14 +54,19 @@ export const AddressAutocomplete = React.forwardRef<HTMLInputElement, AddressAut
           setIsLoading(false);
         }
       }, 300);
-    }, []);
+    }, [onInputChange]);
 
     const handleSuggestionSelect = (suggestion: AddressSuggestion) => {
       setInput(suggestion.formatted_address);
+      onInputChange?.(suggestion.formatted_address);
       setIsOpen(false);
       setSuggestions([]);
       onAddressSelect(suggestion.components);
     };
+
+    useEffect(() => {
+      setInput(value || '');
+    }, [value]);
 
     useEffect(() => {
       return () => {

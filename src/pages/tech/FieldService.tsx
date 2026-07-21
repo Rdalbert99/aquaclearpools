@@ -267,7 +267,7 @@ export default function FieldService() {
     }
   }
 
-  async function completeService() {
+  async function completeService(notify: boolean = true) {
     if (!client) return;
     setSaving(true);
     try {

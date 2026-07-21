@@ -355,8 +355,10 @@ export default function FieldService() {
       const phone = freshClient?.contact_phone || client.contact_phone;
       const email = freshClient?.contact_email || client.contact_email;
 
-      // Send completion SMS via Telnyx
-      if (phone) {
+      // Send completion SMS via Telnyx (only when notify=true)
+      if (!notify) {
+        toast({ title: 'Service completed', description: 'Service saved. Customer was not notified.' });
+      } else if (phone) {
         try {
           const { error } = await supabase.functions.invoke('send-sms-via-telnyx', {
             body: { to: phone, message: message }

@@ -112,6 +112,29 @@ export function RouteMap({ clients }: RouteMapProps) {
     setDragOverIndex(null);
   };
 
+  // Build a fallback list (no coords) so we always have something to show
+  const fallbackList = useMemo<ClientWithCoords[]>(
+    () =>
+      clients
+        .map((client) => {
+          const address = client.contact_address || client.client_user?.address;
+          if (!address) return null;
+          return {
+            id: client.id,
+            customer: client.customer,
+            address,
+            phone: client.contact_phone || client.client_user?.phone,
+            lat: 0,
+            lng: 0,
+            pool_size: client.pool_size,
+            pool_type: client.pool_type,
+            last_service_date: client.last_service_date,
+          } as ClientWithCoords;
+        })
+        .filter(Boolean) as ClientWithCoords[],
+    [clients]
+  );
+
   useEffect(() => {
     let cancelled = false;
 
@@ -128,7 +151,8 @@ export function RouteMap({ clients }: RouteMapProps) {
         }
 
         const coords = await geocodeAddress(address);
-        if (coords && !cancelled) {
+        if (cancelled) return;
+        if (coords) {
           results.push({
             id: client.id,
             customer: client.customer,
@@ -170,7 +194,25 @@ export function RouteMap({ clients }: RouteMapProps) {
        positions.reduce((s, p) => s + p[1], 0) / positions.length]
     : [39.8283, -98.5795];
 
-  if (loading) {
+  // Which list to show in the sidebar: geocoded (with map) or fallback (list only)
+  const displayList = geocodedClients.length > 0 ? geocodedClients : fallbackList;
+
+  // Build a multi-stop route URL for Apple Maps (falls back to Google Maps).
+  // Apple Maps supports daddr chained with "+to:" between stops, and saddr=Current+Location.
+  const buildAppleMapsRouteUrl = (stops: ClientWithCoords[]) => {
+    if (stops.length === 0) return '#';
+    const daddr = stops.map(s => encodeURIComponent(s.address)).join('+to:');
+    return `https://maps.apple.com/?saddr=Current+Location&daddr=${daddr}`;
+  };
+  const buildGoogleMapsRouteUrl = (stops: ClientWithCoords[]) => {
+    if (stops.length === 0) return '#';
+    const destination = encodeURIComponent(stops[stops.length - 1].address);
+    const waypoints = stops.slice(0, -1).map(s => encodeURIComponent(s.address)).join('|');
+    const wp = waypoints ? `&waypoints=${waypoints}` : '';
+    return `https://www.google.com/maps/dir/?api=1&travelmode=driving&destination=${destination}${wp}`;
+  };
+
+  if (loading && geocodedClients.length === 0 && fallbackList.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-12 space-y-3">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
@@ -181,7 +223,7 @@ export function RouteMap({ clients }: RouteMapProps) {
     );
   }
 
-  if (geocodedClients.length === 0) {
+  if (displayList.length === 0) {
     return (
       <div className="text-center py-12">
         <Navigation className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
@@ -191,70 +233,96 @@ export function RouteMap({ clients }: RouteMapProps) {
     );
   }
 
+
+  const hasCoords = geocodedClients.length > 0;
+  const appleRouteUrl = buildAppleMapsRouteUrl(displayList);
+  const googleRouteUrl = buildGoogleMapsRouteUrl(displayList);
+
   return (
     <div className="space-y-3">
       {failedCount > 0 && (
         <p className="text-sm text-orange-500">
-          {failedCount} client(s) couldn't be mapped (missing or invalid address).
+          {failedCount} client(s) couldn't be pinned on the map (address wasn't recognized), but they're still in the route list below.
         </p>
       )}
 
-      <div className="rounded-lg overflow-hidden border" style={{ height: '500px' }}>
-        <MapContainer
-          center={defaultCenter}
-          zoom={12}
-          style={{ height: '100%', width: '100%' }}
-          scrollWheelZoom={true}
-        >
-          <TileLayer
-            attribution='&copy; <a href="https://openstreetmap.org/copyright">OpenStreetMap</a>'
-            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-          />
-          <FitBounds positions={positions} />
-          {geocodedClients.map((client, index) => (
-            <Marker
-              key={client.id}
-              position={[client.lat, client.lng]}
-              icon={createNumberedIcon(index + 1)}
-            >
-              <Popup>
-                <div className="space-y-2 min-w-[200px]">
-                  <div className="font-semibold text-sm">{index + 1}. {client.customer}</div>
-                  <div className="text-xs text-gray-600">{client.address}</div>
-                  {client.pool_size && (
-                    <div className="text-xs text-gray-500">
-                      {client.pool_size.toLocaleString()} gal • {client.pool_type}
-                    </div>
-                  )}
-                  <div className="flex gap-1 pt-1">
-                    {client.phone && (
-                      <a
-                        href={`tel:${client.phone}`}
-                        className="inline-flex items-center text-xs bg-gray-100 hover:bg-gray-200 rounded px-2 py-1"
-                      >
-                        📞 Call
-                      </a>
-                    )}
-                    <a
-                      href={`https://maps.apple.com/?daddr=${encodeURIComponent(client.address)}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center text-xs bg-blue-100 hover:bg-blue-200 text-blue-700 rounded px-2 py-1"
-                    >
-                      🧭 Navigate
-                    </a>
-                  </div>
-                </div>
-              </Popup>
-            </Marker>
-          ))}
-        </MapContainer>
+      {/* Full-route navigation buttons — routes from current location through every stop in order */}
+      <div className="flex flex-wrap gap-2">
+        <Button asChild className="flex-1 min-w-[160px]">
+          <a href={appleRouteUrl} target="_blank" rel="noopener noreferrer">
+            <Navigation className="h-4 w-4 mr-2" />
+            Open Route in Apple Maps
+          </a>
+        </Button>
+        <Button asChild variant="outline" className="flex-1 min-w-[160px]">
+          <a href={googleRouteUrl} target="_blank" rel="noopener noreferrer">
+            <Navigation className="h-4 w-4 mr-2" />
+            Open in Google Maps
+          </a>
+        </Button>
       </div>
+      <p className="text-xs text-muted-foreground">
+        Routes from your current location through all {displayList.length} stop{displayList.length === 1 ? '' : 's'} in the order shown. Drag stops below to reorder.
+      </p>
+
+      {hasCoords && (
+        <div className="rounded-lg overflow-hidden border" style={{ height: '500px' }}>
+          <MapContainer
+            center={defaultCenter}
+            zoom={12}
+            style={{ height: '100%', width: '100%' }}
+            scrollWheelZoom={true}
+          >
+            <TileLayer
+              attribution='&copy; <a href="https://openstreetmap.org/copyright">OpenStreetMap</a>'
+              url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+            />
+            <FitBounds positions={positions} />
+            {geocodedClients.map((client, index) => (
+              <Marker
+                key={client.id}
+                position={[client.lat, client.lng]}
+                icon={createNumberedIcon(index + 1)}
+              >
+                <Popup>
+                  <div className="space-y-2 min-w-[200px]">
+                    <div className="font-semibold text-sm">{index + 1}. {client.customer}</div>
+                    <div className="text-xs text-gray-600">{client.address}</div>
+                    {client.pool_size && (
+                      <div className="text-xs text-gray-500">
+                        {client.pool_size.toLocaleString()} gal • {client.pool_type}
+                      </div>
+                    )}
+                    <div className="flex gap-1 pt-1">
+                      {client.phone && (
+                        <a
+                          href={`tel:${client.phone}`}
+                          className="inline-flex items-center text-xs bg-gray-100 hover:bg-gray-200 rounded px-2 py-1"
+                        >
+                          📞 Call
+                        </a>
+                      )}
+                      <a
+                        href={`https://maps.apple.com/?daddr=${encodeURIComponent(client.address)}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center text-xs bg-blue-100 hover:bg-blue-200 text-blue-700 rounded px-2 py-1"
+                      >
+                        🧭 Navigate
+                      </a>
+                    </div>
+                  </div>
+                </Popup>
+              </Marker>
+            ))}
+          </MapContainer>
+        </div>
+      )}
 
       {/* Client list below map */}
       <div className="space-y-2">
         <h4 className="font-semibold text-sm">Stop Order <span className="text-muted-foreground font-normal">(drag to reorder)</span></h4>
-        {geocodedClients.map((client, index) => (
+        {displayList.map((client, index) => (
           <div
             key={client.id}
             draggable
@@ -303,3 +371,4 @@ export function RouteMap({ clients }: RouteMapProps) {
     </div>
   );
 }
+

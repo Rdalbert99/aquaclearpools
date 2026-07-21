@@ -410,24 +410,26 @@ export function RouteMap({ clients }: RouteMapProps) {
       setLoading(true);
       const results: ClientWithCoords[] = [];
       let failed = 0;
+      const nextStatuses: Record<string, GeoStatus> = {};
 
       for (const client of sourceClients) {
         const routeClient = routeClientFor(client, linkedUsers);
+        const id = routeClient?.id || client.id;
         if (!routeClient || !isCompleteRouteAddress(routeClient.address)) {
+          nextStatuses[id] = 'incomplete';
           failed++;
           continue;
         }
 
+        nextStatuses[id] = 'pending';
         const coords = await geocodeAddress(routeClient.address);
         if (cancelled) return;
         if (coords) {
-          results.push({
-            ...routeClient,
-            lat: coords.lat,
-            lng: coords.lng,
-          });
+          results.push({ ...routeClient, lat: coords.lat, lng: coords.lng });
+          nextStatuses[id] = 'ok';
         } else {
           failed++;
+          nextStatuses[id] = 'failed';
         }
 
         // Rate limit: Nominatim asks for max 1 req/sec
@@ -437,6 +439,7 @@ export function RouteMap({ clients }: RouteMapProps) {
       if (!cancelled) {
         setGeocodedClients(results);
         setFailedCount(failed);
+        setStatuses(nextStatuses);
         setLoading(false);
       }
     }
@@ -445,7 +448,39 @@ export function RouteMap({ clients }: RouteMapProps) {
     return () => { cancelled = true; };
   }, [sourceClients, linkedUsers]);
 
-  const positions = useMemo<[number, number][]>(
+  const retryGeocode = async (clientId: string) => {
+    const source = sourceClients.find(c => (clientRecordId(c) || c.id) === clientId);
+    if (!source) return;
+    const routeClient = routeClientFor(source, linkedUsers);
+    if (!routeClient) {
+      setStatuses(prev => ({ ...prev, [clientId]: 'incomplete' }));
+      return;
+    }
+    if (!isCompleteRouteAddress(routeClient.address)) {
+      setStatuses(prev => ({ ...prev, [clientId]: 'incomplete' }));
+      return;
+    }
+    setStatuses(prev => ({ ...prev, [clientId]: 'retrying' }));
+    const coords = await geocodeAddress(routeClient.address);
+    if (coords) {
+      setGeocodedClients(prev => {
+        const others = prev.filter(c => c.id !== clientId);
+        return [...others, { ...routeClient, lat: coords.lat, lng: coords.lng }];
+      });
+      setStatuses(prev => ({ ...prev, [clientId]: 'ok' }));
+      setFailedCount(prev => Math.max(0, prev - 1));
+    } else {
+      setStatuses(prev => ({ ...prev, [clientId]: 'failed' }));
+    }
+  };
+
+  const StatusBadge = ({ status }: { status?: GeoStatus }) => {
+    if (status === 'ok') return <span className="inline-flex items-center gap-1 text-xs text-green-600"><CheckCircle2 className="h-3 w-3" />Mapped</span>;
+    if (status === 'retrying' || status === 'pending') return <span className="inline-flex items-center gap-1 text-xs text-muted-foreground"><Loader2 className="h-3 w-3 animate-spin" />Locating</span>;
+    if (status === 'incomplete') return <span className="inline-flex items-center gap-1 text-xs text-orange-600"><AlertCircle className="h-3 w-3" />Address incomplete</span>;
+    if (status === 'failed') return <span className="inline-flex items-center gap-1 text-xs text-red-600"><AlertCircle className="h-3 w-3" />Not found</span>;
+    return null;
+  };
     () => geocodedClients.map(c => [c.lat, c.lng]),
     [geocodedClients]
   );

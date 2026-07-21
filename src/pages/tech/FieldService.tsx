@@ -267,7 +267,7 @@ export default function FieldService() {
     }
   }
 
-  async function completeService() {
+  async function completeService(notify: boolean = true) {
     if (!client) return;
     setSaving(true);
     try {
@@ -355,8 +355,10 @@ export default function FieldService() {
       const phone = freshClient?.contact_phone || client.contact_phone;
       const email = freshClient?.contact_email || client.contact_email;
 
-      // Send completion SMS via Telnyx
-      if (phone) {
+      // Send completion SMS via Telnyx (only when notify=true)
+      if (!notify) {
+        toast({ title: 'Service completed', description: 'Service saved. Customer was not notified.' });
+      } else if (phone) {
         try {
           const { error } = await supabase.functions.invoke('send-sms-via-telnyx', {
             body: { to: phone, message: message }
@@ -745,7 +747,14 @@ export default function FieldService() {
             >
               Reset
             </Button>
-            <Button onClick={completeService} disabled={saving || !reviewMessage.trim()}>
+            <Button
+              variant="secondary"
+              onClick={() => completeService(false)}
+              disabled={saving}
+            >
+              Complete without notifying
+            </Button>
+            <Button onClick={() => completeService(true)} disabled={saving || !reviewMessage.trim()}>
               {saving ? <LoadingSpinner /> : (<><Send className="h-4 w-4 mr-2" /> Send & Complete</>)}
             </Button>
           </DialogFooter>

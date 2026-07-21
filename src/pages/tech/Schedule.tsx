@@ -29,6 +29,7 @@ interface ScheduleData {
   weekClients: any[];
   pendingRequests: any[];
   weeklySchedule: { [key: string]: any[] };
+  allClients: any[];
 }
 
 const daysOfWeek = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];

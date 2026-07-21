@@ -64,7 +64,7 @@ export default function TechSchedule() {
         .from('clients')
         .select(`
           *,
-          client_user:users!clients_user_id_fkey(name, phone, email, address)
+          client_user:users!clients_user_id_fkey(name, phone, email, address, street_address, city, state, zip_code)
         `)
         .eq('assigned_technician_id', user.id);
 

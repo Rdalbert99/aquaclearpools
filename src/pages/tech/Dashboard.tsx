@@ -99,7 +99,10 @@ export default function TechDashboard() {
       // Load clients needing service (from admin view, but filtered for this tech)
       const { data: clients, error: clientsError } = await supabase
         .from('clients')
-        .select('*');
+        .select(`
+          *,
+          client_user:users!clients_user_id_fkey(name, phone, email, address, street_address, city, state, zip_code)
+        `);
 
       if (clientsError) {
         console.error('Clients error:', clientsError);

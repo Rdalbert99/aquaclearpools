@@ -9,6 +9,7 @@ import 'leaflet.markercluster/dist/MarkerCluster.Default.css';
 import { Button } from '@/components/ui/button';
 import { Navigation, Phone, GripVertical } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { supabase } from '@/integrations/supabase/client';
 
 // Fix Leaflet default marker icon issue
 delete (L.Icon.Default.prototype as any)._getIconUrl;
@@ -54,6 +55,80 @@ interface ClientWithCoords {
   last_service_date?: string;
 }
 
+function cleanText(value: unknown): string {
+  return typeof value === 'string' ? value.trim() : '';
+}
+
+function firstText(...values: unknown[]): string {
+  for (const value of values) {
+    const text = cleanText(value);
+    if (text) return text;
+  }
+  return '';
+}
+
+function singleRelation(value: unknown): any {
+  return Array.isArray(value) ? value[0] : value;
+}
+
+function fullAddressFromParts(source: any): string {
+  if (!source) return '';
+  const street = firstText(source.street_address, source.address_line1, source.street, source.line1);
+  const city = firstText(source.city);
+  const state = firstText(source.state);
+  const zip = firstText(source.zip_code, source.zip, source.postal_code);
+  const stateZip = [state, zip].filter(Boolean).join(' ');
+  const cityStateZip = [city, stateZip].filter(Boolean).join(', ');
+  return [street, cityStateZip].filter(Boolean).join(', ');
+}
+
+function relatedUserFor(client: any, linkedUsers: Record<string, any> = {}): any {
+  return singleRelation(client?.client_user) || singleRelation(client?.users) || singleRelation(client?.user) || linkedUsers[client?.user_id];
+}
+
+function addressFor(client: any, linkedUsers: Record<string, any> = {}): string {
+  const relatedUser = relatedUserFor(client, linkedUsers);
+  const nestedClient = singleRelation(client?.clients);
+  return firstText(
+    client?.contact_address,
+    client?.service_address,
+    client?.address,
+    fullAddressFromParts(client),
+    nestedClient?.contact_address,
+    fullAddressFromParts(nestedClient),
+    relatedUser?.address,
+    fullAddressFromParts(relatedUser)
+  );
+}
+
+function phoneFor(client: any, linkedUsers: Record<string, any> = {}): string | undefined {
+  const relatedUser = relatedUserFor(client, linkedUsers);
+  const nestedClient = singleRelation(client?.clients);
+  return firstText(client?.contact_phone, client?.phone, nestedClient?.contact_phone, relatedUser?.phone) || undefined;
+}
+
+function customerFor(client: any): string {
+  const nestedClient = singleRelation(client?.clients);
+  return firstText(client?.customer, client?.contact_name, nestedClient?.customer, 'Customer');
+}
+
+function routeClientFor(client: any, linkedUsers: Record<string, any> = {}): ClientWithCoords | null {
+  const address = addressFor(client, linkedUsers);
+  if (!address) return null;
+  const nestedClient = singleRelation(client?.clients);
+  return {
+    id: client.id,
+    customer: customerFor(client),
+    address,
+    phone: phoneFor(client, linkedUsers),
+    lat: 0,
+    lng: 0,
+    pool_size: client.pool_size ?? nestedClient?.pool_size,
+    pool_type: client.pool_type ?? nestedClient?.pool_type,
+    last_service_date: client.last_service_date ?? nestedClient?.last_service_date,
+  };
+}
+
 // Geocode an address using Nominatim (free, no API key)
 async function geocodeAddress(address: string): Promise<{ lat: number; lng: number } | null> {
   try {
@@ -92,6 +167,41 @@ export function RouteMap({ clients }: RouteMapProps) {
   const [failedCount, setFailedCount] = useState(0);
   const [dragIndex, setDragIndex] = useState<number | null>(null);
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
+  const [linkedUsers, setLinkedUsers] = useState<Record<string, any>>({});
+
+  useEffect(() => {
+    let cancelled = false;
+    const missingUserIds = Array.from(new Set(
+      clients
+        .filter(client => !addressFor(client) && cleanText(client?.user_id))
+        .map(client => client.user_id as string)
+    ));
+
+    if (missingUserIds.length === 0) {
+      setLinkedUsers({});
+      return;
+    }
+
+    async function loadLinkedUserAddresses() {
+      const { data, error } = await supabase
+        .from('users')
+        .select('id, name, phone, address, street_address, city, state, zip_code')
+        .in('id', missingUserIds);
+
+      if (cancelled) return;
+      if (error || !data) {
+        setLinkedUsers({});
+        return;
+      }
+
+      setLinkedUsers(
+        Object.fromEntries(data.map(user => [user.id, user]))
+      );
+    }
+
+    loadLinkedUserAddresses();
+    return () => { cancelled = true; };
+  }, [clients]);
 
   const handleDragStart = (index: number) => {
     setDragIndex(index);
@@ -120,23 +230,9 @@ export function RouteMap({ clients }: RouteMapProps) {
   const fallbackList = useMemo<ClientWithCoords[]>(
     () =>
       clients
-        .map((client) => {
-          const address = client.contact_address || client.client_user?.address;
-          if (!address) return null;
-          return {
-            id: client.id,
-            customer: client.customer,
-            address,
-            phone: client.contact_phone || client.client_user?.phone,
-            lat: 0,
-            lng: 0,
-            pool_size: client.pool_size,
-            pool_type: client.pool_type,
-            last_service_date: client.last_service_date,
-          } as ClientWithCoords;
-        })
+        .map((client) => routeClientFor(client, linkedUsers))
         .filter(Boolean) as ClientWithCoords[],
-    [clients]
+    [clients, linkedUsers]
   );
 
   useEffect(() => {
@@ -148,25 +244,19 @@ export function RouteMap({ clients }: RouteMapProps) {
       let failed = 0;
 
       for (const client of clients) {
-        const address = client.contact_address || client.client_user?.address;
-        if (!address) {
+        const routeClient = routeClientFor(client, linkedUsers);
+        if (!routeClient) {
           failed++;
           continue;
         }
 
-        const coords = await geocodeAddress(address);
+        const coords = await geocodeAddress(routeClient.address);
         if (cancelled) return;
         if (coords) {
           results.push({
-            id: client.id,
-            customer: client.customer,
-            address,
-            phone: client.contact_phone || client.client_user?.phone,
+            ...routeClient,
             lat: coords.lat,
             lng: coords.lng,
-            pool_size: client.pool_size,
-            pool_type: client.pool_type,
-            last_service_date: client.last_service_date,
           });
         } else {
           failed++;
@@ -185,7 +275,7 @@ export function RouteMap({ clients }: RouteMapProps) {
 
     geocodeAll();
     return () => { cancelled = true; };
-  }, [clients]);
+  }, [clients, linkedUsers]);
 
   const positions = useMemo<[number, number][]>(
     () => geocodedClients.map(c => [c.lat, c.lng]),

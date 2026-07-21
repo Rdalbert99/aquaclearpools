@@ -143,6 +143,11 @@ function addressCompletenessScore(address: string): number {
   return score;
 }
 
+function isCompleteRouteAddress(address: string): boolean {
+  const text = normalizeAddressText(address);
+  return /,\s*[^,]+,\s*[A-Z]{2}\s+\d{5}(?:-\d{4})?\b/i.test(text);
+}
+
 function bestAddress(...values: unknown[]): string {
   return values
     .map(normalizeAddressText)
@@ -451,7 +456,34 @@ export function RouteMap({ clients }: RouteMapProps) {
 
   // Which list to show in the sidebar: geocoded (with map) or fallback (list only)
   const displayList = geocodedClients.length > 0 ? geocodedClients : fallbackList;
-  const missingAddressClients = sourceClients.filter(client => !addressFor(client, linkedUsers));
+  const missingAddressClients = sourceClients.filter(client => !isCompleteRouteAddress(addressFor(client, linkedUsers)));
+  const routeReadyList = displayList.filter(client => isCompleteRouteAddress(client.address));
+
+  const renderAddressReview = () => (
+    <div className="space-y-3 rounded-lg border p-3">
+      <div>
+        <h4 className="font-semibold text-sm">Address check</h4>
+        <p className="text-xs text-muted-foreground">Select or enter the full street, city, state, and ZIP before opening the route.</p>
+      </div>
+      {missingAddressClients.map((client) => {
+        const id = clientRecordId(client);
+        if (!id) return null;
+        const currentAddress = addressOverrides[id] || addressFor(client, linkedUsers);
+        return (
+          <div key={id} className="space-y-2">
+            <p className="font-medium text-sm">{customerFor(client)}</p>
+            <AddressAutocomplete
+              label="Full service address"
+              value={currentAddress}
+              placeholder="Street, city, state, ZIP"
+              onInputChange={(value) => handleAddressInput(id, value)}
+              onAddressSelect={(components) => handleAddressSelect(id, components)}
+            />
+          </div>
+        );
+      })}
+    </div>
+  );
 
   // Build a multi-stop route URL for Apple Maps (falls back to Google Maps).
   // Apple Maps supports daddr chained with "+to:" between stops, and saddr=Current+Location.
@@ -492,30 +524,7 @@ export function RouteMap({ clients }: RouteMapProps) {
           </p>
         </div>
 
-        {sourceClients.length > 0 && (
-          <div className="space-y-3">
-            {sourceClients.map((client) => {
-              const id = clientRecordId(client);
-              if (!id) return null;
-              const currentAddress = addressOverrides[id] || addressFor(client, linkedUsers);
-              return (
-                <div key={id} className="border rounded-lg p-3 space-y-2">
-                  <div>
-                    <p className="font-medium text-sm">{customerFor(client)}</p>
-                    {currentAddress && <p className="text-xs text-muted-foreground">{normalizeAddressText(currentAddress)}</p>}
-                  </div>
-                  <AddressAutocomplete
-                    label="Full service address"
-                    value={currentAddress}
-                    placeholder="Street, city, state, ZIP"
-                    onInputChange={(value) => handleAddressInput(id, value)}
-                    onAddressSelect={(components) => handleAddressSelect(id, components)}
-                  />
-                </div>
-              );
-            })}
-          </div>
-        )}
+        {missingAddressClients.length > 0 && renderAddressReview()}
       </div>
     );
   }
@@ -533,48 +542,25 @@ export function RouteMap({ clients }: RouteMapProps) {
         </p>
       )}
 
-      {missingAddressClients.length > 0 && (
-        <div className="space-y-3 rounded-lg border p-3">
-          <div>
-            <h4 className="font-semibold text-sm">Address check</h4>
-            <p className="text-xs text-muted-foreground">Select a full street, city, state, and ZIP before opening the route.</p>
-          </div>
-          {missingAddressClients.map((client) => {
-            const id = clientRecordId(client);
-            if (!id) return null;
-            return (
-              <div key={id} className="space-y-2">
-                <p className="font-medium text-sm">{customerFor(client)}</p>
-                <AddressAutocomplete
-                  label="Full service address"
-                  value={addressOverrides[id] || ''}
-                  placeholder="Street, city, state, ZIP"
-                  onInputChange={(value) => handleAddressInput(id, value)}
-                  onAddressSelect={(components) => handleAddressSelect(id, components)}
-                />
-              </div>
-            );
-          })}
-        </div>
-      )}
+      {missingAddressClients.length > 0 && renderAddressReview()}
 
       {/* Full-route navigation buttons — routes from current location through every stop in order */}
       <div className="flex flex-wrap gap-2">
-        <Button asChild className="flex-1 min-w-[160px]">
-          <a href={appleRouteUrl} target="_blank" rel="noopener noreferrer">
+        <Button asChild className="flex-1 min-w-[160px]" disabled={routeReadyList.length === 0}>
+          <a href={buildAppleMapsRouteUrl(routeReadyList)} target="_blank" rel="noopener noreferrer">
             <Navigation className="h-4 w-4 mr-2" />
             Open Route in Apple Maps
           </a>
         </Button>
-        <Button asChild variant="outline" className="flex-1 min-w-[160px]">
-          <a href={googleRouteUrl} target="_blank" rel="noopener noreferrer">
+        <Button asChild variant="outline" className="flex-1 min-w-[160px]" disabled={routeReadyList.length === 0}>
+          <a href={buildGoogleMapsRouteUrl(routeReadyList)} target="_blank" rel="noopener noreferrer">
             <Navigation className="h-4 w-4 mr-2" />
             Open in Google Maps
           </a>
         </Button>
       </div>
       <p className="text-xs text-muted-foreground">
-        Routes from your current location through all {displayList.length} stop{displayList.length === 1 ? '' : 's'} in the order shown. Drag stops below to reorder.
+        Routes from your current location through all {routeReadyList.length} ready stop{routeReadyList.length === 1 ? '' : 's'} in the order shown. Drag stops below to reorder.
       </p>
 
       {hasCoords && (

@@ -275,6 +275,8 @@ export function RouteMap({ clients }: RouteMapProps) {
   const [linkedUsers, setLinkedUsers] = useState<Record<string, any>>({});
   const [fetchedClients, setFetchedClients] = useState<any[]>([]);
   const [addressOverrides, setAddressOverrides] = useState<Record<string, string>>({});
+  type GeoStatus = 'pending' | 'ok' | 'failed' | 'incomplete' | 'retrying';
+  const [statuses, setStatuses] = useState<Record<string, GeoStatus>>({});
 
   useEffect(() => {
     let cancelled = false;

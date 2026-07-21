@@ -112,6 +112,29 @@ export function RouteMap({ clients }: RouteMapProps) {
     setDragOverIndex(null);
   };
 
+  // Build a fallback list (no coords) so we always have something to show
+  const fallbackList = useMemo<ClientWithCoords[]>(
+    () =>
+      clients
+        .map((client) => {
+          const address = client.contact_address || client.client_user?.address;
+          if (!address) return null;
+          return {
+            id: client.id,
+            customer: client.customer,
+            address,
+            phone: client.contact_phone || client.client_user?.phone,
+            lat: 0,
+            lng: 0,
+            pool_size: client.pool_size,
+            pool_type: client.pool_type,
+            last_service_date: client.last_service_date,
+          } as ClientWithCoords;
+        })
+        .filter(Boolean) as ClientWithCoords[],
+    [clients]
+  );
+
   useEffect(() => {
     let cancelled = false;
 
@@ -128,7 +151,8 @@ export function RouteMap({ clients }: RouteMapProps) {
         }
 
         const coords = await geocodeAddress(address);
-        if (coords && !cancelled) {
+        if (cancelled) return;
+        if (coords) {
           results.push({
             id: client.id,
             customer: client.customer,
@@ -170,7 +194,25 @@ export function RouteMap({ clients }: RouteMapProps) {
        positions.reduce((s, p) => s + p[1], 0) / positions.length]
     : [39.8283, -98.5795];
 
-  if (loading) {
+  // Which list to show in the sidebar: geocoded (with map) or fallback (list only)
+  const displayList = geocodedClients.length > 0 ? geocodedClients : fallbackList;
+
+  // Build a multi-stop route URL for Apple Maps (falls back to Google Maps).
+  // Apple Maps supports daddr chained with "+to:" between stops, and saddr=Current+Location.
+  const buildAppleMapsRouteUrl = (stops: ClientWithCoords[]) => {
+    if (stops.length === 0) return '#';
+    const daddr = stops.map(s => encodeURIComponent(s.address)).join('+to:');
+    return `https://maps.apple.com/?saddr=Current+Location&daddr=${daddr}`;
+  };
+  const buildGoogleMapsRouteUrl = (stops: ClientWithCoords[]) => {
+    if (stops.length === 0) return '#';
+    const destination = encodeURIComponent(stops[stops.length - 1].address);
+    const waypoints = stops.slice(0, -1).map(s => encodeURIComponent(s.address)).join('|');
+    const wp = waypoints ? `&waypoints=${waypoints}` : '';
+    return `https://www.google.com/maps/dir/?api=1&travelmode=driving&destination=${destination}${wp}`;
+  };
+
+  if (loading && geocodedClients.length === 0 && fallbackList.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-12 space-y-3">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
@@ -181,7 +223,7 @@ export function RouteMap({ clients }: RouteMapProps) {
     );
   }
 
-  if (geocodedClients.length === 0) {
+  if (displayList.length === 0) {
     return (
       <div className="text-center py-12">
         <Navigation className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
@@ -190,6 +232,7 @@ export function RouteMap({ clients }: RouteMapProps) {
       </div>
     );
   }
+
 
   return (
     <div className="space-y-3">

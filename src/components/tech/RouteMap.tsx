@@ -544,18 +544,33 @@ export function RouteMap({ clients }: RouteMapProps) {
 
       {/* Full-route navigation buttons — routes from current location through every stop in order */}
       <div className="flex flex-wrap gap-2">
-        <Button asChild className="flex-1 min-w-[160px]" disabled={routeReadyList.length === 0}>
-          <a href={buildAppleMapsRouteUrl(routeReadyList)} target="_blank" rel="noopener noreferrer">
-            <Navigation className="h-4 w-4 mr-2" />
-            Open Route in Apple Maps
-          </a>
-        </Button>
-        <Button asChild variant="outline" className="flex-1 min-w-[160px]" disabled={routeReadyList.length === 0}>
-          <a href={buildGoogleMapsRouteUrl(routeReadyList)} target="_blank" rel="noopener noreferrer">
-            <Navigation className="h-4 w-4 mr-2" />
-            Open in Google Maps
-          </a>
-        </Button>
+        {routeReadyList.length > 0 ? (
+          <>
+            <Button asChild className="flex-1 min-w-[160px]">
+              <a href={buildAppleMapsRouteUrl(routeReadyList)} target="_blank" rel="noopener noreferrer">
+                <Navigation className="h-4 w-4 mr-2" />
+                Open Route in Apple Maps
+              </a>
+            </Button>
+            <Button asChild variant="outline" className="flex-1 min-w-[160px]">
+              <a href={buildGoogleMapsRouteUrl(routeReadyList)} target="_blank" rel="noopener noreferrer">
+                <Navigation className="h-4 w-4 mr-2" />
+                Open in Google Maps
+              </a>
+            </Button>
+          </>
+        ) : (
+          <>
+            <Button className="flex-1 min-w-[160px]" disabled>
+              <Navigation className="h-4 w-4 mr-2" />
+              Open Route in Apple Maps
+            </Button>
+            <Button variant="outline" className="flex-1 min-w-[160px]" disabled>
+              <Navigation className="h-4 w-4 mr-2" />
+              Open in Google Maps
+            </Button>
+          </>
+        )}
       </div>
       <p className="text-xs text-muted-foreground">
         Routes from your current location through all {routeReadyList.length} ready stop{routeReadyList.length === 1 ? '' : 's'} in the order shown. Drag stops below to reorder.

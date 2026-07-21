@@ -135,8 +135,8 @@ export const getAddressSuggestions = async (input: string): Promise<AddressSugge
     const data = await response.json();
     const suggestions = (Array.isArray(data) ? data : [])
       .map((item) => componentsFromNominatim(item))
-      .filter(Boolean)
-      .map((components: AddressComponents) => ({
+      .filter((components): components is AddressComponents => Boolean(components))
+      .map((components) => ({
         formatted_address: formatAddress(components),
         components,
       }));

@@ -714,9 +714,20 @@ export function RouteMap({ clients }: RouteMapProps) {
                   {client.customer}
                 </Link>
                 <p className="text-xs text-muted-foreground">{client.address}</p>
+                <div className="mt-1"><StatusBadge status={statuses[client.id]} /></div>
               </div>
             </div>
             <div className="flex space-x-1">
+              <Button
+                size="sm"
+                variant="ghost"
+                className="h-7"
+                onClick={() => retryGeocode(client.id)}
+                disabled={statuses[client.id] === 'retrying' || statuses[client.id] === 'pending'}
+                title="Retry geocoding"
+              >
+                <RefreshCw className={`h-3 w-3 ${statuses[client.id] === 'retrying' ? 'animate-spin' : ''}`} />
+              </Button>
               {client.phone && (
                 <Button size="sm" variant="outline" className="h-7" asChild>
                   <a href={`tel:${client.phone}`}>

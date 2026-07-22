@@ -34,6 +34,7 @@ import {
 } from 'lucide-react';
 import { getPoolServiceStatus, getBalanceStatus, getNextDueDate } from '@/lib/pool-status';
 import { ClientReadingsChart } from '@/components/admin/ClientReadingsChart';
+import { ServiceCostChart } from '@/components/admin/ServiceCostChart';
 import type { ChemicalId } from '@/lib/pool-chemistry';
 
 interface ClientData {
@@ -800,6 +801,9 @@ export default function ClientView() {
 
       {/* Water Chemistry Trends */}
       <ClientReadingsChart services={services} onPointClick={(id) => setSelectedServiceId(id)} />
+
+      {/* Chemical cost history (admin/tech only) */}
+      <ServiceCostChart services={services as any} />
 
       {/* Service Reading Detail Dialog */}
       <Dialog open={!!selectedServiceId} onOpenChange={(open) => !open && setSelectedServiceId(null)}>

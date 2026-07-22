@@ -22,6 +22,9 @@ import { ChemicalsAddedInput } from '@/components/service/ChemicalsAddedInput';
 import { ChemicalEntry, entriesToString, entriesToCustomerExplanation } from '@/lib/chemicals-added';
 import { getMissingFixes } from '@/lib/pool-status';
 import { useChemicalCatalog } from '@/hooks/useChemicalCatalog';
+import { useUnitCosts } from '@/hooks/useUnitCosts';
+import { computeServiceCost, fmtMoney } from '@/lib/inventory-cost';
+import { CHEMICAL_OPTIONS } from '@/lib/chemicals-added';
 
 type Client = {
   id: string;
@@ -93,6 +96,14 @@ export default function FieldService() {
   const { user } = useAuth();
   const { toast } = useToast();
   const { options: chemCatalog } = useChemicalCatalog();
+  const { costs: unitCosts } = useUnitCosts();
+
+  const labelFor = (id: string, other?: string) => {
+    if (id === 'other') return other?.trim() || 'Other chemical';
+    return CHEMICAL_OPTIONS.find(o => o.id === id)?.label
+      ?? chemCatalog.find((o: any) => o.id === id)?.label
+      ?? id;
+  };
 
   const [client, setClient] = useState<Client | null>(null);
   const [loading, setLoading] = useState(true);
@@ -298,11 +309,38 @@ export default function FieldService() {
         before_photo_url: serviceData.beforePhotoUrl || null,
         after_photo_url: serviceData.afterPhotoUrl || null,
         message_preview: message,
-        status: 'completed'
+        status: 'completed',
+        chemicals_cost: (() => {
+          const { total } = computeServiceCost(serviceData.chemical_entries ?? [], labelFor, unitCosts);
+          return Number(total.toFixed(2));
+        })(),
       };
 
-      const { error } = await supabase.from('services').insert(payload);
+      const { data: inserted, error } = await supabase
+        .from('services')
+        .insert(payload)
+        .select('id')
+        .single();
       if (error) throw error;
+
+      // Persist per-chemical usage lines for cost roll-ups
+      try {
+        const { lines } = computeServiceCost(serviceData.chemical_entries ?? [], labelFor, unitCosts);
+        if (inserted?.id && lines.length > 0) {
+          await supabase.from('service_chemical_usage').insert(
+            lines.map(l => ({
+              service_id: inserted.id,
+              chemical_id: l.chemical_id,
+              chemical_label: l.chemical_label,
+              unit: l.unit,
+              quantity_used: l.quantity_used,
+              unit_cost_snapshot: l.unit_cost_snapshot,
+            }))
+          );
+        }
+      } catch (usageErr) {
+        console.error('Chemical usage log failed:', usageErr);
+      }
 
       // Mark the client as serviced today so the calendar updates for everyone
       // (admin + all techs). Use local date (YYYY-MM-DD).
@@ -698,6 +736,32 @@ export default function FieldService() {
               value={serviceData.chemical_entries ?? []}
               onChange={(entries) => handleInputChange('chemical_entries', entries)}
             />
+            {(() => {
+              const { lines, total } = computeServiceCost(serviceData.chemical_entries ?? [], labelFor, unitCosts);
+              if (lines.length === 0) return null;
+              return (
+                <div className="mt-3 rounded-md border bg-muted/40 p-3 text-sm">
+                  <div className="font-medium mb-1">Cost of this service (internal only)</div>
+                  <ul className="text-xs text-muted-foreground space-y-0.5">
+                    {lines.map((l, i) => (
+                      <li key={i} className="flex justify-between">
+                        <span>{l.quantity_used.toFixed(2)} {l.unit} {l.chemical_label} @ {fmtMoney(l.unit_cost_snapshot)}/{l.unit}</span>
+                        <span>{fmtMoney(l.line_cost)}</span>
+                      </li>
+                    ))}
+                  </ul>
+                  <div className="flex justify-between font-semibold mt-2 pt-2 border-t">
+                    <span>Service chemical cost</span>
+                    <span>{fmtMoney(total)}</span>
+                  </div>
+                  {lines.some(l => l.unit_cost_snapshot === 0) && (
+                    <div className="text-xs text-amber-600 mt-1">
+                      Some chemicals have no purchase logged yet — log them in Inventory for accurate costs.
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
           </div>
           <div>
             <Label htmlFor="notes">Notes</Label>

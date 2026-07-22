@@ -131,6 +131,48 @@ export type Database = {
         }
         Relationships: []
       }
+      chemical_inventory_purchases: {
+        Row: {
+          chemical_id: string
+          chemical_label: string
+          created_at: string
+          created_by: string | null
+          id: string
+          notes: string | null
+          purchased_at: string
+          quantity: number
+          total_cost: number
+          unit: string
+          unit_cost: number | null
+        }
+        Insert: {
+          chemical_id: string
+          chemical_label: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          notes?: string | null
+          purchased_at?: string
+          quantity: number
+          total_cost: number
+          unit: string
+          unit_cost?: number | null
+        }
+        Update: {
+          chemical_id?: string
+          chemical_label?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          notes?: string | null
+          purchased_at?: string
+          quantity?: number
+          total_cost?: number
+          unit?: string
+          unit_cost?: number | null
+        }
+        Relationships: []
+      }
       client_invitations: {
         Row: {
           access_count: number | null
@@ -801,6 +843,50 @@ export type Database = {
         }
         Relationships: []
       }
+      service_chemical_usage: {
+        Row: {
+          chemical_id: string
+          chemical_label: string
+          created_at: string
+          id: string
+          line_cost: number | null
+          quantity_used: number
+          service_id: string
+          unit: string
+          unit_cost_snapshot: number
+        }
+        Insert: {
+          chemical_id: string
+          chemical_label: string
+          created_at?: string
+          id?: string
+          line_cost?: number | null
+          quantity_used: number
+          service_id: string
+          unit: string
+          unit_cost_snapshot?: number
+        }
+        Update: {
+          chemical_id?: string
+          chemical_label?: string
+          created_at?: string
+          id?: string
+          line_cost?: number | null
+          quantity_used?: number
+          service_id?: string
+          unit?: string
+          unit_cost_snapshot?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "service_chemical_usage_service_id_fkey"
+            columns: ["service_id"]
+            isOneToOne: false
+            referencedRelation: "services"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       service_requests: {
         Row: {
           address_validated: boolean | null
@@ -908,6 +994,7 @@ export type Database = {
           before_photo_url: string | null
           calcium_hardness_level: number | null
           chemicals_added: string | null
+          chemicals_cost: number
           chlorine_level: number | null
           client_id: string | null
           cost: number | null
@@ -934,6 +1021,7 @@ export type Database = {
           before_photo_url?: string | null
           calcium_hardness_level?: number | null
           chemicals_added?: string | null
+          chemicals_cost?: number
           chlorine_level?: number | null
           client_id?: string | null
           cost?: number | null
@@ -960,6 +1048,7 @@ export type Database = {
           before_photo_url?: string | null
           calcium_hardness_level?: number | null
           chemicals_added?: string | null
+          chemicals_cost?: number
           chlorine_level?: number | null
           client_id?: string | null
           cost?: number | null

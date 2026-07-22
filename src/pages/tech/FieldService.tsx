@@ -22,6 +22,9 @@ import { ChemicalsAddedInput } from '@/components/service/ChemicalsAddedInput';
 import { ChemicalEntry, entriesToString, entriesToCustomerExplanation } from '@/lib/chemicals-added';
 import { getMissingFixes } from '@/lib/pool-status';
 import { useChemicalCatalog } from '@/hooks/useChemicalCatalog';
+import { useUnitCosts } from '@/hooks/useUnitCosts';
+import { computeServiceCost, fmtMoney } from '@/lib/inventory-cost';
+import { CHEMICAL_OPTIONS } from '@/lib/chemicals-added';
 
 type Client = {
   id: string;
@@ -93,6 +96,14 @@ export default function FieldService() {
   const { user } = useAuth();
   const { toast } = useToast();
   const { options: chemCatalog } = useChemicalCatalog();
+  const { costs: unitCosts } = useUnitCosts();
+
+  const labelFor = (id: string, other?: string) => {
+    if (id === 'other') return other?.trim() || 'Other chemical';
+    return CHEMICAL_OPTIONS.find(o => o.id === id)?.label
+      ?? chemCatalog.find((o: any) => o.id === id)?.label
+      ?? id;
+  };
 
   const [client, setClient] = useState<Client | null>(null);
   const [loading, setLoading] = useState(true);

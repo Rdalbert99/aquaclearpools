@@ -309,11 +309,38 @@ export default function FieldService() {
         before_photo_url: serviceData.beforePhotoUrl || null,
         after_photo_url: serviceData.afterPhotoUrl || null,
         message_preview: message,
-        status: 'completed'
+        status: 'completed',
+        chemicals_cost: (() => {
+          const { total } = computeServiceCost(serviceData.chemical_entries ?? [], labelFor, unitCosts);
+          return Number(total.toFixed(2));
+        })(),
       };
 
-      const { error } = await supabase.from('services').insert(payload);
+      const { data: inserted, error } = await supabase
+        .from('services')
+        .insert(payload)
+        .select('id')
+        .single();
       if (error) throw error;
+
+      // Persist per-chemical usage lines for cost roll-ups
+      try {
+        const { lines } = computeServiceCost(serviceData.chemical_entries ?? [], labelFor, unitCosts);
+        if (inserted?.id && lines.length > 0) {
+          await supabase.from('service_chemical_usage').insert(
+            lines.map(l => ({
+              service_id: inserted.id,
+              chemical_id: l.chemical_id,
+              chemical_label: l.chemical_label,
+              unit: l.unit,
+              quantity_used: l.quantity_used,
+              unit_cost_snapshot: l.unit_cost_snapshot,
+            }))
+          );
+        }
+      } catch (usageErr) {
+        console.error('Chemical usage log failed:', usageErr);
+      }
 
       // Mark the client as serviced today so the calendar updates for everyone
       // (admin + all techs). Use local date (YYYY-MM-DD).

@@ -183,6 +183,8 @@ export default function Inventory() {
         </Alert>
       )}
 
+      <ChemicalBaseCosts />
+
 
 
       <Card>

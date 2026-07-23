@@ -803,7 +803,7 @@ export default function ClientView() {
       <ClientReadingsChart services={services} onPointClick={(id) => setSelectedServiceId(id)} />
 
       {/* Chemical cost history (admin/tech only) */}
-      <ServiceCostChart services={services as any} />
+      <ServiceCostChart services={services as any} contextLabel={client?.customer} />
 
       {/* Service Reading Detail Dialog */}
       <Dialog open={!!selectedServiceId} onOpenChange={(open) => !open && setSelectedServiceId(null)}>

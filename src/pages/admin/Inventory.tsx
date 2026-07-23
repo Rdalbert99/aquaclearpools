@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -144,9 +145,14 @@ export default function Inventory() {
 
   return (
     <div className="p-4 md:p-6 max-w-6xl mx-auto space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold">Chemical Inventory</h1>
-        <p className="text-muted-foreground text-sm">Log every chemical purchase. Costs feed each service call and per-client cost charts.</p>
+      <div className="flex flex-wrap items-start justify-between gap-2">
+        <div>
+          <h1 className="text-2xl font-bold">Chemical Inventory</h1>
+          <p className="text-muted-foreground text-sm">Log every chemical purchase. Costs feed each service call and per-client cost charts.</p>
+        </div>
+        <Button asChild variant="outline" size="sm">
+          <Link to="/admin/inventory/backfill">Backfill past service costs</Link>
+        </Button>
       </div>
 
       {lowStock.length > 0 && (

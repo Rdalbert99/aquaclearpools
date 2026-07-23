@@ -831,9 +831,17 @@ export default function FieldService() {
               {serviceData.duration ? `Duration: ${serviceData.duration} min` : 'Duration not set'}
             </div>
           </div>
-          <div className="pt-2">
+          <div className="pt-2 flex flex-wrap gap-2">
             <Button onClick={openReview} disabled={saving} className="min-w-[160px]">
               <CheckCircle className="h-4 w-4 mr-2" /> Review & Send
+            </Button>
+            <Button
+              variant="secondary"
+              onClick={() => completeService(false)}
+              disabled={saving}
+              className="min-w-[200px]"
+            >
+              <CheckCircle className="h-4 w-4 mr-2" /> Complete without notifying
             </Button>
           </div>
         </CardContent>

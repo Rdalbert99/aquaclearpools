@@ -213,6 +213,14 @@ const AppRoutes = () => {
             </ProtectedRoute>
           }
         />
+        <Route
+          path="/admin/inventory/backfill"
+          element={
+            <ProtectedRoute allowedRoles={['admin']}>
+              <InventoryBackfill />
+            </ProtectedRoute>
+          }
+        />
         <Route 
           path="/admin/clients/new" 
           element={

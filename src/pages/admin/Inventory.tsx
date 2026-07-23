@@ -5,12 +5,17 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Badge } from '@/components/ui/badge';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { supabase } from '@/integrations/supabase/client';
 import { CHEMICAL_OPTIONS } from '@/lib/chemicals-added';
 import { CHEMICAL_BASE_UNIT, fmtMoney } from '@/lib/inventory-cost';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from '@/hooks/use-toast';
-import { Trash2 } from 'lucide-react';
+import { Trash2, AlertTriangle } from 'lucide-react';
+
+const LOOKBACK_DAYS = 30;
+const LOW_STOCK_DAYS = 14;
 
 interface Purchase {
   id: string;

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useParams, useNavigate, Link } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -14,7 +14,7 @@ import { ServicePhotoUpload } from '@/components/tech/ServicePhotoUpload';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { 
-  Clock, Droplets, TestTube, CheckCircle, ArrowLeft, AlertTriangle, Send, Zap, Info,
+  Clock, Droplets, TestTube, CheckCircle, ArrowLeft, AlertTriangle, Send, Zap, Info, MapPin,
 } from 'lucide-react';
 import { isInRange, getDosageInstruction, type ChemicalId } from '@/lib/pool-chemistry';
 import { ArrivalNotification } from '@/components/tech/ArrivalNotification';
@@ -34,7 +34,26 @@ type Client = {
   pool_size?: number | null;
   pool_type?: string | null;
   included_services?: string[] | null;
+  contact_address?: string | null;
+  street_address?: string | null;
+  city?: string | null;
+  state?: string | null;
+  zip_code?: string | null;
+  address?: string | null;
 };
+
+function buildClientAddress(c: Client): string {
+  if (c.contact_address && c.contact_address.trim()) return c.contact_address.trim();
+  const parts = [c.street_address, c.city, c.state, c.zip_code].filter(Boolean).join(', ');
+  if (parts) return parts;
+  return (c.address || '').trim();
+}
+
+function clientMapsHref(address: string): string {
+  const q = encodeURIComponent(address);
+  const isApple = typeof navigator !== 'undefined' && /iPhone|iPad|iPod|Macintosh/i.test(navigator.userAgent);
+  return isApple ? `https://maps.apple.com/?daddr=${q}` : `https://www.google.com/maps/dir/?api=1&destination=${q}`;
+}
 
 const ALL_SERVICES = [
   'Chemical Testing & Balancing',
@@ -92,6 +111,8 @@ const SALT_CELL_STEPS = [
 export default function FieldService() {
   const [sendingPoolNeeds, setSendingPoolNeeds] = useState(false);
   const { clientId } = useParams();
+  const [searchParams] = useSearchParams();
+  const shouldPrefill = searchParams.get('prefill') === '1';
   const navigate = useNavigate();
   const { user } = useAuth();
   const { toast } = useToast();
@@ -140,7 +161,7 @@ export default function FieldService() {
         if (error) throw error;
         if (mounted) setClient(data as Client);
 
-        // Look up the most recent salt cell cleaning for this client
+        // Load recent services for salt-cell history + optional prefill from last visit
         const { data: prior } = await supabase
           .from('services')
           .select('service_date, actions')
@@ -150,6 +171,23 @@ export default function FieldService() {
         if (mounted && prior) {
           const hit = prior.find((s: any) => s?.actions?.salt_cell_cleaned);
           setLastSaltCleaning(hit?.service_date ?? null);
+
+          if (shouldPrefill && prior.length > 0) {
+            const last: any = prior[0];
+            const a = last?.actions || {};
+            setServiceData(prev => ({
+              ...prev,
+              services_performed: Array.isArray(a.services_performed) ? a.services_performed : (prev.services_performed ?? []),
+              cleaned_robot: !!a.cleaned_robot,
+              robot_plugged_in: !!a.robot_plugged_in,
+              robot_in_water: !!a.robot_in_water,
+              // Do NOT prefill salt_cell_cleaned — that's a periodic task, not a per-visit default
+            }));
+            toast({
+              title: 'Defaults prefilled',
+              description: `Copied services from last visit on ${new Date(last.service_date).toLocaleDateString()}.`,
+            });
+          }
         }
       } catch (e) {
         console.error(e);
@@ -159,7 +197,7 @@ export default function FieldService() {
       }
     })();
     return () => { mounted = false; };
-  }, [clientId, toast]);
+  }, [clientId, shouldPrefill, toast]);
 
   function handleInputChange<K extends keyof ServiceData>(field: K, value: ServiceData[K]) {
     setServiceData(prev => ({ ...prev, [field]: value }));
@@ -463,6 +501,20 @@ export default function FieldService() {
           <ArrowLeft className="h-4 w-4 mr-2" /> Back
         </Button>
       </div>
+      {(() => {
+        const addr = buildClientAddress(client);
+        if (!addr) return null;
+        return (
+          <a
+            href={clientMapsHref(addr)}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1 text-sm text-primary hover:underline break-words"
+          >
+            <MapPin className="h-4 w-4 shrink-0" /> {addr}
+          </a>
+        );
+      })()}
       {/* Arrival Notification */}
       <ArrivalNotification
         clientName={client.customer}

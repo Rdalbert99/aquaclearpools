@@ -148,7 +148,7 @@ export default function MyClients() {
                         </Button>
                       )}
                       <Button size="sm" asChild>
-                        <Link to={`/tech/service/${c.id}`}><Play className="h-3.5 w-3.5 mr-1" /> Start Service</Link>
+                        <Link to={`/tech/service/${c.id}?prefill=1`}><Play className="h-3.5 w-3.5 mr-1" /> Start Service</Link>
                       </Button>
                     </div>
                   </div>

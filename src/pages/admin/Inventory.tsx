@@ -233,12 +233,15 @@ export default function Inventory() {
                     <TableHead className="text-right">On hand</TableHead>
                     <TableHead className="text-right">Avg unit cost</TableHead>
                     <TableHead className="text-right">Value on hand</TableHead>
+                    <TableHead className="text-right">Stock status</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {[...summary.entries()].map(([id, s]) => {
                     const avg = s.qty > 0 ? s.cost / s.qty : 0;
                     const onHand = s.qty - s.used;
+                    const status = stockStatus(onHand, id);
+                    const daily = recentDaily[id] ?? 0;
                     return (
                       <TableRow key={id}>
                         <TableCell className="font-medium">{s.label}</TableCell>
@@ -247,10 +250,25 @@ export default function Inventory() {
                         <TableCell className="text-right">{onHand.toFixed(2)} {s.unit}</TableCell>
                         <TableCell className="text-right">{fmtMoney(avg)}/{s.unit}</TableCell>
                         <TableCell className="text-right">{fmtMoney(Math.max(0, onHand) * avg)}</TableCell>
+                        <TableCell className="text-right">
+                          {status.level === 'out' && <Badge variant="destructive">Out</Badge>}
+                          {status.level === 'low' && (
+                            <Badge variant="destructive" title={`~${daily.toFixed(2)} ${s.unit}/day`}>
+                              Low · ~{Math.max(0, Math.round(status.days ?? 0))}d
+                            </Badge>
+                          )}
+                          {status.level === 'ok' && (
+                            <Badge variant="secondary" title={`~${daily.toFixed(2)} ${s.unit}/day`}>
+                              OK · ~{Math.round(status.days ?? 0)}d
+                            </Badge>
+                          )}
+                          {status.level === 'idle' && <Badge variant="outline">No recent use</Badge>}
+                        </TableCell>
                       </TableRow>
                     );
                   })}
                 </TableBody>
+
               </Table>
             </div>
           )}

@@ -161,7 +161,7 @@ export default function FieldService() {
         if (error) throw error;
         if (mounted) setClient(data as Client);
 
-        // Look up the most recent salt cell cleaning for this client
+        // Load recent services for salt-cell history + optional prefill from last visit
         const { data: prior } = await supabase
           .from('services')
           .select('service_date, actions')
@@ -171,6 +171,23 @@ export default function FieldService() {
         if (mounted && prior) {
           const hit = prior.find((s: any) => s?.actions?.salt_cell_cleaned);
           setLastSaltCleaning(hit?.service_date ?? null);
+
+          if (shouldPrefill && prior.length > 0) {
+            const last: any = prior[0];
+            const a = last?.actions || {};
+            setServiceData(prev => ({
+              ...prev,
+              services_performed: Array.isArray(a.services_performed) ? a.services_performed : (prev.services_performed ?? []),
+              cleaned_robot: !!a.cleaned_robot,
+              robot_plugged_in: !!a.robot_plugged_in,
+              robot_in_water: !!a.robot_in_water,
+              // Do NOT prefill salt_cell_cleaned — that's a periodic task, not a per-visit default
+            }));
+            toast({
+              title: 'Defaults prefilled',
+              description: `Copied services from last visit on ${new Date(last.service_date).toLocaleDateString()}.`,
+            });
+          }
         }
       } catch (e) {
         console.error(e);

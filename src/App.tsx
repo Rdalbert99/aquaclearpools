@@ -29,6 +29,7 @@ import ManageClients from "./pages/admin/ManageClients";
 import ChemicalCalculator from "./pages/admin/ChemicalCalculator";
 import ChemicalCatalog from "./pages/admin/ChemicalCatalog";
 import Inventory from "./pages/admin/Inventory";
+import InventoryBackfill from "./pages/admin/InventoryBackfill";
 import ServiceHistory from "./pages/admin/ServiceHistory";
 import Reports from "./pages/admin/Reports";
 import ClientView from "./pages/admin/ClientView";

@@ -862,7 +862,7 @@ export default function FieldService() {
             className="font-mono text-sm"
           />
           <div className="text-xs text-muted-foreground">{reviewMessage.length} characters</div>
-          <DialogFooter className="gap-2">
+          <DialogFooter className="gap-2 flex-col sm:flex-row flex-wrap">
             <Button variant="outline" onClick={() => setReviewOpen(false)} disabled={saving}>Cancel</Button>
             <Button
               variant="ghost"

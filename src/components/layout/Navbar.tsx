@@ -76,6 +76,7 @@ export const Navbar = () => {
       return [
         { label: 'Dashboard', icon: Home, path: '/tech' },
         { label: 'Schedule', icon: Calendar, path: '/tech/schedule' },
+        { label: 'My Clients', icon: Users, path: '/tech/clients' },
         { label: 'Calculator', icon: Calculator, path: '/tech/calculator' },
       ];
     }

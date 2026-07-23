@@ -147,6 +147,9 @@ export default function MyClients() {
                           <a href={`tel:${c.phone}`}><Phone className="h-3.5 w-3.5 mr-1" /> Call</a>
                         </Button>
                       )}
+                      <Button size="sm" variant="outline" asChild>
+                        <Link to={`/admin/clients/${c.id}`}>View history & cost</Link>
+                      </Button>
                       <Button size="sm" asChild>
                         <Link to={`/tech/service/${c.id}?prefill=1`}><Play className="h-3.5 w-3.5 mr-1" /> Start Service</Link>
                       </Button>

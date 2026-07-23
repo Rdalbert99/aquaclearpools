@@ -34,7 +34,26 @@ type Client = {
   pool_size?: number | null;
   pool_type?: string | null;
   included_services?: string[] | null;
+  contact_address?: string | null;
+  street_address?: string | null;
+  city?: string | null;
+  state?: string | null;
+  zip_code?: string | null;
+  address?: string | null;
 };
+
+function buildClientAddress(c: Client): string {
+  if (c.contact_address && c.contact_address.trim()) return c.contact_address.trim();
+  const parts = [c.street_address, c.city, c.state, c.zip_code].filter(Boolean).join(', ');
+  if (parts) return parts;
+  return (c.address || '').trim();
+}
+
+function clientMapsHref(address: string): string {
+  const q = encodeURIComponent(address);
+  const isApple = typeof navigator !== 'undefined' && /iPhone|iPad|iPod|Macintosh/i.test(navigator.userAgent);
+  return isApple ? `https://maps.apple.com/?daddr=${q}` : `https://www.google.com/maps/dir/?api=1&destination=${q}`;
+}
 
 const ALL_SERVICES = [
   'Chemical Testing & Balancing',

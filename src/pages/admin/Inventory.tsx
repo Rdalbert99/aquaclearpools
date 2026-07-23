@@ -126,6 +126,22 @@ export default function Inventory() {
     summary.set(p.chemical_id, s);
   });
 
+  type StockStatus = { level: 'out' | 'low' | 'ok' | 'idle'; days: number | null };
+  function stockStatus(onHand: number, chemicalId: string): StockStatus {
+    const daily = recentDaily[chemicalId] ?? 0;
+    if (onHand <= 0) return { level: 'out', days: 0 };
+    if (daily <= 0) return { level: 'idle', days: null };
+    const days = onHand / daily;
+    if (days < LOW_STOCK_DAYS) return { level: 'low', days };
+    return { level: 'ok', days };
+  }
+
+  const lowStock = [...summary.entries()]
+    .map(([id, s]) => ({ id, s, status: stockStatus(s.qty - s.used, id) }))
+    .filter(x => x.status.level === 'out' || x.status.level === 'low')
+    .sort((a, b) => (a.status.days ?? 0) - (b.status.days ?? 0));
+
+
   return (
     <div className="p-4 md:p-6 max-w-6xl mx-auto space-y-6">
       <div>

@@ -149,6 +149,35 @@ export default function Inventory() {
         <p className="text-muted-foreground text-sm">Log every chemical purchase. Costs feed each service call and per-client cost charts.</p>
       </div>
 
+      {lowStock.length > 0 && (
+        <Alert variant="destructive">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertTitle>Low stock — reorder soon</AlertTitle>
+          <AlertDescription>
+            <div className="mt-2 space-y-1 text-sm">
+              {lowStock.map(({ id, s, status }) => {
+                const onHand = s.qty - s.used;
+                return (
+                  <div key={id} className="flex flex-wrap items-center justify-between gap-2">
+                    <span className="font-medium">{s.label}</span>
+                    <span>
+                      {Math.max(0, onHand).toFixed(2)} {s.unit} on hand
+                      {status.level === 'out'
+                        ? ' — out of stock'
+                        : status.days != null
+                          ? ` — ~${Math.max(0, Math.round(status.days))} days left (last ${LOOKBACK_DAYS}d avg)`
+                          : ''}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          </AlertDescription>
+        </Alert>
+      )}
+
+
+
       <Card>
         <CardHeader><CardTitle>Log a purchase</CardTitle></CardHeader>
         <CardContent className="grid gap-3 sm:grid-cols-2 md:grid-cols-5">

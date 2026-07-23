@@ -501,6 +501,20 @@ export default function FieldService() {
           <ArrowLeft className="h-4 w-4 mr-2" /> Back
         </Button>
       </div>
+      {(() => {
+        const addr = buildClientAddress(client);
+        if (!addr) return null;
+        return (
+          <a
+            href={clientMapsHref(addr)}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1 text-sm text-primary hover:underline break-words"
+          >
+            <MapPin className="h-4 w-4 shrink-0" /> {addr}
+          </a>
+        );
+      })()}
       {/* Arrival Notification */}
       <ArrivalNotification
         clientName={client.customer}

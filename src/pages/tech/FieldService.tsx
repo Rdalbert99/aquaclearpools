@@ -197,7 +197,7 @@ export default function FieldService() {
       }
     })();
     return () => { mounted = false; };
-  }, [clientId, toast]);
+  }, [clientId, shouldPrefill, toast]);
 
   function handleInputChange<K extends keyof ServiceData>(field: K, value: ServiceData[K]) {
     setServiceData(prev => ({ ...prev, [field]: value }));

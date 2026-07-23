@@ -41,6 +41,33 @@ export type Database = {
         }
         Relationships: []
       }
+      chemical_base_costs: {
+        Row: {
+          chemical_id: string
+          created_at: string
+          unit: string
+          unit_cost: number
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          chemical_id: string
+          created_at?: string
+          unit: string
+          unit_cost?: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          chemical_id?: string
+          created_at?: string
+          unit?: string
+          unit_cost?: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
       chemical_calculations: {
         Row: {
           calculated_date: string | null

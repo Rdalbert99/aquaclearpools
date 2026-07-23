@@ -5,12 +5,17 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Badge } from '@/components/ui/badge';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { supabase } from '@/integrations/supabase/client';
 import { CHEMICAL_OPTIONS } from '@/lib/chemicals-added';
 import { CHEMICAL_BASE_UNIT, fmtMoney } from '@/lib/inventory-cost';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from '@/hooks/use-toast';
-import { Trash2 } from 'lucide-react';
+import { Trash2, AlertTriangle } from 'lucide-react';
+
+const LOOKBACK_DAYS = 30;
+const LOW_STOCK_DAYS = 14;
 
 interface Purchase {
   id: string;
@@ -29,10 +34,18 @@ interface Usage {
   quantity_used: number;
 }
 
+
+interface RecentUsage {
+  chemical_id: string;
+  quantity_used: number;
+  created_at: string;
+}
+
 export default function Inventory() {
   const { user } = useAuth();
   const [purchases, setPurchases] = useState<Purchase[]>([]);
   const [usage, setUsage] = useState<Record<string, number>>({});
+  const [recentDaily, setRecentDaily] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);
 
   const [chemicalId, setChemicalId] = useState('liquid_chlorine');
@@ -45,9 +58,11 @@ export default function Inventory() {
 
   async function refresh() {
     setLoading(true);
-    const [{ data: p }, { data: u }] = await Promise.all([
+    const sinceIso = new Date(Date.now() - LOOKBACK_DAYS * 86400_000).toISOString();
+    const [{ data: p }, { data: u }, { data: recent }] = await Promise.all([
       supabase.from('chemical_inventory_purchases').select('*').order('purchased_at', { ascending: false }),
       supabase.from('service_chemical_usage').select('chemical_id, quantity_used'),
+      supabase.from('service_chemical_usage').select('chemical_id, quantity_used, created_at').gte('created_at', sinceIso),
     ]);
     setPurchases((p as any) ?? []);
     const usageAcc: Record<string, number> = {};
@@ -55,6 +70,14 @@ export default function Inventory() {
       usageAcc[r.chemical_id] = (usageAcc[r.chemical_id] ?? 0) + Number(r.quantity_used || 0);
     });
     setUsage(usageAcc);
+
+    const recentAcc: Record<string, number> = {};
+    ((recent as RecentUsage[]) ?? []).forEach(r => {
+      recentAcc[r.chemical_id] = (recentAcc[r.chemical_id] ?? 0) + Number(r.quantity_used || 0);
+    });
+    const daily: Record<string, number> = {};
+    Object.entries(recentAcc).forEach(([id, total]) => { daily[id] = total / LOOKBACK_DAYS; });
+    setRecentDaily(daily);
     setLoading(false);
   }
   useEffect(() => { refresh(); }, []);
@@ -103,12 +126,57 @@ export default function Inventory() {
     summary.set(p.chemical_id, s);
   });
 
+  type StockStatus = { level: 'out' | 'low' | 'ok' | 'idle'; days: number | null };
+  function stockStatus(onHand: number, chemicalId: string): StockStatus {
+    const daily = recentDaily[chemicalId] ?? 0;
+    if (onHand <= 0) return { level: 'out', days: 0 };
+    if (daily <= 0) return { level: 'idle', days: null };
+    const days = onHand / daily;
+    if (days < LOW_STOCK_DAYS) return { level: 'low', days };
+    return { level: 'ok', days };
+  }
+
+  const lowStock = [...summary.entries()]
+    .map(([id, s]) => ({ id, s, status: stockStatus(s.qty - s.used, id) }))
+    .filter(x => x.status.level === 'out' || x.status.level === 'low')
+    .sort((a, b) => (a.status.days ?? 0) - (b.status.days ?? 0));
+
+
   return (
     <div className="p-4 md:p-6 max-w-6xl mx-auto space-y-6">
       <div>
         <h1 className="text-2xl font-bold">Chemical Inventory</h1>
         <p className="text-muted-foreground text-sm">Log every chemical purchase. Costs feed each service call and per-client cost charts.</p>
       </div>
+
+      {lowStock.length > 0 && (
+        <Alert variant="destructive">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertTitle>Low stock — reorder soon</AlertTitle>
+          <AlertDescription>
+            <div className="mt-2 space-y-1 text-sm">
+              {lowStock.map(({ id, s, status }) => {
+                const onHand = s.qty - s.used;
+                return (
+                  <div key={id} className="flex flex-wrap items-center justify-between gap-2">
+                    <span className="font-medium">{s.label}</span>
+                    <span>
+                      {Math.max(0, onHand).toFixed(2)} {s.unit} on hand
+                      {status.level === 'out'
+                        ? ' — out of stock'
+                        : status.days != null
+                          ? ` — ~${Math.max(0, Math.round(status.days))} days left (last ${LOOKBACK_DAYS}d avg)`
+                          : ''}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          </AlertDescription>
+        </Alert>
+      )}
+
+
 
       <Card>
         <CardHeader><CardTitle>Log a purchase</CardTitle></CardHeader>
@@ -165,12 +233,15 @@ export default function Inventory() {
                     <TableHead className="text-right">On hand</TableHead>
                     <TableHead className="text-right">Avg unit cost</TableHead>
                     <TableHead className="text-right">Value on hand</TableHead>
+                    <TableHead className="text-right">Stock status</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {[...summary.entries()].map(([id, s]) => {
                     const avg = s.qty > 0 ? s.cost / s.qty : 0;
                     const onHand = s.qty - s.used;
+                    const status = stockStatus(onHand, id);
+                    const daily = recentDaily[id] ?? 0;
                     return (
                       <TableRow key={id}>
                         <TableCell className="font-medium">{s.label}</TableCell>
@@ -179,10 +250,25 @@ export default function Inventory() {
                         <TableCell className="text-right">{onHand.toFixed(2)} {s.unit}</TableCell>
                         <TableCell className="text-right">{fmtMoney(avg)}/{s.unit}</TableCell>
                         <TableCell className="text-right">{fmtMoney(Math.max(0, onHand) * avg)}</TableCell>
+                        <TableCell className="text-right">
+                          {status.level === 'out' && <Badge variant="destructive">Out</Badge>}
+                          {status.level === 'low' && (
+                            <Badge variant="destructive" title={`~${daily.toFixed(2)} ${s.unit}/day`}>
+                              Low · ~{Math.max(0, Math.round(status.days ?? 0))}d
+                            </Badge>
+                          )}
+                          {status.level === 'ok' && (
+                            <Badge variant="secondary" title={`~${daily.toFixed(2)} ${s.unit}/day`}>
+                              OK · ~{Math.round(status.days ?? 0)}d
+                            </Badge>
+                          )}
+                          {status.level === 'idle' && <Badge variant="outline">No recent use</Badge>}
+                        </TableCell>
                       </TableRow>
                     );
                   })}
                 </TableBody>
+
               </Table>
             </div>
           )}

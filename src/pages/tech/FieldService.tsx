@@ -111,6 +111,8 @@ const SALT_CELL_STEPS = [
 export default function FieldService() {
   const [sendingPoolNeeds, setSendingPoolNeeds] = useState(false);
   const { clientId } = useParams();
+  const [searchParams] = useSearchParams();
+  const shouldPrefill = searchParams.get('prefill') === '1';
   const navigate = useNavigate();
   const { user } = useAuth();
   const { toast } = useToast();

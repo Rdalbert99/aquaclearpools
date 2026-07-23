@@ -1,43 +1,54 @@
+## Goal
 
-## Chemical Inventory & Cost Tracking
+Show what you've spent on past customer service calls by applying your inventory unit costs to services that were logged before the cost tracking system existed.
 
-Track chemical purchases, calculate per-unit costs, roll those costs into every service call, and show admins cost-per-client charts. Prices stay hidden from clients.
+## Current state
 
-### 1. Database (new tables)
+- 484 total services in the database.
+- 260 have chemical notes but `chemicals_cost = 0` and no structured `service_chemical_usage` rows — they were logged as free text like "2lbs granulated chlorine", "1 lb chlorine.", "pH Down (Muriatic Acid): 35 oz", "Added chlorine and metal out".
+- 6 chemicals have purchase history I can price against: powder chlorine, trichlor tabs, calcium chloride, pool salt, algaecide, clarifier. Muriatic acid, sodium bicarb, soda ash, CYA and others have no purchase records yet, so they have no unit cost.
 
-**`chemical_inventory_purchases`** — every purchase you log
-- `id`, `chemical_name` (text, e.g. "Liquid Chlorine", "Muriatic Acid", "Cal-Hypo", "Sodium Bicarb", "Soda Ash", "Stabilizer", "Salt")
-- `unit` (text: `gallon` or `pound`)
-- `quantity` numeric (amount purchased in that unit)
-- `total_cost` numeric (what you paid)
-- `unit_cost` numeric (generated: total_cost / quantity)
-- `purchased_at` timestamptz, `notes`, `created_by`
+## What the plan will do
 
-**`service_chemical_usage`** — chemicals used on a specific service call
-- `id`, `service_id` (FK → services), `chemical_name`, `unit`, `quantity_used`, `unit_cost_snapshot`, `line_cost` (generated)
+### 1. Text parser for old service notes
 
-Add `chemicals_cost` numeric column to `services` = sum of the service's `line_cost` rows.
+Add a helper that scans each old `chemicals_added` string for:
 
-RLS: admin + tech read/write on both tables; clients blocked. Grants for `authenticated` + `service_role`.
+- an amount + unit (`2 lbs`, `35 oz`, `.5 gal`, `1 gallon`, `8oz`)
+- a chemical keyword (chlorine / cal-hypo / shock / trichlor / tabs / muriatic / acid / bicarb / soda ash / CYA / stabilizer / calcium / salt / algaecide / clarifier / phosphate)
 
-### 2. Admin — Inventory page (`/admin/inventory`)
+Rules:
 
-- Table of all purchases with running current unit cost per chemical (weighted average of remaining stock).
-- "Log purchase" form: pick chemical, unit auto-fills (gallon vs pound per your dosage standard), qty, total cost.
-- Summary card per chemical: on-hand qty (purchased − used), current avg unit cost.
+- "chlorine" defaults to `powder_chlorine` (your granular cal-hypo) unless the note says "liquid" or "gallon" → then `liquid_chlorine`.
+- "acid" / "muriatic" / "pH down" → `muriatic_acid` (gal).
+- Multiple chemicals in one note are extracted separately.
+- If no amount is found, the note is skipped (no guessing).
+- If the chemical has no purchase history, quantity is still recorded but line_cost = 0.
 
-### 3. Field Service — cost preview
+### 2. Backfill script (one-time)
 
-In `FieldService.tsx`, when tech enters chemical dosages (existing granular/liquid inputs), auto-fetch the current unit cost and show a live "This service cost: $X.XX" breakdown line. On complete, insert `service_chemical_usage` rows and save `chemicals_cost` on the service.
+An admin-only page at `/admin/inventory/backfill` that:
 
-### 4. Admin — Client cost chart
+1. Loads all services where `chemicals_cost = 0` and `chemicals_added` is not empty.
+2. Runs the parser and previews what will be written per service (chemical, quantity, unit, unit cost, line cost) with a "not parsed" list for review.
+3. On confirm, writes `service_chemical_usage` rows and updates `services.chemicals_cost` in a batch.
+4. Safe to re-run: it skips services that already have `service_chemical_usage` rows.
 
-On the client detail page, add a "Service cost history" card next to the readings chart:
-- Bar chart of per-service `chemicals_cost` over time.
-- Monthly totals table ("July 2026: 4 services · $46.50").
-- Only visible to admin/tech, never to the client view.
+### 3. UI reflection
 
-### 5. Out of scope for this pass
-Multi-vendor tracking, tax/shipping split, low-stock alerts, PDF exports — can follow up later.
+Nothing else to change — the admin client view and `ServiceCostChart` already read `chemicals_cost` and `service_chemical_usage`, so once the backfill runs, past months will populate automatically.
 
-Confirm and I'll build it.
+## What the plan will NOT do
+
+- Won't invent chemicals or amounts that aren't in the note.
+- Won't backfill costs for chemicals you've never logged a purchase for (they'll show $0 until you add a purchase). If you want, I can also assign a fallback price per chemical you type in.
+- Won't change how new services are recorded.
+
+## Open question before I build
+
+The parser is a best-effort read of your old notes. Two ways to run it:
+
+- **Preview then apply (recommended)** — you review the parse table and click Apply. Anything that looks wrong you fix inline first.
+- **Auto-apply** — I run it once, you spot-check after.
+
+I'll go with preview-then-apply unless you say otherwise.

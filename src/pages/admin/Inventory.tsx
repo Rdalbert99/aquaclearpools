@@ -34,10 +34,6 @@ interface Usage {
   quantity_used: number;
 }
 
-interface Usage {
-  chemical_id: string;
-  quantity_used: number;
-}
 
 interface RecentUsage {
   chemical_id: string;

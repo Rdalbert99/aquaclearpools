@@ -34,10 +34,22 @@ interface Usage {
   quantity_used: number;
 }
 
+interface Usage {
+  chemical_id: string;
+  quantity_used: number;
+}
+
+interface RecentUsage {
+  chemical_id: string;
+  quantity_used: number;
+  created_at: string;
+}
+
 export default function Inventory() {
   const { user } = useAuth();
   const [purchases, setPurchases] = useState<Purchase[]>([]);
   const [usage, setUsage] = useState<Record<string, number>>({});
+  const [recentDaily, setRecentDaily] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);
 
   const [chemicalId, setChemicalId] = useState('liquid_chlorine');
@@ -50,9 +62,11 @@ export default function Inventory() {
 
   async function refresh() {
     setLoading(true);
-    const [{ data: p }, { data: u }] = await Promise.all([
+    const sinceIso = new Date(Date.now() - LOOKBACK_DAYS * 86400_000).toISOString();
+    const [{ data: p }, { data: u }, { data: recent }] = await Promise.all([
       supabase.from('chemical_inventory_purchases').select('*').order('purchased_at', { ascending: false }),
       supabase.from('service_chemical_usage').select('chemical_id, quantity_used'),
+      supabase.from('service_chemical_usage').select('chemical_id, quantity_used, created_at').gte('created_at', sinceIso),
     ]);
     setPurchases((p as any) ?? []);
     const usageAcc: Record<string, number> = {};
@@ -60,6 +74,14 @@ export default function Inventory() {
       usageAcc[r.chemical_id] = (usageAcc[r.chemical_id] ?? 0) + Number(r.quantity_used || 0);
     });
     setUsage(usageAcc);
+
+    const recentAcc: Record<string, number> = {};
+    ((recent as RecentUsage[]) ?? []).forEach(r => {
+      recentAcc[r.chemical_id] = (recentAcc[r.chemical_id] ?? 0) + Number(r.quantity_used || 0);
+    });
+    const daily: Record<string, number> = {};
+    Object.entries(recentAcc).forEach(([id, total]) => { daily[id] = total / LOOKBACK_DAYS; });
+    setRecentDaily(daily);
     setLoading(false);
   }
   useEffect(() => { refresh(); }, []);

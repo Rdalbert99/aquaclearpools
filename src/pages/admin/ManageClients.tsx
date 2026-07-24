@@ -509,10 +509,21 @@ export default function ManageClients() {
         <TabsList>
           <TabsTrigger value="calendar">Calendar</TabsTrigger>
           <TabsTrigger value="list">List</TabsTrigger>
+          <TabsTrigger value="map">Map</TabsTrigger>
         </TabsList>
 
         <TabsContent value="calendar">
           <ClientsCalendarView clients={clients} adminMode />
+        </TabsContent>
+
+        <TabsContent value="map">
+          <AllClientsMap
+            clients={clients as any}
+            technicians={technicians.map((t) => ({ id: t.id, name: t.name })) as any}
+            showAdminFilter
+            title="All Clients Map"
+            description="Every client pinned by assigned technician — filter to view one tech's route."
+          />
         </TabsContent>
 
         <TabsContent value="list" className="space-y-6">

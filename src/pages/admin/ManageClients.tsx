@@ -37,6 +37,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { ClientInviteDialog } from '@/components/admin/ClientInviteDialog';
 import { ClientsCalendarView } from '@/components/clients/ClientsCalendarView';
+import { AllClientsMap } from '@/components/maps/AllClientsMap';
 
 interface Client {
   id: string;

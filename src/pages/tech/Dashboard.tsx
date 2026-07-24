@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import { BeforeAfterUpload } from '@/components/tech/BeforeAfterUpload';
 import { RouteMap } from '@/components/tech/RouteMap';
+import { AllClientsMap, type TechnicianOption } from '@/components/maps/AllClientsMap';
 
 interface DashboardStats {
   assignedServices: any[];

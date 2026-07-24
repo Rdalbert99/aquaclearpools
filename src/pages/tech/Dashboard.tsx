@@ -19,11 +19,14 @@ import {
 } from 'lucide-react';
 import { BeforeAfterUpload } from '@/components/tech/BeforeAfterUpload';
 import { RouteMap } from '@/components/tech/RouteMap';
+import { AllClientsMap, type TechnicianOption } from '@/components/maps/AllClientsMap';
 
 interface DashboardStats {
   assignedServices: any[];
   pendingRequests: any[];
   clientsNeedingService: any[];
+  allClients: any[];
+  technicians: TechnicianOption[];
 }
 
 export default function TechDashboard() {
@@ -117,10 +120,19 @@ export default function TechDashboard() {
         return lastService < weekAgo;
       }) || [];
 
+      // Load technicians for color-coded map
+      const { data: techs } = await supabase
+        .from('users')
+        .select('id, name')
+        .eq('role', 'tech')
+        .order('name');
+
       const statsData = {
         assignedServices: services || [],
         pendingRequests: requests || [],
-        clientsNeedingService: clientsNeedingService
+        clientsNeedingService: clientsNeedingService,
+        allClients: clients || [],
+        technicians: (techs || []) as TechnicianOption[],
       };
 
       setStats(statsData);
@@ -226,6 +238,17 @@ export default function TechDashboard() {
           )}
         </CardContent>
       </Card>
+
+      {/* All Clients Map (color-coded by technician) */}
+      {stats?.allClients && stats.allClients.length > 0 && (
+        <AllClientsMap
+          clients={stats.allClients}
+          technicians={stats.technicians}
+          currentTechId={user?.id}
+          title="All Clients Map"
+          description="Every client pinned — your assigned clients are highlighted. Use the legend to isolate a technician."
+        />
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Available Service Requests */}

@@ -23,6 +23,7 @@ import {
 } from 'lucide-react';
 import { PoolImageUpload } from '@/components/admin/PoolImageUpload';
 import { TechInviteDialog } from '@/components/admin/TechInviteDialog';
+import { AllClientsMap, type TechnicianOption } from '@/components/maps/AllClientsMap';
 
 interface DashboardStats {
   totalClients: number;
@@ -31,6 +32,7 @@ interface DashboardStats {
   recentServices: any[];
   clientsNeedingService: any[];
   allClients: any[];
+  technicians: TechnicianOption[];
 }
 
 export default function AdminDashboard() {
@@ -73,6 +75,13 @@ export default function AdminDashboard() {
 
       if (requestsError) throw requestsError;
 
+      // Load technicians (for map color coding + filter)
+      const { data: techs } = await supabase
+        .from('users')
+        .select('id, name')
+        .eq('role', 'tech')
+        .order('name');
+
       // Calculate clients needing service (last service > 7 days ago)
       const weekAgo = new Date();
       weekAgo.setDate(weekAgo.getDate() - 7);
@@ -88,7 +97,8 @@ export default function AdminDashboard() {
         pendingRequests: requests?.length || 0,
         recentServices: services || [],
         clientsNeedingService,
-        allClients: clients || []
+        allClients: clients || [],
+        technicians: (techs || []) as TechnicianOption[]
       });
     } catch (error) {
       console.error('Error loading dashboard data:', error);
@@ -325,6 +335,17 @@ export default function AdminDashboard() {
           </CardContent>
         </Card>
       </div>
+
+      {/* All Clients Map (color-coded by technician, admin-filterable) */}
+      {stats?.allClients && stats.allClients.length > 0 && (
+        <AllClientsMap
+          clients={stats.allClients}
+          technicians={stats.technicians}
+          showAdminFilter
+          title="All Clients Map"
+          description="Every client pinned by assigned technician — filter to view one tech's route."
+        />
+      )}
 
       {/* Pool Image Upload */}
       <PoolImageUpload />

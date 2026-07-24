@@ -6,8 +6,10 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { ArrowLeft, Search, MapPin, Phone, Play } from 'lucide-react';
 import { ClientsCalendarView, type CalendarClient } from '@/components/clients/ClientsCalendarView';
+import { AllClientsMap, type TechnicianOption } from '@/components/maps/AllClientsMap';
 
 type ClientRow = CalendarClient & {
   phone?: string | null;
@@ -17,6 +19,7 @@ type ClientRow = CalendarClient & {
   state?: string | null;
   zip_code?: string | null;
   address?: string | null;
+  assigned_technician_id?: string | null;
 };
 
 function buildAddress(c: ClientRow): string {
@@ -35,6 +38,8 @@ function mapsHref(address: string): string {
 export default function MyClients() {
   const { user } = useAuth();
   const [clients, setClients] = useState<ClientRow[]>([]);
+  const [allClients, setAllClients] = useState<ClientRow[]>([]);
+  const [technicians, setTechnicians] = useState<TechnicianOption[]>([]);
   const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState('');
 
@@ -49,6 +54,17 @@ export default function MyClients() {
           .order('customer', { ascending: true });
         if (error) console.error(error);
         else setClients((data as ClientRow[]) || []);
+
+        // For the Map tab: load all active clients + all technicians so techs can see
+        // everyone's pins in different colors (their own highlighted).
+        const { data: everyone } = await supabase
+          .from('clients')
+          .select('*')
+          .eq('status', 'Active');
+        setAllClients((everyone as ClientRow[]) || []);
+
+        const { data: techs } = await supabase.rpc('get_all_technicians');
+        if (techs) setTechnicians(techs as TechnicianOption[]);
       } finally {
         setLoading(false);
       }
@@ -89,80 +105,102 @@ export default function MyClients() {
         </div>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2"><Search className="h-5 w-5" /> Find a customer</CardTitle>
-          <CardDescription>Search by name, address, or phone — great for callback requests</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search name, address, or phone…"
-              className="pl-9"
-            />
-          </div>
+      <Tabs defaultValue="calendar" className="space-y-4">
+        <TabsList>
+          <TabsTrigger value="calendar">Calendar</TabsTrigger>
+          <TabsTrigger value="list">List</TabsTrigger>
+          <TabsTrigger value="map">Map</TabsTrigger>
+        </TabsList>
 
-          {query.trim() && (
-            <div className="space-y-3">
-              {results.length === 0 && (
-                <p className="text-sm text-muted-foreground py-4 text-center">No matches</p>
-              )}
-              {results.map((c) => {
-                const addr = buildAddress(c);
-                return (
-                  <div key={c.id} className="p-4 border rounded-lg space-y-2">
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="min-w-0">
-                        <p className="font-medium truncate">{c.customer}</p>
-                        {(c.pool_size || c.pool_type) && (
-                          <p className="text-sm text-muted-foreground">
-                            Pool: {c.pool_size?.toLocaleString()} gal{c.pool_type ? `, ${c.pool_type}` : ''}
-                          </p>
-                        )}
-                        <p className="text-sm text-muted-foreground">
-                          Last service: {c.last_service_date
-                            ? new Date(c.last_service_date).toLocaleDateString()
-                            : 'Never'}
-                        </p>
-                        {addr ? (
-                          <a
-                            href={mapsHref(addr)}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-sm text-primary hover:underline inline-flex items-center gap-1 mt-1 break-words"
-                          >
-                            <MapPin className="h-3.5 w-3.5 shrink-0" /> {addr}
-                          </a>
-                        ) : (
-                          <p className="text-sm text-muted-foreground italic mt-1">No address on file</p>
-                        )}
+        <TabsContent value="calendar">
+          <ClientsCalendarView clients={clients} />
+        </TabsContent>
+
+        <TabsContent value="list">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2"><Search className="h-5 w-5" /> Find a customer</CardTitle>
+              <CardDescription>Search by name, address, or phone — great for callback requests</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  placeholder="Search name, address, or phone…"
+                  className="pl-9"
+                />
+              </div>
+
+              {query.trim() && (
+                <div className="space-y-3">
+                  {results.length === 0 && (
+                    <p className="text-sm text-muted-foreground py-4 text-center">No matches</p>
+                  )}
+                  {results.map((c) => {
+                    const addr = buildAddress(c);
+                    return (
+                      <div key={c.id} className="p-4 border rounded-lg space-y-2">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            <p className="font-medium truncate">{c.customer}</p>
+                            {(c.pool_size || c.pool_type) && (
+                              <p className="text-sm text-muted-foreground">
+                                Pool: {c.pool_size?.toLocaleString()} gal{c.pool_type ? `, ${c.pool_type}` : ''}
+                              </p>
+                            )}
+                            <p className="text-sm text-muted-foreground">
+                              Last service: {c.last_service_date
+                                ? new Date(c.last_service_date).toLocaleDateString()
+                                : 'Never'}
+                            </p>
+                            {addr ? (
+                              <a
+                                href={mapsHref(addr)}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-sm text-primary hover:underline inline-flex items-center gap-1 mt-1 break-words"
+                              >
+                                <MapPin className="h-3.5 w-3.5 shrink-0" /> {addr}
+                              </a>
+                            ) : (
+                              <p className="text-sm text-muted-foreground italic mt-1">No address on file</p>
+                            )}
+                          </div>
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                          {c.phone && (
+                            <Button size="sm" variant="outline" asChild>
+                              <a href={`tel:${c.phone}`}><Phone className="h-3.5 w-3.5 mr-1" /> Call</a>
+                            </Button>
+                          )}
+                          <Button size="sm" variant="outline" asChild>
+                            <Link to={`/admin/clients/${c.id}`}>View history & cost</Link>
+                          </Button>
+                          <Button size="sm" asChild>
+                            <Link to={`/tech/service/${c.id}?prefill=1`}><Play className="h-3.5 w-3.5 mr-1" /> Start Service</Link>
+                          </Button>
+                        </div>
                       </div>
-                    </div>
-                    <div className="flex flex-wrap gap-2">
-                      {c.phone && (
-                        <Button size="sm" variant="outline" asChild>
-                          <a href={`tel:${c.phone}`}><Phone className="h-3.5 w-3.5 mr-1" /> Call</a>
-                        </Button>
-                      )}
-                      <Button size="sm" variant="outline" asChild>
-                        <Link to={`/admin/clients/${c.id}`}>View history & cost</Link>
-                      </Button>
-                      <Button size="sm" asChild>
-                        <Link to={`/tech/service/${c.id}?prefill=1`}><Play className="h-3.5 w-3.5 mr-1" /> Start Service</Link>
-                      </Button>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </CardContent>
-      </Card>
+                    );
+                  })}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
 
-      <ClientsCalendarView clients={clients} />
+        <TabsContent value="map">
+          <AllClientsMap
+            clients={allClients as any}
+            technicians={technicians}
+            currentTechId={user?.id}
+            title="All Clients Map"
+            description="Every client pinned by assigned technician — your clients are highlighted."
+          />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }

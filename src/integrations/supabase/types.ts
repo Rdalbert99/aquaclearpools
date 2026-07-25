@@ -1428,6 +1428,7 @@ export type Database = {
         Args: { p_identifier: string }
         Returns: boolean
       }
+      can_read_client_media: { Args: { object_path: string }; Returns: boolean }
       check_rate_limit: {
         Args: {
           p_endpoint: string

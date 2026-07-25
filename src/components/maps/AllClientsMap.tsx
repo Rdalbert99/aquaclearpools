@@ -468,6 +468,10 @@ export function AllClientsMap({
                             />
                             {assignedName}
                           </p>
+                          {secondaryName && (
+                            <p className="text-muted-foreground">Secondary: {secondaryName}</p>
+                          )}
+
                           <div className="flex flex-wrap gap-2 pt-1">
                             <Button size="sm" variant="outline" asChild>
                               <Link to={`/admin/clients/${p.id}`}>Details</Link>

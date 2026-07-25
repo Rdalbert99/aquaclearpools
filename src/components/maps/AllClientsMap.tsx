@@ -298,6 +298,8 @@ export function AllClientsMap({
             pool_size: c.pool_size ?? undefined,
             pool_type: c.pool_type ?? undefined,
             assigned_technician_id: c.assigned_technician_id ?? null,
+            secondary_technician_id: c.secondary_technician_id ?? null,
+
           });
         }
         setProgress({ done: i + 1, total: addressed.length });

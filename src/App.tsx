@@ -7,6 +7,11 @@ import { AuthProvider, useAuth } from "./hooks/useAuth";
 import { ProtectedRoute } from "./components/auth/ProtectedRoute";
 import { SecurityHeader } from "./components/security/SecurityHeader";
 import { Navbar } from "./components/layout/Navbar";
+import { MobileBottomNav } from "./components/layout/MobileBottomNav";
+import { UpdatePrompt } from "./components/pwa/UpdatePrompt";
+import { InstallPrompt } from "./components/pwa/InstallPrompt";
+import WhatsNew from "./pages/WhatsNew";
+
 
 
 // Pages

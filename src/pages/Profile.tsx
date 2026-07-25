@@ -417,6 +417,23 @@ export default function Profile() {
           </Card>
         </TabsContent>
       </Tabs>
+
+      {/* App version / release notes */}
+      <Card className="mt-6">
+        <CardHeader>
+          <CardTitle className="text-base">About this app</CardTitle>
+        </CardHeader>
+        <CardContent className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <p className="text-sm font-medium">Aqua Clear Pools</p>
+            <p className="text-sm text-muted-foreground">Version {APP_VERSION}</p>
+          </div>
+          <Button variant="outline" size="sm" asChild>
+            <Link to="/whats-new">What's new</Link>
+          </Button>
+        </CardContent>
+      </Card>
     </div>
+
   );
 }

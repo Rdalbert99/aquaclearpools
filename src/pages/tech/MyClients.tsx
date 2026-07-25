@@ -20,6 +20,8 @@ type ClientRow = CalendarClient & {
   zip_code?: string | null;
   address?: string | null;
   assigned_technician_id?: string | null;
+  secondary_technician_id?: string | null;
+
 };
 
 function buildAddress(c: ClientRow): string {

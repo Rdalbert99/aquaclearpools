@@ -7,6 +7,11 @@ import { AuthProvider, useAuth } from "./hooks/useAuth";
 import { ProtectedRoute } from "./components/auth/ProtectedRoute";
 import { SecurityHeader } from "./components/security/SecurityHeader";
 import { Navbar } from "./components/layout/Navbar";
+import { MobileBottomNav } from "./components/layout/MobileBottomNav";
+import { UpdatePrompt } from "./components/pwa/UpdatePrompt";
+import { InstallPrompt } from "./components/pwa/InstallPrompt";
+import WhatsNew from "./pages/WhatsNew";
+
 
 
 // Pages
@@ -417,12 +422,21 @@ const AppRoutes = () => {
           } 
         />
         
+        {/* Release notes */}
+        <Route path="/whats-new" element={<WhatsNew />} />
+
         {/* Fallback */}
         <Route path="*" element={<NotFound />} />
       </Routes>
+      <MobileBottomNav />
+      <UpdatePrompt />
+      <InstallPrompt />
+
+      {isAuthenticated && <div className="h-16 lg:hidden" aria-hidden="true" />}
     </div>
   );
 };
+
 
 const App = () => (
   <QueryClientProvider client={queryClient}>

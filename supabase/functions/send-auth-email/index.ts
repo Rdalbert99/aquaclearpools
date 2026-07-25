@@ -9,7 +9,6 @@ function encodeBasicAuth(key: string, secret: string) {
     return Buffer.from(`${key}:${secret}`).toString("base64");
   }
 }
-const hookSecret = Deno.env.get("SEND_AUTH_EMAIL_HOOK_SECRET") || "your-webhook-secret";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",

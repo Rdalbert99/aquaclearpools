@@ -127,12 +127,24 @@ export function ClientsCalendarView({ clients, adminMode = false }: Props) {
 
   function saltCellDueDate(client: CalendarClient): Date | null {
     if (!isSaltPool(client)) return null;
-    const last = saltCleanMap.get(client.id);
-    if (!last) return startOfDay(new Date(0)); // never cleaned → always due
-    const d = startOfDay(new Date(last));
+    // Most recent known cleaning: recorded in a service or manually set on the client
+    const serviceClean = saltCleanMap.get(client.id) || null;
+    const manualClean = (client.salt_cell_last_cleaned as string | null) || null;
+    let baseline: string | null = null;
+    if (serviceClean && manualClean) {
+      baseline = new Date(serviceClean) > new Date(manualClean) ? serviceClean : manualClean;
+    } else {
+      baseline = serviceClean || manualClean;
+    }
+    // Never cleaned: fall back to last service date so recently-serviced pools
+    // don't show as due until 6 months have passed.
+    if (!baseline) baseline = client.last_service_date || null;
+    if (!baseline) return null; // no history at all → nothing to project
+    const d = startOfDay(new Date(baseline));
     d.setDate(d.getDate() + SALT_CELL_INTERVAL_DAYS);
     return d;
   }
+
 
   function saltCellDueOn(client: CalendarClient, date: Date): boolean {
     const due = saltCellDueDate(client);

@@ -148,7 +148,9 @@ export default function ManageClients() {
         .select(`
           id, customer, pool_size, pool_type, status, user_id, assigned_technician_id, secondary_technician_id,
           last_service_date, next_service_date, service_days, service_frequency, created_at,
+          salt_cell_last_cleaned,
           contact_email, contact_phone, contact_address,
+
           assigned_technician:users!assigned_technician_id(id, name, email),
           secondary_technician:users!clients_secondary_technician_id_fkey(id, name, email),
           users!clients_user_id_fkey(id, name, email, phone)

@@ -417,12 +417,18 @@ const AppRoutes = () => {
           } 
         />
         
+        {/* Release notes */}
+        <Route path="/whats-new" element={<WhatsNew />} />
+
         {/* Fallback */}
         <Route path="*" element={<NotFound />} />
       </Routes>
+      <MobileBottomNav />
+      {isAuthenticated && <div className="h-16 lg:hidden" aria-hidden="true" />}
     </div>
   );
 };
+
 
 const App = () => (
   <QueryClientProvider client={queryClient}>

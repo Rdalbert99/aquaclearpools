@@ -347,8 +347,11 @@ export function AllClientsMap({
   const visible = useMemo(() => {
     if (filterTechId === 'all') return pinned;
     if (filterTechId === '__unassigned__') return pinned.filter((p) => !p.assigned_technician_id);
-    return pinned.filter((p) => p.assigned_technician_id === filterTechId);
+    return pinned.filter(
+      (p) => p.assigned_technician_id === filterTechId || p.secondary_technician_id === filterTechId
+    );
   }, [pinned, filterTechId]);
+
 
   const positions = useMemo<[number, number][]>(
     () => visible.map((p) => [p.lat, p.lng]),

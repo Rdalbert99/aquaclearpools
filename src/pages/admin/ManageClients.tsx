@@ -35,6 +35,8 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import { Label } from '@/components/ui/label';
+
 import { ClientInviteDialog } from '@/components/admin/ClientInviteDialog';
 import { ClientsCalendarView } from '@/components/clients/ClientsCalendarView';
 import { AllClientsMap } from '@/components/maps/AllClientsMap';
@@ -53,6 +55,7 @@ interface Client {
   created_at: string;
   user_id: string;
   assigned_technician_id?: string | null;
+  secondary_technician_id?: string | null;
   users?: {
     email: string;
     phone: string | null;
@@ -63,7 +66,13 @@ interface Client {
     name: string;
     email: string;
   };
+  secondary_technician?: {
+    id: string;
+    name: string;
+    email: string;
+  };
 }
+
 
 interface Technician {
   id: string;
@@ -85,6 +94,8 @@ export default function ManageClients() {
   const [deletingClientId, setDeletingClientId] = useState<string | null>(null);
   const [selectedClientForTech, setSelectedClientForTech] = useState<Client | null>(null);
   const [selectedTechId, setSelectedTechId] = useState<string>('');
+  const [selectedSecondaryTechId, setSelectedSecondaryTechId] = useState<string>('unassigned');
+
   const [duplicateUserIds, setDuplicateUserIds] = useState<string[]>([]);
   const [inviteClient, setInviteClient] = useState<Client | null>(null);
 
@@ -135,11 +146,13 @@ export default function ManageClients() {
       const { data: clientsData, error: clientsError } = await supabase
         .from('clients')
         .select(`
-          id, customer, pool_size, pool_type, status, user_id, assigned_technician_id,
+          id, customer, pool_size, pool_type, status, user_id, assigned_technician_id, secondary_technician_id,
           last_service_date, next_service_date, service_days, service_frequency, created_at,
           contact_email, contact_phone, contact_address,
           assigned_technician:users!assigned_technician_id(id, name, email),
+          secondary_technician:users!clients_secondary_technician_id_fkey(id, name, email),
           users!clients_user_id_fkey(id, name, email, phone)
+
         `);
       
       console.log('Clients query result:', { clientsData, clientsError });
@@ -218,25 +231,29 @@ export default function ManageClients() {
 
     try {
       const techId = selectedTechId === 'unassigned' ? null : selectedTechId;
-      
+      let secondaryId = selectedSecondaryTechId === 'unassigned' ? null : selectedSecondaryTechId;
+      if (secondaryId && secondaryId === techId) secondaryId = null;
+
       const { error } = await supabase
         .from('clients')
-        .update({ assigned_technician_id: techId })
+        .update({ assigned_technician_id: techId, secondary_technician_id: secondaryId })
         .eq('id', selectedClientForTech.id);
 
       if (error) throw error;
 
       toast({
-        title: "Technician Assigned",
-        description: `Technician has been assigned to ${selectedClientForTech.customer}`,
+        title: "Technicians Updated",
+        description: `Technician assignments saved for ${selectedClientForTech.customer}`,
       });
 
       // Refresh clients list
       loadClients();
       setSelectedClientForTech(null);
       setSelectedTechId('');
+      setSelectedSecondaryTechId('unassigned');
     } catch (error) {
       console.error('Error assigning technician:', error);
+
       toast({
         title: "Error",
         description: "Failed to assign technician",
@@ -681,17 +698,26 @@ export default function ManageClients() {
                         </td>
                         
                         <td className="p-4">
-                          <div>
+                          <div className="space-y-2">
                             {client.assigned_technician ? (
                               <div>
+                                <p className="text-xs uppercase text-muted-foreground">Primary</p>
                                 <p className="text-sm font-medium">{client.assigned_technician.name}</p>
                                 <p className="text-xs text-muted-foreground">{client.assigned_technician.email}</p>
                               </div>
                             ) : (
                               <p className="text-sm text-muted-foreground">No technician assigned</p>
                             )}
+                            {client.secondary_technician && (
+                              <div>
+                                <p className="text-xs uppercase text-muted-foreground">Secondary</p>
+                                <p className="text-sm font-medium">{client.secondary_technician.name}</p>
+                                <p className="text-xs text-muted-foreground">{client.secondary_technician.email}</p>
+                              </div>
+                            )}
                           </div>
                         </td>
+
                         
                         <td className="p-4">
                           <Badge className={getStatusColor(client.status)}>
@@ -772,6 +798,7 @@ export default function ManageClients() {
                                   onClick={() => {
                                     setSelectedClientForTech(client);
                                     setSelectedTechId(client.assigned_technician_id || 'unassigned');
+                                    setSelectedSecondaryTechId(client.secondary_technician_id || 'unassigned');
                                   }}
                                 >
                                   Assign Tech
@@ -779,40 +806,64 @@ export default function ManageClients() {
                               </DialogTrigger>
                               <DialogContent>
                                 <DialogHeader>
-                                  <DialogTitle>Assign Technician</DialogTitle>
+                                  <DialogTitle>Assign Technicians</DialogTitle>
                                   <DialogDescription>
-                                    Assign a technician to {client.customer}. This technician will receive notifications for service requests.
+                                    Assign a primary and an optional secondary technician to {client.customer}. Both can view and service this customer.
                                   </DialogDescription>
                                 </DialogHeader>
                                 
                                 <div className="space-y-4">
-                                  <Select value={selectedTechId} onValueChange={setSelectedTechId}>
-                                    <SelectTrigger>
-                                      <SelectValue placeholder="Select a technician" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                      <SelectItem value="unassigned">No technician</SelectItem>
-                                      {technicians.map((tech) => (
-                                        <SelectItem key={tech.id} value={tech.id}>
-                                          {tech.name} - {tech.email}
-                                        </SelectItem>
-                                      ))}
-                                    </SelectContent>
-                                  </Select>
+                                  <div className="space-y-2">
+                                    <Label>Primary technician</Label>
+                                    <Select value={selectedTechId} onValueChange={setSelectedTechId}>
+                                      <SelectTrigger>
+                                        <SelectValue placeholder="Select a technician" />
+                                      </SelectTrigger>
+                                      <SelectContent>
+                                        <SelectItem value="unassigned">No technician</SelectItem>
+                                        {technicians.map((tech) => (
+                                          <SelectItem key={tech.id} value={tech.id}>
+                                            {tech.name} - {tech.email}
+                                          </SelectItem>
+                                        ))}
+                                      </SelectContent>
+                                    </Select>
+                                  </div>
+
+                                  <div className="space-y-2">
+                                    <Label>Secondary technician (optional)</Label>
+                                    <Select value={selectedSecondaryTechId} onValueChange={setSelectedSecondaryTechId}>
+                                      <SelectTrigger>
+                                        <SelectValue placeholder="Select a backup technician" />
+                                      </SelectTrigger>
+                                      <SelectContent>
+                                        <SelectItem value="unassigned">No secondary technician</SelectItem>
+                                        {technicians
+                                          .filter((tech) => tech.id !== selectedTechId)
+                                          .map((tech) => (
+                                            <SelectItem key={tech.id} value={tech.id}>
+                                              {tech.name} - {tech.email}
+                                            </SelectItem>
+                                          ))}
+                                      </SelectContent>
+                                    </Select>
+                                  </div>
                                 </div>
 
                                 <DialogFooter>
                                   <Button variant="outline" onClick={() => {
                                     setSelectedClientForTech(null);
                                     setSelectedTechId('');
+                                    setSelectedSecondaryTechId('unassigned');
                                   }}>
                                     Cancel
                                   </Button>
                                   <Button onClick={handleAssignTechnician}>
-                                    Assign Technician
+                                    Save Assignments
                                   </Button>
                                 </DialogFooter>
                               </DialogContent>
+
                             </Dialog>
                             <AlertDialog>
                               <AlertDialogTrigger asChild>

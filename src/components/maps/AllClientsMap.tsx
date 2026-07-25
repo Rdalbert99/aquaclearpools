@@ -193,6 +193,8 @@ interface PinnedClient {
   pool_size?: number;
   pool_type?: string;
   assigned_technician_id?: string | null;
+  secondary_technician_id?: string | null;
+
 }
 
 export function AllClientsMap({
@@ -296,6 +298,8 @@ export function AllClientsMap({
             pool_size: c.pool_size ?? undefined,
             pool_type: c.pool_type ?? undefined,
             assigned_technician_id: c.assigned_technician_id ?? null,
+            secondary_technician_id: c.secondary_technician_id ?? null,
+
           });
         }
         setProgress({ done: i + 1, total: addressed.length });
@@ -343,8 +347,11 @@ export function AllClientsMap({
   const visible = useMemo(() => {
     if (filterTechId === 'all') return pinned;
     if (filterTechId === '__unassigned__') return pinned.filter((p) => !p.assigned_technician_id);
-    return pinned.filter((p) => p.assigned_technician_id === filterTechId);
+    return pinned.filter(
+      (p) => p.assigned_technician_id === filterTechId || p.secondary_technician_id === filterTechId
+    );
   }, [pinned, filterTechId]);
+
 
   const positions = useMemo<[number, number][]>(
     () => visible.map((p) => [p.lat, p.lng]),
@@ -422,10 +429,16 @@ export function AllClientsMap({
                     ? techColor[p.assigned_technician_id] || UNASSIGNED_COLOR
                     : UNASSIGNED_COLOR;
                   const highlight =
-                    !!currentTechId && p.assigned_technician_id === currentTechId;
+                    !!currentTechId &&
+                    (p.assigned_technician_id === currentTechId ||
+                      p.secondary_technician_id === currentTechId);
                   const assignedName = p.assigned_technician_id
                     ? techName[p.assigned_technician_id] || 'Unknown'
                     : 'Unassigned';
+                  const secondaryName = p.secondary_technician_id
+                    ? techName[p.secondary_technician_id] || 'Unknown'
+                    : null;
+
                   const mapsHref = /iPhone|iPad|iPod|Macintosh/i.test(
                     typeof navigator !== 'undefined' ? navigator.userAgent : ''
                   )
@@ -455,6 +468,10 @@ export function AllClientsMap({
                             />
                             {assignedName}
                           </p>
+                          {secondaryName && (
+                            <p className="text-muted-foreground">Secondary: {secondaryName}</p>
+                          )}
+
                           <div className="flex flex-wrap gap-2 pt-1">
                             <Button size="sm" variant="outline" asChild>
                               <Link to={`/admin/clients/${p.id}`}>Details</Link>

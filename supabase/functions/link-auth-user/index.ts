@@ -91,7 +91,9 @@ serve(async (req: Request) => {
     let upsertRecord: any = {
       id: authUser.id,
       email,
-      role: role || existingProfile?.role || 'client',
+      // SECURITY: only admins may specify a role. Self-linking always keeps the
+      // existing profile role (or defaults to 'client') — never a client-supplied one.
+      role: (isAdmin ? role : undefined) || existingProfile?.role || 'client',
       name: existingProfile?.name || authUser.user_metadata?.full_name || email.split('@')[0],
       login: existingProfile?.login || (email.split('@')[0]),
       password: existingProfile?.password || 'password', // legacy non-null field

@@ -143,8 +143,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
       // If still no profile, create a minimal one
       console.log('No profile found, creating minimal profile');
-      const adminEmail = import.meta.env.VITE_ADMIN_EMAIL || 'admin@poolcleaning.com';
-      const role = authUser.email === adminEmail ? 'admin' : 'client';
+      // SECURITY: self-created profiles are always 'client'. Elevated roles are
+      // granted only by an admin or through a server-side invitation flow.
+      const role = 'client';
       const name = authUser.email?.split('@')[0] || 'User';
       
       const { error: insertError } = await supabase
@@ -168,8 +169,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     } catch (error) {
       console.error('Error ensuring profile:', error);
       // Fallback to basic user info
-      const adminEmail = import.meta.env.VITE_ADMIN_EMAIL || 'admin@poolcleaning.com';
-      const role = authUser.email === adminEmail ? 'admin' : 'client';
+      const role = 'client';
       setUser({ ...authUser, role, name: authUser.email?.split('@')[0] || 'User' });
     }
   };
@@ -291,7 +291,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
   };
 
-  const signUp = async (email: string, password: string, name: string, role: string = 'client', additionalData?: any) => {
+  const signUp = async (email: string, password: string, name: string, _role: string = 'client', additionalData?: any) => {
+    // SECURITY: public signup can never set an elevated role.
+    const role = 'client';
     try {
       const { valid, errors } = validatePasswordComplexity(password, email);
       if (!valid) {

@@ -1,10 +1,11 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from './button';
 import { Card, CardContent } from './card';
 import { LoadingSpinner } from './loading-spinner';
 import { Upload, X, Camera } from 'lucide-react';
 import { toast } from 'sonner';
+import { getSignedStorageUrl } from '@/lib/storage-urls';
 
 interface ImageUploadProps {
   onImageUploaded: (url: string) => void;
@@ -25,7 +26,27 @@ export function ImageUpload({
 }: ImageUploadProps) {
   const [uploading, setUploading] = useState(false);
   const [preview, setPreview] = useState<string | null>(currentImage || null);
+  const [previewSrc, setPreviewSrc] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // The bucket is private: resolve a short-lived signed URL for display.
+  useEffect(() => {
+    let active = true;
+    if (!preview) {
+      setPreviewSrc(null);
+      return;
+    }
+    getSignedStorageUrl(preview, bucket).then((signed) => {
+      if (active) setPreviewSrc(signed);
+    });
+    return () => {
+      active = false;
+    };
+  }, [preview, bucket]);
+
+  useEffect(() => {
+    setPreview(currentImage || null);
+  }, [currentImage]);
 
   const uploadImage = async (file: File) => {
     try {
@@ -96,10 +117,10 @@ export function ImageUpload({
             )}
           </div>
 
-          {preview ? (
+          {preview && previewSrc ? (
             <div className="relative">
               <img
-                src={preview}
+                src={previewSrc}
                 alt="Preview"
                 className="w-full h-48 object-cover rounded-lg"
               />

@@ -66,7 +66,7 @@ export default function TechSchedule() {
           *,
           client_user:users!clients_user_id_fkey(name, phone, email, address, street_address, city, state, zip_code)
         `)
-        .eq('assigned_technician_id', user.id);
+        .or(`assigned_technician_id.eq.${user.id},secondary_technician_id.eq.${user.id}`);
 
       if (clientsError) throw clientsError;
 

@@ -18,7 +18,7 @@ export default defineConfig(({ mode }) => ({
       // The manifest is maintained by hand in public/manifest.json and linked from index.html
       manifest: false,
       injectRegister: null,
-      registerType: "autoUpdate",
+      registerType: "prompt",
       filename: "sw.js",
       devOptions: { enabled: false },
       workbox: {

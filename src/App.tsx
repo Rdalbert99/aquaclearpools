@@ -429,6 +429,9 @@ const AppRoutes = () => {
         <Route path="*" element={<NotFound />} />
       </Routes>
       <MobileBottomNav />
+      <UpdatePrompt />
+      <InstallPrompt />
+
       {isAuthenticated && <div className="h-16 lg:hidden" aria-hidden="true" />}
     </div>
   );

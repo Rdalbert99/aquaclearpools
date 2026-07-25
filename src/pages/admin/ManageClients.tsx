@@ -696,17 +696,26 @@ export default function ManageClients() {
                         </td>
                         
                         <td className="p-4">
-                          <div>
+                          <div className="space-y-2">
                             {client.assigned_technician ? (
                               <div>
+                                <p className="text-xs uppercase text-muted-foreground">Primary</p>
                                 <p className="text-sm font-medium">{client.assigned_technician.name}</p>
                                 <p className="text-xs text-muted-foreground">{client.assigned_technician.email}</p>
                               </div>
                             ) : (
                               <p className="text-sm text-muted-foreground">No technician assigned</p>
                             )}
+                            {client.secondary_technician && (
+                              <div>
+                                <p className="text-xs uppercase text-muted-foreground">Secondary</p>
+                                <p className="text-sm font-medium">{client.secondary_technician.name}</p>
+                                <p className="text-xs text-muted-foreground">{client.secondary_technician.email}</p>
+                              </div>
+                            )}
                           </div>
                         </td>
+
                         
                         <td className="p-4">
                           <Badge className={getStatusColor(client.status)}>

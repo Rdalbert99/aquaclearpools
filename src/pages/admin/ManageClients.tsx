@@ -796,6 +796,7 @@ export default function ManageClients() {
                                   onClick={() => {
                                     setSelectedClientForTech(client);
                                     setSelectedTechId(client.assigned_technician_id || 'unassigned');
+                                    setSelectedSecondaryTechId(client.secondary_technician_id || 'unassigned');
                                   }}
                                 >
                                   Assign Tech
@@ -803,40 +804,64 @@ export default function ManageClients() {
                               </DialogTrigger>
                               <DialogContent>
                                 <DialogHeader>
-                                  <DialogTitle>Assign Technician</DialogTitle>
+                                  <DialogTitle>Assign Technicians</DialogTitle>
                                   <DialogDescription>
-                                    Assign a technician to {client.customer}. This technician will receive notifications for service requests.
+                                    Assign a primary and an optional secondary technician to {client.customer}. Both can view and service this customer.
                                   </DialogDescription>
                                 </DialogHeader>
                                 
                                 <div className="space-y-4">
-                                  <Select value={selectedTechId} onValueChange={setSelectedTechId}>
-                                    <SelectTrigger>
-                                      <SelectValue placeholder="Select a technician" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                      <SelectItem value="unassigned">No technician</SelectItem>
-                                      {technicians.map((tech) => (
-                                        <SelectItem key={tech.id} value={tech.id}>
-                                          {tech.name} - {tech.email}
-                                        </SelectItem>
-                                      ))}
-                                    </SelectContent>
-                                  </Select>
+                                  <div className="space-y-2">
+                                    <Label>Primary technician</Label>
+                                    <Select value={selectedTechId} onValueChange={setSelectedTechId}>
+                                      <SelectTrigger>
+                                        <SelectValue placeholder="Select a technician" />
+                                      </SelectTrigger>
+                                      <SelectContent>
+                                        <SelectItem value="unassigned">No technician</SelectItem>
+                                        {technicians.map((tech) => (
+                                          <SelectItem key={tech.id} value={tech.id}>
+                                            {tech.name} - {tech.email}
+                                          </SelectItem>
+                                        ))}
+                                      </SelectContent>
+                                    </Select>
+                                  </div>
+
+                                  <div className="space-y-2">
+                                    <Label>Secondary technician (optional)</Label>
+                                    <Select value={selectedSecondaryTechId} onValueChange={setSelectedSecondaryTechId}>
+                                      <SelectTrigger>
+                                        <SelectValue placeholder="Select a backup technician" />
+                                      </SelectTrigger>
+                                      <SelectContent>
+                                        <SelectItem value="unassigned">No secondary technician</SelectItem>
+                                        {technicians
+                                          .filter((tech) => tech.id !== selectedTechId)
+                                          .map((tech) => (
+                                            <SelectItem key={tech.id} value={tech.id}>
+                                              {tech.name} - {tech.email}
+                                            </SelectItem>
+                                          ))}
+                                      </SelectContent>
+                                    </Select>
+                                  </div>
                                 </div>
 
                                 <DialogFooter>
                                   <Button variant="outline" onClick={() => {
                                     setSelectedClientForTech(null);
                                     setSelectedTechId('');
+                                    setSelectedSecondaryTechId('unassigned');
                                   }}>
                                     Cancel
                                   </Button>
                                   <Button onClick={handleAssignTechnician}>
-                                    Assign Technician
+                                    Save Assignments
                                   </Button>
                                 </DialogFooter>
                               </DialogContent>
+
                             </Dialog>
                             <AlertDialog>
                               <AlertDialogTrigger asChild>

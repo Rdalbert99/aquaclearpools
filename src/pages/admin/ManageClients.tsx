@@ -229,25 +229,29 @@ export default function ManageClients() {
 
     try {
       const techId = selectedTechId === 'unassigned' ? null : selectedTechId;
-      
+      let secondaryId = selectedSecondaryTechId === 'unassigned' ? null : selectedSecondaryTechId;
+      if (secondaryId && secondaryId === techId) secondaryId = null;
+
       const { error } = await supabase
         .from('clients')
-        .update({ assigned_technician_id: techId })
+        .update({ assigned_technician_id: techId, secondary_technician_id: secondaryId })
         .eq('id', selectedClientForTech.id);
 
       if (error) throw error;
 
       toast({
-        title: "Technician Assigned",
-        description: `Technician has been assigned to ${selectedClientForTech.customer}`,
+        title: "Technicians Updated",
+        description: `Technician assignments saved for ${selectedClientForTech.customer}`,
       });
 
       // Refresh clients list
       loadClients();
       setSelectedClientForTech(null);
       setSelectedTechId('');
+      setSelectedSecondaryTechId('unassigned');
     } catch (error) {
       console.error('Error assigning technician:', error);
+
       toast({
         title: "Error",
         description: "Failed to assign technician",

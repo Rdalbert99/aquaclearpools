@@ -51,9 +51,10 @@ export default function MyClients() {
         const { data, error } = await supabase
           .from('clients')
           .select('*')
-          .eq('assigned_technician_id', user?.id)
+          .or(`assigned_technician_id.eq.${user?.id},secondary_technician_id.eq.${user?.id}`)
           .eq('status', 'Active')
           .order('customer', { ascending: true });
+
         if (error) console.error(error);
         else setClients((data as ClientRow[]) || []);
 

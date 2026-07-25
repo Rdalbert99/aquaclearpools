@@ -193,6 +193,8 @@ interface PinnedClient {
   pool_size?: number;
   pool_type?: string;
   assigned_technician_id?: string | null;
+  secondary_technician_id?: string | null;
+
 }
 
 export function AllClientsMap({

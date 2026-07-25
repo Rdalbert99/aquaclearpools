@@ -10,6 +10,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/hooks/use-toast';
 import { Eye, EyeOff } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { APP_VERSION } from '@/releaseNotes';
+
 
 interface UserProfile {
   id: string;

@@ -429,10 +429,16 @@ export function AllClientsMap({
                     ? techColor[p.assigned_technician_id] || UNASSIGNED_COLOR
                     : UNASSIGNED_COLOR;
                   const highlight =
-                    !!currentTechId && p.assigned_technician_id === currentTechId;
+                    !!currentTechId &&
+                    (p.assigned_technician_id === currentTechId ||
+                      p.secondary_technician_id === currentTechId);
                   const assignedName = p.assigned_technician_id
                     ? techName[p.assigned_technician_id] || 'Unknown'
                     : 'Unassigned';
+                  const secondaryName = p.secondary_technician_id
+                    ? techName[p.secondary_technician_id] || 'Unknown'
+                    : null;
+
                   const mapsHref = /iPhone|iPad|iPod|Macintosh/i.test(
                     typeof navigator !== 'undefined' ? navigator.userAgent : ''
                   )

@@ -370,6 +370,7 @@ export type Database = {
           qb_customer_id: string | null
           qb_invoice_link: string | null
           salt_cell_last_cleaned: string | null
+          secondary_technician_id: string | null
           service_days: string[] | null
           service_frequency: string | null
           service_notes: string | null
@@ -404,6 +405,7 @@ export type Database = {
           qb_customer_id?: string | null
           qb_invoice_link?: string | null
           salt_cell_last_cleaned?: string | null
+          secondary_technician_id?: string | null
           service_days?: string[] | null
           service_frequency?: string | null
           service_notes?: string | null
@@ -438,6 +440,7 @@ export type Database = {
           qb_customer_id?: string | null
           qb_invoice_link?: string | null
           salt_cell_last_cleaned?: string | null
+          secondary_technician_id?: string | null
           service_days?: string[] | null
           service_frequency?: string | null
           service_notes?: string | null
@@ -450,6 +453,13 @@ export type Database = {
           {
             foreignKeyName: "clients_assigned_technician_id_fkey"
             columns: ["assigned_technician_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "clients_secondary_technician_id_fkey"
+            columns: ["secondary_technician_id"]
             isOneToOne: false
             referencedRelation: "users"
             referencedColumns: ["id"]

@@ -27,19 +27,31 @@ const handler = async (req: Request): Promise<Response> => {
   }
 
   try {
-    const payload = await req.text();
+    const rawBody = await req.text();
     const headers = Object.fromEntries(req.headers);
-    
-    // For webhook verification (when configured)
-    let emailData;
-    try {
-      const wh = new Webhook(hookSecret);
-      emailData = wh.verify(payload, headers) as any;
-    } catch (verifyError) {
-      // If webhook verification fails, try parsing as regular JSON
-      console.log("Webhook verification failed, trying regular JSON parse");
-      emailData = JSON.parse(payload);
+
+    const configuredSecret = Deno.env.get("SEND_AUTH_EMAIL_HOOK_SECRET");
+    if (!configuredSecret) {
+      console.error("SEND_AUTH_EMAIL_HOOK_SECRET is not configured; rejecting request");
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        status: 401,
+        headers: { "Content-Type": "application/json", ...corsHeaders },
+      });
     }
+
+    // Webhook signature verification is MANDATORY. Never trust an unverified body.
+    let emailData: any;
+    try {
+      const wh = new Webhook(configuredSecret);
+      emailData = wh.verify(rawBody, headers) as any;
+    } catch (_verifyError) {
+      console.error("Auth email webhook signature verification failed; rejecting request");
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        status: 401,
+        headers: { "Content-Type": "application/json", ...corsHeaders },
+      });
+    }
+
 
     const {
       user,

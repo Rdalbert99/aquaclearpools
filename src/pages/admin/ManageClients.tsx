@@ -92,6 +92,8 @@ export default function ManageClients() {
   const [deletingClientId, setDeletingClientId] = useState<string | null>(null);
   const [selectedClientForTech, setSelectedClientForTech] = useState<Client | null>(null);
   const [selectedTechId, setSelectedTechId] = useState<string>('');
+  const [selectedSecondaryTechId, setSelectedSecondaryTechId] = useState<string>('unassigned');
+
   const [duplicateUserIds, setDuplicateUserIds] = useState<string[]>([]);
   const [inviteClient, setInviteClient] = useState<Client | null>(null);
 

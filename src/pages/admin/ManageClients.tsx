@@ -35,6 +35,8 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import { Label } from '@/components/ui/label';
+
 import { ClientInviteDialog } from '@/components/admin/ClientInviteDialog';
 import { ClientsCalendarView } from '@/components/clients/ClientsCalendarView';
 import { AllClientsMap } from '@/components/maps/AllClientsMap';

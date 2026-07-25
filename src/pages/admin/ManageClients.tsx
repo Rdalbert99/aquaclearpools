@@ -53,6 +53,7 @@ interface Client {
   created_at: string;
   user_id: string;
   assigned_technician_id?: string | null;
+  secondary_technician_id?: string | null;
   users?: {
     email: string;
     phone: string | null;
@@ -63,7 +64,13 @@ interface Client {
     name: string;
     email: string;
   };
+  secondary_technician?: {
+    id: string;
+    name: string;
+    email: string;
+  };
 }
+
 
 interface Technician {
   id: string;

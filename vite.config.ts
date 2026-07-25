@@ -25,7 +25,7 @@ export default defineConfig(({ mode }) => ({
         // Precache only the app shell (code + styles). Large images are cached
         // on demand by the CacheFirst asset route below.
         globPatterns: ["**/*.{js,css,html}", "icon-192x192.png", "manifest.json"],
-        maximumFileSizeToCacheInBytes: 4 * 1024 * 1024,
+        maximumFileSizeToCacheInBytes: 12 * 1024 * 1024,
         cleanupOutdatedCaches: true,
         clientsClaim: true,
         skipWaiting: false,

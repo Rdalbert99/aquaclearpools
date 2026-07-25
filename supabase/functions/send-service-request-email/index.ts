@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
 // Using Mailjet API v3.1 for email delivery
 const MJ_API_URL = "https://api.mailjet.com/v3.1/send";
 function encodeBasicAuth(key: string, secret: string) {
@@ -13,6 +14,21 @@ const corsHeaders = {
   "Access-Control-Allow-Headers":
     "authorization, x-client-info, apikey, content-type",
 };
+
+const escapeHtml = (value: unknown): string =>
+  String(value ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+
+const clean = (value: unknown, max: number): string =>
+  String(value ?? "").replace(/[\u0000-\u001f\u007f]/g, " ").trim().slice(0, max);
+
+const ALLOWED_URGENCY = new Set(["low", "normal", "medium", "high", "emergency"]);
 
 interface ServiceRequestData {
   customerData: {
@@ -41,7 +57,72 @@ const handler = async (req: Request): Promise<Response> => {
   }
 
   try {
-    const { customerData, requestDetails }: ServiceRequestData = await req.json();
+    const raw = await req.json().catch(() => null);
+    if (!raw || typeof raw !== "object" || !raw.customerData) {
+      return new Response(JSON.stringify({ error: "Invalid request body" }), {
+        status: 400,
+        headers: { "Content-Type": "application/json", ...corsHeaders },
+      });
+    }
+
+    const rawCustomer = raw.customerData ?? {};
+    const rawDetails = raw.requestDetails ?? {};
+
+    const email = clean(rawCustomer.email, 254).toLowerCase();
+    const name = clean(rawCustomer.name, 100);
+    const description = clean(rawCustomer.description, 2000);
+    const urgencyInput = clean(rawDetails.urgency ?? rawCustomer.urgency, 20).toLowerCase();
+
+    if (!EMAIL_RE.test(email) || name.length < 2 || description.length < 3) {
+      return new Response(
+        JSON.stringify({ error: "A valid name, email address and description are required" }),
+        { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } },
+      );
+    }
+
+    const customerData = {
+      name,
+      email,
+      phone: clean(rawCustomer.phone, 30),
+      address: clean(rawCustomer.address, 200),
+      poolType: clean(rawCustomer.poolType, 50),
+      poolSize: clean(rawCustomer.poolSize, 50),
+      serviceType: clean(rawCustomer.serviceType, 80) || "Service request",
+      description,
+      preferredDate: clean(rawCustomer.preferredDate, 40),
+    };
+    const requestDetails = {
+      urgency: ALLOWED_URGENCY.has(urgencyInput) ? urgencyInput : "normal",
+    };
+
+    // Rate limit this public endpoint per caller IP and per submitted email
+    try {
+      const admin = createClient(
+        Deno.env.get("SUPABASE_URL")!,
+        Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
+      );
+      const ip =
+        req.headers.get("x-real-ip") ||
+        req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
+        "unknown";
+
+      for (const identifier of [`ip:${ip}`, `email:${email}`]) {
+        const { data: allowed } = await admin.rpc("check_rate_limit", {
+          p_identifier: identifier,
+          p_endpoint: "send-service-request-email",
+          p_max_requests: 5,
+          p_window_minutes: 60,
+        });
+        if (allowed === false) {
+          return new Response(
+            JSON.stringify({ error: "Too many requests. Please try again later." }),
+            { status: 429, headers: { "Content-Type": "application/json", ...corsHeaders } },
+          );
+        }
+      }
+    } catch (rlError) {
+      console.error("Rate limit check failed", rlError);
+    }
 
     const replyToEmail = Deno.env.get("RESEND_REPLY_TO") || undefined;
     const defaultFromEmail = "randy@getaquaclear.com";

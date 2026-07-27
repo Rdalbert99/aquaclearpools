@@ -81,17 +81,27 @@ export function ArrivalNotification({ clientName, clientId, clientPhone, clientE
     const message = reviewMessage.trim() || ARRIVAL_MESSAGE;
     setSending(true);
     try {
-      const { error } = await supabase.functions.invoke('send-sms-via-telnyx', {
+      const { data, error } = await supabase.functions.invoke('send-sms-via-telnyx', {
         body: { to: phone, message },
       });
-      if (error) {
-        console.error('SMS error, falling back to native:', error);
+      if (error || (data && (data as any).success === false)) {
+        const detail = (data as any)?.error || error?.message || 'Unknown error';
+        console.error('SMS error, falling back to native:', error, data);
+        toast({
+          title: 'Automatic text failed',
+          description: `${detail}. Opening your messaging app instead.`,
+          variant: 'destructive',
+        });
         window.location.href = `sms:${phone}?&body=${encodeURIComponent(message)}`;
+        setSent(true);
+        setReviewOpen(false);
+        return;
       }
       setSent(true);
       setReviewOpen(false);
       toast({ title: 'Arrival notification sent', description: `SMS sent to ${clientName}.` });
-    } catch {
+    } catch (e: any) {
+      console.error('SMS invoke threw:', e);
       window.location.href = `sms:${phone}?&body=${encodeURIComponent(message)}`;
       setSent(true);
       setReviewOpen(false);

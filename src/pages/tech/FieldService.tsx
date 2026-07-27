@@ -436,14 +436,15 @@ export default function FieldService() {
         toast({ title: 'Service completed', description: 'Service saved. Customer was not notified.' });
       } else if (phone) {
         try {
-          const { error } = await supabase.functions.invoke('send-sms-via-telnyx', {
+          const { data, error } = await supabase.functions.invoke('send-sms-via-telnyx', {
             body: { to: phone, message: message }
           });
-          
-          if (error) {
-            console.error('SMS sending error:', error);
+
+          if (error || (data && (data as any).success === false)) {
+            const detail = (data as any)?.error || error?.message || 'Unknown error';
+            console.error('SMS sending error:', error, data);
             window.location.href = `sms:${phone}?&body=${encodeURIComponent(message)}`;
-            toast({ title: 'Service completed', description: 'SMS app opened with message.' });
+            toast({ title: 'Automatic text failed', description: `${detail}. SMS app opened with message.`, variant: 'destructive' });
           } else {
             toast({ title: 'Service completed', description: 'Saved and SMS sent to client.' });
           }

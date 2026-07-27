@@ -38,7 +38,7 @@ verify_jwt = true
 verify_jwt = true
 
 [functions.send-sms-via-telnyx]
-verify_jwt = true
+verify_jwt = false
 
 [functions.send-tech-invite]
 verify_jwt = true

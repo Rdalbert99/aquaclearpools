@@ -571,6 +571,54 @@ export type Database = {
           },
         ]
       }
+      message_send_logs: {
+        Row: {
+          channel: string
+          client_id: string | null
+          client_name: string | null
+          created_at: string
+          error_detail: string | null
+          id: string
+          message: string | null
+          provider_message_id: string | null
+          recipient: string | null
+          source: string
+          status: string
+          technician_id: string | null
+          technician_name: string | null
+        }
+        Insert: {
+          channel: string
+          client_id?: string | null
+          client_name?: string | null
+          created_at?: string
+          error_detail?: string | null
+          id?: string
+          message?: string | null
+          provider_message_id?: string | null
+          recipient?: string | null
+          source?: string
+          status: string
+          technician_id?: string | null
+          technician_name?: string | null
+        }
+        Update: {
+          channel?: string
+          client_id?: string | null
+          client_name?: string | null
+          created_at?: string
+          error_detail?: string | null
+          id?: string
+          message?: string | null
+          provider_message_id?: string | null
+          recipient?: string | null
+          source?: string
+          status?: string
+          technician_id?: string | null
+          technician_name?: string | null
+        }
+        Relationships: []
+      }
       notification_templates: {
         Row: {
           created_at: string

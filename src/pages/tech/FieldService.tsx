@@ -25,6 +25,7 @@ import { useChemicalCatalog } from '@/hooks/useChemicalCatalog';
 import { useUnitCosts } from '@/hooks/useUnitCosts';
 import { computeServiceCost, fmtMoney } from '@/lib/inventory-cost';
 import { CHEMICAL_OPTIONS } from '@/lib/chemicals-added';
+import { logMessageSend } from '@/lib/message-log';
 
 type Client = {
   id: string;
@@ -448,7 +449,17 @@ export default function FieldService() {
       const email = freshClient?.contact_email || client.contact_email;
 
       // Send completion SMS via Telnyx (only when notify=true)
+      const logBase = {
+        clientId: client.id,
+        clientName: client.customer,
+        technicianId: user?.id ?? null,
+        technicianName: (user as any)?.name || 'Unknown Tech',
+        source: 'review_and_send',
+        message,
+      };
+
       if (!notify) {
+        await logMessageSend({ ...logBase, channel: 'none', status: 'skipped', errorDetail: 'Completed without notifying customer' });
         toast({ title: 'Service completed', description: 'Service saved. Customer was not notified.' });
       } else if (phone) {
         try {
@@ -459,20 +470,25 @@ export default function FieldService() {
           if (error || (data && (data as any).success === false)) {
             const detail = (data as any)?.error || error?.message || 'Unknown error';
             console.error('SMS sending error:', error, data);
+            await logMessageSend({ ...logBase, channel: 'sms', recipient: phone, status: 'fallback', errorDetail: detail });
             window.location.href = `sms:${phone}?&body=${encodeURIComponent(message)}`;
             toast({ title: 'Automatic text failed', description: `${detail}. SMS app opened with message.`, variant: 'destructive' });
           } else {
+            await logMessageSend({ ...logBase, channel: 'sms', recipient: phone, status: 'sent', providerMessageId: (data as any)?.messageId ?? null });
             toast({ title: 'Service completed', description: 'Saved and SMS sent to client.' });
           }
-        } catch (smsError) {
+        } catch (smsError: any) {
           console.error('SMS API error:', smsError);
+          await logMessageSend({ ...logBase, channel: 'sms', recipient: phone, status: 'fallback', errorDetail: smsError?.message || 'Network/function error' });
           window.location.href = `sms:${phone}?&body=${encodeURIComponent(message)}`;
           toast({ title: 'Service completed', description: 'SMS app opened with message.' });
         }
       } else if (email) {
+        await logMessageSend({ ...logBase, channel: 'email', recipient: email, status: 'fallback', errorDetail: 'No phone on file — opened email app' });
         window.location.href = `mailto:${email}?subject=${encodeURIComponent('Aqua Clear Service Update')}&body=${encodeURIComponent(message)}`;
         toast({ title: 'Service completed', description: 'Email app opened with message.' });
       } else {
+        await logMessageSend({ ...logBase, channel: 'none', status: 'failed', errorDetail: 'No phone or email on file for this client' });
         toast({ title: 'Service completed', description: 'Service saved successfully.' });
       }
       setReviewOpen(false);

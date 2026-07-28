@@ -865,7 +865,7 @@ export default function FieldService() {
       </Card>
 
       <Dialog open={reviewOpen} onOpenChange={(o) => !saving && setReviewOpen(o)}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-w-lg w-[calc(100vw-1.5rem)] max-h-[90dvh] overflow-y-auto p-4 sm:p-6">
           <DialogHeader>
             <DialogTitle>Review Customer Message</DialogTitle>
             <DialogDescription>
@@ -873,30 +873,50 @@ export default function FieldService() {
             </DialogDescription>
           </DialogHeader>
           <Textarea
-            rows={8}
+            rows={6}
             value={reviewMessage}
             onChange={(e) => setReviewMessage(e.target.value)}
-            className="font-mono text-sm"
+            className="font-mono text-sm max-h-[35dvh]"
           />
-          <div className="text-xs text-muted-foreground">{reviewMessage.length} characters</div>
-          <DialogFooter className="gap-2 flex-col sm:flex-row flex-wrap">
-            <Button variant="outline" onClick={() => setReviewOpen(false)} disabled={saving}>Cancel</Button>
+          <div className="text-xs text-muted-foreground">
+            {reviewMessage.length} characters
+            {client?.contact_phone
+              ? ` · Text to ${client.contact_phone}`
+              : client?.contact_email
+                ? ` · Email to ${client.contact_email}`
+                : ' · No phone or email on file'}
+          </div>
+          <DialogFooter className="gap-2 flex-col sm:flex-row sm:flex-wrap">
+            <Button
+              className="w-full sm:w-auto sm:order-4"
+              onClick={() => completeService(true)}
+              disabled={saving || !reviewMessage.trim()}
+            >
+              {saving ? <LoadingSpinner /> : (<><Send className="h-4 w-4 mr-2" /> Send &amp; Complete</>)}
+            </Button>
+            <Button
+              variant="secondary"
+              className="w-full sm:w-auto sm:order-3"
+              onClick={() => completeService(false)}
+              disabled={saving}
+            >
+              Complete without notifying
+            </Button>
             <Button
               variant="ghost"
+              className="w-full sm:w-auto sm:order-2"
               onClick={() => client && setReviewMessage(buildServiceMessage(client.customer, serviceData))}
               disabled={saving}
             >
               Reset
             </Button>
             <Button
-              variant="secondary"
-              onClick={() => completeService(false)}
+              variant="outline"
+              className="w-full sm:w-auto sm:order-1"
+              onClick={() => setReviewOpen(false)}
               disabled={saving}
             >
-              Complete without notifying
-            </Button>
-            <Button onClick={() => completeService(true)} disabled={saving || !reviewMessage.trim()}>
-              {saving ? <LoadingSpinner /> : (<><Send className="h-4 w-4 mr-2" /> Send & Complete</>)}
+              Cancel
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -143,7 +143,26 @@ const handler = async (req: Request): Promise<Response> => {
 
     if (!response.ok) {
       console.error("Telnyx API error:", responseData);
-      throw new Error(`Telnyx API error: ${responseData.errors?.[0]?.detail || 'Unknown error'}`);
+      const first = responseData?.errors?.[0] ?? {};
+      const detailParts = [
+        first.code ? `Telnyx ${first.code}` : `Telnyx HTTP ${response.status}`,
+        first.title,
+        first.detail,
+        first.meta?.url ? `(${first.meta.url})` : null,
+      ].filter(Boolean);
+      return new Response(
+        JSON.stringify({
+          success: false,
+          provider: "telnyx",
+          error: detailParts.join(": "),
+          errorCode: first.code ?? null,
+          errorTitle: first.title ?? null,
+          errorDetail: first.detail ?? null,
+          providerStatus: response.status,
+          to: cleanedPhone,
+        }),
+        { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } },
+      );
     }
 
     console.log("SMS sent successfully via Telnyx!");

@@ -25,6 +25,7 @@ import { useChemicalCatalog } from '@/hooks/useChemicalCatalog';
 import { useUnitCosts } from '@/hooks/useUnitCosts';
 import { computeServiceCost, fmtMoney } from '@/lib/inventory-cost';
 import { CHEMICAL_OPTIONS } from '@/lib/chemicals-added';
+import { extractSendError } from '@/lib/send-error';
 import { logMessageSend } from '@/lib/message-log';
 
 type Client = {
@@ -468,7 +469,7 @@ export default function FieldService() {
           });
 
           if (error || (data && (data as any).success === false)) {
-            const detail = (data as any)?.error || error?.message || 'Unknown error';
+            const detail = await extractSendError(error, data);
             console.error('SMS sending error:', error, data);
             await logMessageSend({ ...logBase, channel: 'sms', recipient: phone, status: 'fallback', errorDetail: detail });
             window.location.href = `sms:${phone}?&body=${encodeURIComponent(message)}`;
@@ -481,7 +482,7 @@ export default function FieldService() {
           console.error('SMS API error:', smsError);
           await logMessageSend({ ...logBase, channel: 'sms', recipient: phone, status: 'fallback', errorDetail: smsError?.message || 'Network/function error' });
           window.location.href = `sms:${phone}?&body=${encodeURIComponent(message)}`;
-          toast({ title: 'Service completed', description: 'SMS app opened with message.' });
+          toast({ title: 'Automatic text failed', description: `${smsError?.message || 'Network/function error'}. SMS app opened with message.`, variant: 'destructive' });
         }
       } else if (email) {
         await logMessageSend({ ...logBase, channel: 'email', recipient: email, status: 'fallback', errorDetail: 'No phone on file — opened email app' });

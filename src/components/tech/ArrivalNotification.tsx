@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
+import { extractSendError } from '@/lib/send-error';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { MessageSquare, Mail, CheckCircle, Send, UserPlus, Phone } from 'lucide-react';
@@ -85,7 +86,7 @@ export function ArrivalNotification({ clientName, clientId, clientPhone, clientE
         body: { to: phone, message },
       });
       if (error || (data && (data as any).success === false)) {
-        const detail = (data as any)?.error || error?.message || 'Unknown error';
+        const detail = await extractSendError(error, data);
         console.error('SMS error, falling back to native:', error, data);
         toast({
           title: 'Automatic text failed',

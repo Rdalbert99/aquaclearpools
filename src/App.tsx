@@ -64,6 +64,7 @@ import OptinProof from "./pages/OptinProof";
 import MailjetTest from "./pages/admin/MailjetTest";
 import SMSTest from "./pages/admin/SMSTest";
 import InboundMessages from "./pages/admin/InboundMessages";
+import MessageLogs from "./pages/admin/MessageLogs";
 import NotificationTemplates from "./pages/admin/NotificationTemplates";
 import SMSForwardingSettings from "./pages/admin/SMSForwardingSettings";
 
@@ -367,6 +368,14 @@ const AppRoutes = () => {
           element={
             <ProtectedRoute allowedRoles={['admin']}>
               <InboundMessages />
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/admin/message-logs" 
+          element={
+            <ProtectedRoute allowedRoles={['admin', 'tech']}>
+              <MessageLogs />
             </ProtectedRoute>
           } 
         />

@@ -25,6 +25,7 @@ import { useChemicalCatalog } from '@/hooks/useChemicalCatalog';
 import { useUnitCosts } from '@/hooks/useUnitCosts';
 import { computeServiceCost, fmtMoney } from '@/lib/inventory-cost';
 import { CHEMICAL_OPTIONS } from '@/lib/chemicals-added';
+import { logMessageSend } from '@/lib/message-log';
 
 type Client = {
   id: string;

@@ -69,6 +69,7 @@ export const Navbar = () => {
         { label: 'Mailjet Test', icon: Mail, path: '/admin/mailjet-test' },
         { label: 'Templates', icon: MessageSquare, path: '/admin/notification-templates' },
         { label: 'SMS Forwarding', icon: MessageSquareReply, path: '/admin/sms-forwarding' },
+        { label: 'Send Log', icon: MessageSquareReply, path: '/admin/message-logs' },
       ];
     }
     
@@ -78,6 +79,7 @@ export const Navbar = () => {
         { label: 'Schedule', icon: Calendar, path: '/tech/schedule' },
         { label: 'My Clients', icon: Users, path: '/tech/clients' },
         { label: 'Calculator', icon: Calculator, path: '/tech/calculator' },
+        { label: 'Send Log', icon: MessageSquareReply, path: '/admin/message-logs' },
       ];
     }
     

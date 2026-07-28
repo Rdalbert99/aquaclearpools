@@ -159,7 +159,23 @@ export default function FieldService() {
         if (!clientId) return;
         const { data, error } = await supabase.from('clients').select('*').eq('id', clientId).single();
         if (error) throw error;
-        if (mounted) setClient(data as Client);
+        let clientRecord: any = data;
+        // Fall back to the linked user profile for contact info when the client record is missing it
+        if (clientRecord?.user_id && (!clientRecord.contact_phone || !clientRecord.contact_email)) {
+          const { data: profile } = await supabase
+            .from('users')
+            .select('phone, email')
+            .eq('id', clientRecord.user_id)
+            .maybeSingle();
+          if (profile) {
+            clientRecord = {
+              ...clientRecord,
+              contact_phone: clientRecord.contact_phone || profile.phone || null,
+              contact_email: clientRecord.contact_email || profile.email || null,
+            };
+          }
+        }
+        if (mounted) setClient(clientRecord as Client);
 
         // Load recent services for salt-cell history + optional prefill from last visit
         const { data: prior } = await supabase

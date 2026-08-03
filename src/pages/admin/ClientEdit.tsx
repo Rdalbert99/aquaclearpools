@@ -230,9 +230,15 @@ export default function ClientEdit() {
   const handleSave = async () => {
     if (!client || !id) return;
 
-    console.log('handleSave called - Starting save process...');
-    console.log('Client data:', client);
-    console.log('Client ID:', id);
+    const statusError = validateStatusChange(originalStatus, client.status);
+    if (statusError) {
+      toast({
+        title: "Status change not allowed",
+        description: statusError,
+        variant: "destructive"
+      });
+      return;
+    }
 
     setSaving(true);
     try {

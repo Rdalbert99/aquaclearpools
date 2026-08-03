@@ -63,6 +63,29 @@ interface ClientFormData {
   salt_cell_last_cleaned: string;
 }
 
+const CLIENT_STATUSES = ['Active', 'Inactive', 'Suspended'] as const;
+type ClientStatus = (typeof CLIENT_STATUSES)[number];
+
+// Allowed transitions between account statuses
+const STATUS_TRANSITIONS: Record<ClientStatus, ClientStatus[]> = {
+  Active: ['Active', 'Inactive', 'Suspended'],
+  Inactive: ['Inactive', 'Active'],
+  Suspended: ['Suspended', 'Active', 'Inactive'],
+};
+
+function validateStatusChange(from: string, to: string): string | null {
+  if (!CLIENT_STATUSES.includes(to as ClientStatus)) {
+    return `"${to}" isn't a valid account status. Choose Active, Inactive, or Suspended.`;
+  }
+  const allowed = STATUS_TRANSITIONS[(from as ClientStatus) ?? 'Active'] ?? CLIENT_STATUSES;
+  if (!allowed.includes(to as ClientStatus)) {
+    return `You can't change this account from ${from} to ${to}. Allowed next statuses: ${allowed
+      .filter((s) => s !== from)
+      .join(', ')}.`;
+  }
+  return null;
+}
+
 export default function ClientEdit() {
   const { id } = useParams();
   const navigate = useNavigate();

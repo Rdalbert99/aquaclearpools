@@ -143,7 +143,7 @@ export const Navbar = () => {
                 </SheetTrigger>
                 <SheetContent 
                   side="right" 
-                  className="bg-background border-l w-80 z-[100]"
+                  className="bg-background border-l w-80 z-[201]"
                 >
                   <div className="flex flex-col h-full pt-8">
                     <nav className="flex flex-col space-y-2 mb-8">

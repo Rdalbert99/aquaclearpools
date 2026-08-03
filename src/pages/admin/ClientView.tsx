@@ -35,6 +35,8 @@ import {
 import { getPoolServiceStatus, getBalanceStatus, getNextDueDate } from '@/lib/pool-status';
 import { ClientReadingsChart } from '@/components/admin/ClientReadingsChart';
 import { ServiceCostChart } from '@/components/admin/ServiceCostChart';
+import { ClientStatusHistory } from '@/components/admin/ClientStatusHistory';
+
 import type { ChemicalId } from '@/lib/pool-chemistry';
 
 interface ClientData {

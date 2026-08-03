@@ -315,11 +315,15 @@ export default function ClientEdit() {
 
       navigate(`/admin/clients/${id}`);
 
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error updating client:', error);
+      const raw = error?.message || '';
+      const friendly = /clients_status_check/i.test(raw)
+        ? 'That account status isn\'t accepted. Choose Active, Inactive, or Suspended.'
+        : raw || 'Failed to update client information';
       toast({
         title: "Error",
-        description: "Failed to update client information",
+        description: friendly,
         variant: "destructive"
       });
     } finally {

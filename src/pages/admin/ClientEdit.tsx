@@ -35,6 +35,7 @@ import {
 import { Checkbox } from '@/components/ui/checkbox';
 import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { TechnicianPicker } from '@/components/admin/TechnicianPicker';
 
 interface ClientFormData {
   customer: string;
@@ -835,45 +836,26 @@ export default function ClientEdit() {
 
             <div className="space-y-2">
               <Label>Primary technician</Label>
-              <Select
-                value={client.assigned_technician_id || 'unassigned'}
-                onValueChange={(value) => handleInputChange('assigned_technician_id', value === 'unassigned' ? '' : value)}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select a technician" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="unassigned">No technician</SelectItem>
-                  {technicians.map((tech) => (
-                    <SelectItem key={tech.id} value={tech.id}>
-                      {tech.name}{tech.email ? ` - ${tech.email}` : ''}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <TechnicianPicker
+                technicians={technicians}
+                value={client.assigned_technician_id || ''}
+                onChange={(value) => handleInputChange('assigned_technician_id', value)}
+                placeholder="Select a technician"
+                emptyLabel="No technician"
+              />
             </div>
 
             <div className="space-y-2">
               <Label>Secondary technician (optional)</Label>
-              <Select
-                value={client.secondary_technician_id || 'unassigned'}
-                onValueChange={(value) => handleInputChange('secondary_technician_id', value === 'unassigned' ? '' : value)}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select a backup technician" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="unassigned">No secondary technician</SelectItem>
-                  {technicians
-                    .filter((tech) => tech.id !== client.assigned_technician_id)
-                    .map((tech) => (
-                      <SelectItem key={tech.id} value={tech.id}>
-                        {tech.name}{tech.email ? ` - ${tech.email}` : ''}
-                      </SelectItem>
-                    ))}
-                </SelectContent>
-              </Select>
+              <TechnicianPicker
+                technicians={technicians.filter((tech) => tech.id !== client.assigned_technician_id)}
+                value={client.secondary_technician_id || ''}
+                onChange={(value) => handleInputChange('secondary_technician_id', value)}
+                placeholder="Select a backup technician"
+                emptyLabel="No secondary technician"
+              />
             </div>
+
 
 
             <div className="space-y-2">

@@ -125,6 +125,7 @@ export default function ClientEdit() {
     if (id) {
       loadClientData(id);
       loadUsers();
+      loadTechnicians();
       loadLastTechVisit(id);
     }
   }, [id]);
@@ -159,6 +160,8 @@ export default function ClientEdit() {
         in_balance: data.in_balance || false,
         last_service_date: data.last_service_date ? data.last_service_date.split('T')[0] : '',
         user_id: data.user_id || '',
+        assigned_technician_id: (data as any).assigned_technician_id || '',
+        secondary_technician_id: (data as any).secondary_technician_id || '',
         service_rate: (data as any).service_rate || 0,
         service_frequency: (data as any).service_frequency || 'weekly',
         next_service_date: (data as any).next_service_date ? (data as any).next_service_date.split('T')[0] : '',

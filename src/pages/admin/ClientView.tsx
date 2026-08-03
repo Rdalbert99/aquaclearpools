@@ -35,6 +35,8 @@ import {
 import { getPoolServiceStatus, getBalanceStatus, getNextDueDate } from '@/lib/pool-status';
 import { ClientReadingsChart } from '@/components/admin/ClientReadingsChart';
 import { ServiceCostChart } from '@/components/admin/ServiceCostChart';
+import { ClientStatusHistory } from '@/components/admin/ClientStatusHistory';
+
 import type { ChemicalId } from '@/lib/pool-chemistry';
 
 interface ClientData {
@@ -804,6 +806,10 @@ export default function ClientView() {
 
       {/* Chemical cost history (admin/tech only) */}
       <ServiceCostChart services={services as any} contextLabel={client?.customer} />
+
+      {/* Account status audit log */}
+      {id && <ClientStatusHistory clientId={id} />}
+
 
       {/* Service Reading Detail Dialog */}
       <Dialog open={!!selectedServiceId} onOpenChange={(open) => !open && setSelectedServiceId(null)}>

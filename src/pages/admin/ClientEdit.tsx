@@ -45,6 +45,8 @@ interface ClientFormData {
   in_balance: boolean;
   last_service_date: string;
   user_id: string;
+  assigned_technician_id: string;
+  secondary_technician_id: string;
   service_rate: number;
   service_frequency: string;
   next_service_date: string;
@@ -95,6 +97,7 @@ export default function ClientEdit() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [users, setUsers] = useState<any[]>([]);
+  const [technicians, setTechnicians] = useState<any[]>([]);
   const [inviteOpen, setInviteOpen] = useState(false);
   const [inviteEmail, setInviteEmail] = useState('');
   const [invitePhone, setInvitePhone] = useState('');
@@ -122,6 +125,7 @@ export default function ClientEdit() {
     if (id) {
       loadClientData(id);
       loadUsers();
+      loadTechnicians();
       loadLastTechVisit(id);
     }
   }, [id]);
@@ -156,6 +160,8 @@ export default function ClientEdit() {
         in_balance: data.in_balance || false,
         last_service_date: data.last_service_date ? data.last_service_date.split('T')[0] : '',
         user_id: data.user_id || '',
+        assigned_technician_id: (data as any).assigned_technician_id || '',
+        secondary_technician_id: (data as any).secondary_technician_id || '',
         service_rate: (data as any).service_rate || 0,
         service_frequency: (data as any).service_frequency || 'weekly',
         next_service_date: (data as any).next_service_date ? (data as any).next_service_date.split('T')[0] : '',
@@ -186,6 +192,24 @@ export default function ClientEdit() {
       });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadTechnicians = async () => {
+    try {
+      const { data, error } = await supabase.rpc('get_all_technicians');
+      if (!error && data && (data as any[]).length > 0) {
+        setTechnicians(data as any[]);
+        return;
+      }
+      const { data: fallback } = await supabase
+        .from('users')
+        .select('id, name, email')
+        .eq('role', 'tech')
+        .order('name');
+      setTechnicians(fallback || []);
+    } catch (e) {
+      console.error('Error loading technicians:', e);
     }
   };
 
@@ -255,6 +279,11 @@ export default function ClientEdit() {
         status: client.status,
         in_balance: client.in_balance,
         user_id: client.user_id && client.user_id !== "none" ? client.user_id : null,
+        assigned_technician_id: client.assigned_technician_id || null,
+        secondary_technician_id:
+          client.secondary_technician_id && client.secondary_technician_id !== client.assigned_technician_id
+            ? client.secondary_technician_id
+            : null,
         service_rate: client.service_rate,
         service_frequency: client.service_frequency,
         next_service_date: client.next_service_date || null,
@@ -803,6 +832,49 @@ export default function ClientEdit() {
                 </SelectContent>
               </Select>
             </div>
+
+            <div className="space-y-2">
+              <Label>Primary technician</Label>
+              <Select
+                value={client.assigned_technician_id || 'unassigned'}
+                onValueChange={(value) => handleInputChange('assigned_technician_id', value === 'unassigned' ? '' : value)}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select a technician" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="unassigned">No technician</SelectItem>
+                  {technicians.map((tech) => (
+                    <SelectItem key={tech.id} value={tech.id}>
+                      {tech.name}{tech.email ? ` - ${tech.email}` : ''}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Secondary technician (optional)</Label>
+              <Select
+                value={client.secondary_technician_id || 'unassigned'}
+                onValueChange={(value) => handleInputChange('secondary_technician_id', value === 'unassigned' ? '' : value)}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select a backup technician" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="unassigned">No secondary technician</SelectItem>
+                  {technicians
+                    .filter((tech) => tech.id !== client.assigned_technician_id)
+                    .map((tech) => (
+                      <SelectItem key={tech.id} value={tech.id}>
+                        {tech.name}{tech.email ? ` - ${tech.email}` : ''}
+                      </SelectItem>
+                    ))}
+                </SelectContent>
+              </Select>
+            </div>
+
 
             <div className="space-y-2">
               <Label htmlFor="status">Status</Label>

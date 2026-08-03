@@ -195,6 +195,24 @@ export default function ClientEdit() {
     }
   };
 
+  const loadTechnicians = async () => {
+    try {
+      const { data, error } = await supabase.rpc('get_all_technicians');
+      if (!error && data && (data as any[]).length > 0) {
+        setTechnicians(data as any[]);
+        return;
+      }
+      const { data: fallback } = await supabase
+        .from('users')
+        .select('id, name, email')
+        .eq('role', 'tech')
+        .order('name');
+      setTechnicians(fallback || []);
+    } catch (e) {
+      console.error('Error loading technicians:', e);
+    }
+  };
+
   const loadUsers = async () => {
     try {
       const { data, error } = await supabase
@@ -261,6 +279,11 @@ export default function ClientEdit() {
         status: client.status,
         in_balance: client.in_balance,
         user_id: client.user_id && client.user_id !== "none" ? client.user_id : null,
+        assigned_technician_id: client.assigned_technician_id || null,
+        secondary_technician_id:
+          client.secondary_technician_id && client.secondary_technician_id !== client.assigned_technician_id
+            ? client.secondary_technician_id
+            : null,
         service_rate: client.service_rate,
         service_frequency: client.service_frequency,
         next_service_date: client.next_service_date || null,

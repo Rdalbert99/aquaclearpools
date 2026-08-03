@@ -805,6 +805,10 @@ export default function ClientView() {
       {/* Chemical cost history (admin/tech only) */}
       <ServiceCostChart services={services as any} contextLabel={client?.customer} />
 
+      {/* Account status audit log */}
+      {id && <ClientStatusHistory clientId={id} />}
+
+
       {/* Service Reading Detail Dialog */}
       <Dialog open={!!selectedServiceId} onOpenChange={(open) => !open && setSelectedServiceId(null)}>
         <DialogContent className="max-w-lg">

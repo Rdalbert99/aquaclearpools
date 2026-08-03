@@ -45,6 +45,8 @@ interface ClientFormData {
   in_balance: boolean;
   last_service_date: string;
   user_id: string;
+  assigned_technician_id: string;
+  secondary_technician_id: string;
   service_rate: number;
   service_frequency: string;
   next_service_date: string;
@@ -95,6 +97,7 @@ export default function ClientEdit() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [users, setUsers] = useState<any[]>([]);
+  const [technicians, setTechnicians] = useState<any[]>([]);
   const [inviteOpen, setInviteOpen] = useState(false);
   const [inviteEmail, setInviteEmail] = useState('');
   const [invitePhone, setInvitePhone] = useState('');

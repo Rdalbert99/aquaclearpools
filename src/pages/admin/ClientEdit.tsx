@@ -806,17 +806,49 @@ export default function ClientEdit() {
 
             <div className="space-y-2">
               <Label htmlFor="status">Status</Label>
-              <Select value={client.status} onValueChange={(value) => handleInputChange('status', value)}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Active">Active</SelectItem>
-                  <SelectItem value="Inactive">Inactive</SelectItem>
-                  <SelectItem value="Suspended">Suspended</SelectItem>
-                </SelectContent>
-              </Select>
+              {(() => {
+                const current = (CLIENT_STATUSES.includes(originalStatus as ClientStatus)
+                  ? originalStatus
+                  : 'Active') as ClientStatus;
+                const allowed = STATUS_TRANSITIONS[current] ?? CLIENT_STATUSES;
+                const others = allowed.filter((s) => s !== current);
+                const blocked = CLIENT_STATUSES.filter((s) => !allowed.includes(s));
+                return (
+                  <>
+                    <Select
+                      value={client.status}
+                      onValueChange={(value) => handleInputChange('status', value)}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {CLIENT_STATUSES.map((s) => (
+                          <SelectItem key={s} value={s} disabled={!allowed.includes(s)}>
+                            {s}
+                            {s === current ? ' (current)' : ''}
+                            {!allowed.includes(s) ? ' — not allowed' : ''}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-muted-foreground">
+                      Current status: <span className="font-medium text-foreground">{current}</span>.{' '}
+                      {others.length > 0
+                        ? `You can change it to ${others.join(' or ')}.`
+                        : 'No other status changes are allowed from here.'}
+                      {blocked.length > 0 && ` ${blocked.join(', ')} ${blocked.length > 1 ? 'are' : 'is'} not available from ${current}.`}
+                    </p>
+                    {client.status !== current && (
+                      <p className="text-xs font-medium text-amber-600 dark:text-amber-500">
+                        Pending change: {current} → {client.status}. Save to apply — it will be recorded in the status history.
+                      </p>
+                    )}
+                  </>
+                );
+              })()}
             </div>
+
 
             <div className="space-y-2">
               <Label htmlFor="lastService">Last Service Date</Label>

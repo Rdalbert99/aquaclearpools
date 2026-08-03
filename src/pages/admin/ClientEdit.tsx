@@ -175,6 +175,7 @@ export default function ClientEdit() {
       });
 
       setMustChangePassword(userData?.must_change_password || false);
+      setOriginalStatus(data.status || 'Active');
 
     } catch (error) {
       console.error('Error loading client data:', error);

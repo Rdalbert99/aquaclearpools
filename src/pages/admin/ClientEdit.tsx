@@ -834,6 +834,49 @@ export default function ClientEdit() {
             </div>
 
             <div className="space-y-2">
+              <Label>Primary technician</Label>
+              <Select
+                value={client.assigned_technician_id || 'unassigned'}
+                onValueChange={(value) => handleInputChange('assigned_technician_id', value === 'unassigned' ? '' : value)}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select a technician" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="unassigned">No technician</SelectItem>
+                  {technicians.map((tech) => (
+                    <SelectItem key={tech.id} value={tech.id}>
+                      {tech.name}{tech.email ? ` - ${tech.email}` : ''}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Secondary technician (optional)</Label>
+              <Select
+                value={client.secondary_technician_id || 'unassigned'}
+                onValueChange={(value) => handleInputChange('secondary_technician_id', value === 'unassigned' ? '' : value)}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select a backup technician" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="unassigned">No secondary technician</SelectItem>
+                  {technicians
+                    .filter((tech) => tech.id !== client.assigned_technician_id)
+                    .map((tech) => (
+                      <SelectItem key={tech.id} value={tech.id}>
+                        {tech.name}{tech.email ? ` - ${tech.email}` : ''}
+                      </SelectItem>
+                    ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+
+            <div className="space-y-2">
               <Label htmlFor="status">Status</Label>
               {(() => {
                 const current = (CLIENT_STATUSES.includes(originalStatus as ClientStatus)

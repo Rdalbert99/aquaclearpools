@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { Check, ChevronsUpDown, User } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -36,6 +36,13 @@ export function TechnicianPicker({
   disabled,
 }: TechnicianPickerProps) {
   const [open, setOpen] = useState(false);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+
+  const closeAndRefocus = () => {
+    setOpen(false);
+    // return focus to the trigger so tab order stays predictable inside dialogs
+    requestAnimationFrame(() => triggerRef.current?.focus());
+  };
 
   const selected = useMemo(
     () => technicians.find((tech) => tech.id === value),

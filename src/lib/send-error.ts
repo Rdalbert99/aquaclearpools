@@ -1,3 +1,16 @@
+function formatDiagnostics(d: any): string {
+  if (!d || typeof d !== 'object') return '';
+  const bits = [
+    d.characters != null ? `${d.characters} chars` : null,
+    d.encoding ?? null,
+    d.segments != null ? `${d.segments}/${d.maxSegments ?? 10} segments` : null,
+    Array.isArray(d.nonGsmCharacters) && d.nonGsmCharacters.length
+      ? `non-GSM: ${d.nonGsmCharacters.join('')}`
+      : null,
+  ].filter(Boolean);
+  return bits.length ? ` (${bits.join(' · ')})` : '';
+}
+
 /**
  * Extracts the most specific provider error message available from a
  * supabase.functions.invoke() result (Telnyx / Mailjet edge functions).
@@ -27,7 +40,7 @@ export async function extractSendError(error: any, data: any): Promise<string> {
           [body.error, body.errorTitle, body.errorDetail, body.message]
             .filter(Boolean)
             .join(' — ') || raw;
-        return `${code}${msg}`.trim();
+        return `${code}${msg}${formatDiagnostics(body.diagnostics)}`.trim();
       } catch {
         if (raw) return raw.slice(0, 300);
       }

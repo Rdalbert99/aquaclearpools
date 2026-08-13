@@ -15,6 +15,38 @@ interface SendSMSRequest {
 const TELNYX_API_URL = "https://api.telnyx.com/v2/messages";
 const DEFAULT_FROM_NUMBER = "+16014198527"; // Your Telnyx number
 
+
+const GSM_BASIC =
+  "@\u00a3$\u00a5\u00e8\u00e9\u00f9\u00ec\u00f2\u00c7\n\u00d8\u00f8\r\u00c5\u00e5\u0394_\u03a6\u0393\u039b\u03a9\u03a0\u03a8\u03a3\u0398\u039e\u00c6\u00e6\u00df\u00c9 !\"#\u00a4%&'()*+,-./0123456789:;<=>?" +
+  "\u00a1ABCDEFGHIJKLMNOPQRSTUVWXYZ\u00c4\u00d6\u00d1\u00dc\u00a7\u00bfabcdefghijklmnopqrstuvwxyz\u00e4\u00f6\u00f1\u00fc\u00e0";
+const GSM_EXTENDED = "^{}\\[~]|\u20ac";
+
+function analyzeMessage(text: string) {
+  const chars = Array.from(text);
+  const nonGsm = [...new Set(chars.filter(c => !GSM_BASIC.includes(c) && !GSM_EXTENDED.includes(c)))];
+  const isGsm = nonGsm.length === 0;
+  const units = isGsm
+    ? chars.reduce((n, c) => n + (GSM_EXTENDED.includes(c) ? 2 : 1), 0)
+    : chars.reduce((n, c) => n + ((c.codePointAt(0) ?? 0) > 0xffff ? 2 : 1), 0);
+  const single = isGsm ? 160 : 70;
+  const multi = isGsm ? 153 : 67;
+  const segments = units === 0 ? 0 : units <= single ? 1 : Math.ceil(units / multi);
+  return {
+    characters: chars.length,
+    encoding: isGsm ? "GSM-7" : "UCS-2",
+    units,
+    segments,
+    maxSegments: 10,
+    overLimit: segments > 10,
+    nonGsmCharacters: nonGsm.slice(0, 20),
+    nonGsmCodePoints: nonGsm.slice(0, 20).map(c => "U+" + (c.codePointAt(0) ?? 0).toString(16).toUpperCase().padStart(4, "0")),
+  };
+}
+
+function maskPhone(p: string) {
+  return p.length > 4 ? `${p.slice(0, -4).replace(/\d/g, "*")}${p.slice(-4)}` : p;
+}
+
 const AUTH_CORS = corsHeaders;
 
 async function requireStaff(req: Request): Promise<Response | null> {
@@ -87,7 +119,7 @@ const handler = async (req: Request): Promise<Response> => {
 
     console.log('Parsing request body...');
     const { to, message, from }: SendSMSRequest = await req.json();
-    console.log('Request payload:', { to, message, from: from || 'using default' });
+    console.log('Request payload:', { to: maskPhone(String(to ?? '')), messageLength: message?.length ?? 0, from: from || 'using default' });
     
     if (!to || !message) {
       console.error('Missing required fields:', { to: !!to, message: !!message });
@@ -101,22 +133,33 @@ const handler = async (req: Request): Promise<Response> => {
     }
 
     // Clean and validate phone number
-    console.log('Original phone number:', to);
+    console.log('Original phone number:', maskPhone(to));
     let cleanedPhone = to.replace(/\D/g, "");
-    console.log('After removing non-digits:', cleanedPhone);
+    console.log('After removing non-digits:', maskPhone(cleanedPhone));
     
     if (cleanedPhone.length === 10) {
       cleanedPhone = "1" + cleanedPhone; // Add US country code
-      console.log('Added US country code:', cleanedPhone);
+      console.log('Added US country code:', maskPhone(cleanedPhone));
     }
     if (!cleanedPhone.startsWith("+")) {
       cleanedPhone = "+" + cleanedPhone;
-      console.log('Added + prefix:', cleanedPhone);
+      console.log('Added + prefix:', maskPhone(cleanedPhone));
     }
 
-    console.log(`Final phone number: ${cleanedPhone}`);
-    console.log(`Message to send: ${message}`);
+    console.log(`Final phone number: ${maskPhone(cleanedPhone)}`);
     console.log(`From number: ${from || DEFAULT_FROM_NUMBER}`);
+
+    const analysis = analyzeMessage(message);
+    console.log('Message analysis:', JSON.stringify(analysis));
+    if (analysis.overLimit) {
+      console.error(
+        `Message exceeds Telnyx segment limit: ${analysis.segments} parts (max ${analysis.maxSegments}), ` +
+        `encoding ${analysis.encoding}, ${analysis.characters} chars. ` +
+        `Non-GSM characters forcing UCS-2: ${analysis.nonGsmCodePoints.join(', ') || 'none'}`,
+      );
+    }
+    console.log('Message head:', JSON.stringify(message.slice(0, 200)));
+    console.log('Message tail:', JSON.stringify(message.slice(-200)));
 
     const payload = {
       from: from || DEFAULT_FROM_NUMBER,
@@ -124,7 +167,13 @@ const handler = async (req: Request): Promise<Response> => {
       text: message
     };
 
-    console.log('Telnyx API payload:', JSON.stringify(payload, null, 2));
+    console.log('Telnyx API payload (redacted):', JSON.stringify({
+      from: payload.from,
+      to: maskPhone(payload.to),
+      textLength: payload.text.length,
+      segments: analysis.segments,
+      encoding: analysis.encoding,
+    }));
     console.log('Making request to Telnyx API...');
 
     const response = await fetch(TELNYX_API_URL, {
@@ -150,11 +199,30 @@ const handler = async (req: Request): Promise<Response> => {
         first.detail,
         first.meta?.url ? `(${first.meta.url})` : null,
       ].filter(Boolean);
+      console.error('Telnyx send failed diagnostics:', JSON.stringify({
+        status: response.status,
+        code: first.code ?? null,
+        title: first.title ?? null,
+        detail: first.detail ?? null,
+        to: maskPhone(cleanedPhone),
+        from: payload.from,
+        requestId: response.headers.get('x-request-id'),
+        ...analysis,
+      }));
       return new Response(
         JSON.stringify({
           success: false,
           provider: "telnyx",
           error: detailParts.join(": "),
+          diagnostics: {
+            characters: analysis.characters,
+            encoding: analysis.encoding,
+            segments: analysis.segments,
+            maxSegments: analysis.maxSegments,
+            overLimit: analysis.overLimit,
+            nonGsmCharacters: analysis.nonGsmCharacters,
+            requestId: response.headers.get('x-request-id'),
+          },
           errorCode: first.code ?? null,
           errorTitle: first.title ?? null,
           errorDetail: first.detail ?? null,
@@ -167,8 +235,13 @@ const handler = async (req: Request): Promise<Response> => {
 
     console.log("SMS sent successfully via Telnyx!");
     console.log("Message ID:", responseData.data?.id);
-    console.log("Message Status:", responseData.data?.to);
-    console.log("Full Response:", responseData);
+    console.log("Send summary:", JSON.stringify({
+      messageId: responseData.data?.id,
+      to: maskPhone(cleanedPhone),
+      parts: responseData.data?.parts ?? analysis.segments,
+      encoding: responseData.data?.encoding ?? analysis.encoding,
+      characters: analysis.characters,
+    }));
 
     return new Response(
       JSON.stringify({ 
@@ -176,6 +249,11 @@ const handler = async (req: Request): Promise<Response> => {
         provider: "telnyx",
         messageId: responseData.data?.id,
         to: cleanedPhone,
+        diagnostics: {
+          characters: analysis.characters,
+          encoding: responseData.data?.encoding ?? analysis.encoding,
+          segments: responseData.data?.parts ?? analysis.segments,
+        },
         message: "SMS sent successfully"
       }), 
       {

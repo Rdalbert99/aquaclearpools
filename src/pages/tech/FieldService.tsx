@@ -27,6 +27,8 @@ import { computeServiceCost, fmtMoney } from '@/lib/inventory-cost';
 import { CHEMICAL_OPTIONS } from '@/lib/chemicals-added';
 import { extractSendError } from '@/lib/send-error';
 import { logMessageSend } from '@/lib/message-log';
+import { SmsPreview } from '@/components/tech/SmsPreview';
+import { analyzeSms } from '@/lib/sms-segments';
 
 type Client = {
   id: string;
@@ -886,6 +888,12 @@ export default function FieldService() {
               {serviceData.duration ? `Duration: ${serviceData.duration} min` : 'Duration not set'}
             </div>
           </div>
+          {client && (
+            <SmsPreview
+              message={buildServiceMessage(client.customer, serviceData)}
+              target={client.contact_phone || client.contact_email || null}
+            />
+          )}
           <div className="pt-2 flex flex-wrap gap-2">
             <Button onClick={openReview} disabled={saving} className="min-w-[160px]">
               <CheckCircle className="h-4 w-4 mr-2" /> Review & Send
@@ -916,19 +924,16 @@ export default function FieldService() {
             onChange={(e) => setReviewMessage(e.target.value)}
             className="font-mono text-sm max-h-[35dvh]"
           />
-          <div className="text-xs text-muted-foreground">
-            {reviewMessage.length} characters
-            {client?.contact_phone
-              ? ` · Text to ${client.contact_phone}`
-              : client?.contact_email
-                ? ` · Email to ${client.contact_email}`
-                : ' · No phone or email on file'}
-          </div>
+          <SmsPreview
+            message={reviewMessage}
+            showBody={false}
+            target={client?.contact_phone ? `Text to ${client.contact_phone}` : client?.contact_email ? `Email to ${client.contact_email}` : null}
+          />
           <DialogFooter className="gap-2 flex-col sm:flex-row sm:flex-wrap">
             <Button
               className="w-full sm:w-auto sm:order-4"
               onClick={() => completeService(true)}
-              disabled={saving || !reviewMessage.trim()}
+              disabled={saving || !reviewMessage.trim() || analyzeSms(reviewMessage).overLimit}
             >
               {saving ? <LoadingSpinner /> : (<><Send className="h-4 w-4 mr-2" /> Send &amp; Complete</>)}
             </Button>

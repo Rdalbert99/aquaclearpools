@@ -258,7 +258,9 @@ export default function FieldService() {
     if (data.salt_cell_cleaned) performed.push('Cleaned Salt Cell');
     if (performed.length) {
       const lower = performed.map(s => s.toLowerCase());
-      parts.push(`Today we ${lower.join(', ')}.`);
+      const shown = lower.slice(0, 6);
+      const extra = lower.length - shown.length;
+      parts.push(`Today we ${shown.join(', ')}${extra > 0 ? ` and ${extra} more service${extra > 1 ? 's' : ''}` : ''}.`);
     }
 
     const testedChem = (data.services_performed ?? []).includes(CHEM_TEST_SERVICE);
@@ -277,8 +279,9 @@ export default function FieldService() {
     }
 
     parts.push('Thank you!');
-    return parts.join(' ');
+    return sanitizeSms(parts.join(' '));
   }
+
 
   function openReview() {
     if (!client) return;

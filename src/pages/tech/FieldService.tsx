@@ -227,6 +227,24 @@ export default function FieldService() {
     setServiceData(prev => ({ ...prev, duration: minutes }));
   }
 
+  // Keep texts inside carrier limits: strip non-GSM characters (they force
+  // UCS-2 encoding, which halves the per-segment size) and cap total length.
+  function sanitizeSms(text: string, maxLength = 1200) {
+    const cleaned = text
+      .replace(/[\u2018\u2019]/g, "'")
+      .replace(/[\u201C\u201D]/g, '"')
+      .replace(/[\u2013\u2014]/g, '-')
+      .replace(/[\u2022\u00B7]/g, '-')
+      .replace(/\u2026/g, '...')
+      .replace(/[^\x00-\x7F]/g, '')
+      .replace(/[ \t]+/g, ' ')
+      .trim();
+    return cleaned.length > maxLength
+      ? `${cleaned.slice(0, maxLength - 3).trimEnd()}...`
+      : cleaned;
+  }
+
+
   function buildServiceMessage(clientName: string, data: ServiceData) {
     const chlorine = data.chlorine_level != null ? data.chlorine_level : 'N/A';
     const ph = data.ph_level != null ? data.ph_level : 'N/A';

@@ -10,9 +10,10 @@ export async function extractSendError(error: any, data: any): Promise<string> {
     );
     if (parts.length) {
       const code = data.errorCode ? `[${data.errorCode}] ` : '';
-      return `${code}${parts.join(' — ')}`;
+      return `${code}${parts.join(' — ')}${formatDiagnostics(data.diagnostics)}`;
     }
   }
+
 
   // 2. Non-2xx response: body lives on error.context (a Response)
   const ctx = error?.context;

@@ -479,6 +479,55 @@ export default function ClientDashboard() {
         </Card>
       )}
 
+      {/* Water Chemistry Trends */}
+      {(dashboardData?.recentServices?.length ?? 0) > 1 && (
+        <ClientReadingsChart services={dashboardData.recentServices} />
+      )}
+
+      {/* Visit History */}
+      {(dashboardData?.recentServices?.length ?? 0) > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center space-x-2">
+              <FileText className="h-5 w-5" />
+              <span>Visit History</span>
+            </CardTitle>
+            <CardDescription>Your past service visits and what was done</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {dashboardData.recentServices.slice(0, 10).map((svc: any) => (
+              <div key={svc.id} className="rounded-lg border p-4">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <p className="font-medium">
+                    {new Date(svc.service_date).toLocaleDateString('en-US', {
+                      weekday: 'short', month: 'short', day: 'numeric', year: 'numeric'
+                    })}
+                  </p>
+                  <Badge variant="outline" className="capitalize">{svc.status || 'completed'}</Badge>
+                </div>
+                <p className="text-sm text-muted-foreground mt-1">
+                  {svc.users?.name ? `Technician: ${svc.users.name}` : 'Technician: unassigned'}
+                  {svc.duration_minutes ? ` • ${svc.duration_minutes} min` : ''}
+                </p>
+                {svc.services_performed && (
+                  <p className="text-sm mt-2"><span className="text-muted-foreground">Performed: </span>{svc.services_performed}</p>
+                )}
+                {svc.chemicals_added && (
+                  <p className="text-sm mt-1"><span className="text-muted-foreground">Chemicals: </span>{svc.chemicals_added}</p>
+                )}
+                {svc.notes && (
+                  <p className="text-sm mt-1"><span className="text-muted-foreground">Notes: </span>{svc.notes}</p>
+                )}
+              </div>
+            ))}
+            <Button asChild variant="outline" className="w-full">
+              <Link to="/client/services">View full service history</Link>
+            </Button>
+          </CardContent>
+        </Card>
+      )}
+
+
       {/* Payment Information */}
       {client.qb_invoice_link && (
         <Card>

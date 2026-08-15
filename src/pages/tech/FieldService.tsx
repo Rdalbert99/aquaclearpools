@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import { isInRange, getDosageInstruction, type ChemicalId } from '@/lib/pool-chemistry';
 import { ArrivalNotification } from '@/components/tech/ArrivalNotification';
+import { ClientNotesPanel } from '@/components/tech/ClientNotesPanel';
 import { ChemicalsAddedInput } from '@/components/service/ChemicalsAddedInput';
 import { ChemicalEntry, entriesToString, entriesToCustomerExplanation } from '@/lib/chemicals-added';
 import { getMissingFixes } from '@/lib/pool-status';
@@ -572,6 +573,9 @@ export default function FieldService() {
           </a>
         );
       })()}
+      {/* Customer notes / requests */}
+      <ClientNotesPanel clientId={client.id} />
+
       {/* Arrival Notification */}
       <ArrivalNotification
         clientName={client.customer}

@@ -16,7 +16,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
 import { UsernameInput } from '@/components/ui/username-input';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Droplets, ArrowLeft, CheckCircle } from 'lucide-react';
+import { Droplets, ArrowLeft, CheckCircle, Mail } from 'lucide-react';
 
 
 const formSchema = z.object({
@@ -54,6 +54,44 @@ export default function ClientSignup() {
   const { toast } = useToast();
   
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [resendEmail, setResendEmail] = useState('');
+  const [isResending, setIsResending] = useState(false);
+
+  const handleResend = async () => {
+    const email = resendEmail.trim().toLowerCase();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      toast({
+        title: 'Enter a valid email',
+        description: 'Please enter the email address you signed up with.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setIsResending(true);
+    try {
+      const { error } = await supabase.auth.resend({
+        type: 'signup',
+        email,
+        options: { emailRedirectTo: `${window.location.origin}/auth/login` },
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: 'Confirmation email sent',
+        description: `If an account exists for ${email}, a new confirmation link is on its way.`,
+      });
+    } catch (error: any) {
+      toast({
+        title: "Couldn't resend the email",
+        description: error?.message || 'Please try again in a moment.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsResending(false);
+    }
+  };
 
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
@@ -486,9 +524,48 @@ export default function ClientSignup() {
                 </div>
               </form>
             </Form>
+
+            <div className="mt-8 border-t pt-6 space-y-3">
+              <div>
+                <h3 className="text-sm font-semibold">Didn't get your confirmation email?</h3>
+                <p className="text-sm text-muted-foreground">
+                  If your confirmation link expired, enter your email and we'll send a fresh one.
+                </p>
+              </div>
+              <div className="flex flex-col sm:flex-row gap-2">
+                <Input
+                  type="email"
+                  inputMode="email"
+                  autoComplete="email"
+                  placeholder="you@example.com"
+                  value={resendEmail}
+                  onChange={(e) => setResendEmail(e.target.value)}
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={handleResend}
+                  disabled={isResending}
+                  className="sm:w-auto w-full"
+                >
+                  {isResending ? (
+                    <span className="flex items-center space-x-2">
+                      <LoadingSpinner />
+                      <span>Sending...</span>
+                    </span>
+                  ) : (
+                    <span className="flex items-center">
+                      <Mail className="h-4 w-4 mr-2" />
+                      Resend confirmation
+                    </span>
+                  )}
+                </Button>
+              </div>
+            </div>
           </CardContent>
         </Card>
       </div>
     </div>
   );
+
 }

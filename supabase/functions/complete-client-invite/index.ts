@@ -101,43 +101,67 @@ serve(async (req) => {
       });
     }
 
-    // Try to find existing auth user by email
+    // Contact email is not an account identity. Locate an existing customer
+    // only by the unique username; otherwise create a separate auth user even
+    // when a staff account has the same contact email.
     const { data: usersPage, error: listErr } = await admin.auth.admin.listUsers({ page: 1, perPage: 1000 });
     if (listErr) throw listErr;
-    const existing = usersPage.users.find((u) => u.email?.toLowerCase() === email.toLowerCase());
-
-    let authUserId = existing?.id;
     const normalizedEmail = email.toLowerCase().trim();
+    const login = body.login?.trim().toLowerCase();
+    if (!login) {
+      return new Response(JSON.stringify({ error: "A username is required" }), {
+        status: 400,
+        headers: { "Content-Type": "application/json", ...corsHeaders },
+      });
+    }
+
+    const { data: profileByLogin, error: profileLookupError } = await admin
+      .from("users")
+      .select("id, role, login, name, phone, address, auth_email")
+      .ilike("login", login)
+      .maybeSingle();
+    if (profileLookupError) throw profileLookupError;
+    if (profileByLogin && profileByLogin.role !== "client") {
+      return new Response(JSON.stringify({ error: "That username is already taken. Please choose another." }), {
+        status: 409,
+        headers: { "Content-Type": "application/json", ...corsHeaders },
+      });
+    }
+
+    let authUserId = profileByLogin?.id;
 
     // Look up any existing profile so we never downgrade or overwrite a staff account.
     // A tech or admin can also be a customer — same email, same login, same person.
     let existingProfile: {
       id: string; role: string | null; login: string | null; name: string | null;
-      phone: string | null; address: string | null;
+      phone: string | null; address: string | null; auth_email: string | null;
     } | null = null;
 
     if (authUserId) {
       const { data: prof, error: profErr } = await admin
         .from("users")
-        .select("id, role, login, name, phone, address")
+        .select("id, role, login, name, phone, address, auth_email")
         .eq("id", authUserId)
         .maybeSingle();
       if (profErr) throw profErr;
       existingProfile = prof as typeof existingProfile;
     }
 
-    const isStaff = existingProfile?.role === "admin" || existingProfile?.role === "tech";
-
     if (!authUserId) {
-      // Create auth user
+      const contactEmailInUse = usersPage.users.some((u) => u.email?.toLowerCase() === normalizedEmail);
+      const authEmail = contactEmailInUse
+        ? `${crypto.randomUUID()}@accounts.getaquaclear.com`
+        : normalizedEmail;
       const { data: created, error: createErr } = await admin.auth.admin.createUser({
-        email,
+        email: authEmail,
         password: body.password,
         email_confirm: true,
+        user_metadata: { contact_email: normalizedEmail, role: "client" },
       });
       if (createErr || !created.user) throw createErr || new Error("Failed to create auth user");
       authUserId = created.user.id;
-    } else if (!isStaff) {
+      existingProfile = { id: authUserId, role: "client", login, name: null, phone: null, address: null, auth_email: authEmail };
+    } else {
       // Existing customer auth user — update their password to the one they just entered
       const { error: pwdErr } = await admin.auth.admin.updateUserById(authUserId, {
         password: body.password,
@@ -148,41 +172,7 @@ serve(async (req) => {
         throw new Error("Failed to set password for existing account");
       }
     }
-    // Staff accounts keep their existing password — the invite only links the pool.
-
-    if (isStaff) {
-      // Link the pool to the existing staff account without touching their profile.
-      const { error: staffLinkErr } = await admin
-        .from("clients")
-        .update({ user_id: authUserId, updated_at: new Date().toISOString() })
-        .eq("id", invite.client_id);
-      if (staffLinkErr) throw staffLinkErr;
-
-      await admin
-        .from("client_invitations")
-        .update({ used_at: new Date().toISOString() })
-        .eq("id", invitationId);
-
-      return new Response(
-        JSON.stringify({
-          success: true,
-          linkedExistingAccount: true,
-          message:
-            "This email already has an Aqua Clear staff account. Your pool has been linked to it — sign in with your existing username and password.",
-        }),
-        { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
-      );
-    }
-
     // Upsert into public.users profile with the username the customer chose.
-    const login = (body.login?.trim() || existingProfile?.login || normalizedEmail).toLowerCase();
-    if (!login) {
-      return new Response(JSON.stringify({ error: "A username is required" }), {
-        status: 400,
-        headers: { "Content-Type": "application/json", ...corsHeaders },
-      });
-    }
-
     const { data: existingLogin, error: loginLookupErr } = await admin
       .from("users")
       .select("id")
@@ -205,8 +195,8 @@ serve(async (req) => {
       .upsert({
         id: authUserId,
         email: normalizedEmail,
-        // Never downgrade an existing role; default only for brand-new profiles.
-        role: existingProfile?.role || "client",
+        auth_email: existingProfile?.auth_email,
+        role: "client",
         name,
         login,
         must_change_password: false,

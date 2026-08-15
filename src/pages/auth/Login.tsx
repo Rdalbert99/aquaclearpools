@@ -167,17 +167,17 @@ export default function Login() {
         <CardContent className="space-y-4">
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="login">Username or email</Label>
+              <Label htmlFor="login">Username</Label>
               <Input
                 id="login"
                 type="text"
-                placeholder="Enter your username or email"
+                placeholder="Enter your username"
                 value={login}
                 onChange={(e) => setLogin(e.target.value)}
                 required
               />
               <p className="text-xs text-muted-foreground">
-                Customers can use the username they created or their email address.
+                Use the unique username for the staff or customer account you want to open.
               </p>
             </div>
 

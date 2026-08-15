@@ -154,42 +154,35 @@ const handler = async (req: Request): Promise<Response> => {
       );
     }
 
-    // Step 2: Check if auth user already exists with this email
+    // Step 2: Create a distinct auth identity. Contact email is not account
+    // identity: an admin/tech and a client may intentionally share it.
     const { data: existingAuthUsers, error: authCheckError } = await supabaseAdmin.auth.admin.listUsers();
-    let authUser = existingAuthUsers?.users?.find(user => user.email === userData.email);
-    
-    let createdNewAuth = false;
-    if (!authUser) {
-      // Create user in Supabase Auth only if one doesn't exist
-      console.log('Creating new auth user...');
-      const { data: newAuthUser, error: authError } = await supabaseAdmin.auth.admin.createUser({
-        email: userData.email,
+    if (authCheckError) throw authCheckError;
+    const normalizedContactEmail = userData.email.toLowerCase().trim();
+    const contactEmailInUse = existingAuthUsers?.users?.some(
+      (user) => user.email?.toLowerCase() === normalizedContactEmail
+    );
+    const authEmail = contactEmailInUse
+      ? `${crypto.randomUUID()}@accounts.getaquaclear.com`
+      : normalizedContactEmail;
+
+    console.log('Creating distinct auth user...');
+    const { data: newAuthUser, error: authError } = await supabaseAdmin.auth.admin.createUser({
+        email: authEmail,
         password: userData.password,
         email_confirm: true, // Auto-confirm email
         user_metadata: {
           first_name: userData.firstName,
           last_name: userData.lastName,
           full_name: fullName,
-          role: userData.role
+          role: userData.role,
+          contact_email: normalizedContactEmail,
         }
-      });
-
-      if (authError) {
-        const msg = String(authError.message || '').toLowerCase();
-        console.error('Auth user creation failed:', authError);
-        if (msg.includes('already registered') || msg.includes('duplicate')) {
-          console.log('Auth user already exists, proceeding without creation');
-        } else {
-          throw new Error(`Failed to create auth user: ${authError.message}`);
-        }
-      } else if (newAuthUser?.user) {
-        createdNewAuth = true;
-        authUser = newAuthUser.user;
-        console.log('New auth user created:', authUser.id);
-      }
-    } else {
-      console.log('Using existing auth user:', authUser.id);
+    });
+    if (authError || !newAuthUser?.user) {
+      throw new Error(`Failed to create auth user: ${authError?.message || 'Unknown error'}`);
     }
+    const authUser = newAuthUser.user;
 
     // Step 3: Create user profile in custom users table
     if (!authUser) {
@@ -201,7 +194,8 @@ const handler = async (req: Request): Promise<Response> => {
       first_name: userData.firstName,
       last_name: userData.lastName,
       login: userData.login,
-      email: userData.email,
+      email: normalizedContactEmail,
+      auth_email: authEmail,
       role: userData.role,
       phone: userData.phone || null,
       address: userData.address || null,
@@ -229,7 +223,7 @@ const handler = async (req: Request): Promise<Response> => {
 
     if (profileError) {
       console.error('Profile creation failed:', profileError);
-      if (createdNewAuth && authUser?.id) {
+      if (authUser?.id) {
         await supabaseAdmin.auth.admin.deleteUser(authUser.id);
       }
       throw new Error(`Failed to create user profile: ${profileError.message}`);

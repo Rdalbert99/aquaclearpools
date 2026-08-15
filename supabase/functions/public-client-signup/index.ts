@@ -100,17 +100,20 @@ serve(async (req) => {
       return json({ error: "That username is already taken. Please choose another." }, 409);
     }
 
-    // Existing auth user?
+    // Create a distinct auth identity when another account already uses the
+    // same contact email (for example, a technician who is also a client).
     const { data: usersPage, error: listErr } = await admin.auth.admin.listUsers({ page: 1, perPage: 1000 });
     if (listErr) throw listErr;
-    if (usersPage.users.some((u) => u.email?.toLowerCase() === email)) {
-      return json({ error: "An account with this email already exists. Please log in instead." }, 409);
-    }
+    const contactEmailInUse = usersPage.users.some((u) => u.email?.toLowerCase() === email);
+    const authEmail = contactEmailInUse
+      ? `${crypto.randomUUID()}@accounts.getaquaclear.com`
+      : email;
 
     const { data: created, error: createErr } = await admin.auth.admin.createUser({
-      email,
+      email: authEmail,
       password: pwd,
       email_confirm: true,
+      user_metadata: { contact_email: email, role: "client" },
     });
     if (createErr || !created.user) throw createErr || new Error("Failed to create account");
     const userId = created.user.id;
@@ -124,6 +127,7 @@ serve(async (req) => {
     const { error: profileErr } = await admin.from("users").upsert({
       id: userId,
       email,
+      auth_email: authEmail,
       // SECURITY: public signup is always a client account.
       role: "client",
       name: fullName,

@@ -145,7 +145,16 @@ export default function ClientInvite() {
       if (serverError) throw new Error(serverError);
       if (error) throw error;
 
-      toast({ title: "Account created", description: "You can now log in.", variant: "default" });
+      if ((data as any)?.linkedExistingAccount) {
+        toast({
+          title: "Pool linked to your existing account",
+          description:
+            (data as any)?.message ||
+            "This email already has an Aqua Clear account. Sign in with your existing username and password.",
+        });
+      } else {
+        toast({ title: "Account created", description: "You can now log in.", variant: "default" });
+      }
       navigate("/auth/login");
     } catch (err: any) {
       toast({ title: "Error", description: err.message || "Failed to complete invite.", variant: "destructive" });

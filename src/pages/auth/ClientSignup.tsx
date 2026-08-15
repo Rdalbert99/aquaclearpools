@@ -16,7 +16,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
 import { UsernameInput } from '@/components/ui/username-input';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Droplets, ArrowLeft, CheckCircle } from 'lucide-react';
+import { Droplets, ArrowLeft, CheckCircle, Mail } from 'lucide-react';
 
 
 const formSchema = z.object({
@@ -54,6 +54,44 @@ export default function ClientSignup() {
   const { toast } = useToast();
   
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [resendEmail, setResendEmail] = useState('');
+  const [isResending, setIsResending] = useState(false);
+
+  const handleResend = async () => {
+    const email = resendEmail.trim().toLowerCase();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      toast({
+        title: 'Enter a valid email',
+        description: 'Please enter the email address you signed up with.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setIsResending(true);
+    try {
+      const { error } = await supabase.auth.resend({
+        type: 'signup',
+        email,
+        options: { emailRedirectTo: `${window.location.origin}/auth/login` },
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: 'Confirmation email sent',
+        description: `If an account exists for ${email}, a new confirmation link is on its way.`,
+      });
+    } catch (error: any) {
+      toast({
+        title: "Couldn't resend the email",
+        description: error?.message || 'Please try again in a moment.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsResending(false);
+    }
+  };
 
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),

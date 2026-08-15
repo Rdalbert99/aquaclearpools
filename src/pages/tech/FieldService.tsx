@@ -572,6 +572,9 @@ export default function FieldService() {
           </a>
         );
       })()}
+      {/* Customer notes / requests */}
+      <ClientNotesPanel clientId={client.id} />
+
       {/* Arrival Notification */}
       <ArrivalNotification
         clientName={client.customer}

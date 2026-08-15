@@ -27,6 +27,7 @@ import { TechnicianMessageDialog } from '@/components/client/TechnicianMessageDi
 import { ReviewDialog } from '@/components/client/ReviewDialog';
 import { isInRange, CHEMICAL_RANGES, type ChemicalId } from '@/lib/pool-chemistry';
 import { ClientReadingsChart } from '@/components/admin/ClientReadingsChart';
+import { NextAppointmentCard } from '@/components/client/NextAppointmentCard';
 
 interface ClientDashboardData {
   client: any;

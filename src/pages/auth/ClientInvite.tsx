@@ -274,11 +274,20 @@ export default function ClientInvite() {
               <div className="space-y-2">
                 <Label>Password</Label>
                 <Input type="password" value={password} onChange={(e) => setPassword(e.target.value)} />
+                <p className={`text-xs ${password && passwordProblem(password) ? "text-destructive" : "text-muted-foreground"}`}>
+                  {password && passwordProblem(password)
+                    ? passwordProblem(password)
+                    : "At least 12 characters, no spaces, and 3 of: lowercase, uppercase, number, symbol."}
+                </p>
               </div>
               <div className="space-y-2">
                 <Label>Confirm Password</Label>
                 <Input type="password" value={confirm} onChange={(e) => setConfirm(e.target.value)} />
+                {confirm && confirm !== password && (
+                  <p className="text-xs text-destructive">Passwords do not match.</p>
+                )}
               </div>
+
             </div>
             <div className="pt-2">
               <Button onClick={handleSubmit} disabled={submitting}>

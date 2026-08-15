@@ -106,9 +106,9 @@ export default function ClientDashboard() {
         }
       }
 
-      // Load last service with technician details
-      console.log('Loading last service for client_id:', client.id);
-      const { data: lastService, error: serviceError } = await supabase
+      // Load recent service history (with technician names)
+      console.log('Loading service history for client_id:', client.id);
+      const { data: recentServices, error: serviceError } = await supabase
         .from('services')
         .select(`
           *,
@@ -117,14 +117,14 @@ export default function ClientDashboard() {
         `)
         .eq('client_id', client.id)
         .order('service_date', { ascending: false })
-        .limit(1)
-        .maybeSingle();
+        .limit(25);
 
       if (serviceError) {
-        console.error('Error loading last service:', serviceError);
-      } else {
-        console.log('Last service loaded:', lastService);
+        console.error('Error loading services:', serviceError);
       }
+
+      const lastService = recentServices?.[0] || null;
+
 
       // Load pending service requests
       console.log('Loading pending requests for client_id:', client.id);

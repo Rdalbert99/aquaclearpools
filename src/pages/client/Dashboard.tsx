@@ -26,15 +26,18 @@ import { ProfilePictureUpload } from '@/components/client/ProfilePictureUpload';
 import { TechnicianMessageDialog } from '@/components/client/TechnicianMessageDialog';
 import { ReviewDialog } from '@/components/client/ReviewDialog';
 import { isInRange, CHEMICAL_RANGES, type ChemicalId } from '@/lib/pool-chemistry';
+import { ClientReadingsChart } from '@/components/admin/ClientReadingsChart';
 
 interface ClientDashboardData {
   client: any;
   nextService: any;
   lastService: any;
+  recentServices: any[];
   pendingRequests: any[];
   assignedTechnician: any;
   userProfile: any;
 }
+
 
 export default function ClientDashboard() {
   const { user } = useAuth();

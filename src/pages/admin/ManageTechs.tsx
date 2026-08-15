@@ -228,7 +228,7 @@ export default function ManageTechs() {
       console.error('Error updating tech:', error);
       toast({
         title: "Error",
-        description: "Failed to update technician.",
+        description: (error as any)?.message || "Failed to update technician.",
         variant: "destructive",
       });
     }

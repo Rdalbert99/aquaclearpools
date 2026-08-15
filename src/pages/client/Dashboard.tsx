@@ -129,14 +129,14 @@ export default function ClientDashboard() {
       const lastService = recentServices?.[0] || null;
 
 
-      // Load pending service requests
-      console.log('Loading pending requests for client_id:', client.id);
+      // Load recent service requests (notes, reschedules, etc.)
+      console.log('Loading service requests for client_id:', client.id);
       const { data: pendingRequests, error: requestsError } = await supabase
         .from('service_requests')
         .select('*')
         .eq('client_id', client.id)
-        .eq('status', 'pending')
-        .order('requested_date', { ascending: false });
+        .order('created_at', { ascending: false })
+        .limit(25);
 
       if (requestsError) {
         console.error('Error loading pending requests:', requestsError);

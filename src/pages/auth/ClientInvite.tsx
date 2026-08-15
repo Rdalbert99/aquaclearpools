@@ -84,6 +84,14 @@ export default function ClientInvite() {
     load();
   }, [token]);
 
+  const passwordProblem = (pwd: string): string | null => {
+    if (pwd.length < 12) return "Password must be at least 12 characters.";
+    if (/\s/.test(pwd)) return "Password cannot contain spaces.";
+    const categories = [/[a-z]/, /[A-Z]/, /[0-9]/, /[^A-Za-z0-9]/].filter((r) => r.test(pwd)).length;
+    if (categories < 3) return "Password must include at least 3 of: lowercase, uppercase, number, symbol.";
+    return null;
+  };
+
   const handleSubmit = async () => {
     if (!token) return;
     if (!email || !invite) {
@@ -96,6 +104,11 @@ export default function ClientInvite() {
     }
     if (!password || password !== confirm) {
       toast({ title: "Password mismatch", description: "Passwords must match.", variant: "destructive" });
+      return;
+    }
+    const pwdIssue = passwordProblem(password);
+    if (pwdIssue) {
+      toast({ title: "Password too weak", description: pwdIssue, variant: "destructive" });
       return;
     }
 
@@ -112,7 +125,26 @@ export default function ClientInvite() {
           password,
         },
       });
+
+      // Surface the real error message returned by the edge function
+      let serverError: string | null = (data as any)?.error ?? null;
+      if (error && !serverError) {
+        const ctx: any = (error as any).context;
+        try {
+          if (ctx?.json) {
+            const body = await ctx.json();
+            serverError = body?.error ?? null;
+          } else if (ctx?.text) {
+            const text = await ctx.text();
+            serverError = JSON.parse(text)?.error ?? text;
+          }
+        } catch {
+          /* ignore parse issues, fall back to generic message */
+        }
+      }
+      if (serverError) throw new Error(serverError);
       if (error) throw error;
+
       toast({ title: "Account created", description: "You can now log in.", variant: "default" });
       navigate("/auth/login");
     } catch (err: any) {
@@ -121,6 +153,7 @@ export default function ClientInvite() {
       setSubmitting(false);
     }
   };
+
 
   if (loading) {
     return (

@@ -486,9 +486,48 @@ export default function ClientSignup() {
                 </div>
               </form>
             </Form>
+
+            <div className="mt-8 border-t pt-6 space-y-3">
+              <div>
+                <h3 className="text-sm font-semibold">Didn't get your confirmation email?</h3>
+                <p className="text-sm text-muted-foreground">
+                  If your confirmation link expired, enter your email and we'll send a fresh one.
+                </p>
+              </div>
+              <div className="flex flex-col sm:flex-row gap-2">
+                <Input
+                  type="email"
+                  inputMode="email"
+                  autoComplete="email"
+                  placeholder="you@example.com"
+                  value={resendEmail}
+                  onChange={(e) => setResendEmail(e.target.value)}
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={handleResend}
+                  disabled={isResending}
+                  className="sm:w-auto w-full"
+                >
+                  {isResending ? (
+                    <span className="flex items-center space-x-2">
+                      <LoadingSpinner />
+                      <span>Sending...</span>
+                    </span>
+                  ) : (
+                    <span className="flex items-center">
+                      <Mail className="h-4 w-4 mr-2" />
+                      Resend confirmation
+                    </span>
+                  )}
+                </Button>
+              </div>
+            </div>
           </CardContent>
         </Card>
       </div>
     </div>
   );
+
 }

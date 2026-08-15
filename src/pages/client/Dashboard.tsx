@@ -26,15 +26,18 @@ import { ProfilePictureUpload } from '@/components/client/ProfilePictureUpload';
 import { TechnicianMessageDialog } from '@/components/client/TechnicianMessageDialog';
 import { ReviewDialog } from '@/components/client/ReviewDialog';
 import { isInRange, CHEMICAL_RANGES, type ChemicalId } from '@/lib/pool-chemistry';
+import { ClientReadingsChart } from '@/components/admin/ClientReadingsChart';
 
 interface ClientDashboardData {
   client: any;
   nextService: any;
   lastService: any;
+  recentServices: any[];
   pendingRequests: any[];
   assignedTechnician: any;
   userProfile: any;
 }
+
 
 export default function ClientDashboard() {
   const { user } = useAuth();
@@ -106,9 +109,9 @@ export default function ClientDashboard() {
         }
       }
 
-      // Load last service with technician details
-      console.log('Loading last service for client_id:', client.id);
-      const { data: lastService, error: serviceError } = await supabase
+      // Load recent service history (with technician names)
+      console.log('Loading service history for client_id:', client.id);
+      const { data: recentServices, error: serviceError } = await supabase
         .from('services')
         .select(`
           *,
@@ -117,14 +120,14 @@ export default function ClientDashboard() {
         `)
         .eq('client_id', client.id)
         .order('service_date', { ascending: false })
-        .limit(1)
-        .maybeSingle();
+        .limit(25);
 
       if (serviceError) {
-        console.error('Error loading last service:', serviceError);
-      } else {
-        console.log('Last service loaded:', lastService);
+        console.error('Error loading services:', serviceError);
       }
+
+      const lastService = recentServices?.[0] || null;
+
 
       // Load pending service requests
       console.log('Loading pending requests for client_id:', client.id);
@@ -145,10 +148,12 @@ export default function ClientDashboard() {
         client,
         nextService: client.next_service_date,
         lastService: lastService || null,
+        recentServices: recentServices || [],
         pendingRequests: pendingRequests || [],
         assignedTechnician,
         userProfile
       };
+
       
       console.log('Setting dashboard data:', dashboardData);
       setDashboardData(dashboardData);
@@ -473,6 +478,55 @@ export default function ClientDashboard() {
           </CardContent>
         </Card>
       )}
+
+      {/* Water Chemistry Trends */}
+      {(dashboardData?.recentServices?.length ?? 0) > 1 && (
+        <ClientReadingsChart services={dashboardData.recentServices} />
+      )}
+
+      {/* Visit History */}
+      {(dashboardData?.recentServices?.length ?? 0) > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center space-x-2">
+              <FileText className="h-5 w-5" />
+              <span>Visit History</span>
+            </CardTitle>
+            <CardDescription>Your past service visits and what was done</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {dashboardData.recentServices.slice(0, 10).map((svc: any) => (
+              <div key={svc.id} className="rounded-lg border p-4">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <p className="font-medium">
+                    {new Date(svc.service_date).toLocaleDateString('en-US', {
+                      weekday: 'short', month: 'short', day: 'numeric', year: 'numeric'
+                    })}
+                  </p>
+                  <Badge variant="outline" className="capitalize">{svc.status || 'completed'}</Badge>
+                </div>
+                <p className="text-sm text-muted-foreground mt-1">
+                  {svc.users?.name ? `Technician: ${svc.users.name}` : 'Technician: unassigned'}
+                  {svc.duration_minutes ? ` • ${svc.duration_minutes} min` : ''}
+                </p>
+                {svc.services_performed && (
+                  <p className="text-sm mt-2"><span className="text-muted-foreground">Performed: </span>{svc.services_performed}</p>
+                )}
+                {svc.chemicals_added && (
+                  <p className="text-sm mt-1"><span className="text-muted-foreground">Chemicals: </span>{svc.chemicals_added}</p>
+                )}
+                {svc.notes && (
+                  <p className="text-sm mt-1"><span className="text-muted-foreground">Notes: </span>{svc.notes}</p>
+                )}
+              </div>
+            ))}
+            <Button asChild variant="outline" className="w-full">
+              <Link to="/client/services">View full service history</Link>
+            </Button>
+          </CardContent>
+        </Card>
+      )}
+
 
       {/* Payment Information */}
       {client.qb_invoice_link && (

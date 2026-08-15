@@ -37,8 +37,12 @@ const formSchema = z.object({
   poolSize: z.string().min(1, 'Please enter your pool size in gallons'),
   serviceFrequency: z.string().default('weekly'),
   serviceNotes: z.string().optional(),
-  password: z.string().min(6, 'Password must be at least 6 characters'),
-  confirmPassword: z.string().min(6, 'Please confirm your password'),
+  password: z.string()
+    .min(12, 'Password must be at least 12 characters')
+    .regex(/[a-z]/, 'Password must include a lowercase letter')
+    .regex(/[A-Z]/, 'Password must include an uppercase letter')
+    .regex(/[0-9]/, 'Password must include a number'),
+  confirmPassword: z.string().min(12, 'Please confirm your password'),
 }).refine((data) => data.password === data.confirmPassword, {
   message: "Passwords don't match",
   path: ["confirmPassword"],

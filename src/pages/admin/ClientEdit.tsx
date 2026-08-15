@@ -316,27 +316,38 @@ export default function ClientEdit() {
       console.log('Client update result:', { error });
       if (error) throw error;
 
-      // Update user data if there's an associated user
+      // Sync contact details to the linked login ONLY when that account is a
+      // pure client account. Techs/admins can also be customers — their staff
+      // profile must never be overwritten by pool contact data.
       if (client.user_id && client.user_id !== "none") {
-        const { error: userError } = await supabase
+        const { data: linkedProfile } = await supabase
           .from('users')
-          .update({
-            email: client.email,
-            phone: client.phone,
-            address: fullAddress || null,
-            street_address: client.street_address || null,
-            city: client.city || null,
-            state: client.state || null,
-            zip_code: client.zip_code || null,
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', client.user_id);
+          .select('role')
+          .eq('id', client.user_id)
+          .maybeSingle();
 
-        if (userError) {
-          console.error('Error updating user data:', userError);
-          // Don't fail the whole operation if user update fails
+        if (linkedProfile?.role === 'client') {
+          const { error: userError } = await supabase
+            .from('users')
+            .update({
+              email: client.email,
+              phone: client.phone,
+              address: fullAddress || null,
+              street_address: client.street_address || null,
+              city: client.city || null,
+              state: client.state || null,
+              zip_code: client.zip_code || null,
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', client.user_id);
+
+          if (userError) {
+            console.error('Error updating user data:', userError);
+            // Don't fail the whole operation if user update fails
+          }
         }
       }
+
 
       toast({
         title: "Success",

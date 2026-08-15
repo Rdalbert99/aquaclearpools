@@ -145,10 +145,12 @@ export default function ClientDashboard() {
         client,
         nextService: client.next_service_date,
         lastService: lastService || null,
+        recentServices: recentServices || [],
         pendingRequests: pendingRequests || [],
         assignedTechnician,
         userProfile
       };
+
       
       console.log('Setting dashboard data:', dashboardData);
       setDashboardData(dashboardData);

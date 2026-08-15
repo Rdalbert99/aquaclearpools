@@ -55,16 +55,15 @@ export default function ForgotPassword() {
         setIsSubmitted(true);
         toast({
           title: "Request processed",
-          description: "If an account exists with that username/email, you'll receive reset instructions.",
+          description: "If an account exists with that username, you'll receive reset instructions.",
         });
         return;
       }
 
-      let email = emailData;
-      
-      // If no email found by login, assume the identifier is already an email
+      const email = emailData;
       if (!email) {
-        email = identifier;
+        setIsSubmitted(true);
+        return;
       }
 
       // Send password reset email
@@ -78,7 +77,7 @@ export default function ForgotPassword() {
         setIsSubmitted(true);
         toast({
           title: "Request processed",
-          description: "If an account exists with that username/email, you'll receive reset instructions.",
+          description: "If an account exists with that username, you'll receive reset instructions.",
         });
         return;
       }
@@ -86,7 +85,7 @@ export default function ForgotPassword() {
       setIsSubmitted(true);
       toast({
         title: "Request processed",
-        description: "If an account exists with that username/email, you'll receive reset instructions.",
+        description: "If an account exists with that username, you'll receive reset instructions.",
       });
 
     } catch (error: any) {

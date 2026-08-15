@@ -53,7 +53,7 @@ type FormData = z.infer<typeof formSchema>;
 export default function ClientSignup() {
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { signUp } = useAuth();
+  
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const form = useForm<FormData>({

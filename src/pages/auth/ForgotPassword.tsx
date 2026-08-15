@@ -156,23 +156,23 @@ export default function ForgotPassword() {
           </div>
           <CardTitle className="text-2xl font-bold">Forgot Password</CardTitle>
           <CardDescription>
-            Enter your username or email to reset your password
+            Enter the username for the account you want to reset
           </CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="identifier">Username or Email</Label>
+              <Label htmlFor="identifier">Username</Label>
               <Input
                 id="identifier"
                 type="text"
-                placeholder="Enter your username or email"
+                placeholder="Enter your username"
                 value={identifier}
                 onChange={(e) => setIdentifier(e.target.value)}
                 required
               />
               <p className="text-xs text-muted-foreground">
-                You can enter either your username or email address
+                Staff and customer accounts use separate usernames, even when they share contact details.
               </p>
             </div>
 

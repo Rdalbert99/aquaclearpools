@@ -105,43 +105,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         return;
       }
 
-      // If no profile by ID, look for profile by email (legacy)
-      const { data: emailProfile, error: emailError } = await supabase
-        .from('users')
-        .select('role, name, login')
-        .eq('email', authUser.email)
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .single();
-
-      if (emailProfile && !emailError) {
-        console.log('Profile found by email, linking via edge function...');
-        try {
-          const { data: linkData, error: linkError } = await supabase.functions.invoke('link-auth-user', {
-            body: { email: authUser.email, role: emailProfile.role }
-          });
-          if (linkError) {
-            console.error('Failed to link auth user:', linkError);
-          }
-        } catch (linkErr) {
-          console.error('Invoke link-auth-user failed:', linkErr);
-        }
-
-        // Fetch the now-linked profile by auth ID
-        const { data: profileById } = await supabase
-          .from('users')
-          .select('role, name, login')
-          .eq('id', authUser.id)
-          .maybeSingle();
-
-        if (profileById) {
-          console.log('Linked profile found by ID:', profileById);
-          setUser({ ...authUser, ...profileById });
-          return;
-        }
-      }
-
-      // If still no profile, create a minimal one
+      // Never link profiles by contact email. Staff and client accounts may
+      // intentionally share contact details but must remain separate identities.
+      // If no profile exists for this exact auth ID, create a minimal client.
       console.log('No profile found, creating minimal profile');
       // SECURITY: self-created profiles are always 'client'. Elevated roles are
       // granted only by an admin or through a server-side invitation flow.
@@ -178,7 +144,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     try {
       console.log('SignIn attempt with login:', login);
       
-      // Use the secure function to lookup email by login
+      // Resolve the private Supabase Auth address from the unique username.
       const { data: email, error: emailError } = await supabase
         .rpc('get_email_by_login', { login_input: login });
 
@@ -202,7 +168,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         throw new Error('Invalid username or password');
       }
 
-      // Now sign in with the email
+      // Sign in with the account identity returned for this username.
       const { data, error } = await supabase.auth.signInWithPassword({
         email: email,
         password,

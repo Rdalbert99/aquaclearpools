@@ -137,7 +137,7 @@ export default function ClientEdit() {
         .from('clients')
         .select(`
           *,
-          users!user_id(id, name, email, phone, address, must_change_password)
+          users!user_id(id, name, email, phone, address, street_address, city, state, zip_code, role, must_change_password)
         `)
         .eq('id', clientId)
         .single();
@@ -205,7 +205,8 @@ export default function ClientEdit() {
       }
       const { data: fallback } = await supabase
         .from('users')
-        .select('id, name, email')
+        .select('id, name, email, login, role')
+        .eq('role', 'client')
         .eq('role', 'tech')
         .order('name');
       setTechnicians(fallback || []);
@@ -829,7 +830,7 @@ export default function ClientEdit() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="user">Associated User Account</Label>
+              <Label htmlFor="user">Associated Customer Login</Label>
               <Select value={client.user_id || "none"} onValueChange={(value) => handleInputChange('user_id', value === "none" ? "" : value)}>
                 <SelectTrigger>
                   <SelectValue placeholder="Select user account..." />
@@ -838,7 +839,7 @@ export default function ClientEdit() {
                   <SelectItem value="none">No associated user</SelectItem>
                   {users.map((user) => (
                     <SelectItem key={user.id} value={user.id}>
-                      {user.name} ({user.email})
+                      {user.name} ({user.login})
                     </SelectItem>
                   ))}
                 </SelectContent>

@@ -1565,6 +1565,10 @@ export type Database = {
       get_user_public_info: { Args: { user_lookup_id: string }; Returns: Json }
       get_user_public_safe: { Args: { user_lookup_id: string }; Returns: Json }
       hash_invitation_token: { Args: { token_input: string }; Returns: string }
+      is_username_available: {
+        Args: { username_input: string }
+        Returns: boolean
+      }
       log_security_event: {
         Args: {
           p_event_type: string

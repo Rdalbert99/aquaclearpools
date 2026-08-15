@@ -338,38 +338,15 @@ export default function ClientDashboard() {
       )}
 
       {/* Next Service Appointment */}
-      {client.next_service_date && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center space-x-2">
-              <Clock className="h-5 w-5 text-green-500" />
-              <span>Next Scheduled Service</span>
-            </CardTitle>
-            <CardDescription>Your upcoming pool service appointment</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-center justify-between p-4 bg-muted rounded-lg">
-              <div>
-                <p className="font-medium">
-                  {new Date(client.next_service_date).toLocaleDateString('en-US', {
-                    weekday: 'long',
-                    year: 'numeric',
-                    month: 'long',
-                    day: 'numeric'
-                  })}
-                </p>
-                <p className="text-sm text-muted-foreground">
-                  {dashboardData.assignedTechnician 
-                    ? `with ${dashboardData.assignedTechnician.name}`
-                    : 'Technician to be assigned'
-                  }
-                </p>
-              </div>
-              <Badge variant="outline">Scheduled</Badge>
-            </div>
-          </CardContent>
-        </Card>
-      )}
+      <NextAppointmentCard
+        clientId={client.id}
+        nextServiceDate={client.next_service_date}
+        technicianName={dashboardData.assignedTechnician?.name}
+        lastServiceDate={dashboardData.lastService?.service_date || client.last_service_date}
+        requests={(dashboardData.pendingRequests || []) as any}
+        onChanged={loadDashboardData}
+      />
+
 
       {/* Last Service Information */}
       {dashboardData?.lastService && (

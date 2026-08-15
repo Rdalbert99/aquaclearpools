@@ -12,7 +12,6 @@ import { AddressAutocomplete } from '@/components/ui/address-autocomplete';
 import { AddressComponents } from '@/lib/address-validation';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
-import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
 import { UsernameInput } from '@/components/ui/username-input';
@@ -37,8 +36,12 @@ const formSchema = z.object({
   poolSize: z.string().min(1, 'Please enter your pool size in gallons'),
   serviceFrequency: z.string().default('weekly'),
   serviceNotes: z.string().optional(),
-  password: z.string().min(6, 'Password must be at least 6 characters'),
-  confirmPassword: z.string().min(6, 'Please confirm your password'),
+  password: z.string()
+    .min(12, 'Password must be at least 12 characters')
+    .regex(/[a-z]/, 'Password must include a lowercase letter')
+    .regex(/[A-Z]/, 'Password must include an uppercase letter')
+    .regex(/[0-9]/, 'Password must include a number'),
+  confirmPassword: z.string().min(12, 'Please confirm your password'),
 }).refine((data) => data.password === data.confirmPassword, {
   message: "Passwords don't match",
   path: ["confirmPassword"],
@@ -49,7 +52,7 @@ type FormData = z.infer<typeof formSchema>;
 export default function ClientSignup() {
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { signUp } = useAuth();
+  
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const form = useForm<FormData>({
@@ -75,105 +78,59 @@ export default function ClientSignup() {
   });
 
   const onSubmit = async (data: FormData) => {
-    console.log('Form submission started with data:', data);
     setIsSubmitting(true);
     try {
-      const fullName = `${data.firstName.trim()} ${data.lastName.trim()}`.trim();
-      const fullAddress = `${data.street}, ${data.city}, ${data.state} ${data.zipCode}`;
-      
-      // Create auth user using the useAuth hook
-      const result = await signUp(
-        data.email, 
-        data.password, 
-        fullName, 
-        'client',
-        {
+      // Signup is handled server-side so the profile and pool record are
+      // created reliably (the browser has no permission to do this).
+      const { data: result, error } = await supabase.functions.invoke('public-client-signup', {
+        body: {
           username: data.username,
           firstName: data.firstName,
           lastName: data.lastName,
+          email: data.email,
           phone: data.phone,
           street: data.street,
           city: data.city,
           state: data.state,
           zipCode: data.zipCode,
-          address: fullAddress
-        }
-      );
-
-      if (result.error) {
-        console.log('SignUp error:', result.error);
-        toast({
-          title: "Error",
-          description: result.error,
-          variant: "destructive",
-        });
-        return;
-      }
-
-      console.log('User created successfully, creating client record...');
-
-      // Wait a moment for the user to be created, then get the user ID
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      // Get the current user to create client record
-      const { data: { user } } = await supabase.auth.getUser();
-      
-      if (!user) {
-        toast({
-          title: "Error",
-          description: "Account created but could not retrieve user information. Please try logging in.",
-          variant: "destructive",
-        });
-        return;
-      }
-
-      // Parse pool size as a number (direct input now)
-      const poolSizeNumber = parseInt(data.poolSize) || 0;
-
-      // Create client record
-      const { error: clientError } = await supabase
-        .from('clients')
-        .insert({
-          user_id: user.id,
-          customer: fullName,
-          pool_type: data.poolType,
-          pool_size: poolSizeNumber,
-          service_frequency: data.serviceFrequency,
-          service_notes: data.serviceNotes || null,
-          status: 'Active',
-          join_date: new Date().toISOString(),
-        });
-
-      if (clientError) {
-        console.error('Error creating client:', clientError);
-        toast({
-          title: "Error",
-          description: "Account created but could not set up client profile. Please contact support.",
-          variant: "destructive",
-        });
-        return;
-      }
-
-      console.log('Client record created successfully, redirecting to login...');
-      toast({
-        title: "Welcome to Aqua Clear Pools!",
-        description: "Your account has been created successfully. You can now log in to manage your pool services.",
+          poolType: data.poolType,
+          poolSize: data.poolSize,
+          serviceFrequency: data.serviceFrequency,
+          serviceNotes: data.serviceNotes,
+          password: data.password,
+        },
       });
 
-      // Redirect to login page
-      console.log('Navigating to login page...');
+      const errorMessage =
+        (result as any)?.error ||
+        (error ? ((error as any).context?.error || error.message) : null);
+
+      if (errorMessage) {
+        toast({
+          title: "We couldn't create your account",
+          description: String(errorMessage),
+          variant: "destructive",
+        });
+        return;
+      }
+
+      toast({
+        title: "Welcome to Aqua Clear Pools!",
+        description: "Your account has been created. You can log in now with your username or email.",
+      });
+
       navigate('/auth/login?message=account-created');
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error during signup:', error);
       toast({
         title: "Error",
-        description: "An unexpected error occurred. Please try again.",
+        description: error?.message || "An unexpected error occurred. Please try again.",
         variant: "destructive",
       });
     } finally {
-      console.log('Form submission completed, setting isSubmitting to false');
       setIsSubmitting(false);
     }
+
   };
 
   return (

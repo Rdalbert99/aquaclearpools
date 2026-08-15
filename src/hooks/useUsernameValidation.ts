@@ -24,17 +24,17 @@ export function useUsernameValidation({ username, debounceMs = 500 }: UseUsernam
 
     const timeoutId = setTimeout(async () => {
       try {
-        const { data, error: queryError } = await supabase
-          .from('users')
-          .select('login')
-          .eq('login', username)
-          .maybeSingle();
+        // Uses a public, security-definer RPC so unauthenticated visitors can
+        // check availability without read access to the users table.
+        const { data, error: queryError } = await supabase.rpc('is_username_available', {
+          username_input: username,
+        });
 
         if (queryError) {
           setError('Error checking username availability');
           setIsAvailable(null);
         } else {
-          setIsAvailable(!data); // Available if no user found
+          setIsAvailable(data === true);
         }
       } catch (err) {
         setError('Error checking username availability');

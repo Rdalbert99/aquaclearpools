@@ -55,3 +55,6 @@ verify_jwt = false
 [functions.notify-salt-cell-cleaned]
 verify_jwt = true
 
+
+[functions.public-client-signup]
+verify_jwt = false

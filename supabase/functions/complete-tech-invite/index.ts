@@ -97,20 +97,21 @@ serve(async (req) => {
     // Create auth user
     const normalizedEmail = body.email.toLowerCase().trim();
     
-    // Check if auth user exists
+    // Contact email may be shared with a client. Always create a distinct
+    // technician identity and route it by the unique technician username.
     const { data: usersPage } = await admin.auth.admin.listUsers({ page: 1, perPage: 1000 });
-    const existing = usersPage?.users.find((u) => u.email?.toLowerCase() === normalizedEmail);
-
-    let authUserId = existing?.id;
-    if (!authUserId) {
-      const { data: created, error: createErr } = await admin.auth.admin.createUser({
-        email: normalizedEmail,
-        password: body.password,
-        email_confirm: true,
-      });
-      if (createErr || !created.user) throw createErr || new Error("Failed to create auth user");
-      authUserId = created.user.id;
-    }
+    const contactEmailInUse = usersPage?.users.some((u) => u.email?.toLowerCase() === normalizedEmail);
+    const authEmail = contactEmailInUse
+      ? `${crypto.randomUUID()}@accounts.getaquaclear.com`
+      : normalizedEmail;
+    const { data: created, error: createErr } = await admin.auth.admin.createUser({
+      email: authEmail,
+      password: body.password,
+      email_confirm: true,
+      user_metadata: { contact_email: normalizedEmail, role: "tech" },
+    });
+    if (createErr || !created.user) throw createErr || new Error("Failed to create auth user");
+    const authUserId = created.user.id;
 
     // Create user profile as tech
     const { error: upsertErr } = await admin
@@ -118,6 +119,7 @@ serve(async (req) => {
       .upsert({
         id: authUserId,
         email: normalizedEmail,
+        auth_email: authEmail,
         login: body.login.trim(),
         name: `${body.firstName.trim()} ${body.lastName.trim()}`,
         first_name: body.firstName.trim(),

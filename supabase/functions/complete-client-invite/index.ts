@@ -134,13 +134,13 @@ serve(async (req) => {
     // A tech or admin can also be a customer — same email, same login, same person.
     let existingProfile: {
       id: string; role: string | null; login: string | null; name: string | null;
-      phone: string | null; address: string | null;
+      phone: string | null; address: string | null; auth_email: string | null;
     } | null = null;
 
     if (authUserId) {
       const { data: prof, error: profErr } = await admin
         .from("users")
-        .select("id, role, login, name, phone, address")
+        .select("id, role, login, name, phone, address, auth_email")
         .eq("id", authUserId)
         .maybeSingle();
       if (profErr) throw profErr;

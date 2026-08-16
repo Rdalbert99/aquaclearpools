@@ -13,17 +13,43 @@ interface ResetPasswordRequest {
   newPassword?: string;
 }
 
-function generatePassword(length = 16) {
-  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*';
-  const array = new Uint8Array(length);
+const LOWER = 'abcdefghijkmnopqrstuvwxyz';
+const UPPER = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
+const DIGITS = '23456789';
+const SYMBOLS = '!@#$%^&*';
+
+function generatePassword(length = 14) {
+  const len = Math.max(12, length);
+  const all = LOWER + UPPER + DIGITS + SYMBOLS;
+  const array = new Uint32Array(len);
   crypto.getRandomValues(array);
-  
-  let password = '';
-  for (let i = 0; i < length; i++) {
-    password += chars.charAt(array[i] % chars.length);
+
+  // Guarantee Supabase's required character classes
+  const chars: string[] = [
+    LOWER.charAt(array[0] % LOWER.length),
+    UPPER.charAt(array[1] % UPPER.length),
+    DIGITS.charAt(array[2] % DIGITS.length),
+    SYMBOLS.charAt(array[3] % SYMBOLS.length),
+  ];
+  for (let i = 4; i < len; i++) chars.push(all.charAt(array[i] % all.length));
+
+  const shuffle = new Uint32Array(chars.length);
+  crypto.getRandomValues(shuffle);
+  for (let i = chars.length - 1; i > 0; i--) {
+    const j = shuffle[i] % (i + 1);
+    [chars[i], chars[j]] = [chars[j], chars[i]];
   }
-  return password;
+  return chars.join('');
 }
+
+function passwordPolicyError(password: string): string | null {
+  if (password.length < 12) return 'Password must be at least 12 characters long.';
+  if (!/[a-z]/.test(password)) return 'Password must include a lowercase letter.';
+  if (!/[A-Z]/.test(password)) return 'Password must include an uppercase letter.';
+  if (!/[0-9]/.test(password)) return 'Password must include a number.';
+  return null;
+}
+
 
 const handler = async (req: Request): Promise<Response> => {
   // Handle CORS preflight requests

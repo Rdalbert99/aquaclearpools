@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
+import { generateStrongPassword, validatePassword } from '@/lib/password';
 import { useToast } from '@/hooks/use-toast';
 import { 
   Settings, 
@@ -235,16 +236,17 @@ export default function ManageTechs() {
   };
 
   const generateRandomPassword = () => {
-    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*';
-    let password = '';
-    for (let i = 0; i < 12; i++) {
-      password += chars.charAt(Math.floor(Math.random() * chars.length));
-    }
-    setNewPassword(password);
+    setNewPassword(generateStrongPassword(14));
   };
 
   const handleResetPassword = async () => {
     if (!resettingPasswordFor || !newPassword) return;
+
+    const policyError = validatePassword(newPassword);
+    if (policyError) {
+      toast({ title: "Invalid password", description: policyError, variant: "destructive" });
+      return;
+    }
 
     try {
       const { data, error } = await supabase.functions.invoke('reset-user-password', {

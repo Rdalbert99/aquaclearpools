@@ -10,6 +10,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
+import { validatePassword } from '@/lib/password';
 import { useToast } from '@/hooks/use-toast';
 import { 
   ArrowLeft,
@@ -509,6 +510,12 @@ export default function ClientEdit() {
 
   const handlePasswordReset = async () => {
     if (!client?.user_id || !newPassword) return;
+
+    const policyError = validatePassword(newPassword);
+    if (policyError) {
+      toast({ title: "Invalid password", description: policyError, variant: "destructive" });
+      return;
+    }
 
     try {
       const { data, error } = await supabase.functions.invoke('reset-user-password', {

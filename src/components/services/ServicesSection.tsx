@@ -225,9 +225,10 @@ export const ServicesSection = ({ onRequestService }: ServicesSectionProps) => {
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Button
               size="lg"
-              onClick={() =>
-                document.getElementById('book')?.scrollIntoView({ behavior: 'smooth' })
-              }
+              onClick={() => {
+                onRequestService?.();
+                document.getElementById('book')?.scrollIntoView({ behavior: 'smooth' });
+              }}
             >
               <Calendar className="h-5 w-5 mr-2" />
               Request a Free Pool Assessment

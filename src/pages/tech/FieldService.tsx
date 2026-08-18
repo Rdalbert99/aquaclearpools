@@ -14,7 +14,7 @@ import { ServicePhotoUpload } from '@/components/tech/ServicePhotoUpload';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { 
-  Clock, Droplets, TestTube, CheckCircle, ArrowLeft, AlertTriangle, Send, Zap, Info, MapPin,
+  Clock, Droplets, TestTube, CheckCircle, ArrowLeft, AlertTriangle, Send, Zap, Info, MapPin, HelpCircle,
 } from 'lucide-react';
 import { isInRange, getDosageInstruction, type ChemicalId } from '@/lib/pool-chemistry';
 import { POOL_TESTS, TEST_BY_ID, normalizeDefaultTests, sortTests, type TestId } from '@/lib/pool-tests';
@@ -831,15 +831,7 @@ export default function FieldService() {
           {/* Auto-generated dosage suggestions */}
           {(() => {
             const poolGallons = client.pool_size ?? 10000;
-            const suggestions = ([
-              { id: 'ph' as ChemicalId, field: 'ph_level' as const },
-              { id: 'alkalinity' as ChemicalId, field: 'alkalinity_level' as const },
-              { id: 'chlorine' as ChemicalId, field: 'chlorine_level' as const },
-              { id: 'cya' as ChemicalId, field: 'cya_level' as const },
-              { id: 'salt' as ChemicalId, field: 'salt_level' as const },
-            ])
-              .map(({ id, field }) => getDosageInstruction(id, serviceData[field], poolGallons))
-              .filter(Boolean) as string[];
+            const suggestions = dosageInstructions();
 
             if (!suggestions.length) return null;
             return (

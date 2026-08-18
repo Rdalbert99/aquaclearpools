@@ -264,11 +264,16 @@ export default function FieldService() {
     ];
     const anyOut = checks.some(c => isInRange(c.id, c.val) === 'out');
 
+    const hour = new Date().getHours();
+    const greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
+    const techName = (user as any)?.name?.trim();
+    const intro = `${greeting}, this is Aqua Clear Pools${techName ? ` - your technician ${techName}` : ''}.`;
+
     const parts: string[] = [];
     parts.push(
       anyOut
-        ? `This is Aqua Clear Pools. We serviced your pool today and added chemicals to bring it back into balance.`
-        : `This is Aqua Clear Pools, your pool is clean and clear.`
+        ? `${intro} We serviced your pool today and added chemicals to bring it back into balance.`
+        : `${intro} We serviced your pool today and it is clean and clear.`
     );
 
     // Actions performed (services + robot tasks)

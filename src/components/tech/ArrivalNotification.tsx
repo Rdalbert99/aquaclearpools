@@ -9,6 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { extractSendError } from '@/lib/send-error';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/hooks/useAuth';
 import { MessageSquare, Mail, CheckCircle, Send, UserPlus, Phone } from 'lucide-react';
 
 
@@ -19,10 +20,23 @@ interface ArrivalNotificationProps {
   clientEmail?: string | null;
 }
 
-const ARRIVAL_MESSAGE = "This is Aqua Clear Pools, a technician is on his way to your pool for your weekly service.";
+function greeting(d: Date = new Date()) {
+  const h = d.getHours();
+  if (h < 12) return 'Good morning';
+  if (h < 17) return 'Good afternoon';
+  return 'Good evening';
+}
+
+export function buildArrivalMessage(techName?: string | null) {
+  const who = techName?.trim() ? `your technician ${techName.trim()}` : 'your technician';
+  return `${greeting()}, this is Aqua Clear Pools - ${who} is on the way to your pool for your service call.`;
+}
 
 export function ArrivalNotification({ clientName, clientId, clientPhone, clientEmail }: ArrivalNotificationProps) {
   const { toast } = useToast();
+  const { user } = useAuth();
+  const techName = (user as any)?.name || '';
+  const ARRIVAL_MESSAGE = buildArrivalMessage(techName);
   const [sent, setSent] = useState(false);
   const [sending, setSending] = useState(false);
   const [showAddContact, setShowAddContact] = useState(false);

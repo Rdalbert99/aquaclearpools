@@ -157,12 +157,23 @@ export function PublicServiceRequestForm({ open, onOpenChange }: PublicServiceRe
       console.log('Form data being submitted:', data);
       
       const fullName = `${data.firstName.trim()} ${data.lastName.trim()}`.trim();
-      
+
+      const photoPaths = photos.length ? await uploadPhotos() : [];
+
+      const description = [
+        data.description,
+        data.currentIssues.length ? `\nCurrent issues: ${data.currentIssues.join(', ')}` : '',
+        `\nPreferred contact: ${data.preferredContact}`,
+        photoPaths.length ? `\nPhotos attached: ${photoPaths.length}` : '',
+      ]
+        .filter(Boolean)
+        .join('');
+
       const insertData: any = {
         title: data.title || null,
         contact_title: data.contactTitle || null,
         request_type: data.serviceType,
-        description: data.description,
+        description,
         priority: data.urgency,
         status: 'pending',
         contact_name: fullName,
@@ -178,6 +189,9 @@ export function PublicServiceRequestForm({ open, onOpenChange }: PublicServiceRe
         pool_type: data.poolType,
         pool_size: data.poolSize,
         preferred_date: data.preferredDate || null,
+        current_issues: data.currentIssues,
+        preferred_contact_method: data.preferredContact,
+        photo_urls: photoPaths,
       };
       
       console.log('Database insert data:', insertData);

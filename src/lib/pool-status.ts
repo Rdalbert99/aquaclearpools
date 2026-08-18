@@ -1,6 +1,6 @@
 // Helpers for computing pool service & balance status from client schedule and readings.
 
-import { CHEMICAL_RANGES, isInRange, type ChemicalId } from './pool-chemistry';
+import { CHEMICAL_RANGES, isInRange, getDosageInstruction, type ChemicalId } from './pool-chemistry';
 
 const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 

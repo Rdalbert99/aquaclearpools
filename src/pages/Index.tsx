@@ -16,6 +16,8 @@ import professionalTech from '@/assets/professional-tech.jpg';
 import Footer from '@/components/layout/Footer';
 import { PublicNavbar } from '@/components/layout/PublicNavbar';
 import { PortalShowcaseSection } from '@/components/portal/PortalShowcaseSection';
+import { ServicesSection } from '@/components/services/ServicesSection';
+
 
 
 const Index = () => {

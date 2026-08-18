@@ -5,12 +5,14 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
-import { extractSendError } from '@/lib/send-error';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
-import { MessageSquare, Mail, CheckCircle, Send, UserPlus, Phone } from 'lucide-react';
+import { sendClientMessage, summarizeResults, type SendChannel } from '@/lib/client-message';
+import { MessageSquare, Mail, CheckCircle, Send, UserPlus, Phone, Clock } from 'lucide-react';
 
 
 interface ArrivalNotificationProps {
@@ -27,16 +29,41 @@ function greeting(d: Date = new Date()) {
   return 'Good evening';
 }
 
-export function buildArrivalMessage(techName?: string | null) {
+export type EtaConfidence = 'high' | 'medium' | 'low';
+
+export const ETA_CONFIDENCE_OPTIONS: { value: EtaConfidence; label: string; phrase: string }[] = [
+  { value: 'high', label: 'High - on schedule', phrase: 'We are on schedule.' },
+  { value: 'medium', label: 'Medium - give or take 30 min', phrase: 'This could shift by about 30 minutes.' },
+  { value: 'low', label: 'Low - rough estimate', phrase: 'This is a rough estimate and may change.' },
+];
+
+export function formatEtaClock(minutesFromNow: number, now: Date = new Date()) {
+  const t = new Date(now.getTime() + minutesFromNow * 60_000);
+  return t.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+}
+
+export function buildArrivalMessage(
+  techName?: string | null,
+  eta?: { minutes: number; confidence: EtaConfidence } | null,
+) {
   const who = techName?.trim() ? `your technician ${techName.trim()}` : 'your technician';
-  return `${greeting()}, this is Aqua Clear Pools - ${who} is on the way to your pool for your service call.`;
+  let msg = `${greeting()}, this is Aqua Clear Pools - ${who} is on the way to your pool for your service call.`;
+  if (eta && eta.minutes > 0) {
+    const phrase = ETA_CONFIDENCE_OPTIONS.find((o) => o.value === eta.confidence)?.phrase ?? '';
+    msg += ` Estimated arrival: about ${eta.minutes} minutes (around ${formatEtaClock(eta.minutes)}). ${phrase}`;
+  }
+  return msg.trim();
 }
 
 export function ArrivalNotification({ clientName, clientId, clientPhone, clientEmail }: ArrivalNotificationProps) {
   const { toast } = useToast();
   const { user } = useAuth();
   const techName = (user as any)?.name || '';
-  const ARRIVAL_MESSAGE = buildArrivalMessage(techName);
+
+  const [etaMinutes, setEtaMinutes] = useState<number>(15);
+  const [etaConfidence, setEtaConfidence] = useState<EtaConfidence>('high');
+  const arrivalMessage = buildArrivalMessage(techName, { minutes: etaMinutes, confidence: etaConfidence });
+
   const [sent, setSent] = useState(false);
   const [sending, setSending] = useState(false);
   const [showAddContact, setShowAddContact] = useState(false);
@@ -50,12 +77,14 @@ export function ArrivalNotification({ clientName, clientId, clientPhone, clientE
 
   // Review dialog state
   const [reviewOpen, setReviewOpen] = useState(false);
-  const [reviewChannel, setReviewChannel] = useState<'sms' | 'email'>('sms');
-  const [reviewMessage, setReviewMessage] = useState(ARRIVAL_MESSAGE);
+  const [useSms, setUseSms] = useState(true);
+  const [useEmail, setUseEmail] = useState(false);
+  const [reviewMessage, setReviewMessage] = useState(arrivalMessage);
 
-  function openReview(channel: 'sms' | 'email') {
-    setReviewChannel(channel);
-    setReviewMessage(ARRIVAL_MESSAGE);
+  function openReview() {
+    setUseSms(!!activePhone);
+    setUseEmail(!activePhone && !!activeEmail);
+    setReviewMessage(buildArrivalMessage(techName, { minutes: etaMinutes, confidence: etaConfidence }));
     setReviewOpen(true);
   }
 
@@ -90,50 +119,44 @@ export function ArrivalNotification({ clientName, clientId, clientPhone, clientE
     }
   }
 
-  async function sendViaSMS() {
-    const phone = activePhone;
-    if (!phone) return;
-    const message = reviewMessage.trim() || ARRIVAL_MESSAGE;
+  async function handleSend() {
+    const channels: SendChannel[] = [];
+    if (useSms && activePhone) channels.push('sms');
+    if (useEmail && activeEmail) channels.push('email');
+    if (!channels.length) {
+      toast({ title: 'Pick a delivery method', variant: 'destructive' });
+      return;
+    }
+    const message = reviewMessage.trim() || arrivalMessage;
     setSending(true);
     try {
-      const { data, error } = await supabase.functions.invoke('send-sms-via-telnyx', {
-        body: { to: phone, message },
+      const results = await sendClientMessage({
+        channels,
+        phone: activePhone,
+        email: activeEmail,
+        message,
+        subject: 'Aqua Clear Pools - Your technician is on the way',
+        log: {
+          clientId,
+          clientName,
+          technicianId: (user as any)?.id ?? null,
+          technicianName: techName || 'Unknown Tech',
+          source: 'arrival_notification',
+        },
       });
-      if (error || (data && (data as any).success === false)) {
-        const detail = await extractSendError(error, data);
-        console.error('SMS error, falling back to native:', error, data);
-        toast({
-          title: 'Automatic text failed',
-          description: `${detail}. Opening your messaging app instead.`,
-          variant: 'destructive',
-        });
-        window.location.href = `sms:${phone}?&body=${encodeURIComponent(message)}`;
+      const summary = summarizeResults(results);
+      if (summary.sent.length) {
         setSent(true);
         setReviewOpen(false);
-        return;
       }
-      setSent(true);
-      setReviewOpen(false);
-      toast({ title: 'Arrival notification sent', description: `SMS sent to ${clientName}.` });
-    } catch (e: any) {
-      console.error('SMS invoke threw:', e);
-      window.location.href = `sms:${phone}?&body=${encodeURIComponent(message)}`;
-      setSent(true);
-      setReviewOpen(false);
-      toast({ title: 'SMS app opened', description: 'Send the message from your messaging app.' });
+      toast({
+        title: summary.allSent ? 'Arrival notification sent' : summary.sent.length ? 'Partially sent' : 'Send failed',
+        description: summary.text || 'No delivery method available.',
+        variant: summary.failed.length ? 'destructive' : 'default',
+      });
     } finally {
       setSending(false);
     }
-  }
-
-  function sendViaEmail() {
-    const email = activeEmail;
-    if (!email) return;
-    const message = reviewMessage.trim() || ARRIVAL_MESSAGE;
-    window.location.href = `mailto:${email}?subject=${encodeURIComponent('Aqua Clear Pools - Service Visit')}&body=${encodeURIComponent(message)}`;
-    setSent(true);
-    setReviewOpen(false);
-    toast({ title: 'Email app opened', description: 'Send the message from your email app.' });
   }
 
 
@@ -163,8 +186,35 @@ export function ArrivalNotification({ clientName, clientId, clientPhone, clientE
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div>
+            <Label className="text-xs flex items-center gap-1"><Clock className="h-3 w-3" /> Estimated arrival</Label>
+            <Select value={String(etaMinutes)} onValueChange={(v) => setEtaMinutes(Number(v))}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent className="z-[100] bg-popover">
+                {[5, 10, 15, 20, 30, 45, 60, 90, 120].map((m) => (
+                  <SelectItem key={m} value={String(m)}>
+                    {m} min (~{formatEtaClock(m)})
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <Label className="text-xs">ETA confidence</Label>
+            <Select value={etaConfidence} onValueChange={(v) => setEtaConfidence(v as EtaConfidence)}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent className="z-[100] bg-popover">
+                {ETA_CONFIDENCE_OPTIONS.map((o) => (
+                  <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+
         <p className="text-sm text-muted-foreground italic">
-          "{ARRIVAL_MESSAGE}"
+          "{arrivalMessage}"
         </p>
 
         {/* Add contact info section */}
@@ -219,16 +269,10 @@ export function ArrivalNotification({ clientName, clientId, clientPhone, clientE
 
         {/* Send buttons */}
         <div className="flex flex-wrap gap-3">
-          {activePhone && (
-            <Button onClick={() => openReview('sms')} disabled={sending} variant="default" size="sm">
-              <MessageSquare className="h-4 w-4 mr-2" />
-              Review & Send Text
-            </Button>
-          )}
-          {activeEmail && (
-            <Button onClick={() => openReview('email')} variant="outline" size="sm">
-              <Mail className="h-4 w-4 mr-2" />
-              Review & Send Email
+          {hasContact && (
+            <Button onClick={openReview} disabled={sending} variant="default" size="sm">
+              <Send className="h-4 w-4 mr-2" />
+              Review & Send
             </Button>
           )}
           {hasContact && (
@@ -243,13 +287,35 @@ export function ArrivalNotification({ clientName, clientId, clientPhone, clientE
       </CardContent>
 
       <Dialog open={reviewOpen} onOpenChange={(o) => !sending && setReviewOpen(o)}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-w-lg z-[80]">
           <DialogHeader>
             <DialogTitle>Review Message</DialogTitle>
             <DialogDescription>
-              Edit the message before sending it to {clientName} via {reviewChannel === 'sms' ? 'text' : 'email'}.
+              Edit the message and choose how to deliver it to {clientName}.
             </DialogDescription>
           </DialogHeader>
+
+          <div className="flex flex-wrap gap-4">
+            <label className="flex items-center gap-2 text-sm">
+              <Checkbox
+                checked={useSms}
+                disabled={!activePhone}
+                onCheckedChange={(c) => setUseSms(!!c)}
+              />
+              <MessageSquare className="h-4 w-4" />
+              Text {activePhone ? `(${activePhone})` : '(no phone on file)'}
+            </label>
+            <label className="flex items-center gap-2 text-sm">
+              <Checkbox
+                checked={useEmail}
+                disabled={!activeEmail}
+                onCheckedChange={(c) => setUseEmail(!!c)}
+              />
+              <Mail className="h-4 w-4" />
+              Email {activeEmail ? `(${activeEmail})` : '(no email on file)'}
+            </label>
+          </div>
+
           <Textarea
             rows={6}
             value={reviewMessage}
@@ -259,13 +325,14 @@ export function ArrivalNotification({ clientName, clientId, clientPhone, clientE
           <div className="text-xs text-muted-foreground">{reviewMessage.length} characters</div>
           <DialogFooter className="gap-2">
             <Button variant="outline" onClick={() => setReviewOpen(false)} disabled={sending}>Cancel</Button>
-            <Button variant="ghost" onClick={() => setReviewMessage(ARRIVAL_MESSAGE)} disabled={sending}>
+            <Button
+              variant="ghost"
+              onClick={() => setReviewMessage(buildArrivalMessage(techName, { minutes: etaMinutes, confidence: etaConfidence }))}
+              disabled={sending}
+            >
               Reset
             </Button>
-            <Button
-              onClick={() => (reviewChannel === 'sms' ? sendViaSMS() : sendViaEmail())}
-              disabled={sending || !reviewMessage.trim()}
-            >
+            <Button onClick={handleSend} disabled={sending || !reviewMessage.trim() || (!useSms && !useEmail)}>
               <Send className="h-4 w-4 mr-2" />
               {sending ? 'Sending…' : 'Send'}
             </Button>

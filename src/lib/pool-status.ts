@@ -86,11 +86,20 @@ export function getPoolServiceStatus(
 // ---- Balance status ----------------------------------------------------------
 
 const READING_TO_CHEMICAL: Record<ChemicalId, { low: RegExp[]; high: RegExp[] }> = {
-  ph:         { low: [/soda\s*ash/i],                           high: [/muriatic/i, /sodium\s*bisulfate/i, /dry\s*acid/i] },
-  alkalinity: { low: [/sodium\s*bicarb/i, /baking\s*soda/i],    high: [/muriatic/i, /sodium\s*bisulfate/i, /dry\s*acid/i] },
-  chlorine:   { low: [/chlorine/i, /cal[-\s]?hypo/i, /trichlor/i, /shock/i], high: [] },
-  cya:        { low: [/cya/i, /cyanuric/i, /stabilizer/i],       high: [] },
-  salt:       { low: [/salt/i],                                   high: [] },
+  ph:         {
+    low:  [/soda\s*ash/i, /sodium\s*carbonate/i, /ph\s*(up|plus|increaser|raiser)/i, /borax/i],
+    high: [/muriatic/i, /sodium\s*bisulfate/i, /dry\s*acid/i, /\bacid\b/i, /ph\s*(down|minus|decreaser|reducer)/i],
+  },
+  alkalinity: {
+    low:  [/sodium\s*bicarb/i, /baking\s*soda/i, /alkalinity\s*(up|increaser)/i],
+    high: [/muriatic/i, /sodium\s*bisulfate/i, /dry\s*acid/i, /\bacid\b/i],
+  },
+  chlorine:   {
+    low:  [/chlorine/i, /cal[-\s]?hypo/i, /hypochlorite/i, /trichlor/i, /dichlor/i, /\btabs?\b/i, /shock/i, /bleach/i],
+    high: [/thiosulfate/i, /chlorine\s*(neutralizer|reducer)/i],
+  },
+  cya:        { low: [/cya/i, /cyanuric/i, /stabilizer/i, /conditioner/i], high: [] },
+  salt:       { low: [/salt/i], high: [] },
 };
 
 export interface BalanceStatus {
@@ -98,12 +107,26 @@ export interface BalanceStatus {
   outOfRange: { chemId: ChemicalId; value: number; addressed: boolean }[];
 }
 
-/** Determine if the pool is in balance given latest readings and what the tech added. */
+/** Combine any text sources (chemicals added, notes, actions, services performed) into one searchable blob. */
+function toSearchText(source: unknown): string {
+  if (source == null) return '';
+  if (typeof source === 'string') return source;
+  if (Array.isArray(source)) return source.map(toSearchText).join(' ');
+  if (typeof source === 'object') return Object.values(source as Record<string, unknown>).map(toSearchText).join(' ');
+  return String(source);
+}
+
+/**
+ * Determine if the pool is in balance given latest readings and what the tech added.
+ * Any reading that was treated with the appropriate chemical counts as handled,
+ * so the pool reads balanced once the tech has dosed for every out-of-range value.
+ */
 export function getBalanceStatus(
   readings: Partial<Record<ChemicalId, number | null | undefined>>,
-  chemicalsAddedText: string | null | undefined,
+  chemicalsAddedText: unknown,
+  ...extraSources: unknown[]
 ): BalanceStatus {
-  const text = (chemicalsAddedText || '').toLowerCase();
+  const text = [chemicalsAddedText, ...extraSources].map(toSearchText).join('\n').toLowerCase();
   const out: BalanceStatus['outOfRange'] = [];
 
   (Object.keys(CHEMICAL_RANGES) as ChemicalId[]).forEach(chemId => {
@@ -121,6 +144,7 @@ export function getBalanceStatus(
   const inBalance = out.length === 0 || out.every(r => r.addressed);
   return { inBalance, outOfRange: out };
 }
+
 
 /** List dosage instructions for any out-of-range readings that the tech did not address. */
 export function getMissingFixes(

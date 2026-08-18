@@ -687,15 +687,24 @@ export default function ClientView() {
             {(() => {
               const readings = getLatestReadings();
               const latestSvc = services[0];
-              const bal = getBalanceStatus(readings, latestSvc?.chemicals_added);
+              const bal = getBalanceStatus(
+                readings,
+                latestSvc?.chemicals_added,
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                (latestSvc as any)?.actions,
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                (latestSvc as any)?.services_performed,
+                latestSvc?.notes,
+              );
               return (
                 <div>
                   <p className="text-sm font-medium text-muted-foreground">Currently In Balance</p>
                   <Badge variant={bal.inBalance ? 'default' : 'destructive'}>
-                    {bal.inBalance ? 'Yes' : 'Out of balance'}
+                    {bal.inBalance ? 'Balanced' : 'Out of balance'}
                   </Badge>
-                  {!bal.inBalance && (
+                  {bal.outOfRange.length > 0 && (
                     <ul className="mt-2 text-xs text-muted-foreground space-y-0.5">
+
                       {bal.outOfRange.map(r => (
                         <li key={r.chemId}>
                           • {r.chemId.toUpperCase()}: {r.value}

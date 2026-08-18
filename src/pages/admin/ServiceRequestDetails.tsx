@@ -421,6 +421,24 @@ export default function ServiceRequestDetails() {
               placeholder="Add notes about the service request or work performed..."
             />
           </div>
+
+          {photoUrls.length > 0 && (
+            <div>
+              <label className="text-sm font-medium text-muted-foreground">Customer Photos</label>
+              <div className="mt-2 grid grid-cols-2 md:grid-cols-4 gap-3">
+                {photoUrls.map((url) => (
+                  <a key={url} href={url} target="_blank" rel="noreferrer">
+                    <img
+                      src={url}
+                      alt="Customer submitted pool photo"
+                      loading="lazy"
+                      className="rounded-md border border-border object-cover w-full h-32"
+                    />
+                  </a>
+                ))}
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
 

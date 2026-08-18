@@ -32,7 +32,8 @@ import {
   Activity,
   MoreVertical
 } from 'lucide-react';
-import { getPoolServiceStatus, getBalanceStatus, getNextDueDate } from '@/lib/pool-status';
+import { getPoolServiceStatus, getBalanceStatus, getNextDueDate, getBalanceTolerances, type BalanceTolerances } from '@/lib/pool-status';
+import { BalanceExplanation } from '@/components/pool/BalanceExplanation';
 import { ClientReadingsChart } from '@/components/admin/ClientReadingsChart';
 import { ServiceCostChart } from '@/components/admin/ServiceCostChart';
 import { ClientStatusHistory } from '@/components/admin/ClientStatusHistory';
@@ -62,6 +63,7 @@ export default function ClientView() {
   const [userLoading, setUserLoading] = useState(false);
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
   const [selectedServiceId, setSelectedServiceId] = useState<string | null>(null);
+  const [tolerances, setTolerances] = useState<BalanceTolerances>(() => getBalanceTolerances());
 
   useEffect(() => {
     console.log('DEBUG: Current user:', user);

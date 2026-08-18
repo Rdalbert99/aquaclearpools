@@ -12,10 +12,10 @@ import poolBefore1 from '@/assets/pool-before-1.jpg';
 import poolAfter1 from '@/assets/pool-after-1.jpg';
 import poolBefore2 from '@/assets/pool-before-2.jpg';
 import poolAfter2 from '@/assets/pool-after-2.jpg';
-import logo3D from '@/assets/aqua-clear-logo-3d.png';
 import professionalTech from '@/assets/professional-tech.jpg';
 import Footer from '@/components/layout/Footer';
 import { PublicNavbar } from '@/components/layout/PublicNavbar';
+import { PortalShowcaseSection } from '@/components/portal/PortalShowcaseSection';
 
 
 const Index = () => {
@@ -78,6 +78,9 @@ const Index = () => {
           </div>
         </div>
       </section>
+
+      {/* Customer Portal Showcase */}
+      <PortalShowcaseSection />
 
       {/* Services Section */}
       <section id="services" className="py-20 px-4 bg-gradient-to-br from-primary/5 to-secondary/5">

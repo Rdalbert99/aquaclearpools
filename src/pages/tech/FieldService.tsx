@@ -315,6 +315,8 @@ export default function FieldService() {
   function openReview() {
     if (!client) return;
     setReviewMessage(buildServiceMessage(client.customer, serviceData));
+    setNotifySms(!!client.contact_phone);
+    setNotifyEmail(!client.contact_phone && !!client.contact_email);
     setReviewOpen(true);
   }
 

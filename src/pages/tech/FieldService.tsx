@@ -20,7 +20,7 @@ import { isInRange, getDosageInstruction, type ChemicalId } from '@/lib/pool-che
 import { ArrivalNotification } from '@/components/tech/ArrivalNotification';
 import { ClientNotesPanel } from '@/components/tech/ClientNotesPanel';
 import { ChemicalsAddedInput } from '@/components/service/ChemicalsAddedInput';
-import { ChemicalEntry, entriesToString, entriesToCustomerExplanation } from '@/lib/chemicals-added';
+import { ChemicalEntry, entriesToString } from '@/lib/chemicals-added';
 import { getMissingFixes } from '@/lib/pool-status';
 import { useChemicalCatalog } from '@/hooks/useChemicalCatalog';
 import { useUnitCosts } from '@/hooks/useUnitCosts';

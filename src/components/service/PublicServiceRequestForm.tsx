@@ -590,6 +590,102 @@ export function PublicServiceRequestForm({ open, onOpenChange }: PublicServiceRe
 
             <FormField
               control={form.control}
+              name="currentIssues"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>What&rsquo;s going on right now? (select all that apply)</FormLabel>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    {CURRENT_ISSUES.map((issue) => {
+                      const checked = field.value?.includes(issue);
+                      return (
+                        <label
+                          key={issue}
+                          className="flex items-center gap-2 rounded-md border border-border p-2 text-sm cursor-pointer"
+                        >
+                          <Checkbox
+                            checked={checked}
+                            onCheckedChange={(v) =>
+                              field.onChange(
+                                v
+                                  ? [...(field.value || []), issue]
+                                  : (field.value || []).filter((i: string) => i !== issue)
+                              )
+                            }
+                          />
+                          {issue}
+                        </label>
+                      );
+                    })}
+                  </div>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="preferredContact"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Preferred contact method</FormLabel>
+                  <Select onValueChange={field.onChange} value={field.value}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="How should we reach you?" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="call">Phone call</SelectItem>
+                      <SelectItem value="text">Text message</SelectItem>
+                      <SelectItem value="email">Email</SelectItem>
+                      <SelectItem value="either">Whatever is easiest</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormItem>
+              <FormLabel>Photos of your pool or test strip (optional)</FormLabel>
+              <Input
+                type="file"
+                accept="image/*"
+                multiple
+                onChange={(e) => {
+                  addPhotos(e.target.files);
+                  e.target.value = '';
+                }}
+              />
+              <p className="text-xs text-muted-foreground">
+                Up to {MAX_PHOTOS} photos, 8MB each. Photos help us plan chemicals before we arrive.
+              </p>
+              {photos.length > 0 && (
+                <ul className="mt-2 space-y-1">
+                  {photos.map((p, i) => (
+                    <li
+                      key={`${p.name}-${i}`}
+                      className="flex items-center justify-between rounded-md bg-muted px-3 py-2 text-sm"
+                    >
+                      <span className="truncate">{p.name}</span>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setPhotos((prev) => prev.filter((_, idx) => idx !== i))}
+                      >
+                        Remove
+                      </Button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </FormItem>
+
+
+
+            <FormField
+              control={form.control}
               name="description"
               render={({ field }) => (
                 <FormItem>

@@ -28,6 +28,7 @@ import { computeServiceCost, fmtMoney } from '@/lib/inventory-cost';
 import { CHEMICAL_OPTIONS } from '@/lib/chemicals-added';
 import { extractSendError } from '@/lib/send-error';
 import { logMessageSend } from '@/lib/message-log';
+import { sendClientMessage, summarizeResults, type SendChannel } from '@/lib/client-message';
 import { SmsPreview } from '@/components/tech/SmsPreview';
 import { analyzeSms } from '@/lib/sms-segments';
 
@@ -145,6 +146,8 @@ export default function FieldService() {
   });
   const [reviewOpen, setReviewOpen] = useState(false);
   const [reviewMessage, setReviewMessage] = useState('');
+  const [notifySms, setNotifySms] = useState(true);
+  const [notifyEmail, setNotifyEmail] = useState(false);
   const [saltInstructionsOpen, setSaltInstructionsOpen] = useState(false);
   const [lastSaltCleaning, setLastSaltCleaning] = useState<string | null>(null);
 
@@ -312,6 +315,8 @@ export default function FieldService() {
   function openReview() {
     if (!client) return;
     setReviewMessage(buildServiceMessage(client.customer, serviceData));
+    setNotifySms(!!client.contact_phone);
+    setNotifyEmail(!client.contact_phone && !!client.contact_email);
     setReviewOpen(true);
   }
 
@@ -488,35 +493,28 @@ export default function FieldService() {
         message,
       };
 
+      const channels: SendChannel[] = [];
+      if (notifySms && phone) channels.push('sms');
+      if (notifyEmail && email) channels.push('email');
+
       if (!notify) {
         await logMessageSend({ ...logBase, channel: 'none', status: 'skipped', errorDetail: 'Completed without notifying customer' });
         toast({ title: 'Service completed', description: 'Service saved. Customer was not notified.' });
-      } else if (phone) {
-        try {
-          const { data, error } = await supabase.functions.invoke('send-sms-via-telnyx', {
-            body: { to: phone, message: message }
-          });
-
-          if (error || (data && (data as any).success === false)) {
-            const detail = await extractSendError(error, data);
-            console.error('SMS sending error:', error, data);
-            await logMessageSend({ ...logBase, channel: 'sms', recipient: phone, status: 'fallback', errorDetail: detail });
-            window.location.href = `sms:${phone}?&body=${encodeURIComponent(message)}`;
-            toast({ title: 'Automatic text failed', description: `${detail}. SMS app opened with message.`, variant: 'destructive' });
-          } else {
-            await logMessageSend({ ...logBase, channel: 'sms', recipient: phone, status: 'sent', providerMessageId: (data as any)?.messageId ?? null });
-            toast({ title: 'Service completed', description: 'Saved and SMS sent to client.' });
-          }
-        } catch (smsError: any) {
-          console.error('SMS API error:', smsError);
-          await logMessageSend({ ...logBase, channel: 'sms', recipient: phone, status: 'fallback', errorDetail: smsError?.message || 'Network/function error' });
-          window.location.href = `sms:${phone}?&body=${encodeURIComponent(message)}`;
-          toast({ title: 'Automatic text failed', description: `${smsError?.message || 'Network/function error'}. SMS app opened with message.`, variant: 'destructive' });
-        }
-      } else if (email) {
-        await logMessageSend({ ...logBase, channel: 'email', recipient: email, status: 'fallback', errorDetail: 'No phone on file — opened email app' });
-        window.location.href = `mailto:${email}?subject=${encodeURIComponent('Aqua Clear Service Update')}&body=${encodeURIComponent(message)}`;
-        toast({ title: 'Service completed', description: 'Email app opened with message.' });
+      } else if (channels.length) {
+        const results = await sendClientMessage({
+          channels,
+          phone,
+          email,
+          message,
+          subject: 'Aqua Clear Pools - Service Update',
+          log: logBase,
+        });
+        const summary = summarizeResults(results);
+        toast({
+          title: summary.allSent ? 'Service completed' : summary.sent.length ? 'Service completed - partial send' : 'Service saved, send failed',
+          description: summary.text,
+          variant: summary.failed.length ? 'destructive' : 'default',
+        });
       } else {
         await logMessageSend({ ...logBase, channel: 'none', status: 'failed', errorDetail: 'No phone or email on file for this client' });
         toast({ title: 'Service completed', description: 'Service saved successfully.' });
@@ -924,9 +922,27 @@ export default function FieldService() {
           <DialogHeader>
             <DialogTitle>Review Customer Message</DialogTitle>
             <DialogDescription>
-              Edit the message below before sending it to the customer. This text will be sent via SMS (or email if no phone).
+              Edit the message and choose how to deliver it. Every send is recorded in the message logs.
             </DialogDescription>
           </DialogHeader>
+          <div className="flex flex-wrap gap-4">
+            <label className="flex items-center gap-2 text-sm">
+              <Checkbox
+                checked={notifySms}
+                disabled={!client?.contact_phone}
+                onCheckedChange={(c) => setNotifySms(!!c)}
+              />
+              Text {client?.contact_phone ? `(${client.contact_phone})` : '(no phone on file)'}
+            </label>
+            <label className="flex items-center gap-2 text-sm">
+              <Checkbox
+                checked={notifyEmail}
+                disabled={!client?.contact_email}
+                onCheckedChange={(c) => setNotifyEmail(!!c)}
+              />
+              Email {client?.contact_email ? `(${client.contact_email})` : '(no email on file)'}
+            </label>
+          </div>
           <Textarea
             rows={6}
             value={reviewMessage}
@@ -942,7 +958,7 @@ export default function FieldService() {
             <Button
               className="w-full sm:w-auto sm:order-4"
               onClick={() => completeService(true)}
-              disabled={saving || !reviewMessage.trim() || analyzeSms(reviewMessage).overLimit}
+              disabled={saving || !reviewMessage.trim() || (!notifySms && !notifyEmail) || (notifySms && analyzeSms(reviewMessage).overLimit)}
             >
               {saving ? <LoadingSpinner /> : (<><Send className="h-4 w-4 mr-2" /> Send &amp; Complete</>)}
             </Button>

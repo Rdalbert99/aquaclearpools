@@ -103,8 +103,7 @@ export default function NewService() {
       // Load clients
       const { data: clientsData, error: clientsError } = await supabase
         .from('clients')
-        .select('id, customer, pool_size, pool_type')
-        .eq('status', 'Active')
+        .select('id, customer, pool_size, pool_type, status')
         .order('customer');
 
       if (clientsError) throw clientsError;
@@ -354,6 +353,7 @@ export default function NewService() {
                     {clients.map((client) => (
                       <SelectItem key={client.id} value={client.id}>
                         {client.customer} - {client.pool_size?.toLocaleString()} gal {client.pool_type}
+                        {(client as any).status && (client as any).status !== 'Active' ? ` (${(client as any).status})` : ''}
                       </SelectItem>
                     ))}
                   </SelectContent>

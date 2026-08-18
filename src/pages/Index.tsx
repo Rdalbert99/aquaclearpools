@@ -300,6 +300,10 @@ const Index = () => {
 
       {/* Footer */}
       <Footer />
+
+      {/* Persistent call / text / request actions */}
+      <StickyCTABar onRequestService={() => setShowRequestForm(true)} />
+      <div className="h-16 md:hidden" aria-hidden="true" />
     </div>
   );
 };

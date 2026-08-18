@@ -725,6 +725,7 @@ export default function ChemicalCalculator() {
                     {clients.map((client) => (
                       <SelectItem key={client.id} value={client.id}>
                         {client.customer} - {client.pool_size?.toLocaleString()} gal {client.pool_type}
+                        {(client as any).status && (client as any).status !== 'Active' ? ` (${(client as any).status})` : ''}
                       </SelectItem>
                     ))}
                   </SelectContent>

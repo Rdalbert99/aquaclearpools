@@ -104,6 +104,26 @@ const handler = async (req: Request): Promise<Response> => {
 
     console.log(`Sending service request notification: ${status} for request ${requestId}`);
 
+    // Respect the customer's stored reminder preferences (opt-in consent)
+    let allowEmail = true;
+    let allowSms = true;
+    if (requestId) {
+      const consentClient = createClient(
+        Deno.env.get("SUPABASE_URL")!,
+        Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
+      );
+      const { data: consentRow } = await consentClient
+        .from("service_requests")
+        .select("sms_opt_in, email_opt_in, consent_at")
+        .eq("id", requestId)
+        .maybeSingle();
+      // Legacy requests captured before consent tracking keep the previous behaviour
+      if (consentRow && consentRow.consent_at) {
+        allowEmail = consentRow.email_opt_in === true;
+        allowSms = consentRow.sms_opt_in === true;
+      }
+    }
+
     let subject = "";
     let htmlContent = "";
 
@@ -271,7 +291,7 @@ const handler = async (req: Request): Promise<Response> => {
 
     // Send email if customerEmail is provided
     let emailStatus: any = null;
-    if (customerEmail) {
+    if (customerEmail && allowEmail) {
       const replyToEmail = Deno.env.get("RESEND_REPLY_TO") || undefined;
       const defaultFromEmail = "randy@getaquaclear.com";
       const defaultFromName = "AquaClear Pools";
@@ -322,7 +342,7 @@ const handler = async (req: Request): Promise<Response> => {
 
     // Send SMS if customerPhone is provided
     let smsStatus: any = null;
-    if (customerPhone) {
+    if (customerPhone && allowSms) {
       const telnyxApiKey = Deno.env.get("TELNYX_API_KEY");
       if (!telnyxApiKey) {
         console.warn("TELNYX_API_KEY missing; skipping SMS");
@@ -363,8 +383,10 @@ const handler = async (req: Request): Promise<Response> => {
 
     const results = {
       success: true,
-      email: emailStatus ? { sent: true, provider: "mailjet" } : { sent: false, reason: "no email provided" },
-      sms: smsStatus ? { sent: true, provider: "telnyx" } : { sent: false, reason: customerPhone ? "telnyx api key missing" : "no phone provided" },
+      email: emailStatus
+        ? { sent: true, provider: "mailjet" }
+        : { sent: false, reason: !allowEmail ? "customer not opted in to email" : "no email provided" },
+      sms: smsStatus ? { sent: true, provider: "telnyx" } : { sent: false, reason: !allowSms ? "customer not opted in to SMS" : customerPhone ? "telnyx api key missing" : "no phone provided" },
       message: `${status} notification processing completed`
     };
 

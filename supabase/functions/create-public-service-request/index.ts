@@ -113,6 +113,12 @@ serve(async (req: Request) => {
             .filter((p: unknown) => typeof p === 'string' && (p as string).startsWith('intake/'))
             .slice(0, 5)
         : [],
+      sms_opt_in: body.sms_opt_in === true && !!body.contact_phone,
+      email_opt_in: body.email_opt_in === true && !!body.contact_email,
+      consent_at:
+        (body.sms_opt_in === true && !!body.contact_phone) || (body.email_opt_in === true && !!body.contact_email)
+          ? new Date().toISOString()
+          : null,
     } as const;
 
     // Avoid enumerating existing clients; do not check the clients table here

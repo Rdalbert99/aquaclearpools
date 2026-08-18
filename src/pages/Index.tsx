@@ -62,22 +62,25 @@ const Index = () => {
           <p className="text-xl md:text-2xl mb-6 text-white/90">
             Professional pool maintenance, chemical balancing, and cleaning services in the Hattiesburg, Mississippi area
           </p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center mb-20">
-            <Button 
-              size="lg" 
-              variant="outline"
-              className="bg-white/10 border-white text-white hover:bg-white/20 text-lg px-8 py-6 h-auto"
+          <div className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-4">
+            <Button
+              size="lg"
+              className="text-lg px-8 py-6 h-auto shadow-xl"
               onClick={() => setShowRequestForm(true)}
             >
               <Calendar className="h-6 w-6 mr-3" />
-              Request Pool Service
+              Get a Free Pool Assessment
             </Button>
             <Link to="/auth/login?demo=client">
               <Button size="lg" variant="outline" className="bg-white/10 border-white text-white hover:bg-white/20 text-lg px-8 py-6 h-auto">
-                Existing Customer Login
+                <LogIn className="h-5 w-5 mr-3" />
+                Customer Login
               </Button>
             </Link>
           </div>
+          <p className="text-sm text-white/80 mb-20">
+            Crystal Clear Guarantee &middot; No contracts &middot; Same-week scheduling
+          </p>
         </div>
       </section>
 

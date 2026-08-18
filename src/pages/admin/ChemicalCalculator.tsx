@@ -109,8 +109,7 @@ export default function ChemicalCalculator() {
     try {
       const { data, error } = await supabase
         .from('clients')
-        .select('id, customer, pool_size, pool_type')
-        .eq('status', 'Active')
+        .select('id, customer, pool_size, pool_type, status')
         .order('customer');
       
       if (error) throw error;

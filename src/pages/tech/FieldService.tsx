@@ -958,7 +958,7 @@ export default function FieldService() {
             <Button
               className="w-full sm:w-auto sm:order-4"
               onClick={() => completeService(true)}
-              disabled={saving || !reviewMessage.trim() || analyzeSms(reviewMessage).overLimit}
+              disabled={saving || !reviewMessage.trim() || (!notifySms && !notifyEmail) || (notifySms && analyzeSms(reviewMessage).overLimit)}
             >
               {saving ? <LoadingSpinner /> : (<><Send className="h-4 w-4 mr-2" /> Send &amp; Complete</>)}
             </Button>

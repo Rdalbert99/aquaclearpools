@@ -103,8 +103,7 @@ export default function NewService() {
       // Load clients
       const { data: clientsData, error: clientsError } = await supabase
         .from('clients')
-        .select('id, customer, pool_size, pool_type')
-        .eq('status', 'Active')
+        .select('id, customer, pool_size, pool_type, status')
         .order('customer');
 
       if (clientsError) throw clientsError;

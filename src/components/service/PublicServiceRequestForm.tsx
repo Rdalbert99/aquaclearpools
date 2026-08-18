@@ -30,6 +30,8 @@ const formSchema = z.object({
   description: z.string().min(10, 'Please provide more details about your service request'),
   preferredDate: z.string().optional(),
   urgency: z.string().default('medium'),
+  currentIssues: z.array(z.string()).default([]),
+  preferredContact: z.string().default('either'),
 }).refine((data) => {
   // Require either email or phone
   return data.email || data.phone;
@@ -72,8 +74,23 @@ interface PublicServiceRequestFormProps {
   onOpenChange: (open: boolean) => void;
 }
 
+const CURRENT_ISSUES = [
+  'Green / cloudy water',
+  'Algae on walls or floor',
+  'Heavy debris or pollen',
+  'Chemicals out of balance',
+  'Pump / filter problem',
+  'Heater or salt cell issue',
+  'Leak or water loss',
+  'Just need routine service',
+];
+
+const MAX_PHOTOS = 5;
+const MAX_PHOTO_BYTES = 8 * 1024 * 1024;
+
 export function PublicServiceRequestForm({ open, onOpenChange }: PublicServiceRequestFormProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [photos, setPhotos] = useState<File[]>([]);
   const { toast } = useToast();
 
   const form = useForm<FormData>({
@@ -96,8 +113,43 @@ export function PublicServiceRequestForm({ open, onOpenChange }: PublicServiceRe
       description: '',
       preferredDate: '',
       urgency: 'medium',
+      currentIssues: [],
+      preferredContact: 'either',
     },
   });
+
+  const addPhotos = (files: FileList | null) => {
+    if (!files) return;
+    const incoming = Array.from(files).filter((f) => {
+      if (!f.type.startsWith('image/')) {
+        toast({ title: 'Unsupported file', description: `${f.name} is not an image.`, variant: 'destructive' });
+        return false;
+      }
+      if (f.size > MAX_PHOTO_BYTES) {
+        toast({ title: 'Photo too large', description: `${f.name} is over 8MB.`, variant: 'destructive' });
+        return false;
+      }
+      return true;
+    });
+    setPhotos((prev) => [...prev, ...incoming].slice(0, MAX_PHOTOS));
+  };
+
+  const uploadPhotos = async (): Promise<string[]> => {
+    const paths: string[] = [];
+    for (const file of photos) {
+      const ext = file.name.split('.').pop()?.toLowerCase() || 'jpg';
+      const path = `intake/${crypto.randomUUID()}.${ext}`;
+      const { error } = await supabase.storage
+        .from('service-request-photos')
+        .upload(path, file, { contentType: file.type, upsert: false });
+      if (error) {
+        console.warn('Photo upload failed:', error.message);
+        continue;
+      }
+      paths.push(path);
+    }
+    return paths;
+  };
 
   const onSubmit = async (data: FormData) => {
     setIsSubmitting(true);
@@ -105,12 +157,23 @@ export function PublicServiceRequestForm({ open, onOpenChange }: PublicServiceRe
       console.log('Form data being submitted:', data);
       
       const fullName = `${data.firstName.trim()} ${data.lastName.trim()}`.trim();
-      
+
+      const photoPaths = photos.length ? await uploadPhotos() : [];
+
+      const description = [
+        data.description,
+        data.currentIssues.length ? `\nCurrent issues: ${data.currentIssues.join(', ')}` : '',
+        `\nPreferred contact: ${data.preferredContact}`,
+        photoPaths.length ? `\nPhotos attached: ${photoPaths.length}` : '',
+      ]
+        .filter(Boolean)
+        .join('');
+
       const insertData: any = {
         title: data.title || null,
         contact_title: data.contactTitle || null,
         request_type: data.serviceType,
-        description: data.description,
+        description,
         priority: data.urgency,
         status: 'pending',
         contact_name: fullName,
@@ -126,6 +189,9 @@ export function PublicServiceRequestForm({ open, onOpenChange }: PublicServiceRe
         pool_type: data.poolType,
         pool_size: data.poolSize,
         preferred_date: data.preferredDate || null,
+        current_issues: data.currentIssues,
+        preferred_contact_method: data.preferredContact,
+        photo_urls: photoPaths,
       };
       
       console.log('Database insert data:', insertData);
@@ -185,6 +251,7 @@ export function PublicServiceRequestForm({ open, onOpenChange }: PublicServiceRe
       }
 
       form.reset();
+      setPhotos([]);
       onOpenChange(false);
     } catch (error) {
       console.error('Error submitting request:', error);
@@ -194,6 +261,7 @@ export function PublicServiceRequestForm({ open, onOpenChange }: PublicServiceRe
         variant: "default",
       });
       form.reset();
+      setPhotos([]);
       onOpenChange(false);
     } finally {
       setIsSubmitting(false);
@@ -519,6 +587,102 @@ export function PublicServiceRequestForm({ open, onOpenChange }: PublicServiceRe
                 )}
               />
             </div>
+
+            <FormField
+              control={form.control}
+              name="currentIssues"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>What&rsquo;s going on right now? (select all that apply)</FormLabel>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    {CURRENT_ISSUES.map((issue) => {
+                      const checked = field.value?.includes(issue);
+                      return (
+                        <label
+                          key={issue}
+                          className="flex items-center gap-2 rounded-md border border-border p-2 text-sm cursor-pointer"
+                        >
+                          <Checkbox
+                            checked={checked}
+                            onCheckedChange={(v) =>
+                              field.onChange(
+                                v
+                                  ? [...(field.value || []), issue]
+                                  : (field.value || []).filter((i: string) => i !== issue)
+                              )
+                            }
+                          />
+                          {issue}
+                        </label>
+                      );
+                    })}
+                  </div>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="preferredContact"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Preferred contact method</FormLabel>
+                  <Select onValueChange={field.onChange} value={field.value}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="How should we reach you?" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="call">Phone call</SelectItem>
+                      <SelectItem value="text">Text message</SelectItem>
+                      <SelectItem value="email">Email</SelectItem>
+                      <SelectItem value="either">Whatever is easiest</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormItem>
+              <FormLabel>Photos of your pool or test strip (optional)</FormLabel>
+              <Input
+                type="file"
+                accept="image/*"
+                multiple
+                onChange={(e) => {
+                  addPhotos(e.target.files);
+                  e.target.value = '';
+                }}
+              />
+              <p className="text-xs text-muted-foreground">
+                Up to {MAX_PHOTOS} photos, 8MB each. Photos help us plan chemicals before we arrive.
+              </p>
+              {photos.length > 0 && (
+                <ul className="mt-2 space-y-1">
+                  {photos.map((p, i) => (
+                    <li
+                      key={`${p.name}-${i}`}
+                      className="flex items-center justify-between rounded-md bg-muted px-3 py-2 text-sm"
+                    >
+                      <span className="truncate">{p.name}</span>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setPhotos((prev) => prev.filter((_, idx) => idx !== i))}
+                      >
+                        Remove
+                      </Button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </FormItem>
+
+
 
             <FormField
               control={form.control}

@@ -35,6 +35,9 @@ interface ServiceRequest {
   pool_type?: string;
   pool_size?: string;
   preferred_date?: string;
+  photo_urls?: string[];
+  preferred_contact_method?: string;
+  current_issues?: string[];
   requested_date: string;
   client_id?: string;
   clients?: {
@@ -51,6 +54,7 @@ export default function ServiceRequestDetails() {
   const [loading, setLoading] = useState(true);
   const [notes, setNotes] = useState('');
   const [isUpdating, setIsUpdating] = useState(false);
+  const [photoUrls, setPhotoUrls] = useState<string[]>([]);
 
   useEffect(() => {
     if (id) {
@@ -80,6 +84,16 @@ export default function ServiceRequestDetails() {
       }
 
       setRequest(data);
+
+      const paths: string[] = (data as any)?.photo_urls ?? [];
+      if (paths.length) {
+        const { data: signed } = await supabase.storage
+          .from('service-request-photos')
+          .createSignedUrls(paths, 60 * 60);
+        setPhotoUrls((signed ?? []).map((s) => s.signedUrl).filter(Boolean) as string[]);
+      } else {
+        setPhotoUrls([]);
+      }
       // Initialize notes with any existing notes
       setNotes(data.description || '');
     } catch (error) {
@@ -421,6 +435,24 @@ export default function ServiceRequestDetails() {
               placeholder="Add notes about the service request or work performed..."
             />
           </div>
+
+          {photoUrls.length > 0 && (
+            <div>
+              <label className="text-sm font-medium text-muted-foreground">Customer Photos</label>
+              <div className="mt-2 grid grid-cols-2 md:grid-cols-4 gap-3">
+                {photoUrls.map((url) => (
+                  <a key={url} href={url} target="_blank" rel="noreferrer">
+                    <img
+                      src={url}
+                      alt="Customer submitted pool photo"
+                      loading="lazy"
+                      className="rounded-md border border-border object-cover w-full h-32"
+                    />
+                  </a>
+                ))}
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
 

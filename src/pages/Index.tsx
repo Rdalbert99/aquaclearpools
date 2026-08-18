@@ -2,6 +2,8 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Phone, Mail, MapPin, Star, CheckCircle, LogIn, User, Users, Shield, Droplets, TestTube, Sparkles, Calendar } from 'lucide-react';
+import { CTABand } from '@/components/marketing/CTABand';
+import { StickyCTABar } from '@/components/marketing/StickyCTABar';
 import { Link } from 'react-router-dom';
 import { ReviewCarousel } from '@/components/reviews/ReviewCarousel';
 import { PublicServiceRequestForm } from '@/components/service/PublicServiceRequestForm';
@@ -62,22 +64,25 @@ const Index = () => {
           <p className="text-xl md:text-2xl mb-6 text-white/90">
             Professional pool maintenance, chemical balancing, and cleaning services in the Hattiesburg, Mississippi area
           </p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center mb-20">
-            <Button 
-              size="lg" 
-              variant="outline"
-              className="bg-white/10 border-white text-white hover:bg-white/20 text-lg px-8 py-6 h-auto"
+          <div className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-4">
+            <Button
+              size="lg"
+              className="text-lg px-8 py-6 h-auto shadow-xl"
               onClick={() => setShowRequestForm(true)}
             >
               <Calendar className="h-6 w-6 mr-3" />
-              Request Pool Service
+              Get a Free Pool Assessment
             </Button>
             <Link to="/auth/login?demo=client">
               <Button size="lg" variant="outline" className="bg-white/10 border-white text-white hover:bg-white/20 text-lg px-8 py-6 h-auto">
-                Existing Customer Login
+                <LogIn className="h-5 w-5 mr-3" />
+                Customer Login
               </Button>
             </Link>
           </div>
+          <p className="text-sm text-white/80 mb-20">
+            Crystal Clear Guarantee &middot; No contracts &middot; Same-week scheduling
+          </p>
         </div>
       </section>
 
@@ -102,10 +107,27 @@ const Index = () => {
         </div>
       </section>
 
+      {/* CTA after before/after */}
+      <CTABand
+        title="Want results like these on your pool?"
+        subtitle="Send us a few photos and we'll tell you exactly what your pool needs — free, no obligation."
+        onPrimary={() => setShowRequestForm(true)}
+      />
+
       {/* Customer Reviews Section */}
       <section id="reviews">
         <ReviewCarousel />
       </section>
+
+      {/* CTA after testimonials */}
+      <CTABand
+        title="Join your neighbors in Hattiesburg"
+        subtitle="Weekly service, honest chemistry, and a customer portal that shows every visit."
+        primaryLabel="Schedule Your First Visit"
+        onPrimary={() => setShowRequestForm(true)}
+        showLogin
+        variant="plain"
+      />
 
       {/* Company History Section */}
       <section className="py-20 px-4 bg-muted/50">
@@ -278,6 +300,10 @@ const Index = () => {
 
       {/* Footer */}
       <Footer />
+
+      {/* Persistent call / text / request actions */}
+      <StickyCTABar onRequestService={() => setShowRequestForm(true)} />
+      <div className="h-16 md:hidden" aria-hidden="true" />
     </div>
   );
 };

@@ -79,6 +79,9 @@ const Index = () => {
         </div>
       </section>
 
+      {/* Customer Portal Showcase */}
+      <PortalShowcaseSection />
+
       {/* Services Section */}
       <section id="services" className="py-20 px-4 bg-gradient-to-br from-primary/5 to-secondary/5">
         <div className="max-w-6xl mx-auto">

@@ -32,6 +32,20 @@ const formSchema = z.object({
   urgency: z.string().default('medium'),
   currentIssues: z.array(z.string()).default([]),
   preferredContact: z.string().default('either'),
+  smsOptIn: z.boolean().default(false),
+  emailOptIn: z.boolean().default(false),
+}).refine((data) => {
+  // SMS reminders require a phone number
+  return !data.smsOptIn || !!(data.phone && data.phone.trim() !== '');
+}, {
+  message: 'Add a mobile number to receive text reminders',
+  path: ['smsOptIn'],
+}).refine((data) => {
+  // Email reminders require an email address
+  return !data.emailOptIn || !!(data.email && data.email.trim() !== '');
+}, {
+  message: 'Add an email address to receive email reminders',
+  path: ['emailOptIn'],
 }).refine((data) => {
   // Require either email or phone
   return data.email || data.phone;
@@ -115,6 +129,8 @@ export function PublicServiceRequestForm({ open, onOpenChange }: PublicServiceRe
       urgency: 'medium',
       currentIssues: [],
       preferredContact: 'either',
+      smsOptIn: false,
+      emailOptIn: false,
     },
   });
 
@@ -192,6 +208,9 @@ export function PublicServiceRequestForm({ open, onOpenChange }: PublicServiceRe
         current_issues: data.currentIssues,
         preferred_contact_method: data.preferredContact,
         photo_urls: photoPaths,
+        sms_opt_in: data.smsOptIn,
+        email_opt_in: data.emailOptIn,
+        consent_at: data.smsOptIn || data.emailOptIn ? new Date().toISOString() : null,
       };
       
       console.log('Database insert data:', insertData);
@@ -645,6 +664,53 @@ export function PublicServiceRequestForm({ open, onOpenChange }: PublicServiceRe
                 </FormItem>
               )}
             />
+
+            <div className="rounded-lg border border-border p-4 space-y-3">
+              <div>
+                <p className="text-sm font-medium">Appointment reminders</p>
+                <p className="text-xs text-muted-foreground">
+                  Choose how you&rsquo;d like Aqua Clear Pools to remind you about your visit. You can opt out at any
+                  time by replying STOP to a text or using the unsubscribe link in an email.
+                </p>
+              </div>
+
+              <FormField
+                control={form.control}
+                name="smsOptIn"
+                render={({ field }) => (
+                  <FormItem className="flex flex-row items-start gap-3 space-y-0">
+                    <FormControl>
+                      <Checkbox checked={field.value} onCheckedChange={field.onChange} />
+                    </FormControl>
+                    <div className="space-y-1 leading-tight">
+                      <FormLabel className="font-normal">
+                        Text me appointment confirmations and reminders at the number above. Message and data rates may
+                        apply.
+                      </FormLabel>
+                      <FormMessage />
+                    </div>
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="emailOptIn"
+                render={({ field }) => (
+                  <FormItem className="flex flex-row items-start gap-3 space-y-0">
+                    <FormControl>
+                      <Checkbox checked={field.value} onCheckedChange={field.onChange} />
+                    </FormControl>
+                    <div className="space-y-1 leading-tight">
+                      <FormLabel className="font-normal">
+                        Email me appointment confirmations, reminders, and service summaries.
+                      </FormLabel>
+                      <FormMessage />
+                    </div>
+                  </FormItem>
+                )}
+              />
+            </div>
 
             <FormItem>
               <FormLabel>Photos of your pool or test strip (optional)</FormLabel>

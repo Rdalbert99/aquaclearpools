@@ -114,10 +114,11 @@ const handler = async (req: Request): Promise<Response> => {
       );
       const { data: consentRow } = await consentClient
         .from("service_requests")
-        .select("sms_opt_in, email_opt_in, preferred_contact_method")
+        .select("sms_opt_in, email_opt_in, consent_at")
         .eq("id", requestId)
         .maybeSingle();
-      if (consentRow) {
+      // Legacy requests captured before consent tracking keep the previous behaviour
+      if (consentRow && consentRow.consent_at) {
         allowEmail = consentRow.email_opt_in === true;
         allowSms = consentRow.sms_opt_in === true;
       }

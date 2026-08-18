@@ -17,6 +17,8 @@ import {
   Clock, Droplets, TestTube, CheckCircle, ArrowLeft, AlertTriangle, Send, Zap, Info, MapPin,
 } from 'lucide-react';
 import { isInRange, getDosageInstruction, type ChemicalId } from '@/lib/pool-chemistry';
+import { POOL_TESTS, TEST_BY_ID, normalizeDefaultTests, sortTests, type TestId } from '@/lib/pool-tests';
+import { TestGuideDialog } from '@/components/pool/TestGuideDialog';
 import { ArrivalNotification } from '@/components/tech/ArrivalNotification';
 import { ClientNotesPanel } from '@/components/tech/ClientNotesPanel';
 import { ChemicalsAddedInput } from '@/components/service/ChemicalsAddedInput';
@@ -40,6 +42,7 @@ type Client = {
   pool_size?: number | null;
   pool_type?: string | null;
   included_services?: string[] | null;
+  default_tests?: string[] | null;
   contact_address?: string | null;
   street_address?: string | null;
   city?: string | null;
@@ -81,11 +84,22 @@ const ALL_SERVICES = [
 
 const CHEM_TEST_SERVICE = 'Chemical Testing & Balancing';
 
+/** Which ServiceData field stores each test's reading. */
+const TEST_FIELD: Record<TestId, keyof ServiceData> = {
+  ph: 'ph_level',
+  alkalinity: 'alkalinity_level',
+  chlorine: 'chlorine_level',
+  cya: 'cya_level',
+  calcium: 'calcium_hardness_level',
+  salt: 'salt_level',
+};
+
 type ServiceData = {
   ph_level?: number | null;
   alkalinity_level?: number | null;
   chlorine_level?: number | null;
   cya_level?: number | null;
+  calcium_hardness_level?: number | null;
   salt_level?: number | null;
   services_performed?: string[];
   cleaned_robot?: boolean;
@@ -150,6 +164,7 @@ export default function FieldService() {
   const [notifySms, setNotifySms] = useState(true);
   const [notifyEmail, setNotifyEmail] = useState(false);
   const [saltInstructionsOpen, setSaltInstructionsOpen] = useState(false);
+  const [selectedTests, setSelectedTests] = useState<TestId[]>(normalizeDefaultTests(null));
   const [lastSaltCleaning, setLastSaltCleaning] = useState<string | null>(null);
 
   const isSaltPool = !!client?.pool_type && /salt/i.test(client.pool_type);
@@ -184,7 +199,10 @@ export default function FieldService() {
             };
           }
         }
-        if (mounted) setClient(clientRecord as Client);
+        if (mounted) {
+          setClient(clientRecord as Client);
+          setSelectedTests(normalizeDefaultTests(clientRecord?.default_tests, clientRecord?.pool_type));
+        }
 
         // Load recent services for salt-cell history + optional prefill from last visit
         const { data: prior } = await supabase
@@ -226,6 +244,43 @@ export default function FieldService() {
 
   function handleInputChange<K extends keyof ServiceData>(field: K, value: ServiceData[K]) {
     setServiceData(prev => ({ ...prev, [field]: value }));
+  }
+
+  function toggleTest(id: TestId, on: boolean) {
+    setSelectedTests(prev => sortTests(on ? [...prev, id] : prev.filter(t => t !== id)));
+    if (!on) {
+      const field = TEST_FIELD[id];
+      setServiceData(prev => ({ ...prev, [field]: null }));
+    }
+  }
+
+  /** Readings for the tests the tech actually ran (skipped tests read as null). */
+  function selectedReadings(): Partial<Record<ChemicalId, number | null>> {
+    const out: Partial<Record<ChemicalId, number | null>> = {};
+    selectedTests.forEach(id => {
+      const def = TEST_BY_ID[id];
+      if (!def.chemId) return;
+      out[def.chemId] = (serviceData[TEST_FIELD[id]] as number | null | undefined) ?? null;
+    });
+    return out;
+  }
+
+  function dosageInstructions(): string[] {
+    const poolGallons = client?.pool_size ?? 10000;
+    const readings = selectedReadings();
+    return (Object.keys(readings) as ChemicalId[])
+      .map(chemId => getDosageInstruction(chemId, readings[chemId], poolGallons))
+      .filter(Boolean) as string[];
+  }
+
+  function readingsPayload() {
+    const out: Record<string, number | null> = {};
+    POOL_TESTS.forEach(t => {
+      out[t.readingKey] = selectedTests.includes(t.id)
+        ? ((serviceData[TEST_FIELD[t.id]] as number | null | undefined) ?? null)
+        : null;
+    });
+    return out;
   }
 
   function calculateDuration() {

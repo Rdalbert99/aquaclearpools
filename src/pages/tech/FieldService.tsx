@@ -704,29 +704,63 @@ export default function FieldService() {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2"><TestTube className="h-5 w-5" /> Readings</CardTitle>
-          <CardDescription>Enter quick test results. Values turn <span className="text-green-600 font-medium">green</span> if in range, <span className="text-red-600 font-medium">red</span> if out.</CardDescription>
+          <CardDescription>
+            Pick the tests you are running on this visit, then enter results. Values turn <span className="text-green-600 font-medium">green</span> if in range, <span className="text-red-600 font-medium">red</span> if out.
+            Tap the <HelpCircle className="inline h-3.5 w-3.5 align-[-2px]" /> for Taylor kit steps.
+          </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-            {([
-              { id: 'ph' as ChemicalId, label: 'pH', field: 'ph_level' as const, step: '0.1', parse: parseFloat },
-              { id: 'alkalinity' as ChemicalId, label: 'TA', field: 'alkalinity_level' as const, step: '1', parse: (v: string) => parseInt(v || '0') },
-              { id: 'chlorine' as ChemicalId, label: 'FC', field: 'chlorine_level' as const, step: '0.1', parse: parseFloat },
-              { id: 'cya' as ChemicalId, label: 'CYA', field: 'cya_level' as const, step: '1', parse: (v: string) => parseInt(v || '0') },
-              { id: 'salt' as ChemicalId, label: 'Salt', field: 'salt_level' as const, step: '100', parse: (v: string) => parseInt(v || '0') },
-            ]).map(({ id, label, field, step, parse }) => {
-              const val = serviceData[field];
-              const status = isInRange(id, val);
+          {/* Test selection for this visit */}
+          <div className="rounded-lg border bg-muted/30 p-3">
+            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2">
+              Tests performed this visit
+            </p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+              {POOL_TESTS.map(t => {
+                const checked = selectedTests.includes(t.id);
+                return (
+                  <div key={t.id} className="flex items-center gap-2 rounded-md border bg-background px-3 py-2">
+                    <Checkbox
+                      id={`test-${t.id}`}
+                      checked={checked}
+                      disabled={!t.optional}
+                      onCheckedChange={v => toggleTest(t.id, !!v)}
+                    />
+                    <Label htmlFor={`test-${t.id}`} className="flex-1 text-sm font-normal cursor-pointer">
+                      {t.label}
+                      {!t.optional && <span className="ml-1 text-[10px] uppercase text-muted-foreground">required</span>}
+                    </Label>
+                    <TestGuideDialog testId={t.id} />
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            {POOL_TESTS.filter(t => selectedTests.includes(t.id)).map(t => {
+              const field = TEST_FIELD[t.id];
+              const val = serviceData[field] as number | null | undefined;
+              const status = t.chemId ? isInRange(t.chemId, val) : 'none';
               const colorClass = status === 'in' ? 'text-green-600 border-green-500 ring-green-400'
                 : status === 'out' ? 'text-red-600 border-red-500 ring-red-400' : '';
               return (
-                <div key={id}>
-                  <Label>{label}</Label>
+                <div key={t.id}>
+                  <div className="flex items-center gap-1">
+                    <Label htmlFor={`reading-${t.id}`}>{t.short}</Label>
+                    <TestGuideDialog testId={t.id} className="h-5 w-5" />
+                  </div>
                   <Input
+                    id={`reading-${t.id}`}
                     type="number"
-                    step={step}
+                    inputMode="decimal"
+                    step={t.step}
                     value={val ?? ''}
-                    onChange={e => handleInputChange(field, parse(e.target.value))}
+                    onChange={e => {
+                      const raw = e.target.value;
+                      const parsed = raw === '' ? null : (t.integer ? parseInt(raw, 10) : parseFloat(raw));
+                      handleInputChange(field, (Number.isNaN(parsed as number) ? null : parsed) as any);
+                    }}
                     className={colorClass ? `font-semibold ${colorClass}` : ''}
                   />
                 </div>
@@ -737,15 +771,8 @@ export default function FieldService() {
           {/* Dosage instructions for out-of-range readings */}
           {client && (() => {
             const poolGallons = client.pool_size ?? 10000;
-            const instructions = ([
-              { id: 'ph' as ChemicalId, field: 'ph_level' as const },
-              { id: 'alkalinity' as ChemicalId, field: 'alkalinity_level' as const },
-              { id: 'chlorine' as ChemicalId, field: 'chlorine_level' as const },
-              { id: 'cya' as ChemicalId, field: 'cya_level' as const },
-              { id: 'salt' as ChemicalId, field: 'salt_level' as const },
-            ])
-              .map(({ id, field }) => getDosageInstruction(id, serviceData[field], poolGallons))
-              .filter(Boolean) as string[];
+            const instructions = dosageInstructions();
+
 
             if (!instructions.length) return null;
             return (

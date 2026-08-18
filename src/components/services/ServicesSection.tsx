@@ -1,6 +1,8 @@
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Link } from 'react-router-dom';
+import { BookServiceForm } from '@/components/service/BookServiceForm';
 import {
   Droplets,
   TestTube,
@@ -11,6 +13,7 @@ import {
   AlertTriangle,
   CheckCircle2,
   Calendar,
+  ArrowRight,
 } from 'lucide-react';
 
 interface ServicesSectionProps {
@@ -113,7 +116,7 @@ const packages = [
   },
 ];
 
-const weeklyChecklist = [
+export const weeklyVisitChecklist = [
   'Test chlorine, pH, alkalinity, CYA and salt',
   'Add chemicals dosed to your pool\u2019s gallonage',
   'Skim surface and remove floating debris',
@@ -126,7 +129,7 @@ const weeklyChecklist = [
   'Log readings and photos to your portal',
 ];
 
-export const ServicesSection = ({ onRequestService }: ServicesSectionProps) => {
+export const ServicesSection = (_props: ServicesSectionProps = {}) => {
   return (
     <section id="services" className="py-20 px-4 bg-gradient-to-br from-primary/5 to-secondary/5">
       <div className="max-w-6xl mx-auto">
@@ -202,7 +205,7 @@ export const ServicesSection = ({ onRequestService }: ServicesSectionProps) => {
               The same checklist every week, documented in your portal so you always know what was done.
             </p>
             <ul className="grid sm:grid-cols-2 gap-x-8 gap-y-3">
-              {weeklyChecklist.map((item) => (
+              {weeklyVisitChecklist.map((item) => (
                 <li key={item} className="flex items-start gap-3">
                   <CheckCircle2 className="h-5 w-5 text-primary mt-0.5 shrink-0" />
                   <span>{item}</span>
@@ -213,14 +216,17 @@ export const ServicesSection = ({ onRequestService }: ServicesSectionProps) => {
         </Card>
 
         {/* CTA */}
-        <div className="text-center bg-primary/10 rounded-2xl px-6 py-12">
+        <div className="text-center bg-primary/10 rounded-2xl px-6 py-12 mb-16">
           <h3 className="text-3xl font-bold mb-3">Not sure which plan you need?</h3>
           <p className="text-lg text-muted-foreground mb-8 max-w-2xl mx-auto">
-            We&rsquo;ll look at your pool, test the water and recommend the right level of service — no cost,
+            We&rsquo;ll look at your pool, test the water and recommend the right level of service &mdash; no cost,
             no obligation.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Button size="lg" onClick={onRequestService}>
+            <Button
+              size="lg"
+              onClick={() => document.getElementById('book')?.scrollIntoView({ behavior: 'smooth' })}
+            >
               <Calendar className="h-5 w-5 mr-2" />
               Request a Free Pool Assessment
             </Button>
@@ -229,8 +235,17 @@ export const ServicesSection = ({ onRequestService }: ServicesSectionProps) => {
                 Call 601-447-0399
               </Button>
             </a>
+            <Link to="/services">
+              <Button size="lg" variant="ghost" className="w-full sm:w-auto">
+                Compare plans &amp; FAQ
+                <ArrowRight className="h-4 w-4 ml-2" />
+              </Button>
+            </Link>
           </div>
         </div>
+
+        {/* Online booking */}
+        <BookServiceForm id="book" />
       </div>
     </section>
   );

@@ -16,6 +16,8 @@ import professionalTech from '@/assets/professional-tech.jpg';
 import Footer from '@/components/layout/Footer';
 import { PublicNavbar } from '@/components/layout/PublicNavbar';
 import { PortalShowcaseSection } from '@/components/portal/PortalShowcaseSection';
+import { ServicesSection } from '@/components/services/ServicesSection';
+
 
 
 const Index = () => {
@@ -83,54 +85,8 @@ const Index = () => {
       <PortalShowcaseSection />
 
       {/* Services Section */}
-      <section id="services" className="py-20 px-4 bg-gradient-to-br from-primary/5 to-secondary/5">
-        <div className="max-w-6xl mx-auto">
-          <div className="text-center mb-16">
-            <h2 className="text-4xl font-bold mb-4">Our Pool Services</h2>
-            <p className="text-xl text-muted-foreground">
-              Professional pool maintenance services to keep your pool crystal clear and ready for swimming
-            </p>
-          </div>
+      <ServicesSection onRequestService={() => setShowRequestForm(true)} />
 
-          <div className="grid md:grid-cols-3 gap-8 mb-20">
-            <Card className="text-center hover:shadow-lg transition-shadow">
-              <CardContent className="pt-8 pb-6">
-                <div className="bg-primary/10 rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-6">
-                  <Droplets className="h-8 w-8 text-primary" />
-                </div>
-                <h3 className="text-xl font-semibold mb-3">Weekly Maintenance</h3>
-                <p className="text-muted-foreground">
-                  Regular cleaning, skimming, and filter maintenance to keep your pool in perfect condition year-round.
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card className="text-center hover:shadow-lg transition-shadow">
-              <CardContent className="pt-8 pb-6">
-                <div className="bg-primary/10 rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-6">
-                  <TestTube className="h-8 w-8 text-primary" />
-                </div>
-                <h3 className="text-xl font-semibold mb-3">Chemical Balancing</h3>
-                <p className="text-muted-foreground">
-                  Expert testing and adjustment of pH, chlorine, and other chemicals for safe, healthy swimming water.
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card className="text-center hover:shadow-lg transition-shadow">
-              <CardContent className="pt-8 pb-6">
-                <div className="bg-primary/10 rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-6">
-                  <Sparkles className="h-8 w-8 text-primary" />
-                </div>
-                <h3 className="text-xl font-semibold mb-3">Deep Cleaning</h3>
-                <p className="text-muted-foreground">
-                  Thorough cleaning service including brushing, vacuuming, and algae treatment for a pristine pool.
-                </p>
-              </CardContent>
-            </Card>
-          </div>
-        </div>
-      </section>
 
       {/* Before & After Section */}
       <section id="before-after" className="py-20 px-4">

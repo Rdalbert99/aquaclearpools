@@ -689,33 +689,19 @@ export default function ClientView() {
               const latestSvc = services[0];
               const bal = getBalanceStatus(
                 readings,
-                latestSvc?.chemicals_added,
+                { label: 'Chemicals added', value: latestSvc?.chemicals_added },
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                (latestSvc as any)?.actions,
+                { label: 'Actions performed', value: (latestSvc as any)?.actions },
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                (latestSvc as any)?.services_performed,
-                latestSvc?.notes,
+                { label: 'Services performed', value: (latestSvc as any)?.services_performed },
+                { label: 'Tech notes', value: latestSvc?.notes },
+                { tolerances: tolerances },
               );
               return (
-                <div>
-                  <p className="text-sm font-medium text-muted-foreground">Currently In Balance</p>
-                  <Badge variant={bal.inBalance ? 'default' : 'destructive'}>
-                    {bal.inBalance ? 'Balanced' : 'Out of balance'}
-                  </Badge>
-                  {bal.outOfRange.length > 0 && (
-                    <ul className="mt-2 text-xs text-muted-foreground space-y-0.5">
-
-                      {bal.outOfRange.map(r => (
-                        <li key={r.chemId}>
-                          • {r.chemId.toUpperCase()}: {r.value}
-                          {r.addressed ? ' (chemical added)' : ' — needs treatment'}
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                </div>
+                <BalanceExplanation status={bal} onTolerancesChange={setTolerances} />
               );
             })()}
+
 
             <div>
               <p className="text-sm font-medium text-muted-foreground">Last Service</p>

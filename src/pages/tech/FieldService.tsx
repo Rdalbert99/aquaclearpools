@@ -252,64 +252,18 @@ export default function FieldService() {
 
 
   function buildServiceMessage(clientName: string, data: ServiceData) {
-    const chlorine = data.chlorine_level != null ? data.chlorine_level : 'N/A';
-    const ph = data.ph_level != null ? data.ph_level : 'N/A';
-    const alk = data.alkalinity_level != null ? data.alkalinity_level : 'N/A';
-    const salt = data.salt_level != null ? data.salt_level : null;
-
-    // Determine if balance is off (any reading out of range)
-    const checks: Array<{ id: ChemicalId; val: number | null | undefined }> = [
-      { id: 'ph', val: data.ph_level },
-      { id: 'alkalinity', val: data.alkalinity_level },
-      { id: 'chlorine', val: data.chlorine_level },
-      { id: 'cya', val: data.cya_level },
-      { id: 'salt', val: data.salt_level },
-    ];
-    const anyOut = checks.some(c => isInRange(c.id, c.val) === 'out');
-
     const hour = new Date().getHours();
     const greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
     const techName = (user as any)?.name?.trim();
     const intro = `${greeting}, this is Aqua Clear Pools${techName ? ` - your technician ${techName}` : ''}.`;
+    const loginLink = 'https://getaquaclear.com/auth/login';
 
-    const parts: string[] = [];
-    parts.push(
-      anyOut
-        ? `${intro} We serviced your pool today and added chemicals to bring it back into balance.`
-        : `${intro} We serviced your pool today and it is clean and clear.`
+    return sanitizeSms(
+      `${intro} Your pool service is complete. Log in to see your full results: ${loginLink}`,
+      600
     );
-
-    // Actions performed (services + robot tasks)
-    const performed = [...(data.services_performed ?? [])];
-    if (data.cleaned_robot) performed.push('Cleaned Robot');
-    if (data.robot_plugged_in) performed.push('Plugged in Robot');
-    if (data.robot_in_water) performed.push('Put Robot in Water');
-    if (data.salt_cell_cleaned) performed.push('Cleaned Salt Cell');
-    if (performed.length) {
-      const lower = performed.map(s => s.toLowerCase());
-      const shown = lower.slice(0, 6);
-      const extra = lower.length - shown.length;
-      parts.push(`Today we ${shown.join(', ')}${extra > 0 ? ` and ${extra} more service${extra > 1 ? 's' : ''}` : ''}.`);
-    }
-
-    const testedChem = (data.services_performed ?? []).includes(CHEM_TEST_SERVICE);
-    if (testedChem) {
-      let readingsStr = `Your chlorine is reading ${chlorine}, pH is ${ph}, alkalinity is ${alk}`;
-      if (salt != null) readingsStr += `, salt is ${salt} ppm`;
-      readingsStr += '.';
-      parts.push(readingsStr);
-    }
-
-    const chemExplain = entriesToCustomerExplanation(data.chemical_entries ?? [], chemCatalog);
-    if (chemExplain) {
-      parts.push(chemExplain);
-    } else if (data.chemicals_added?.trim()) {
-      parts.push(`Chemicals added: ${data.chemicals_added.trim()}.`);
-    }
-
-    parts.push('Thank you!');
-    return sanitizeSms(parts.join(' '));
   }
+
 
 
   function openReview() {

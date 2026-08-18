@@ -58,3 +58,12 @@ verify_jwt = true
 
 [functions.public-client-signup]
 verify_jwt = false
+
+[functions.track-open]
+verify_jwt = false
+
+[functions.telnyx-delivery-status]
+verify_jwt = false
+
+[functions.mailjet-events]
+verify_jwt = false

@@ -922,9 +922,27 @@ export default function FieldService() {
           <DialogHeader>
             <DialogTitle>Review Customer Message</DialogTitle>
             <DialogDescription>
-              Edit the message below before sending it to the customer. This text will be sent via SMS (or email if no phone).
+              Edit the message and choose how to deliver it. Every send is recorded in the message logs.
             </DialogDescription>
           </DialogHeader>
+          <div className="flex flex-wrap gap-4">
+            <label className="flex items-center gap-2 text-sm">
+              <Checkbox
+                checked={notifySms}
+                disabled={!client?.contact_phone}
+                onCheckedChange={(c) => setNotifySms(!!c)}
+              />
+              Text {client?.contact_phone ? `(${client.contact_phone})` : '(no phone on file)'}
+            </label>
+            <label className="flex items-center gap-2 text-sm">
+              <Checkbox
+                checked={notifyEmail}
+                disabled={!client?.contact_email}
+                onCheckedChange={(c) => setNotifyEmail(!!c)}
+              />
+              Email {client?.contact_email ? `(${client.contact_email})` : '(no email on file)'}
+            </label>
+          </div>
           <Textarea
             rows={6}
             value={reviewMessage}

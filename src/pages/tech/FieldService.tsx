@@ -28,7 +28,7 @@ import { computeServiceCost, fmtMoney } from '@/lib/inventory-cost';
 import { CHEMICAL_OPTIONS } from '@/lib/chemicals-added';
 import { extractSendError } from '@/lib/send-error';
 import { logMessageSend } from '@/lib/message-log';
-import { sendClientMessage, summarizeResults, type SendChannel } from '@/lib/client-message';
+import { sendClientMessage, summarizeResults, makeTrackingLink, type SendChannel } from '@/lib/client-message';
 import { SmsPreview } from '@/components/tech/SmsPreview';
 import { analyzeSms } from '@/lib/sms-segments';
 
@@ -146,6 +146,7 @@ export default function FieldService() {
   });
   const [reviewOpen, setReviewOpen] = useState(false);
   const [reviewMessage, setReviewMessage] = useState('');
+  const [trackToken, setTrackToken] = useState<string | null>(null);
   const [notifySms, setNotifySms] = useState(true);
   const [notifyEmail, setNotifyEmail] = useState(false);
   const [saltInstructionsOpen, setSaltInstructionsOpen] = useState(false);
@@ -251,12 +252,12 @@ export default function FieldService() {
   }
 
 
-  function buildServiceMessage(clientName: string, data: ServiceData) {
+  function buildServiceMessage(clientName: string, data: ServiceData, trackedLink?: string) {
     const hour = new Date().getHours();
     const greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
     const techName = (user as any)?.name?.trim();
     const intro = `${greeting}, this is Aqua Clear Pools${techName ? ` - your technician ${techName}` : ''}.`;
-    const loginLink = 'https://getaquaclear.com/auth/login';
+    const loginLink = trackedLink || 'https://getaquaclear.com/auth/login';
 
     return sanitizeSms(
       `${intro} Your pool service is complete. Log in to see your full results: ${loginLink}`,
@@ -268,7 +269,9 @@ export default function FieldService() {
 
   function openReview() {
     if (!client) return;
-    setReviewMessage(buildServiceMessage(client.customer, serviceData));
+    const tracked = makeTrackingLink('/auth/login');
+    setTrackToken(tracked.token);
+    setReviewMessage(buildServiceMessage(client.customer, serviceData, tracked.url));
     setNotifySms(!!client.contact_phone);
     setNotifyEmail(!client.contact_phone && !!client.contact_email);
     setReviewOpen(true);
@@ -462,6 +465,7 @@ export default function FieldService() {
           message,
           subject: 'Aqua Clear Pools - Service Update',
           log: logBase,
+          trackToken,
         });
         const summary = summarizeResults(results);
         toast({

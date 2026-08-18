@@ -615,45 +615,69 @@ export type Database = {
           client_id: string | null
           client_name: string | null
           created_at: string
+          delivered_at: string | null
+          delivery_status: string | null
           error_detail: string | null
           id: string
+          last_open_at: string | null
+          last_open_user_agent: string | null
           message: string | null
+          open_count: number
+          opened_at: string | null
           provider_message_id: string | null
+          provider_status_detail: string | null
           recipient: string | null
           source: string
           status: string
           technician_id: string | null
           technician_name: string | null
+          track_token: string | null
         }
         Insert: {
           channel: string
           client_id?: string | null
           client_name?: string | null
           created_at?: string
+          delivered_at?: string | null
+          delivery_status?: string | null
           error_detail?: string | null
           id?: string
+          last_open_at?: string | null
+          last_open_user_agent?: string | null
           message?: string | null
+          open_count?: number
+          opened_at?: string | null
           provider_message_id?: string | null
+          provider_status_detail?: string | null
           recipient?: string | null
           source?: string
           status: string
           technician_id?: string | null
           technician_name?: string | null
+          track_token?: string | null
         }
         Update: {
           channel?: string
           client_id?: string | null
           client_name?: string | null
           created_at?: string
+          delivered_at?: string | null
+          delivery_status?: string | null
           error_detail?: string | null
           id?: string
+          last_open_at?: string | null
+          last_open_user_agent?: string | null
           message?: string | null
+          open_count?: number
+          opened_at?: string | null
           provider_message_id?: string | null
+          provider_status_detail?: string | null
           recipient?: string | null
           source?: string
           status?: string
           technician_id?: string | null
           technician_name?: string | null
+          track_token?: string | null
         }
         Relationships: []
       }

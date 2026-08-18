@@ -14,6 +14,8 @@ export interface MessageLogEntry {
   status: MessageLogStatus;
   errorDetail?: string | null;
   providerMessageId?: string | null;
+  /** Unique code embedded in the message link so opens can be tracked. */
+  trackToken?: string | null;
 }
 
 /**
@@ -34,6 +36,7 @@ export async function logMessageSend(entry: MessageLogEntry): Promise<void> {
       status: entry.status,
       error_detail: entry.errorDetail ?? null,
       provider_message_id: entry.providerMessageId ?? null,
+      track_token: entry.trackToken ?? null,
     } as any);
   } catch (err) {
     console.error('Failed to write message send log:', err);

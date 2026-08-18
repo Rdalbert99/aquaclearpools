@@ -336,16 +336,7 @@ export default function FieldService() {
     if (!client || !user) return;
     setSendingPoolNeeds(true);
     try {
-      const poolGallons = client.pool_size ?? 10000;
-      const instructions = ([
-        { id: 'ph' as ChemicalId, field: 'ph_level' as const },
-        { id: 'alkalinity' as ChemicalId, field: 'alkalinity_level' as const },
-        { id: 'chlorine' as ChemicalId, field: 'chlorine_level' as const },
-        { id: 'cya' as ChemicalId, field: 'cya_level' as const },
-        { id: 'salt' as ChemicalId, field: 'salt_level' as const },
-      ])
-        .map(({ id, field }) => getDosageInstruction(id, serviceData[field], poolGallons))
-        .filter(Boolean) as string[];
+      const instructions = dosageInstructions();
 
       if (!instructions.length) {
         toast({ title: 'No Needs', description: 'All readings are in range — nothing to send.', variant: 'default' });
@@ -361,13 +352,7 @@ export default function FieldService() {
         pool_size: client.pool_size,
         pool_type: client.pool_type,
         chemical_needs: instructions,
-        test_results: {
-          ph: serviceData.ph_level ?? null,
-          ta: serviceData.alkalinity_level ?? null,
-          fc: serviceData.chlorine_level ?? null,
-          cya: serviceData.cya_level ?? null,
-          salt: serviceData.salt_level ?? null,
-        },
+        test_results: readingsPayload(),
       } as any);
 
       if (error) throw error;
@@ -391,13 +376,8 @@ export default function FieldService() {
       const payload = {
         client_id: client.id,
         technician_id: user?.id ?? null,
-        readings: {
-          ph: serviceData.ph_level ?? null,
-          ta: serviceData.alkalinity_level ?? null,
-          fc: serviceData.chlorine_level ?? null,
-          cya: serviceData.cya_level ?? null,
-          salt: serviceData.salt_level ?? null,
-        },
+        readings: readingsPayload(),
+        tests_performed: selectedTests,
         actions: {
           services_performed: serviceData.services_performed ?? [],
           cleaned_robot: !!serviceData.cleaned_robot,
@@ -457,13 +437,7 @@ export default function FieldService() {
       try {
         const chemsText = entriesToString(serviceData.chemical_entries ?? [], chemCatalog) || serviceData.chemicals_added || '';
         const missing = getMissingFixes(
-          {
-            ph: serviceData.ph_level ?? null,
-            alkalinity: serviceData.alkalinity_level ?? null,
-            chlorine: serviceData.chlorine_level ?? null,
-            cya: serviceData.cya_level ?? null,
-            salt: serviceData.salt_level ?? null,
-          },
+          selectedReadings(),
           chemsText,
           client.pool_size ?? 10000,
         );
@@ -476,13 +450,7 @@ export default function FieldService() {
             pool_size: client.pool_size,
             pool_type: client.pool_type,
             chemical_needs: missing,
-            test_results: {
-              ph: serviceData.ph_level ?? null,
-              ta: serviceData.alkalinity_level ?? null,
-              fc: serviceData.chlorine_level ?? null,
-              cya: serviceData.cya_level ?? null,
-              salt: serviceData.salt_level ?? null,
-            },
+            test_results: readingsPayload(),
           } as any);
         }
       } catch (notifyErr) {

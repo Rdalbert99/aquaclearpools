@@ -28,6 +28,7 @@ import { computeServiceCost, fmtMoney } from '@/lib/inventory-cost';
 import { CHEMICAL_OPTIONS } from '@/lib/chemicals-added';
 import { extractSendError } from '@/lib/send-error';
 import { logMessageSend } from '@/lib/message-log';
+import { sendClientMessage, summarizeResults, type SendChannel } from '@/lib/client-message';
 import { SmsPreview } from '@/components/tech/SmsPreview';
 import { analyzeSms } from '@/lib/sms-segments';
 
@@ -145,6 +146,8 @@ export default function FieldService() {
   });
   const [reviewOpen, setReviewOpen] = useState(false);
   const [reviewMessage, setReviewMessage] = useState('');
+  const [notifySms, setNotifySms] = useState(true);
+  const [notifyEmail, setNotifyEmail] = useState(false);
   const [saltInstructionsOpen, setSaltInstructionsOpen] = useState(false);
   const [lastSaltCleaning, setLastSaltCleaning] = useState<string | null>(null);
 

@@ -2,6 +2,8 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Phone, Mail, MapPin, Star, CheckCircle, LogIn, User, Users, Shield, Droplets, TestTube, Sparkles, Calendar } from 'lucide-react';
+import { CTABand } from '@/components/marketing/CTABand';
+import { StickyCTABar } from '@/components/marketing/StickyCTABar';
 import { Link } from 'react-router-dom';
 import { ReviewCarousel } from '@/components/reviews/ReviewCarousel';
 import { PublicServiceRequestForm } from '@/components/service/PublicServiceRequestForm';

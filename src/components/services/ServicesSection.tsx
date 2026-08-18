@@ -129,7 +129,7 @@ export const weeklyVisitChecklist = [
   'Log readings and photos to your portal',
 ];
 
-export const ServicesSection = ({ onRequestService }: ServicesSectionProps) => {
+export const ServicesSection = (_props: ServicesSectionProps = {}) => {
   return (
     <section id="services" className="py-20 px-4 bg-gradient-to-br from-primary/5 to-secondary/5">
       <div className="max-w-6xl mx-auto">
@@ -225,10 +225,7 @@ export const ServicesSection = ({ onRequestService }: ServicesSectionProps) => {
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Button
               size="lg"
-              onClick={() => {
-                onRequestService?.();
-                document.getElementById('book')?.scrollIntoView({ behavior: 'smooth' });
-              }}
+              onClick={() => document.getElementById('book')?.scrollIntoView({ behavior: 'smooth' })}
             >
               <Calendar className="h-5 w-5 mr-2" />
               Request a Free Pool Assessment

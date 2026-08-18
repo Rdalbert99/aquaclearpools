@@ -20,6 +20,27 @@ interface SendClientMessageArgs {
   subject?: string;
   /** Base log info (client/tech identity, source). */
   log: Omit<MessageLogEntry, 'channel' | 'status' | 'recipient' | 'message'>;
+  /**
+   * Base tracking code that appears in the message link (see makeTrackingLink).
+   * A per-channel suffix is appended so SMS and email opens are counted separately.
+   */
+  trackToken?: string | null;
+}
+
+const TRACK_ENDPOINT = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/track-open`;
+
+/** Creates a trackable login link for a client message. */
+export function makeTrackingLink(path: string = '/auth/login') {
+  const token = Math.random().toString(36).slice(2, 8) + Date.now().toString(36).slice(-4);
+  const url = `${TRACK_ENDPOINT}?t=${token}${path === '/auth/login' ? '' : `&p=${encodeURIComponent(path)}`}`;
+  return { token, url };
+}
+
+/** Swaps the base token in the link for a channel-specific one. */
+function channelBody(body: string, baseToken: string | null | undefined, channel: SendChannel) {
+  if (!baseToken) return { body, token: null as string | null };
+  const token = `${baseToken}${channel === 'sms' ? 's' : 'e'}`;
+  return { body: body.replaceAll(`t=${baseToken}`, `t=${token}`), token };
 }
 
 function toHtml(message: string) {
@@ -40,15 +61,17 @@ export async function sendClientMessage({
   message,
   subject = 'Aqua Clear Pools - Service Update',
   log,
+  trackToken,
 }: SendClientMessageArgs): Promise<ChannelResult[]> {
   const results: ChannelResult[] = [];
   const body = message.trim();
 
   if (channels.includes('sms') && phone) {
+    const { body: smsBody, token: smsToken } = channelBody(body, trackToken, 'sms');
     let result: ChannelResult;
     try {
       const { data, error } = await supabase.functions.invoke('send-sms-via-telnyx', {
-        body: { to: phone, message: body },
+        body: { to: phone, message: smsBody },
       });
       if (error || (data && (data as any).success === false)) {
         const detail = await extractSendError(error, data);
@@ -69,7 +92,8 @@ export async function sendClientMessage({
       ...log,
       channel: 'sms',
       recipient: phone,
-      message: body,
+      message: smsBody,
+      trackToken: smsToken,
       status: result.status,
       errorDetail: result.error ?? null,
       providerMessageId: result.providerMessageId ?? null,
@@ -77,10 +101,11 @@ export async function sendClientMessage({
   }
 
   if (channels.includes('email') && email) {
+    const { body: emailBody, token: emailToken } = channelBody(body, trackToken, 'email');
     let result: ChannelResult;
     try {
       const { data, error } = await supabase.functions.invoke('mailjet-test-email', {
-        body: { to: email, subject, text: body, html: toHtml(body) },
+        body: { to: email, subject, text: emailBody, html: toHtml(emailBody) },
       });
       if (error || (data && (data as any).success === false)) {
         const detail = await extractSendError(error, data);
@@ -97,7 +122,8 @@ export async function sendClientMessage({
       ...log,
       channel: 'email',
       recipient: email,
-      message: body,
+      message: emailBody,
+      trackToken: emailToken,
       status: result.status,
       errorDetail: result.error ?? null,
       providerMessageId: result.providerMessageId ?? null,

@@ -36,6 +36,7 @@ import { getPoolServiceStatus, getBalanceStatus, getNextDueDate, getBalanceToler
 import { BalanceExplanation } from '@/components/pool/BalanceExplanation';
 import { ClientReadingsChart } from '@/components/admin/ClientReadingsChart';
 import { ServiceCostChart } from '@/components/admin/ServiceCostChart';
+import { TestsPerformedList } from '@/components/pool/TestsPerformedList';
 import { ClientStatusHistory } from '@/components/admin/ClientStatusHistory';
 
 import type { ChemicalId } from '@/lib/pool-chemistry';
@@ -814,14 +815,6 @@ export default function ClientView() {
           {(() => {
             const svc = services.find((s: any) => s.id === selectedServiceId);
             if (!svc) return null;
-            const readings = [
-              { label: 'pH',           value: svc.readings?.ph   ?? svc.ph_level },
-              { label: 'Chlorine',     value: svc.readings?.fc   ?? svc.chlorine_level,        unit: 'ppm' },
-              { label: 'Alkalinity',   value: svc.readings?.ta   ?? svc.alkalinity_level,      unit: 'ppm' },
-              { label: 'CYA',          value: svc.readings?.cya  ?? svc.cyanuric_acid_level,   unit: 'ppm' },
-              { label: 'Calcium Hard.',value: svc.calcium_hardness_level,                       unit: 'ppm' },
-              { label: 'Salt',         value: svc.readings?.salt ?? svc.salt_level,             unit: 'ppm' },
-            ].filter(r => r.value != null && r.value !== '');
             return (
               <>
                 <DialogHeader>
@@ -838,18 +831,18 @@ export default function ClientView() {
                     <h4 className="text-sm font-medium mb-2 flex items-center">
                       <TestTube className="h-4 w-4 mr-2" /> Readings recorded
                     </h4>
-                    {readings.length > 0 ? (
-                      <div className="grid grid-cols-2 gap-2 text-sm">
-                        {readings.map(r => (
-                          <div key={r.label} className="flex justify-between border rounded px-2 py-1">
-                            <span className="text-muted-foreground">{r.label}</span>
-                            <span className="font-medium">{r.value}{r.unit ? ` ${r.unit}` : ''}</span>
-                          </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <p className="text-sm text-muted-foreground">No readings recorded for this service.</p>
-                    )}
+                    <TestsPerformedList
+                      testsPerformed={svc.tests_performed}
+                      readings={svc.readings}
+                      fallbacks={{
+                        ph: svc.ph_level,
+                        chlorine: svc.chlorine_level,
+                        alkalinity: svc.alkalinity_level,
+                        cya: svc.cyanuric_acid_level,
+                        calcium: svc.calcium_hardness_level,
+                        salt: svc.salt_level,
+                      }}
+                    />
                   </div>
                   {svc.chemicals_added && (
                     <div className="text-sm">

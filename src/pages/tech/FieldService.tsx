@@ -14,9 +14,11 @@ import { ServicePhotoUpload } from '@/components/tech/ServicePhotoUpload';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { 
-  Clock, Droplets, TestTube, CheckCircle, ArrowLeft, AlertTriangle, Send, Zap, Info, MapPin,
+  Clock, Droplets, TestTube, CheckCircle, ArrowLeft, AlertTriangle, Send, Zap, Info, MapPin, HelpCircle,
 } from 'lucide-react';
 import { isInRange, getDosageInstruction, type ChemicalId } from '@/lib/pool-chemistry';
+import { POOL_TESTS, TEST_BY_ID, normalizeDefaultTests, sortTests, type TestId } from '@/lib/pool-tests';
+import { TestGuideDialog } from '@/components/pool/TestGuideDialog';
 import { ArrivalNotification } from '@/components/tech/ArrivalNotification';
 import { ClientNotesPanel } from '@/components/tech/ClientNotesPanel';
 import { ChemicalsAddedInput } from '@/components/service/ChemicalsAddedInput';
@@ -40,6 +42,7 @@ type Client = {
   pool_size?: number | null;
   pool_type?: string | null;
   included_services?: string[] | null;
+  default_tests?: string[] | null;
   contact_address?: string | null;
   street_address?: string | null;
   city?: string | null;
@@ -81,11 +84,22 @@ const ALL_SERVICES = [
 
 const CHEM_TEST_SERVICE = 'Chemical Testing & Balancing';
 
+/** Which ServiceData field stores each test's reading. */
+const TEST_FIELD: Record<TestId, keyof ServiceData> = {
+  ph: 'ph_level',
+  alkalinity: 'alkalinity_level',
+  chlorine: 'chlorine_level',
+  cya: 'cya_level',
+  calcium: 'calcium_hardness_level',
+  salt: 'salt_level',
+};
+
 type ServiceData = {
   ph_level?: number | null;
   alkalinity_level?: number | null;
   chlorine_level?: number | null;
   cya_level?: number | null;
+  calcium_hardness_level?: number | null;
   salt_level?: number | null;
   services_performed?: string[];
   cleaned_robot?: boolean;
@@ -150,6 +164,7 @@ export default function FieldService() {
   const [notifySms, setNotifySms] = useState(true);
   const [notifyEmail, setNotifyEmail] = useState(false);
   const [saltInstructionsOpen, setSaltInstructionsOpen] = useState(false);
+  const [selectedTests, setSelectedTests] = useState<TestId[]>(normalizeDefaultTests(null));
   const [lastSaltCleaning, setLastSaltCleaning] = useState<string | null>(null);
 
   const isSaltPool = !!client?.pool_type && /salt/i.test(client.pool_type);
@@ -184,7 +199,10 @@ export default function FieldService() {
             };
           }
         }
-        if (mounted) setClient(clientRecord as Client);
+        if (mounted) {
+          setClient(clientRecord as Client);
+          setSelectedTests(normalizeDefaultTests(clientRecord?.default_tests, clientRecord?.pool_type));
+        }
 
         // Load recent services for salt-cell history + optional prefill from last visit
         const { data: prior } = await supabase
@@ -226,6 +244,43 @@ export default function FieldService() {
 
   function handleInputChange<K extends keyof ServiceData>(field: K, value: ServiceData[K]) {
     setServiceData(prev => ({ ...prev, [field]: value }));
+  }
+
+  function toggleTest(id: TestId, on: boolean) {
+    setSelectedTests(prev => sortTests(on ? [...prev, id] : prev.filter(t => t !== id)));
+    if (!on) {
+      const field = TEST_FIELD[id];
+      setServiceData(prev => ({ ...prev, [field]: null }));
+    }
+  }
+
+  /** Readings for the tests the tech actually ran (skipped tests read as null). */
+  function selectedReadings(): Partial<Record<ChemicalId, number | null>> {
+    const out: Partial<Record<ChemicalId, number | null>> = {};
+    selectedTests.forEach(id => {
+      const def = TEST_BY_ID[id];
+      if (!def.chemId) return;
+      out[def.chemId] = (serviceData[TEST_FIELD[id]] as number | null | undefined) ?? null;
+    });
+    return out;
+  }
+
+  function dosageInstructions(): string[] {
+    const poolGallons = client?.pool_size ?? 10000;
+    const readings = selectedReadings();
+    return (Object.keys(readings) as ChemicalId[])
+      .map(chemId => getDosageInstruction(chemId, readings[chemId], poolGallons))
+      .filter(Boolean) as string[];
+  }
+
+  function readingsPayload() {
+    const out: Record<string, number | null> = {};
+    POOL_TESTS.forEach(t => {
+      out[t.readingKey] = selectedTests.includes(t.id)
+        ? ((serviceData[TEST_FIELD[t.id]] as number | null | undefined) ?? null)
+        : null;
+    });
+    return out;
   }
 
   function calculateDuration() {
@@ -281,16 +336,7 @@ export default function FieldService() {
     if (!client || !user) return;
     setSendingPoolNeeds(true);
     try {
-      const poolGallons = client.pool_size ?? 10000;
-      const instructions = ([
-        { id: 'ph' as ChemicalId, field: 'ph_level' as const },
-        { id: 'alkalinity' as ChemicalId, field: 'alkalinity_level' as const },
-        { id: 'chlorine' as ChemicalId, field: 'chlorine_level' as const },
-        { id: 'cya' as ChemicalId, field: 'cya_level' as const },
-        { id: 'salt' as ChemicalId, field: 'salt_level' as const },
-      ])
-        .map(({ id, field }) => getDosageInstruction(id, serviceData[field], poolGallons))
-        .filter(Boolean) as string[];
+      const instructions = dosageInstructions();
 
       if (!instructions.length) {
         toast({ title: 'No Needs', description: 'All readings are in range — nothing to send.', variant: 'default' });
@@ -306,13 +352,7 @@ export default function FieldService() {
         pool_size: client.pool_size,
         pool_type: client.pool_type,
         chemical_needs: instructions,
-        test_results: {
-          ph: serviceData.ph_level ?? null,
-          ta: serviceData.alkalinity_level ?? null,
-          fc: serviceData.chlorine_level ?? null,
-          cya: serviceData.cya_level ?? null,
-          salt: serviceData.salt_level ?? null,
-        },
+        test_results: readingsPayload(),
       } as any);
 
       if (error) throw error;
@@ -336,13 +376,8 @@ export default function FieldService() {
       const payload = {
         client_id: client.id,
         technician_id: user?.id ?? null,
-        readings: {
-          ph: serviceData.ph_level ?? null,
-          ta: serviceData.alkalinity_level ?? null,
-          fc: serviceData.chlorine_level ?? null,
-          cya: serviceData.cya_level ?? null,
-          salt: serviceData.salt_level ?? null,
-        },
+        readings: readingsPayload(),
+        tests_performed: selectedTests,
         actions: {
           services_performed: serviceData.services_performed ?? [],
           cleaned_robot: !!serviceData.cleaned_robot,
@@ -402,13 +437,7 @@ export default function FieldService() {
       try {
         const chemsText = entriesToString(serviceData.chemical_entries ?? [], chemCatalog) || serviceData.chemicals_added || '';
         const missing = getMissingFixes(
-          {
-            ph: serviceData.ph_level ?? null,
-            alkalinity: serviceData.alkalinity_level ?? null,
-            chlorine: serviceData.chlorine_level ?? null,
-            cya: serviceData.cya_level ?? null,
-            salt: serviceData.salt_level ?? null,
-          },
+          selectedReadings(),
           chemsText,
           client.pool_size ?? 10000,
         );
@@ -421,13 +450,7 @@ export default function FieldService() {
             pool_size: client.pool_size,
             pool_type: client.pool_type,
             chemical_needs: missing,
-            test_results: {
-              ph: serviceData.ph_level ?? null,
-              ta: serviceData.alkalinity_level ?? null,
-              fc: serviceData.chlorine_level ?? null,
-              cya: serviceData.cya_level ?? null,
-              salt: serviceData.salt_level ?? null,
-            },
+            test_results: readingsPayload(),
           } as any);
         }
       } catch (notifyErr) {
@@ -681,29 +704,63 @@ export default function FieldService() {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2"><TestTube className="h-5 w-5" /> Readings</CardTitle>
-          <CardDescription>Enter quick test results. Values turn <span className="text-green-600 font-medium">green</span> if in range, <span className="text-red-600 font-medium">red</span> if out.</CardDescription>
+          <CardDescription>
+            Pick the tests you are running on this visit, then enter results. Values turn <span className="text-green-600 font-medium">green</span> if in range, <span className="text-red-600 font-medium">red</span> if out.
+            Tap the <HelpCircle className="inline h-3.5 w-3.5 align-[-2px]" /> for Taylor kit steps.
+          </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-            {([
-              { id: 'ph' as ChemicalId, label: 'pH', field: 'ph_level' as const, step: '0.1', parse: parseFloat },
-              { id: 'alkalinity' as ChemicalId, label: 'TA', field: 'alkalinity_level' as const, step: '1', parse: (v: string) => parseInt(v || '0') },
-              { id: 'chlorine' as ChemicalId, label: 'FC', field: 'chlorine_level' as const, step: '0.1', parse: parseFloat },
-              { id: 'cya' as ChemicalId, label: 'CYA', field: 'cya_level' as const, step: '1', parse: (v: string) => parseInt(v || '0') },
-              { id: 'salt' as ChemicalId, label: 'Salt', field: 'salt_level' as const, step: '100', parse: (v: string) => parseInt(v || '0') },
-            ]).map(({ id, label, field, step, parse }) => {
-              const val = serviceData[field];
-              const status = isInRange(id, val);
+          {/* Test selection for this visit */}
+          <div className="rounded-lg border bg-muted/30 p-3">
+            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2">
+              Tests performed this visit
+            </p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+              {POOL_TESTS.map(t => {
+                const checked = selectedTests.includes(t.id);
+                return (
+                  <div key={t.id} className="flex items-center gap-2 rounded-md border bg-background px-3 py-2">
+                    <Checkbox
+                      id={`test-${t.id}`}
+                      checked={checked}
+                      disabled={!t.optional}
+                      onCheckedChange={v => toggleTest(t.id, !!v)}
+                    />
+                    <Label htmlFor={`test-${t.id}`} className="flex-1 text-sm font-normal cursor-pointer">
+                      {t.label}
+                      {!t.optional && <span className="ml-1 text-[10px] uppercase text-muted-foreground">required</span>}
+                    </Label>
+                    <TestGuideDialog testId={t.id} />
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            {POOL_TESTS.filter(t => selectedTests.includes(t.id)).map(t => {
+              const field = TEST_FIELD[t.id];
+              const val = serviceData[field] as number | null | undefined;
+              const status = t.chemId ? isInRange(t.chemId, val) : 'none';
               const colorClass = status === 'in' ? 'text-green-600 border-green-500 ring-green-400'
                 : status === 'out' ? 'text-red-600 border-red-500 ring-red-400' : '';
               return (
-                <div key={id}>
-                  <Label>{label}</Label>
+                <div key={t.id}>
+                  <div className="flex items-center gap-1">
+                    <Label htmlFor={`reading-${t.id}`}>{t.short}</Label>
+                    <TestGuideDialog testId={t.id} className="h-5 w-5" />
+                  </div>
                   <Input
+                    id={`reading-${t.id}`}
                     type="number"
-                    step={step}
+                    inputMode="decimal"
+                    step={t.step}
                     value={val ?? ''}
-                    onChange={e => handleInputChange(field, parse(e.target.value))}
+                    onChange={e => {
+                      const raw = e.target.value;
+                      const parsed = raw === '' ? null : (t.integer ? parseInt(raw, 10) : parseFloat(raw));
+                      handleInputChange(field, (Number.isNaN(parsed as number) ? null : parsed) as any);
+                    }}
                     className={colorClass ? `font-semibold ${colorClass}` : ''}
                   />
                 </div>
@@ -714,15 +771,8 @@ export default function FieldService() {
           {/* Dosage instructions for out-of-range readings */}
           {client && (() => {
             const poolGallons = client.pool_size ?? 10000;
-            const instructions = ([
-              { id: 'ph' as ChemicalId, field: 'ph_level' as const },
-              { id: 'alkalinity' as ChemicalId, field: 'alkalinity_level' as const },
-              { id: 'chlorine' as ChemicalId, field: 'chlorine_level' as const },
-              { id: 'cya' as ChemicalId, field: 'cya_level' as const },
-              { id: 'salt' as ChemicalId, field: 'salt_level' as const },
-            ])
-              .map(({ id, field }) => getDosageInstruction(id, serviceData[field], poolGallons))
-              .filter(Boolean) as string[];
+            const instructions = dosageInstructions();
+
 
             if (!instructions.length) return null;
             return (
@@ -781,15 +831,7 @@ export default function FieldService() {
           {/* Auto-generated dosage suggestions */}
           {(() => {
             const poolGallons = client.pool_size ?? 10000;
-            const suggestions = ([
-              { id: 'ph' as ChemicalId, field: 'ph_level' as const },
-              { id: 'alkalinity' as ChemicalId, field: 'alkalinity_level' as const },
-              { id: 'chlorine' as ChemicalId, field: 'chlorine_level' as const },
-              { id: 'cya' as ChemicalId, field: 'cya_level' as const },
-              { id: 'salt' as ChemicalId, field: 'salt_level' as const },
-            ])
-              .map(({ id, field }) => getDosageInstruction(id, serviceData[field], poolGallons))
-              .filter(Boolean) as string[];
+            const suggestions = dosageInstructions();
 
             if (!suggestions.length) return null;
             return (

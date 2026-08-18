@@ -26,6 +26,7 @@ import { ProfilePictureUpload } from '@/components/client/ProfilePictureUpload';
 import { TechnicianMessageDialog } from '@/components/client/TechnicianMessageDialog';
 import { ReviewDialog } from '@/components/client/ReviewDialog';
 import { isInRange, CHEMICAL_RANGES, type ChemicalId } from '@/lib/pool-chemistry';
+import { TestsPerformedList } from '@/components/pool/TestsPerformedList';
 import { ClientReadingsChart } from '@/components/admin/ClientReadingsChart';
 import { NextAppointmentCard } from '@/components/client/NextAppointmentCard';
 
@@ -449,6 +450,22 @@ export default function ClientDashboard() {
                         </div>
                       );
                     })}
+                  </div>
+                  <div className="mt-4">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2">
+                      Tests run on this visit
+                    </p>
+                    <TestsPerformedList
+                      testsPerformed={(dashboardData.lastService as any).tests_performed}
+                      readings={readings as any}
+                      fallbacks={{
+                        ph: dashboardData.lastService.ph_level,
+                        chlorine: dashboardData.lastService.chlorine_level,
+                        alkalinity: dashboardData.lastService.alkalinity_level,
+                        cya: dashboardData.lastService.cyanuric_acid_level,
+                        calcium: (dashboardData.lastService as any).calcium_hardness_level,
+                      }}
+                    />
                   </div>
                 </div>
               );

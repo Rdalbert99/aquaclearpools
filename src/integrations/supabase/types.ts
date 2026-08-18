@@ -390,6 +390,7 @@ export type Database = {
           contact_phone: string | null
           created_at: string | null
           customer: string
+          default_tests: string[]
           id: string
           in_balance: boolean | null
           included_services: string[] | null
@@ -425,6 +426,7 @@ export type Database = {
           contact_phone?: string | null
           created_at?: string | null
           customer: string
+          default_tests?: string[]
           id?: string
           in_balance?: boolean | null
           included_services?: string[] | null
@@ -460,6 +462,7 @@ export type Database = {
           contact_phone?: string | null
           created_at?: string | null
           customer?: string
+          default_tests?: string[]
           id?: string
           in_balance?: boolean | null
           included_services?: string[] | null
@@ -1177,6 +1180,7 @@ export type Database = {
           services_performed: string | null
           status: string | null
           technician_id: string | null
+          tests_performed: string[]
           updated_at: string | null
         }
         Insert: {
@@ -1204,6 +1208,7 @@ export type Database = {
           services_performed?: string | null
           status?: string | null
           technician_id?: string | null
+          tests_performed?: string[]
           updated_at?: string | null
         }
         Update: {
@@ -1231,6 +1236,7 @@ export type Database = {
           services_performed?: string | null
           status?: string | null
           technician_id?: string | null
+          tests_performed?: string[]
           updated_at?: string | null
         }
         Relationships: [

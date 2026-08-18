@@ -1041,6 +1041,7 @@ export type Database = {
           city: string | null
           client_id: string | null
           completed_date: string | null
+          consent_at: string | null
           contact_address: string | null
           contact_email: string | null
           contact_name: string | null
@@ -1050,6 +1051,7 @@ export type Database = {
           created_at: string | null
           current_issues: string[]
           description: string
+          email_opt_in: boolean
           id: string
           photo_urls: string[]
           pool_size: string | null
@@ -1059,6 +1061,7 @@ export type Database = {
           priority: string | null
           request_type: string
           requested_date: string | null
+          sms_opt_in: boolean
           state: string | null
           status: string | null
           street_address: string | null
@@ -1071,6 +1074,7 @@ export type Database = {
           city?: string | null
           client_id?: string | null
           completed_date?: string | null
+          consent_at?: string | null
           contact_address?: string | null
           contact_email?: string | null
           contact_name?: string | null
@@ -1080,6 +1084,7 @@ export type Database = {
           created_at?: string | null
           current_issues?: string[]
           description: string
+          email_opt_in?: boolean
           id?: string
           photo_urls?: string[]
           pool_size?: string | null
@@ -1089,6 +1094,7 @@ export type Database = {
           priority?: string | null
           request_type: string
           requested_date?: string | null
+          sms_opt_in?: boolean
           state?: string | null
           status?: string | null
           street_address?: string | null
@@ -1101,6 +1107,7 @@ export type Database = {
           city?: string | null
           client_id?: string | null
           completed_date?: string | null
+          consent_at?: string | null
           contact_address?: string | null
           contact_email?: string | null
           contact_name?: string | null
@@ -1110,6 +1117,7 @@ export type Database = {
           created_at?: string | null
           current_issues?: string[]
           description?: string
+          email_opt_in?: boolean
           id?: string
           photo_urls?: string[]
           pool_size?: string | null
@@ -1119,6 +1127,7 @@ export type Database = {
           priority?: string | null
           request_type?: string
           requested_date?: string | null
+          sms_opt_in?: boolean
           state?: string | null
           status?: string | null
           street_address?: string | null

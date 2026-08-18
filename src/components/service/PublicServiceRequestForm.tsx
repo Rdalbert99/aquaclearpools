@@ -30,6 +30,8 @@ const formSchema = z.object({
   description: z.string().min(10, 'Please provide more details about your service request'),
   preferredDate: z.string().optional(),
   urgency: z.string().default('medium'),
+  currentIssues: z.array(z.string()).default([]),
+  preferredContact: z.string().default('either'),
 }).refine((data) => {
   // Require either email or phone
   return data.email || data.phone;

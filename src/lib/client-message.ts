@@ -40,7 +40,7 @@ export function makeTrackingLink(path: string = '/auth/login') {
 function channelBody(body: string, baseToken: string | null | undefined, channel: SendChannel) {
   if (!baseToken) return { body, token: null as string | null };
   const token = `${baseToken}${channel === 'sms' ? 's' : 'e'}`;
-  return { body: body.replaceAll(`t=${baseToken}`, `t=${token}`), token };
+  return { body: body.split(`t=${baseToken}`).join(`t=${token}`), token };
 }
 
 function toHtml(message: string) {

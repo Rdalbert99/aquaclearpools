@@ -341,7 +341,7 @@ const handler = async (req: Request): Promise<Response> => {
 
     // Send SMS if customerPhone is provided
     let smsStatus: any = null;
-    if (customerPhone) {
+    if (customerPhone && allowSms) {
       const telnyxApiKey = Deno.env.get("TELNYX_API_KEY");
       if (!telnyxApiKey) {
         console.warn("TELNYX_API_KEY missing; skipping SMS");
@@ -382,8 +382,10 @@ const handler = async (req: Request): Promise<Response> => {
 
     const results = {
       success: true,
-      email: emailStatus ? { sent: true, provider: "mailjet" } : { sent: false, reason: "no email provided" },
-      sms: smsStatus ? { sent: true, provider: "telnyx" } : { sent: false, reason: customerPhone ? "telnyx api key missing" : "no phone provided" },
+      email: emailStatus
+        ? { sent: true, provider: "mailjet" }
+        : { sent: false, reason: !allowEmail ? "customer not opted in to email" : "no email provided" },
+      sms: smsStatus ? { sent: true, provider: "telnyx" } : { sent: false, reason: !allowSms ? "customer not opted in to SMS" : customerPhone ? "telnyx api key missing" : "no phone provided" },
       message: `${status} notification processing completed`
     };
 

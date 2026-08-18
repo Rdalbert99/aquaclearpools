@@ -13,7 +13,6 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { PublicNavbar } from '@/components/layout/PublicNavbar';
 import Footer from '@/components/layout/Footer';
 import { PublicServiceRequestForm } from '@/components/service/PublicServiceRequestForm';
-import { BookServiceForm } from '@/components/service/BookServiceForm';
 import { ServicesSection, weeklyVisitChecklist } from '@/components/services/ServicesSection';
 import { Check, Minus, Download, Calendar } from 'lucide-react';
 
@@ -255,7 +254,20 @@ const Services = () => {
               Pick a day and time that works — your request goes straight to our dispatch board.
             </p>
           </div>
-          <BookServiceForm id="book-bottom" />
+          <div className="flex flex-col sm:flex-row gap-4 justify-center">
+            <Button
+              size="lg"
+              onClick={() => document.getElementById('book')?.scrollIntoView({ behavior: 'smooth' })}
+            >
+              <Calendar className="h-5 w-5 mr-2" />
+              Book Online Now
+            </Button>
+            <a href="tel:601-447-0399">
+              <Button size="lg" variant="outline" className="w-full sm:w-auto">
+                Call 601-447-0399
+              </Button>
+            </a>
+          </div>
           <p className="text-center text-muted-foreground mt-8">
             Already a customer?{' '}
             <Link to="/auth/login" className="text-primary underline underline-offset-4">

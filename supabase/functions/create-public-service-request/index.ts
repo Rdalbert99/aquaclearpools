@@ -102,6 +102,17 @@ serve(async (req: Request) => {
       pool_type: body.pool_type ?? null,
       pool_size: body.pool_size ?? null,
       preferred_date: body.preferred_date ? new Date(body.preferred_date).toISOString() : null,
+      preferred_contact_method: ['call', 'text', 'email', 'either'].includes(body.preferred_contact_method)
+        ? body.preferred_contact_method
+        : null,
+      current_issues: Array.isArray(body.current_issues)
+        ? body.current_issues.filter((i: unknown) => typeof i === 'string').slice(0, 20).map((i: string) => i.slice(0, 120))
+        : [],
+      photo_urls: Array.isArray(body.photo_urls)
+        ? body.photo_urls
+            .filter((p: unknown) => typeof p === 'string' && (p as string).startsWith('intake/'))
+            .slice(0, 5)
+        : [],
     } as const;
 
     // Avoid enumerating existing clients; do not check the clients table here

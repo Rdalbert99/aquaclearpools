@@ -37,6 +37,8 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { TechnicianPicker } from '@/components/admin/TechnicianPicker';
+import { POOL_TESTS, normalizeDefaultTests, sortTests, type TestId } from '@/lib/pool-tests';
+import { TestGuideDialog } from '@/components/pool/TestGuideDialog';
 
 interface ClientFormData {
   customer: string;
@@ -53,6 +55,7 @@ interface ClientFormData {
   service_frequency: string;
   next_service_date: string;
   included_services: string[];
+  default_tests: string[];
   service_notes: string;
   service_days: string[];
   street_address: string;
@@ -168,6 +171,7 @@ export default function ClientEdit() {
         service_frequency: (data as any).service_frequency || 'weekly',
         next_service_date: (data as any).next_service_date ? (data as any).next_service_date.split('T')[0] : '',
         included_services: (data as any).included_services || [],
+        default_tests: normalizeDefaultTests((data as any).default_tests, data.pool_type),
         service_notes: (data as any).service_notes || '',
         service_days: (data as any).service_days || [],
         street_address: streetAddr,
@@ -291,6 +295,7 @@ export default function ClientEdit() {
         service_frequency: client.service_frequency,
         next_service_date: client.next_service_date || null,
         included_services: client.included_services,
+        default_tests: normalizeDefaultTests(client.default_tests, client.pool_type),
         service_notes: client.service_notes,
         service_days: client.service_days,
         notify_on_confirmation: client.notify_on_confirmation,
@@ -994,6 +999,46 @@ export default function ClientEdit() {
                 onCheckedChange={(checked) => handleInputChange('in_balance', checked)}
               />
               <Label htmlFor="inBalance">Pool is currently in chemical balance</Label>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Default water tests for this pool */}
+        <Card className="lg:col-span-2">
+          <CardHeader>
+            <CardTitle className="flex items-center space-x-2">
+              <Droplets className="h-5 w-5" />
+              <span>Default Water Tests</span>
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <p className="text-sm text-muted-foreground">
+              These tests are pre-selected when a technician opens a service call for this pool. Free Chlorine, Total Alkalinity, pH and CYA are always run; the tech can still change the selection for an individual visit.
+            </p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+              {POOL_TESTS.map((t) => {
+                const checked = (client.default_tests || []).includes(t.id);
+                return (
+                  <div key={t.id} className="flex items-center gap-2 rounded-md border px-3 py-2">
+                    <Checkbox
+                      id={`default-test-${t.id}`}
+                      checked={checked || !t.optional}
+                      disabled={!t.optional}
+                      onCheckedChange={(v) => {
+                        const next = v
+                          ? [...(client.default_tests || []), t.id as TestId]
+                          : (client.default_tests || []).filter((x) => x !== t.id);
+                        handleInputChange('default_tests', sortTests(next as TestId[]) as any);
+                      }}
+                    />
+                    <Label htmlFor={`default-test-${t.id}`} className="flex-1 text-sm font-normal cursor-pointer">
+                      {t.label}
+                      {!t.optional && <span className="ml-1 text-[10px] uppercase text-muted-foreground">always</span>}
+                    </Label>
+                    <TestGuideDialog testId={t.id} />
+                  </div>
+                );
+              })}
             </div>
           </CardContent>
         </Card>

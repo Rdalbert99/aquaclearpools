@@ -74,8 +74,23 @@ interface PublicServiceRequestFormProps {
   onOpenChange: (open: boolean) => void;
 }
 
+const CURRENT_ISSUES = [
+  'Green / cloudy water',
+  'Algae on walls or floor',
+  'Heavy debris or pollen',
+  'Chemicals out of balance',
+  'Pump / filter problem',
+  'Heater or salt cell issue',
+  'Leak or water loss',
+  'Just need routine service',
+];
+
+const MAX_PHOTOS = 5;
+const MAX_PHOTO_BYTES = 8 * 1024 * 1024;
+
 export function PublicServiceRequestForm({ open, onOpenChange }: PublicServiceRequestFormProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [photos, setPhotos] = useState<File[]>([]);
   const { toast } = useToast();
 
   const form = useForm<FormData>({
@@ -98,8 +113,43 @@ export function PublicServiceRequestForm({ open, onOpenChange }: PublicServiceRe
       description: '',
       preferredDate: '',
       urgency: 'medium',
+      currentIssues: [],
+      preferredContact: 'either',
     },
   });
+
+  const addPhotos = (files: FileList | null) => {
+    if (!files) return;
+    const incoming = Array.from(files).filter((f) => {
+      if (!f.type.startsWith('image/')) {
+        toast({ title: 'Unsupported file', description: `${f.name} is not an image.`, variant: 'destructive' });
+        return false;
+      }
+      if (f.size > MAX_PHOTO_BYTES) {
+        toast({ title: 'Photo too large', description: `${f.name} is over 8MB.`, variant: 'destructive' });
+        return false;
+      }
+      return true;
+    });
+    setPhotos((prev) => [...prev, ...incoming].slice(0, MAX_PHOTOS));
+  };
+
+  const uploadPhotos = async (): Promise<string[]> => {
+    const paths: string[] = [];
+    for (const file of photos) {
+      const ext = file.name.split('.').pop()?.toLowerCase() || 'jpg';
+      const path = `intake/${crypto.randomUUID()}.${ext}`;
+      const { error } = await supabase.storage
+        .from('service-request-photos')
+        .upload(path, file, { contentType: file.type, upsert: false });
+      if (error) {
+        console.warn('Photo upload failed:', error.message);
+        continue;
+      }
+      paths.push(path);
+    }
+    return paths;
+  };
 
   const onSubmit = async (data: FormData) => {
     setIsSubmitting(true);

@@ -1048,10 +1048,13 @@ export type Database = {
           contact_title: string | null
           country: string | null
           created_at: string | null
+          current_issues: string[]
           description: string
           id: string
+          photo_urls: string[]
           pool_size: string | null
           pool_type: string | null
+          preferred_contact_method: string | null
           preferred_date: string | null
           priority: string | null
           request_type: string
@@ -1075,10 +1078,13 @@ export type Database = {
           contact_title?: string | null
           country?: string | null
           created_at?: string | null
+          current_issues?: string[]
           description: string
           id?: string
+          photo_urls?: string[]
           pool_size?: string | null
           pool_type?: string | null
+          preferred_contact_method?: string | null
           preferred_date?: string | null
           priority?: string | null
           request_type: string
@@ -1102,10 +1108,13 @@ export type Database = {
           contact_title?: string | null
           country?: string | null
           created_at?: string | null
+          current_issues?: string[]
           description?: string
           id?: string
+          photo_urls?: string[]
           pool_size?: string | null
           pool_type?: string | null
+          preferred_contact_method?: string | null
           preferred_date?: string | null
           priority?: string | null
           request_type?: string

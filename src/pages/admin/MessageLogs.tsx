@@ -18,6 +18,12 @@ interface LogRow {
   error_detail: string | null;
   provider_message_id: string | null;
   created_at: string;
+  delivery_status: string | null;
+  delivered_at: string | null;
+  provider_status_detail: string | null;
+  opened_at: string | null;
+  last_open_at: string | null;
+  open_count: number | null;
 }
 
 const statusVariant = (status: string) => {
@@ -31,6 +37,26 @@ const statusVariant = (status: string) => {
     default:
       return 'outline' as const;
   }
+};
+
+const deliveryVariant = (status: string | null) => {
+  switch (status) {
+    case 'opened':
+      return 'default' as const;
+    case 'delivered':
+      return 'secondary' as const;
+    case 'undelivered':
+    case 'unsubscribed':
+      return 'destructive' as const;
+    default:
+      return 'outline' as const;
+  }
+};
+
+const deliveryLabel = (r: LogRow) => {
+  if (r.status !== 'sent') return null;
+  if (r.opened_at) return 'opened';
+  return r.delivery_status ?? 'awaiting delivery';
 };
 
 export default function MessageLogs() {
@@ -100,6 +126,11 @@ export default function MessageLogs() {
                 <div className="flex items-center gap-2">
                   <Badge variant="outline">{r.channel}</Badge>
                   <Badge variant={statusVariant(r.status)}>{r.status}</Badge>
+                  {deliveryLabel(r) && (
+                    <Badge variant={deliveryVariant(r.opened_at ? 'opened' : r.delivery_status)}>
+                      {deliveryLabel(r)}
+                    </Badge>
+                  )}
                 </div>
               </div>
             </CardHeader>
@@ -108,6 +139,20 @@ export default function MessageLogs() {
                 <span className="text-muted-foreground">To: </span>
                 {r.recipient || '—'}
               </p>
+              {(r.delivered_at || r.opened_at || r.provider_status_detail) && (
+                <p className="break-words text-muted-foreground">
+                  {r.delivered_at && <>Delivered {new Date(r.delivered_at).toLocaleString()}. </>}
+                  {r.opened_at ? (
+                    <>
+                      Opened {new Date(r.opened_at).toLocaleString()}
+                      {(r.open_count ?? 0) > 1 && <> ({r.open_count} opens, last {new Date(r.last_open_at || r.opened_at).toLocaleString()})</>}.
+                    </>
+                  ) : (
+                    <>Link not opened yet. </>
+                  )}
+                  {r.provider_status_detail && <> {r.provider_status_detail}</>}
+                </p>
+              )}
               {r.error_detail && (
                 <p className="break-words text-destructive">
                   <span className="text-muted-foreground">Reason: </span>

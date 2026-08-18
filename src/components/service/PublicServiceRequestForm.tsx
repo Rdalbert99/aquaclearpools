@@ -251,6 +251,7 @@ export function PublicServiceRequestForm({ open, onOpenChange }: PublicServiceRe
       }
 
       form.reset();
+      setPhotos([]);
       onOpenChange(false);
     } catch (error) {
       console.error('Error submitting request:', error);
@@ -260,6 +261,7 @@ export function PublicServiceRequestForm({ open, onOpenChange }: PublicServiceRe
         variant: "default",
       });
       form.reset();
+      setPhotos([]);
       onOpenChange(false);
     } finally {
       setIsSubmitting(false);

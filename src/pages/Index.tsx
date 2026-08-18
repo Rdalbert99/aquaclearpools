@@ -105,10 +105,27 @@ const Index = () => {
         </div>
       </section>
 
+      {/* CTA after before/after */}
+      <CTABand
+        title="Want results like these on your pool?"
+        subtitle="Send us a few photos and we'll tell you exactly what your pool needs — free, no obligation."
+        onPrimary={() => setShowRequestForm(true)}
+      />
+
       {/* Customer Reviews Section */}
       <section id="reviews">
         <ReviewCarousel />
       </section>
+
+      {/* CTA after testimonials */}
+      <CTABand
+        title="Join your neighbors in Hattiesburg"
+        subtitle="Weekly service, honest chemistry, and a customer portal that shows every visit."
+        primaryLabel="Schedule Your First Visit"
+        onPrimary={() => setShowRequestForm(true)}
+        showLogin
+        variant="plain"
+      />
 
       {/* Company History Section */}
       <section className="py-20 px-4 bg-muted/50">

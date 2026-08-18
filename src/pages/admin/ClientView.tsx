@@ -702,8 +702,9 @@ export default function ClientView() {
                   <Badge variant={bal.inBalance ? 'default' : 'destructive'}>
                     {bal.inBalance ? 'Balanced' : 'Out of balance'}
                   </Badge>
-
+                  {bal.outOfRange.length > 0 && (
                     <ul className="mt-2 text-xs text-muted-foreground space-y-0.5">
+
                       {bal.outOfRange.map(r => (
                         <li key={r.chemId}>
                           • {r.chemId.toUpperCase()}: {r.value}

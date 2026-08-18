@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -12,16 +12,22 @@ interface PublicNavbarProps {
 export const PublicNavbar = ({ onRequestService }: PublicNavbarProps) => {
   const [isOpen, setIsOpen] = useState(false);
   const isMobile = useIsMobile();
+  const navigate = useNavigate();
 
   const navigationLinks = [
     { label: 'Home', href: '#hero', id: 'home' },
-    { label: 'Services', href: '#services', id: 'services' },
+    { label: 'Services', href: '/services', id: 'services' },
     { label: 'See the Difference', href: '#before-after', id: 'before-after' },
     { label: 'Reviews', href: '#reviews', id: 'reviews' },
     { label: 'Contact', href: '#contact', id: 'contact' },
   ];
 
   const handleNavClick = (href: string) => {
+    if (!href.startsWith('#')) {
+      navigate(href);
+      setIsOpen(false);
+      return;
+    }
     if (href.startsWith('#')) {
       const targetId = href.slice(1);
       const element = document.querySelector(targetId === 'hero' ? 'section' : `#${targetId}`);

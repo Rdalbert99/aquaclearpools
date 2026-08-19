@@ -287,7 +287,7 @@ export function ArrivalNotification({ clientName, clientId, clientPhone, clientE
       </CardContent>
 
       <Dialog open={reviewOpen} onOpenChange={(o) => !sending && setReviewOpen(o)}>
-        <DialogContent className="max-w-lg z-[80]">
+        <DialogContent className="max-w-lg w-[calc(100vw-1.5rem)] max-h-[90dvh] overflow-y-auto p-4 sm:p-6">
           <DialogHeader>
             <DialogTitle>Review Message</DialogTitle>
             <DialogDescription>

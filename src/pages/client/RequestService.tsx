@@ -101,10 +101,34 @@ export default function RequestService() {
   const [selectedPool, setSelectedPool] = useState<string>('');
   const [requestDescription, setRequestDescription] = useState('');
   const [priority, setPriority] = useState<string>('medium');
+  // On-site contact for this specific visit
+  const [useDefaultContact, setUseDefaultContact] = useState(true);
+  const [contactName, setContactName] = useState('');
+  const [contactPhone, setContactPhone] = useState('');
+  const [contactEmail, setContactEmail] = useState('');
 
   useEffect(() => {
     loadClients();
   }, [user]);
+
+  const defaultContact = (() => {
+    const pool = clients.find(c => c.id === selectedPool);
+    return {
+      name: pool?.customer || user?.name || '',
+      phone: pool?.contact_phone || user?.phone || '',
+      email: pool?.contact_email || user?.email || '',
+      address: pool?.contact_address || '',
+    };
+  })();
+
+  useEffect(() => {
+    if (useDefaultContact) {
+      setContactName(defaultContact.name);
+      setContactPhone(defaultContact.phone);
+      setContactEmail(defaultContact.email);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedPool, useDefaultContact, clients.length]);
 
   const loadClients = async () => {
     if (!user?.id) return;
@@ -118,6 +142,7 @@ export default function RequestService() {
 
       if (error) throw error;
       setClients(clients || []);
+      if ((clients?.length ?? 0) === 1) setSelectedPool(clients![0].id);
     } catch (error) {
       console.error('Error loading clients:', error);
       toast({
@@ -140,6 +165,15 @@ export default function RequestService() {
       return;
     }
 
+    if (!contactName.trim() || !contactPhone.trim()) {
+      toast({
+        title: "Contact required",
+        description: "Please provide the name and phone number for this service call",
+        variant: "destructive"
+      });
+      return;
+    }
+
     setSubmitting(true);
     try {
       const serviceType = serviceTypes.find(s => s.id === selectedService);
@@ -152,7 +186,13 @@ export default function RequestService() {
           request_type: serviceType?.name || selectedService,
           description: requestDescription,
           priority: priority,
-          status: 'pending'
+          status: 'pending',
+          contact_name: contactName.trim(),
+          contact_phone: contactPhone.trim(),
+          contact_email: contactEmail.trim() || null,
+          contact_address: selectedClient?.contact_address || null,
+          pool_type: selectedClient?.pool_type || null,
+          pool_size: selectedClient?.pool_size ? String(selectedClient.pool_size) : null,
         })
         .select()
         .single();

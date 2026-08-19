@@ -9,6 +9,7 @@ import { LoadingSpinner } from '@/components/ui/loading-spinner';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
+import { sendClientMessage, summarizeResults } from '@/lib/client-message';
 import { 
   Calendar, 
   MapPin, 

@@ -353,6 +353,76 @@ export default function RequestService() {
                 />
               </div>
 
+              {/* On-site contact for this service call */}
+              <div className="space-y-3 rounded-lg border border-border p-4">
+                <div>
+                  <Label className="text-base">Who should we contact for this visit?</Label>
+                  <p className="text-sm text-muted-foreground">
+                    This name and number goes on the technician's service ticket.
+                  </p>
+                </div>
+
+                <div className="flex items-start gap-2">
+                  <Checkbox
+                    id="use-default-contact"
+                    checked={useDefaultContact}
+                    onCheckedChange={(c) => setUseDefaultContact(!!c)}
+                  />
+                  <Label htmlFor="use-default-contact" className="text-sm font-normal leading-snug">
+                    Use my info{defaultContact.name ? ` — ${defaultContact.name}` : ''}
+                    {defaultContact.phone ? ` (${defaultContact.phone})` : ''}
+                  </Label>
+                </div>
+
+                {!useDefaultContact && (
+                  <div className="space-y-3">
+                    <div className="space-y-1">
+                      <Label htmlFor="contact-name">Contact name *</Label>
+                      <Input
+                        id="contact-name"
+                        value={contactName}
+                        onChange={(e) => setContactName(e.target.value)}
+                        placeholder="Who will be there?"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label htmlFor="contact-phone">Contact phone *</Label>
+                      <Input
+                        id="contact-phone"
+                        type="tel"
+                        value={contactPhone}
+                        onChange={(e) => setContactPhone(e.target.value)}
+                        placeholder="(555) 123-4567"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label htmlFor="contact-email">Contact email</Label>
+                      <Input
+                        id="contact-email"
+                        type="email"
+                        value={contactEmail}
+                        onChange={(e) => setContactEmail(e.target.value)}
+                        placeholder="name@email.com"
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {useDefaultContact && !defaultContact.phone && (
+                  <div className="space-y-1">
+                    <Label htmlFor="contact-phone-req">Contact phone *</Label>
+                    <Input
+                      id="contact-phone-req"
+                      type="tel"
+                      value={contactPhone}
+                      onChange={(e) => setContactPhone(e.target.value)}
+                      placeholder="(555) 123-4567"
+                    />
+                  </div>
+                )}
+              </div>
+
+
               <div className="flex space-x-2">
                 <Button variant="outline" onClick={() => navigate('/client')}>
                   Cancel

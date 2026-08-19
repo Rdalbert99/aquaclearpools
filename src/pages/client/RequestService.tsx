@@ -204,9 +204,9 @@ export default function RequestService() {
         await supabase.functions.invoke('send-service-request-email', {
           body: {
             customerData: {
-              name: selectedClient?.customer || user?.name || 'Customer',
-              email: user?.email || selectedClient?.contact_email || '',
-              phone: user?.phone || selectedClient?.contact_phone || '',
+              name: contactName.trim() || selectedClient?.customer || user?.name || 'Customer',
+              email: contactEmail.trim() || user?.email || selectedClient?.contact_email || '',
+              phone: contactPhone.trim() || user?.phone || selectedClient?.contact_phone || '',
               address: selectedClient?.contact_address || '',
               poolType: selectedClient?.pool_type || 'Unknown',
               poolSize: selectedClient?.pool_size ? `${selectedClient.pool_size?.toLocaleString()} gallons` : 'Unknown',

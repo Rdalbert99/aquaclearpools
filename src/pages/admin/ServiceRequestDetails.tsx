@@ -201,8 +201,41 @@ export default function ServiceRequestDetails() {
         return;
       }
 
-      // Send email notification for status changes
-      if ((newStatus === 'in-progress' || newStatus === 'completed') && request.contact_email) {
+      let notifySummary = '';
+
+      if (newStatus === 'completed') {
+        // Text + email the on-site contact that the work order is finished
+        const contactName = request.contact_name || request.clients?.customer || 'there';
+        const body =
+          `Hi ${contactName}, this is Aqua Clear Pools. Your ${request.request_type} service request has been completed` +
+          `${user?.name ? ` by ${user.name}` : ''}.` +
+          `${notes.trim() ? ` Notes: ${notes.trim()}` : ''}` +
+          ` Thank you for your business!`;
+
+        const channels: ('sms' | 'email')[] = [];
+        if (request.contact_phone) channels.push('sms');
+        if (request.contact_email) channels.push('email');
+
+        if (channels.length) {
+          const results = await sendClientMessage({
+            channels,
+            phone: request.contact_phone,
+            email: request.contact_email,
+            message: body,
+            subject: 'Aqua Clear Pools - Service Completed',
+            log: {
+              clientId: request.client_id ?? null,
+              clientName: contactName,
+              technicianId: user?.id ?? null,
+              technicianName: user?.name ?? null,
+              source: 'service_request_completed',
+            },
+          });
+          notifySummary = ` ${summarizeResults(results).text}`;
+        } else {
+          notifySummary = ' No phone or email on file, so no completion message was sent.';
+        }
+      } else if (newStatus === 'in-progress' && request.contact_email) {
         try {
           await supabase.functions.invoke('service-request-notify', {
             body: {
@@ -210,20 +243,18 @@ export default function ServiceRequestDetails() {
               customerName: request.contact_name || request.clients?.customer || 'Customer',
               customerEmail: request.contact_email,
               serviceType: request.request_type,
-              status: newStatus === 'in-progress' ? 'approved' : newStatus,
+              status: 'approved',
               notes: notes
             }
           });
-          console.log('Service request notification sent successfully');
         } catch (emailError) {
           console.error('Error sending service request notification:', emailError);
-          // Don't block the user flow if email fails
         }
       }
 
       toast({
         title: "Success",
-        description: `Service request ${newStatus === 'completed' ? 'completed' : 'updated'} successfully.`,
+        description: `Service request ${newStatus === 'completed' ? 'completed' : 'updated'} successfully.${notifySummary}`,
       });
 
       // Reload the request to show updated data

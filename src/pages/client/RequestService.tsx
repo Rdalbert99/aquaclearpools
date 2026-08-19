@@ -6,6 +6,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
+import { Input } from '@/components/ui/input';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
@@ -101,10 +103,34 @@ export default function RequestService() {
   const [selectedPool, setSelectedPool] = useState<string>('');
   const [requestDescription, setRequestDescription] = useState('');
   const [priority, setPriority] = useState<string>('medium');
+  // On-site contact for this specific visit
+  const [useDefaultContact, setUseDefaultContact] = useState(true);
+  const [contactName, setContactName] = useState('');
+  const [contactPhone, setContactPhone] = useState('');
+  const [contactEmail, setContactEmail] = useState('');
 
   useEffect(() => {
     loadClients();
   }, [user]);
+
+  const defaultContact = (() => {
+    const pool = clients.find(c => c.id === selectedPool);
+    return {
+      name: pool?.customer || user?.name || '',
+      phone: pool?.contact_phone || user?.phone || '',
+      email: pool?.contact_email || user?.email || '',
+      address: pool?.contact_address || '',
+    };
+  })();
+
+  useEffect(() => {
+    if (useDefaultContact) {
+      setContactName(defaultContact.name);
+      setContactPhone(defaultContact.phone);
+      setContactEmail(defaultContact.email);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedPool, useDefaultContact, clients.length]);
 
   const loadClients = async () => {
     if (!user?.id) return;
@@ -118,6 +144,7 @@ export default function RequestService() {
 
       if (error) throw error;
       setClients(clients || []);
+      if ((clients?.length ?? 0) === 1) setSelectedPool(clients![0].id);
     } catch (error) {
       console.error('Error loading clients:', error);
       toast({
@@ -140,6 +167,15 @@ export default function RequestService() {
       return;
     }
 
+    if (!contactName.trim() || !contactPhone.trim()) {
+      toast({
+        title: "Contact required",
+        description: "Please provide the name and phone number for this service call",
+        variant: "destructive"
+      });
+      return;
+    }
+
     setSubmitting(true);
     try {
       const serviceType = serviceTypes.find(s => s.id === selectedService);
@@ -152,7 +188,13 @@ export default function RequestService() {
           request_type: serviceType?.name || selectedService,
           description: requestDescription,
           priority: priority,
-          status: 'pending'
+          status: 'pending',
+          contact_name: contactName.trim(),
+          contact_phone: contactPhone.trim(),
+          contact_email: contactEmail.trim() || null,
+          contact_address: selectedClient?.contact_address || null,
+          pool_type: selectedClient?.pool_type || null,
+          pool_size: selectedClient?.pool_size ? String(selectedClient.pool_size) : null,
         })
         .select()
         .single();
@@ -164,9 +206,9 @@ export default function RequestService() {
         await supabase.functions.invoke('send-service-request-email', {
           body: {
             customerData: {
-              name: selectedClient?.customer || user?.name || 'Customer',
-              email: user?.email || selectedClient?.contact_email || '',
-              phone: user?.phone || selectedClient?.contact_phone || '',
+              name: contactName.trim() || selectedClient?.customer || user?.name || 'Customer',
+              email: contactEmail.trim() || user?.email || selectedClient?.contact_email || '',
+              phone: contactPhone.trim() || user?.phone || selectedClient?.contact_phone || '',
               address: selectedClient?.contact_address || '',
               poolType: selectedClient?.pool_type || 'Unknown',
               poolSize: selectedClient?.pool_size ? `${selectedClient.pool_size?.toLocaleString()} gallons` : 'Unknown',
@@ -312,6 +354,76 @@ export default function RequestService() {
                   rows={4}
                 />
               </div>
+
+              {/* On-site contact for this service call */}
+              <div className="space-y-3 rounded-lg border border-border p-4">
+                <div>
+                  <Label className="text-base">Who should we contact for this visit?</Label>
+                  <p className="text-sm text-muted-foreground">
+                    This name and number goes on the technician's service ticket.
+                  </p>
+                </div>
+
+                <div className="flex items-start gap-2">
+                  <Checkbox
+                    id="use-default-contact"
+                    checked={useDefaultContact}
+                    onCheckedChange={(c) => setUseDefaultContact(!!c)}
+                  />
+                  <Label htmlFor="use-default-contact" className="text-sm font-normal leading-snug">
+                    Use my info{defaultContact.name ? ` — ${defaultContact.name}` : ''}
+                    {defaultContact.phone ? ` (${defaultContact.phone})` : ''}
+                  </Label>
+                </div>
+
+                {!useDefaultContact && (
+                  <div className="space-y-3">
+                    <div className="space-y-1">
+                      <Label htmlFor="contact-name">Contact name *</Label>
+                      <Input
+                        id="contact-name"
+                        value={contactName}
+                        onChange={(e) => setContactName(e.target.value)}
+                        placeholder="Who will be there?"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label htmlFor="contact-phone">Contact phone *</Label>
+                      <Input
+                        id="contact-phone"
+                        type="tel"
+                        value={contactPhone}
+                        onChange={(e) => setContactPhone(e.target.value)}
+                        placeholder="(555) 123-4567"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label htmlFor="contact-email">Contact email</Label>
+                      <Input
+                        id="contact-email"
+                        type="email"
+                        value={contactEmail}
+                        onChange={(e) => setContactEmail(e.target.value)}
+                        placeholder="name@email.com"
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {useDefaultContact && !defaultContact.phone && (
+                  <div className="space-y-1">
+                    <Label htmlFor="contact-phone-req">Contact phone *</Label>
+                    <Input
+                      id="contact-phone-req"
+                      type="tel"
+                      value={contactPhone}
+                      onChange={(e) => setContactPhone(e.target.value)}
+                      placeholder="(555) 123-4567"
+                    />
+                  </div>
+                )}
+              </div>
+
 
               <div className="flex space-x-2">
                 <Button variant="outline" onClick={() => navigate('/client')}>

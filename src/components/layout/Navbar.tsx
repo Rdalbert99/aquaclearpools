@@ -14,7 +14,7 @@ import {
   DropdownMenuSeparator, 
   DropdownMenuTrigger 
 } from '@/components/ui/dropdown-menu';
-import { Home, Calculator, Users, FileText, LogOut, User, Star, Calendar, BarChart3, Mail, Menu, MessageSquare, MessageSquareReply } from 'lucide-react';
+import { Home, Calculator, Users, FileText, LogOut, User, Star, Calendar, BarChart3, Mail, Menu, MessageSquare, MessageSquareReply, Radio } from 'lucide-react';
 import { NotificationBell } from '@/components/notifications/NotificationBell';
 
 export const Navbar = () => {
@@ -70,6 +70,7 @@ export const Navbar = () => {
         { label: 'Templates', icon: MessageSquare, path: '/admin/notification-templates' },
         { label: 'SMS Forwarding', icon: MessageSquareReply, path: '/admin/sms-forwarding' },
         { label: 'Send Log', icon: MessageSquareReply, path: '/admin/message-logs' },
+        { label: 'Telnyx Status', icon: Radio, path: '/admin/telnyx-status' },
       ];
     }
     

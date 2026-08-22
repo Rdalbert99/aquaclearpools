@@ -66,6 +66,7 @@ import MailjetTest from "./pages/admin/MailjetTest";
 import SMSTest from "./pages/admin/SMSTest";
 import InboundMessages from "./pages/admin/InboundMessages";
 import MessageLogs from "./pages/admin/MessageLogs";
+import TelnyxStatus from "./pages/admin/TelnyxStatus";
 import NotificationTemplates from "./pages/admin/NotificationTemplates";
 import SMSForwardingSettings from "./pages/admin/SMSForwardingSettings";
 
@@ -378,6 +379,14 @@ const AppRoutes = () => {
           element={
             <ProtectedRoute allowedRoles={['admin', 'tech']}>
               <MessageLogs />
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/admin/telnyx-status" 
+          element={
+            <ProtectedRoute allowedRoles={['admin']}>
+              <TelnyxStatus />
             </ProtectedRoute>
           } 
         />

@@ -53,8 +53,8 @@ const Contact = () => {
                     <div>
                       <h3 className="font-semibold text-lg">Email</h3>
                       <p className="text-muted-foreground">Send us a message</p>
-                      <a href="mailto:info@aquaclearpools.com" className="text-primary font-medium hover:underline">
-                        info@aquaclearpools.com
+                      <a href="mailto:info@getaquaclear.com" className="text-primary font-medium hover:underline">
+                        info@getaquaclear.com
                       </a>
                     </div>
                   </CardContent>
@@ -114,7 +114,7 @@ const Contact = () => {
                       Send Text Message
                     </Button>
                   </a>
-                  <a href="mailto:info@aquaclearpools.com" className="block w-full">
+                  <a href="mailto:info@getaquaclear.com" className="block w-full">
                     <Button variant="outline" size="lg" className="w-full">
                       <Mail className="h-5 w-5 mr-2" />
                       Send Email

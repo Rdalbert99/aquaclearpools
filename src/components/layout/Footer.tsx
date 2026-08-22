@@ -33,8 +33,8 @@ const Footer = () => {
               </div>
               <div className="flex items-center space-x-2">
                 <Mail className="h-4 w-4" />
-                <a href="mailto:info@aquaclearpools.com" className="hover:underline">
-                  info@aquaclearpools.com
+                <a href="mailto:info@getaquaclear.com" className="hover:underline">
+                  info@getaquaclear.com
                 </a>
               </div>
               <div className="flex items-center space-x-2">

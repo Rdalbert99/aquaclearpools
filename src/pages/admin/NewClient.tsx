@@ -147,6 +147,13 @@ export default function NewClient() {
       return;
     }
 
+    const phoneProblem = phoneFieldError(client.phone);
+    if (phoneProblem) {
+      toast({ title: "Invalid phone number", description: phoneProblem, variant: "destructive" });
+      return;
+    }
+    client.phone = normalizePhoneField(client.phone);
+
     // Validate new user creation fields
     if (isAdmin && client.account_type === 'new') {
       console.log('🔍 Validating new user creation fields...');

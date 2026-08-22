@@ -70,6 +70,7 @@ export const Navbar = () => {
         { label: 'Templates', icon: MessageSquare, path: '/admin/notification-templates' },
         { label: 'SMS Forwarding', icon: MessageSquareReply, path: '/admin/sms-forwarding' },
         { label: 'Send Log', icon: MessageSquareReply, path: '/admin/message-logs' },
+        { label: 'Telnyx Status', icon: Radio, path: '/admin/telnyx-status' },
       ];
     }
     

@@ -132,21 +132,37 @@ const handler = async (req: Request): Promise<Response> => {
       );
     }
 
-    // Clean and validate phone number
-    console.log('Original phone number:', maskPhone(to));
-    let cleanedPhone = to.replace(/\D/g, "");
-    console.log('After removing non-digits:', maskPhone(cleanedPhone));
-    
-    if (cleanedPhone.length === 10) {
-      cleanedPhone = "1" + cleanedPhone; // Add US country code
-      console.log('Added US country code:', maskPhone(cleanedPhone));
-    }
-    if (!cleanedPhone.startsWith("+")) {
-      cleanedPhone = "+" + cleanedPhone;
-      console.log('Added + prefix:', maskPhone(cleanedPhone));
+    // A contact field may hold several numbers ("555-1111, 555-2222" / "a and b" / "a; b").
+    // Split them, normalize each, and send individually so one bad entry can't fail the batch.
+    const rawParts = String(to)
+      .split(/[,;\/\n]+|\s+(?:and|or|&)\s+/i)
+      .map((p) => p.trim())
+      .filter(Boolean);
+
+    const recipients: string[] = [];
+    for (const part of rawParts) {
+      let digits = part.replace(/\D/g, "");
+      if (digits.length === 10) digits = "1" + digits;
+      if (digits.length < 11 || digits.length > 15) {
+        console.warn('Skipping invalid phone segment:', maskPhone(part));
+        continue;
+      }
+      const normalized = "+" + digits;
+      if (!recipients.includes(normalized)) recipients.push(normalized);
     }
 
-    console.log(`Final phone number: ${maskPhone(cleanedPhone)}`);
+    if (recipients.length === 0) {
+      return new Response(
+        JSON.stringify({
+          success: false,
+          provider: "telnyx",
+          error: `No valid phone number found in "${maskPhone(String(to))}"`,
+        }),
+        { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } },
+      );
+    }
+
+    console.log(`Sending to ${recipients.length} recipient(s):`, recipients.map(maskPhone).join(', '));
     console.log(`From number: ${from || DEFAULT_FROM_NUMBER}`);
 
     const analysis = analyzeMessage(message);
@@ -158,104 +174,100 @@ const handler = async (req: Request): Promise<Response> => {
         `Non-GSM characters forcing UCS-2: ${analysis.nonGsmCodePoints.join(', ') || 'none'}`,
       );
     }
-    console.log('Message head:', JSON.stringify(message.slice(0, 200)));
-    console.log('Message tail:', JSON.stringify(message.slice(-200)));
 
-    const payload = {
-      from: from || DEFAULT_FROM_NUMBER,
-      to: cleanedPhone,
-      text: message
+    type SendOutcome = {
+      to: string;
+      success: boolean;
+      messageId?: string | null;
+      error?: string;
+      errorCode?: string | null;
+      providerStatus?: number;
+      parts?: number;
+      encoding?: string;
     };
 
-    console.log('Telnyx API payload (redacted):', JSON.stringify({
-      from: payload.from,
-      to: maskPhone(payload.to),
-      textLength: payload.text.length,
-      segments: analysis.segments,
-      encoding: analysis.encoding,
-    }));
-    console.log('Making request to Telnyx API...');
+    const outcomes: SendOutcome[] = [];
 
-    const response = await fetch(TELNYX_API_URL, {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${apiKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(payload),
-    });
+    for (const cleanedPhone of recipients) {
+      const payload = {
+        from: from || DEFAULT_FROM_NUMBER,
+        to: cleanedPhone,
+        text: message,
+      };
 
-    const responseData = await response.json();
-    console.log('Telnyx API Status:', response.status);
-    console.log('Telnyx API Response Headers:', Object.fromEntries(response.headers.entries()));
-    console.log('Telnyx API Response Body:', JSON.stringify(responseData, null, 2));
+      const response = await fetch(TELNYX_API_URL, {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${apiKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(payload),
+      });
 
-    if (!response.ok) {
-      console.error("Telnyx API error:", responseData);
-      const first = responseData?.errors?.[0] ?? {};
-      const detailParts = [
-        first.code ? `Telnyx ${first.code}` : `Telnyx HTTP ${response.status}`,
-        first.title,
-        first.detail,
-        first.meta?.url ? `(${first.meta.url})` : null,
-      ].filter(Boolean);
-      console.error('Telnyx send failed diagnostics:', JSON.stringify({
-        status: response.status,
-        code: first.code ?? null,
-        title: first.title ?? null,
-        detail: first.detail ?? null,
-        to: maskPhone(cleanedPhone),
-        from: payload.from,
-        requestId: response.headers.get('x-request-id'),
-        ...analysis,
-      }));
-      return new Response(
-        JSON.stringify({
-          success: false,
-          provider: "telnyx",
-          error: detailParts.join(": "),
-          diagnostics: {
-            characters: analysis.characters,
-            encoding: analysis.encoding,
-            segments: analysis.segments,
-            maxSegments: analysis.maxSegments,
-            overLimit: analysis.overLimit,
-            nonGsmCharacters: analysis.nonGsmCharacters,
-            requestId: response.headers.get('x-request-id'),
-          },
-          errorCode: first.code ?? null,
-          errorTitle: first.title ?? null,
-          errorDetail: first.detail ?? null,
-          providerStatus: response.status,
+      const responseData = await response.json();
+      console.log('Telnyx API Status:', response.status, 'for', maskPhone(cleanedPhone));
+
+      if (!response.ok) {
+        const first = responseData?.errors?.[0] ?? {};
+        const detailParts = [
+          first.code ? `Telnyx ${first.code}` : `Telnyx HTTP ${response.status}`,
+          first.title,
+          first.detail,
+        ].filter(Boolean);
+        console.error('Telnyx send failed:', JSON.stringify({
+          status: response.status,
+          code: first.code ?? null,
+          detail: first.detail ?? null,
+          to: maskPhone(cleanedPhone),
+          requestId: response.headers.get('x-request-id'),
+        }));
+        outcomes.push({
           to: cleanedPhone,
-        }),
-        { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } },
-      );
+          success: false,
+          error: detailParts.join(": "),
+          errorCode: first.code ?? null,
+          providerStatus: response.status,
+        });
+      } else {
+        console.log("SMS sent successfully to", maskPhone(cleanedPhone), responseData.data?.id);
+        outcomes.push({
+          to: cleanedPhone,
+          success: true,
+          messageId: responseData.data?.id ?? null,
+          parts: responseData.data?.parts ?? analysis.segments,
+          encoding: responseData.data?.encoding ?? analysis.encoding,
+        });
+      }
     }
 
-    console.log("SMS sent successfully via Telnyx!");
-    console.log("Message ID:", responseData.data?.id);
-    console.log("Send summary:", JSON.stringify({
-      messageId: responseData.data?.id,
-      to: maskPhone(cleanedPhone),
-      parts: responseData.data?.parts ?? analysis.segments,
-      encoding: responseData.data?.encoding ?? analysis.encoding,
-      characters: analysis.characters,
-    }));
+    const sent = outcomes.filter((o) => o.success);
+    const failed = outcomes.filter((o) => !o.success);
 
     return new Response(
-      JSON.stringify({ 
-        success: true, 
+      JSON.stringify({
+        success: sent.length > 0,
         provider: "telnyx",
-        messageId: responseData.data?.id,
-        to: cleanedPhone,
+        messageId: sent[0]?.messageId ?? null,
+        to: sent[0]?.to ?? recipients[0],
+        recipients: outcomes.map((o) => ({ to: o.to, success: o.success, error: o.error ?? null })),
+        error: failed.length
+          ? `${failed.length} of ${outcomes.length} recipient(s) failed: ${failed.map((f) => `${f.to} — ${f.error}`).join('; ')}`
+          : undefined,
+        errorCode: failed[0]?.errorCode ?? null,
+        providerStatus: failed[0]?.providerStatus,
         diagnostics: {
           characters: analysis.characters,
-          encoding: responseData.data?.encoding ?? analysis.encoding,
-          segments: responseData.data?.parts ?? analysis.segments,
+          encoding: sent[0]?.encoding ?? analysis.encoding,
+          segments: sent[0]?.parts ?? analysis.segments,
+          maxSegments: analysis.maxSegments,
+          overLimit: analysis.overLimit,
+          nonGsmCharacters: analysis.nonGsmCharacters,
+          recipientCount: outcomes.length,
         },
-        message: "SMS sent successfully"
-      }), 
+        message: sent.length
+          ? `SMS sent to ${sent.length} recipient(s)`
+          : "SMS could not be delivered",
+      }),
       {
         status: 200,
         headers: {

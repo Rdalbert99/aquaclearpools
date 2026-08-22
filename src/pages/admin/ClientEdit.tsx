@@ -273,6 +273,14 @@ export default function ClientEdit() {
       return;
     }
 
+    const phoneProblem = phoneFieldError(client.phone);
+    if (phoneProblem) {
+      toast({ title: "Invalid phone number", description: phoneProblem, variant: "destructive" });
+      return;
+    }
+    client.phone = normalizePhoneField(client.phone);
+
+
     setSaving(true);
     try {
       // Build full address string from components

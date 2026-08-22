@@ -4,10 +4,17 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { RefreshCw, MessageSquare } from 'lucide-react';
+import { RefreshCw, MessageSquare, Send, Radio } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { useToast } from '@/hooks/use-toast';
+import { parsePhoneField } from '@/lib/phone';
+import { logMessageSend } from '@/lib/message-log';
+import { extractSendError } from '@/lib/send-error';
 
 interface LogRow {
   id: string;
+  client_id?: string | null;
+  technician_id?: string | null;
   client_name: string | null;
   technician_name: string | null;
   source: string;
@@ -59,10 +66,61 @@ const deliveryLabel = (r: LogRow) => {
   return r.delivery_status ?? 'awaiting delivery';
 };
 
+/** A failed SMS whose recipient field can be repaired into valid E.164 numbers. */
+function retryTargets(r: LogRow): string[] {
+  if (r.channel !== 'sms' || r.status !== 'failed' || !r.recipient || !r.message) return [];
+  return parsePhoneField(r.recipient).valid;
+}
+
 export default function MessageLogs() {
+  const { toast } = useToast();
   const [rows, setRows] = useState<LogRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
+  const [retryingId, setRetryingId] = useState<string | null>(null);
+
+  async function resend(r: LogRow) {
+    const targets = retryTargets(r);
+    if (!targets.length) return;
+    setRetryingId(r.id);
+    let sent = 0;
+    const failures: string[] = [];
+
+    for (const to of targets) {
+      try {
+        const { data, error } = await supabase.functions.invoke('send-sms-via-telnyx', {
+          body: { to, message: r.message },
+        });
+        const failed = error || (data && (data as any).success === false);
+        const detail = failed ? await extractSendError(error, data) : null;
+        if (failed) failures.push(`${to} — ${detail}`);
+        else sent += 1;
+        await logMessageSend({
+          clientId: r.client_id ?? null,
+          clientName: r.client_name,
+          technicianId: r.technician_id ?? null,
+          technicianName: r.technician_name,
+          source: 'resend_failed',
+          channel: 'sms',
+          recipient: to,
+          message: r.message,
+          status: failed ? 'failed' : 'sent',
+          errorDetail: detail,
+          providerMessageId: failed ? null : ((data as any)?.messageId ?? null),
+        });
+      } catch (e: any) {
+        failures.push(`${to} — ${e?.message || 'Network error'}`);
+      }
+    }
+
+    setRetryingId(null);
+    toast({
+      title: sent ? `Resent to ${sent} number(s)` : 'Resend failed',
+      description: failures.length ? failures.join('; ') : 'Message delivered to Telnyx.',
+      variant: sent ? 'default' : 'destructive',
+    });
+    load();
+  }
 
   async function load() {
     setLoading(true);
@@ -93,6 +151,11 @@ export default function MessageLogs() {
         <h1 className="text-2xl font-bold flex items-center gap-2">
           <MessageSquare className="h-5 w-5" /> Message Send Log
         </h1>
+        <Button variant="outline" asChild>
+          <Link to="/admin/telnyx-status">
+            <Radio className="h-4 w-4 mr-2" /> Webhook status
+          </Link>
+        </Button>
         <Button variant="outline" onClick={load} disabled={loading}>
           <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} /> Refresh
         </Button>
@@ -158,6 +221,16 @@ export default function MessageLogs() {
                   <span className="text-muted-foreground">Reason: </span>
                   {r.error_detail}
                 </p>
+              )}
+              {retryTargets(r).length > 0 && (
+                <div className="pt-1">
+                  <Button size="sm" onClick={() => resend(r)} disabled={retryingId === r.id}>
+                    <Send className="h-4 w-4 mr-2" />
+                    {retryingId === r.id
+                      ? 'Resending…'
+                      : `Resend to ${retryTargets(r).join(', ')}`}
+                  </Button>
+                </div>
               )}
               {r.provider_message_id && (
                 <p className="break-words text-muted-foreground text-xs">ID: {r.provider_message_id}</p>

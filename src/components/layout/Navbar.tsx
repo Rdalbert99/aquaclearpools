@@ -14,7 +14,7 @@ import {
   DropdownMenuSeparator, 
   DropdownMenuTrigger 
 } from '@/components/ui/dropdown-menu';
-import { Home, Calculator, Users, FileText, LogOut, User, Star, Calendar, BarChart3, Mail, Menu, MessageSquare, MessageSquareReply } from 'lucide-react';
+import { Home, Calculator, Users, FileText, LogOut, User, Star, Calendar, BarChart3, Mail, Menu, MessageSquare, MessageSquareReply, Radio } from 'lucide-react';
 import { NotificationBell } from '@/components/notifications/NotificationBell';
 
 export const Navbar = () => {

@@ -15,6 +15,8 @@ import { UsernameInput } from '@/components/ui/username-input';
 import { AddressInput } from '@/components/ui/address-input';
 import { validateAddress, type AddressComponents } from '@/lib/address-validation';
 import { ClientInviteDialog } from '@/components/admin/ClientInviteDialog';
+import { PhoneField } from '@/components/common/PhoneField';
+import { normalizePhoneField, phoneFieldError } from '@/lib/phone';
 import { 
   ArrowLeft,
   Save,
@@ -552,15 +554,11 @@ export default function NewClient() {
               />
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="phone">Phone Number</Label>
-              <Input
-                id="phone"
-                value={client.phone}
-                onChange={(e) => handleInputChange('phone', e.target.value)}
-                placeholder="Enter phone number"
-              />
-            </div>
+            <PhoneField
+              value={client.phone}
+              onChange={(v) => handleInputChange('phone', v)}
+              helpText="Saved in E.164 format so texts always deliver."
+            />
 
             <div className="space-y-2">
               <Label htmlFor="companyName">Company/Organization</Label>

@@ -11,6 +11,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Switch } from '@/components/ui/switch';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
 import { validatePassword } from '@/lib/password';
+import { PhoneField } from '@/components/common/PhoneField';
+import { normalizePhoneField, phoneFieldError } from '@/lib/phone';
 import { useToast } from '@/hooks/use-toast';
 import { 
   ArrowLeft,
@@ -704,16 +706,11 @@ export default function ClientEdit() {
               />
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="phone">Phone Number</Label>
-              <Input
-                id="phone"
-                type="tel"
-                value={client.phone}
-                onChange={(e) => handleInputChange('phone', e.target.value)}
-                placeholder="Enter phone number"
-              />
-            </div>
+            <PhoneField
+              value={client.phone}
+              onChange={(v) => handleInputChange('phone', v)}
+              helpText="Saved in E.164 format so texts always deliver."
+            />
 
             <div className="space-y-2">
               <Label htmlFor="street_address">Street Address</Label>

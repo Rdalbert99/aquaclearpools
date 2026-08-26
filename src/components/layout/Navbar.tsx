@@ -14,7 +14,7 @@ import {
   DropdownMenuSeparator, 
   DropdownMenuTrigger 
 } from '@/components/ui/dropdown-menu';
-import { Home, Calculator, Users, FileText, LogOut, User, Star, Calendar, BarChart3, Mail, Menu, MessageSquare, MessageSquareReply, Radio } from 'lucide-react';
+import { Home, Calculator, Users, FileText, LogOut, User, Star, Calendar, BarChart3, Mail, Menu, MessageSquare, MessageSquareReply, Radio, Building2 } from 'lucide-react';
 import { NotificationBell } from '@/components/notifications/NotificationBell';
 
 export const Navbar = () => {
@@ -61,6 +61,8 @@ export const Navbar = () => {
       return [
         { label: 'Dashboard', icon: Home, path: '/admin' },
         { label: 'Clients', icon: Users, path: '/admin/clients' },
+        { label: 'Commercial', icon: Building2, path: '/admin/commercial' },
+
         { label: 'Requests', icon: FileText, path: '/admin/service-request-management' },
         { label: 'Messages', icon: MessageSquare, path: '/admin/inbound-messages', badge: unreadCount },
         { label: 'Reviews', icon: Star, path: '/admin/reviews' },

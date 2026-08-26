@@ -17,10 +17,12 @@ export const PublicNavbar = ({ onRequestService }: PublicNavbarProps) => {
   const navigationLinks = [
     { label: 'Home', href: '#hero', id: 'home' },
     { label: 'Services', href: '/services', id: 'services' },
+    { label: 'Commercial', href: '/commercial', id: 'commercial' },
     { label: 'See the Difference', href: '#before-after', id: 'before-after' },
     { label: 'Reviews', href: '#reviews', id: 'reviews' },
     { label: 'Contact', href: '#contact', id: 'contact' },
   ];
+
 
   const handleNavClick = (href: string) => {
     if (!href.startsWith('#')) {

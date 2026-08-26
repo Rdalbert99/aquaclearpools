@@ -62,6 +62,8 @@ import Profile from "./pages/Profile";
 import Contact from "./pages/Contact";
 import Services from './pages/Services';
 import Commercial from './pages/Commercial';
+import CommercialPortal from './pages/commercial/Portal';
+
 
 import OptinProof from "./pages/OptinProof";
 import MailjetTest from "./pages/admin/MailjetTest";
@@ -93,6 +95,8 @@ const AppRoutes = () => {
         <Route path="/" element={<Index />} />
         <Route path="/services" element={<Services />} />
         <Route path="/commercial" element={<Commercial />} />
+        <Route path="/commercial/portal" element={<CommercialPortal />} />
+
 
         <Route path="/contact" element={<Contact />} />
         <Route path="/opt-in-proof" element={<OptinProof />} />

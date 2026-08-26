@@ -514,6 +514,313 @@ export type Database = {
           },
         ]
       }
+      commercial_org_users: {
+        Row: {
+          created_at: string
+          facility_id: string | null
+          id: string
+          organization_id: string
+          receives_monthly_report: boolean
+          receives_urgent_alerts: boolean
+          role: Database["public"]["Enums"]["commercial_user_role"]
+          title: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          facility_id?: string | null
+          id?: string
+          organization_id: string
+          receives_monthly_report?: boolean
+          receives_urgent_alerts?: boolean
+          role?: Database["public"]["Enums"]["commercial_user_role"]
+          title?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          facility_id?: string | null
+          id?: string
+          organization_id?: string
+          receives_monthly_report?: boolean
+          receives_urgent_alerts?: boolean
+          role?: Database["public"]["Enums"]["commercial_user_role"]
+          title?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "commercial_org_users_facility_id_fkey"
+            columns: ["facility_id"]
+            isOneToOne: false
+            referencedRelation: "facilities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "commercial_org_users_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "commercial_organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      commercial_organizations: {
+        Row: {
+          active: boolean
+          address: string | null
+          billing_email: string | null
+          created_at: string
+          id: string
+          name: string
+          notes: string | null
+          phone: string | null
+          slug: string | null
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          address?: string | null
+          billing_email?: string | null
+          created_at?: string
+          id?: string
+          name: string
+          notes?: string | null
+          phone?: string | null
+          slug?: string | null
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          address?: string | null
+          billing_email?: string | null
+          created_at?: string
+          id?: string
+          name?: string
+          notes?: string | null
+          phone?: string | null
+          slug?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      equipment_issue_events: {
+        Row: {
+          actor_id: string | null
+          actor_name: string | null
+          created_at: string
+          id: string
+          issue_id: string
+          note: string | null
+          status: Database["public"]["Enums"]["equipment_issue_status"] | null
+        }
+        Insert: {
+          actor_id?: string | null
+          actor_name?: string | null
+          created_at?: string
+          id?: string
+          issue_id: string
+          note?: string | null
+          status?: Database["public"]["Enums"]["equipment_issue_status"] | null
+        }
+        Update: {
+          actor_id?: string | null
+          actor_name?: string | null
+          created_at?: string
+          id?: string
+          issue_id?: string
+          note?: string | null
+          status?: Database["public"]["Enums"]["equipment_issue_status"] | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "equipment_issue_events_issue_id_fkey"
+            columns: ["issue_id"]
+            isOneToOne: false
+            referencedRelation: "equipment_issues"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      equipment_issues: {
+        Row: {
+          closed_at: string | null
+          created_at: string
+          created_by: string | null
+          description: string | null
+          equipment_id: string | null
+          facility_id: string
+          id: string
+          opened_at: string
+          pool_id: string | null
+          severity: Database["public"]["Enums"]["commercial_status"]
+          status: Database["public"]["Enums"]["equipment_issue_status"]
+          title: string
+          updated_at: string
+          warranty_claim_reference: string | null
+        }
+        Insert: {
+          closed_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          equipment_id?: string | null
+          facility_id: string
+          id?: string
+          opened_at?: string
+          pool_id?: string | null
+          severity?: Database["public"]["Enums"]["commercial_status"]
+          status?: Database["public"]["Enums"]["equipment_issue_status"]
+          title: string
+          updated_at?: string
+          warranty_claim_reference?: string | null
+        }
+        Update: {
+          closed_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          equipment_id?: string | null
+          facility_id?: string
+          id?: string
+          opened_at?: string
+          pool_id?: string | null
+          severity?: Database["public"]["Enums"]["commercial_status"]
+          status?: Database["public"]["Enums"]["equipment_issue_status"]
+          title?: string
+          updated_at?: string
+          warranty_claim_reference?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "equipment_issues_equipment_id_fkey"
+            columns: ["equipment_id"]
+            isOneToOne: false
+            referencedRelation: "pool_equipment"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "equipment_issues_facility_id_fkey"
+            columns: ["facility_id"]
+            isOneToOne: false
+            referencedRelation: "facilities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "equipment_issues_pool_id_fkey"
+            columns: ["pool_id"]
+            isOneToOne: false
+            referencedRelation: "pools"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      facilities: {
+        Row: {
+          active: boolean
+          address: string | null
+          city: string | null
+          contact_email: string | null
+          contact_name: string | null
+          contact_phone: string | null
+          created_at: string
+          id: string
+          name: string
+          notes: string | null
+          organization_id: string
+          state: string | null
+          updated_at: string
+          zip_code: string | null
+        }
+        Insert: {
+          active?: boolean
+          address?: string | null
+          city?: string | null
+          contact_email?: string | null
+          contact_name?: string | null
+          contact_phone?: string | null
+          created_at?: string
+          id?: string
+          name: string
+          notes?: string | null
+          organization_id: string
+          state?: string | null
+          updated_at?: string
+          zip_code?: string | null
+        }
+        Update: {
+          active?: boolean
+          address?: string | null
+          city?: string | null
+          contact_email?: string | null
+          contact_name?: string | null
+          contact_phone?: string | null
+          created_at?: string
+          id?: string
+          name?: string
+          notes?: string | null
+          organization_id?: string
+          state?: string | null
+          updated_at?: string
+          zip_code?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "facilities_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "commercial_organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      facility_documents: {
+        Row: {
+          category: string | null
+          created_at: string
+          external_url: string | null
+          facility_id: string
+          file_path: string | null
+          id: string
+          title: string
+          updated_at: string
+          uploaded_by: string | null
+        }
+        Insert: {
+          category?: string | null
+          created_at?: string
+          external_url?: string | null
+          facility_id: string
+          file_path?: string | null
+          id?: string
+          title: string
+          updated_at?: string
+          uploaded_by?: string | null
+        }
+        Update: {
+          category?: string | null
+          created_at?: string
+          external_url?: string | null
+          facility_id?: string
+          file_path?: string | null
+          id?: string
+          title?: string
+          updated_at?: string
+          uploaded_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "facility_documents_facility_id_fkey"
+            columns: ["facility_id"]
+            isOneToOne: false
+            referencedRelation: "facilities"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       inbound_sms_messages: {
         Row: {
           client_id: string | null
@@ -783,6 +1090,75 @@ export type Database = {
         }
         Relationships: []
       }
+      pool_equipment: {
+        Row: {
+          category: string | null
+          created_at: string
+          facility_id: string
+          id: string
+          installation_date: string | null
+          manufacturer: string | null
+          model: string | null
+          name: string
+          notes: string | null
+          photo_urls: string[]
+          pool_id: string | null
+          serial_number: string | null
+          status: Database["public"]["Enums"]["commercial_status"]
+          updated_at: string
+          warranty_expiration: string | null
+        }
+        Insert: {
+          category?: string | null
+          created_at?: string
+          facility_id: string
+          id?: string
+          installation_date?: string | null
+          manufacturer?: string | null
+          model?: string | null
+          name: string
+          notes?: string | null
+          photo_urls?: string[]
+          pool_id?: string | null
+          serial_number?: string | null
+          status?: Database["public"]["Enums"]["commercial_status"]
+          updated_at?: string
+          warranty_expiration?: string | null
+        }
+        Update: {
+          category?: string | null
+          created_at?: string
+          facility_id?: string
+          id?: string
+          installation_date?: string | null
+          manufacturer?: string | null
+          model?: string | null
+          name?: string
+          notes?: string | null
+          photo_urls?: string[]
+          pool_id?: string | null
+          serial_number?: string | null
+          status?: Database["public"]["Enums"]["commercial_status"]
+          updated_at?: string
+          warranty_expiration?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pool_equipment_facility_id_fkey"
+            columns: ["facility_id"]
+            isOneToOne: false
+            referencedRelation: "facilities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pool_equipment_pool_id_fkey"
+            columns: ["pool_id"]
+            isOneToOne: false
+            referencedRelation: "pools"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       pool_needs_messages: {
         Row: {
           chemical_needs: Json
@@ -836,6 +1212,66 @@ export type Database = {
             columns: ["technician_id"]
             isOneToOne: false
             referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pools: {
+        Row: {
+          active: boolean
+          client_id: string | null
+          created_at: string
+          facility_id: string
+          id: string
+          name: string
+          notes: string | null
+          pool_size: number | null
+          pool_type: string | null
+          pool_use: string | null
+          status: Database["public"]["Enums"]["commercial_status"]
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          client_id?: string | null
+          created_at?: string
+          facility_id: string
+          id?: string
+          name: string
+          notes?: string | null
+          pool_size?: number | null
+          pool_type?: string | null
+          pool_use?: string | null
+          status?: Database["public"]["Enums"]["commercial_status"]
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          client_id?: string | null
+          created_at?: string
+          facility_id?: string
+          id?: string
+          name?: string
+          notes?: string | null
+          pool_size?: number | null
+          pool_type?: string | null
+          pool_use?: string | null
+          status?: Database["public"]["Enums"]["commercial_status"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pools_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pools_facility_id_fkey"
+            columns: ["facility_id"]
+            isOneToOne: false
+            referencedRelation: "facilities"
             referencedColumns: ["id"]
           },
         ]
@@ -1587,6 +2023,15 @@ export type Database = {
       }
       cleanup_expired_invitations: { Args: never; Returns: number }
       cleanup_old_invitations: { Args: never; Returns: number }
+      commercial_can_view_client: {
+        Args: { p_client_id: string }
+        Returns: boolean
+      }
+      commercial_can_view_facility: {
+        Args: { p_facility_id: string }
+        Returns: boolean
+      }
+      commercial_can_view_org: { Args: { p_org_id: string }; Returns: boolean }
       emergency_lockdown_pii_access: { Args: never; Returns: boolean }
       get_all_technicians: {
         Args: never
@@ -1616,6 +2061,8 @@ export type Database = {
       get_user_public_info: { Args: { user_lookup_id: string }; Returns: Json }
       get_user_public_safe: { Args: { user_lookup_id: string }; Returns: Json }
       hash_invitation_token: { Args: { token_input: string }; Returns: string }
+      is_admin_user: { Args: never; Returns: boolean }
+      is_staff: { Args: never; Returns: boolean }
       is_username_available: {
         Args: { username_input: string }
         Returns: boolean
@@ -1672,7 +2119,20 @@ export type Database = {
       validate_user_access_policies: { Args: never; Returns: boolean }
     }
     Enums: {
-      [_ in never]: never
+      commercial_status:
+        | "normal"
+        | "monitor"
+        | "attention_needed"
+        | "action_required"
+      commercial_user_role: "viewer" | "manager"
+      equipment_issue_status:
+        | "new"
+        | "monitoring"
+        | "warranty_contacted"
+        | "service_scheduled"
+        | "waiting_on_parts"
+        | "repair_in_progress"
+        | "completed"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -1799,6 +2259,23 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      commercial_status: [
+        "normal",
+        "monitor",
+        "attention_needed",
+        "action_required",
+      ],
+      commercial_user_role: ["viewer", "manager"],
+      equipment_issue_status: [
+        "new",
+        "monitoring",
+        "warranty_contacted",
+        "service_scheduled",
+        "waiting_on_parts",
+        "repair_in_progress",
+        "completed",
+      ],
+    },
   },
 } as const

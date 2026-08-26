@@ -63,6 +63,8 @@ import Contact from "./pages/Contact";
 import Services from './pages/Services';
 import Commercial from './pages/Commercial';
 import CommercialPortal from './pages/commercial/Portal';
+import CommercialAccounts from './pages/admin/CommercialAccounts';
+
 
 
 import OptinProof from "./pages/OptinProof";
@@ -398,6 +400,15 @@ const AppRoutes = () => {
             </ProtectedRoute>
           } 
         />
+        <Route
+          path="/admin/commercial"
+          element={
+            <ProtectedRoute allowedRoles={['admin']}>
+              <CommercialAccounts />
+            </ProtectedRoute>
+          }
+        />
+
         <Route 
           path="/admin/notification-templates" 
           element={

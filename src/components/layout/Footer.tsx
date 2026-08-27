@@ -10,7 +10,7 @@ const Footer = () => {
           <div className="space-y-4">
             <div className="flex items-center space-x-3">
               <img 
-                src="/__l5e/assets-v1/de5b46ee-deff-464a-b5b1-889af36d1530/aqua-clear-logo.png" 
+                src="/aqua-clear-logo.png" 
                 alt="Aqua Clear Pools" 
                 className="h-12 w-12 object-contain"
               />

@@ -118,7 +118,7 @@ serve(async (req) => {
       if (!body.email) {
         throw new Error("Email channel selected but no email provided");
       }
-      const logoUrl = `${PUBLIC_BASE_URL}/__l5e/assets-v1/de5b46ee-deff-464a-b5b1-889af36d1530/aqua-clear-logo.png`;
+      const logoUrl = `${PUBLIC_BASE_URL}/aqua-clear-logo.png`;
       const primary = "#0099E5";
       const secondary = "#005B96";
       const html = `

@@ -79,8 +79,8 @@ const handler = async (req: Request): Promise<Response> => {
         emailContent = generateConfirmationEmail(
           user?.email || "",
           token_hash,
-          redirect_to || site_url || "https://aquaclearpools.lovable.app",
-          site_url || "https://aquaclearpools.lovable.app"
+          redirect_to || site_url || "https://getaquaclear.com",
+          site_url || "https://getaquaclear.com"
         );
         break;
       case "recovery":
@@ -88,8 +88,8 @@ const handler = async (req: Request): Promise<Response> => {
         emailContent = generatePasswordResetEmail(
           user?.email || "",
           token_hash,
-          redirect_to || site_url || "https://aquaclearpools.lovable.app",
-          site_url || "https://aquaclearpools.lovable.app"
+          redirect_to || site_url || "https://getaquaclear.com",
+          site_url || "https://getaquaclear.com"
         );
         break;
       case "magic_link":
@@ -97,8 +97,8 @@ const handler = async (req: Request): Promise<Response> => {
         emailContent = generateMagicLinkEmail(
           user?.email || "",
           token_hash,
-          redirect_to || site_url || "https://aquaclearpools.lovable.app",
-          site_url || "https://aquaclearpools.lovable.app"
+          redirect_to || site_url || "https://getaquaclear.com",
+          site_url || "https://getaquaclear.com"
         );
         break;
       default:
@@ -106,7 +106,7 @@ const handler = async (req: Request): Promise<Response> => {
         emailContent = generateGenericEmail(
           user?.email || "",
           token_hash,
-          redirect_to || site_url || "https://aquaclearpools.lovable.app"
+          redirect_to || site_url || "https://getaquaclear.com"
         );
     }
 

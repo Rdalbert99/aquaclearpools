@@ -248,7 +248,7 @@ const handler = async (req: Request): Promise<Response> => {
         <p>You can log in to the system using your username and the password that was provided to you.</p>
         
         <div style="margin: 30px 0;">
-          <a href="${supabaseUrl.replace('.supabase.co', '.lovableproject.com')}/auth/login" 
+          <a href="https://getaquaclear.com/auth/login" 
              style="background: #2563eb; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">
             Login to Your Account
           </a>

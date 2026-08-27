@@ -552,7 +552,40 @@ export default function NewClient() {
         </div>
       </div>
 
+      {isAdmin && (
+        <Card className="border-primary/40">
+          <CardContent className="p-4 space-y-2">
+            <Label htmlFor="clientType" className="text-base font-semibold">Client Type *</Label>
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+              <Select value={clientType} onValueChange={(v: 'residential' | 'commercial') => setClientType(v)}>
+                <SelectTrigger id="clientType" className="sm:w-72">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="residential">Residential</SelectItem>
+                  <SelectItem value="commercial">Commercial</SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-sm text-muted-foreground">
+                {clientType === 'commercial'
+                  ? 'Adds organization, facility and pool details, then links the commercial pool to this client record.'
+                  : 'Standard Aqua Clear client creation.'}
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {isCommercial && (
+          <CommercialClientFields
+            value={commercial}
+            onChange={setCommercial}
+            organizations={organizations}
+            facilities={facilityOptions}
+          />
+        )}
+
         {/* Client Information */}
         <Card>
           <CardHeader>

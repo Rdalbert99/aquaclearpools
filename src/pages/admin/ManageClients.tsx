@@ -91,6 +91,8 @@ export default function ManageClients() {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [poolTypeFilter, setPoolTypeFilter] = useState('all');
+  const [accountTypeFilter, setAccountTypeFilter] = useState('all');
+  const [commercialClientIds, setCommercialClientIds] = useState<Set<string>>(new Set());
   const [deletingClientId, setDeletingClientId] = useState<string | null>(null);
   const [selectedClientForTech, setSelectedClientForTech] = useState<Client | null>(null);
   const [selectedTechId, setSelectedTechId] = useState<string>('');

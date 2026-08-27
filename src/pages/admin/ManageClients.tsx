@@ -91,6 +91,8 @@ export default function ManageClients() {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [poolTypeFilter, setPoolTypeFilter] = useState('all');
+  const [accountTypeFilter, setAccountTypeFilter] = useState('all');
+  const [commercialClientIds, setCommercialClientIds] = useState<Set<string>>(new Set());
   const [deletingClientId, setDeletingClientId] = useState<string | null>(null);
   const [selectedClientForTech, setSelectedClientForTech] = useState<Client | null>(null);
   const [selectedTechId, setSelectedTechId] = useState<string>('');
@@ -103,6 +105,7 @@ export default function ManageClients() {
     loadClients();
     loadTechnicians();
     loadDuplicateCandidates();
+    loadCommercialLinks();
     
     // Timeout to prevent infinite loading
     const timeout = setTimeout(() => {
@@ -113,9 +116,16 @@ export default function ManageClients() {
     return () => clearTimeout(timeout);
   }, []);
 
+  const loadCommercialLinks = async () => {
+    const { data } = await supabase.from('pools').select('client_id').not('client_id', 'is', null);
+    setCommercialClientIds(new Set((data ?? []).map((p: any) => p.client_id as string)));
+  };
+
+  const isCommercialClient = (id: string) => commercialClientIds.has(id);
+
   useEffect(() => {
     filterClients();
-  }, [clients, searchTerm, statusFilter, poolTypeFilter]);
+  }, [clients, searchTerm, statusFilter, poolTypeFilter, accountTypeFilter, commercialClientIds]);
 
   const loadClients = async () => {
     try {
@@ -284,6 +294,13 @@ export default function ManageClients() {
     // Pool type filter
     if (poolTypeFilter !== 'all') {
       filtered = filtered.filter(client => client.pool_type.toLowerCase() === poolTypeFilter);
+    }
+
+    // Account type filter (residential vs commercial)
+    if (accountTypeFilter === 'commercial') {
+      filtered = filtered.filter(client => isCommercialClient(client.id));
+    } else if (accountTypeFilter === 'residential') {
+      filtered = filtered.filter(client => !isCommercialClient(client.id));
     }
 
     setFilteredClients(filtered);
@@ -587,11 +604,24 @@ export default function ManageClients() {
                 </SelectContent>
               </Select>
 
+              <Select value={accountTypeFilter} onValueChange={setAccountTypeFilter}>
+                <SelectTrigger className="w-40">
+                  <SelectValue placeholder="Account Type" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Accounts</SelectItem>
+                  <SelectItem value="residential">Residential</SelectItem>
+                  <SelectItem value="commercial">Commercial</SelectItem>
+                </SelectContent>
+              </Select>
+
               <Button variant="outline" size="sm" onClick={() => {
                 setSearchTerm('');
                 setStatusFilter('all');
                 setPoolTypeFilter('all');
+                setAccountTypeFilter('all');
               }}>
+
                 <Filter className="h-4 w-4 mr-2" />
                 Clear
               </Button>
@@ -647,11 +677,20 @@ export default function ManageClients() {
                         <td className="p-4">
                           <div>
                             <p className="font-medium">{client.customer}</p>
+                            <Badge
+                              variant="outline"
+                              className={isCommercialClient(client.id)
+                                ? 'mt-1 border-primary/40 bg-primary/10 text-primary'
+                                : 'mt-1 text-muted-foreground'}
+                            >
+                              {isCommercialClient(client.id) ? 'Commercial' : 'Residential'}
+                            </Badge>
                             <p className="text-sm text-muted-foreground">
                               ID: {client.id.slice(0, 8)}...
                             </p>
                           </div>
                         </td>
+
                         
                          <td className="p-4">
                            <div className="space-y-1">

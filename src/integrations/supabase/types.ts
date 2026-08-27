@@ -573,11 +573,13 @@ export type Database = {
           active: boolean
           address: string | null
           billing_email: string | null
+          billing_notes: string | null
           created_at: string
           id: string
           name: string
           notes: string | null
           phone: string | null
+          primary_contact_name: string | null
           slug: string | null
           updated_at: string
         }
@@ -585,11 +587,13 @@ export type Database = {
           active?: boolean
           address?: string | null
           billing_email?: string | null
+          billing_notes?: string | null
           created_at?: string
           id?: string
           name: string
           notes?: string | null
           phone?: string | null
+          primary_contact_name?: string | null
           slug?: string | null
           updated_at?: string
         }
@@ -597,11 +601,13 @@ export type Database = {
           active?: boolean
           address?: string | null
           billing_email?: string | null
+          billing_notes?: string | null
           created_at?: string
           id?: string
           name?: string
           notes?: string | null
           phone?: string | null
+          primary_contact_name?: string | null
           slug?: string | null
           updated_at?: string
         }
@@ -1228,6 +1234,10 @@ export type Database = {
           pool_size: number | null
           pool_type: string | null
           pool_use: string | null
+          sanitizer_type: string | null
+          season_end: string | null
+          season_start: string | null
+          service_frequency: string | null
           status: Database["public"]["Enums"]["commercial_status"]
           updated_at: string
         }
@@ -1242,6 +1252,10 @@ export type Database = {
           pool_size?: number | null
           pool_type?: string | null
           pool_use?: string | null
+          sanitizer_type?: string | null
+          season_end?: string | null
+          season_start?: string | null
+          service_frequency?: string | null
           status?: Database["public"]["Enums"]["commercial_status"]
           updated_at?: string
         }
@@ -1256,6 +1270,10 @@ export type Database = {
           pool_size?: number | null
           pool_type?: string | null
           pool_use?: string | null
+          sanitizer_type?: string | null
+          season_end?: string | null
+          season_start?: string | null
+          service_frequency?: string | null
           status?: Database["public"]["Enums"]["commercial_status"]
           updated_at?: string
         }

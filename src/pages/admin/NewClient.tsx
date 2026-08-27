@@ -15,6 +15,8 @@ import { UsernameInput } from '@/components/ui/username-input';
 import { AddressInput } from '@/components/ui/address-input';
 import { validateAddress, type AddressComponents } from '@/lib/address-validation';
 import { ClientInviteDialog } from '@/components/admin/ClientInviteDialog';
+import { CommercialClientFields, emptyCommercial, type CommercialFormData } from '@/components/admin/CommercialClientFields';
+import { CommercialPortalInviteDialog } from '@/components/admin/CommercialPortalInviteDialog';
 import { PhoneField } from '@/components/common/PhoneField';
 import { normalizePhoneField, phoneFieldError } from '@/lib/phone';
 import { 
@@ -67,6 +69,11 @@ export default function NewClient() {
   const [users, setUsers] = useState<any[]>([]);
   const [showInviteDialog, setShowInviteDialog] = useState(false);
   const [createdClient, setCreatedClient] = useState<any>(null);
+  const [clientType, setClientType] = useState<'residential' | 'commercial'>('residential');
+  const [commercial, setCommercial] = useState<CommercialFormData>(emptyCommercial);
+  const [organizations, setOrganizations] = useState<{ id: string; name: string }[]>([]);
+  const [facilityOptions, setFacilityOptions] = useState<{ id: string; name: string; organization_id: string }[]>([]);
+  const [portalInvite, setPortalInvite] = useState<{ organizationId: string; organizationName: string; facilityId: string; facilityName: string } | null>(null);
   const [client, setClient] = useState<ClientFormData>({
     customer: '',
     email: '',
@@ -101,8 +108,19 @@ export default function NewClient() {
   useEffect(() => {
     if (isAdmin) {
       loadUsers();
+      loadCommercialLookups();
     }
   }, [isAdmin]);
+
+  const loadCommercialLookups = async () => {
+    const [orgRes, facRes] = await Promise.all([
+      supabase.from('commercial_organizations').select('id, name').order('name'),
+      supabase.from('facilities').select('id, name, organization_id').order('name'),
+    ]);
+    setOrganizations(orgRes.data ?? []);
+    setFacilityOptions(facRes.data ?? []);
+  };
+
 
   const loadUsers = async () => {
     try {
@@ -128,6 +146,80 @@ export default function NewClient() {
     setClient({ ...client, new_user_password: password });
   };
 
+  const isCommercial = isAdmin && clientType === 'commercial';
+
+  /**
+   * Creates the commercial organization → facility → pool chain and links the
+   * pool to the newly created Aqua Clear client record. Additive only: the
+   * clients row is the operational source of truth for service.
+   */
+  const createCommercialRecords = async (clientId: string) => {
+    let organizationId = commercial.organization_id;
+    let organizationName = organizations.find((o) => o.id === organizationId)?.name ?? '';
+
+    if (commercial.org_mode === 'new') {
+      const { data: org, error: orgError } = await supabase
+        .from('commercial_organizations')
+        .insert({
+          name: commercial.org_name.trim(),
+          primary_contact_name: commercial.org_primary_contact || null,
+          billing_email: commercial.org_email || null,
+          phone: commercial.org_phone ? normalizePhoneField(commercial.org_phone) : null,
+          billing_notes: commercial.org_billing_notes || null,
+        })
+        .select('id, name')
+        .single();
+      if (orgError) throw orgError;
+      organizationId = org.id;
+      organizationName = org.name;
+    }
+
+    let facilityId = commercial.facility_id;
+    let facilityName = facilityOptions.find((f) => f.id === facilityId)?.name ?? '';
+    const usingExistingFacility = commercial.org_mode === 'existing' && commercial.facility_mode === 'existing';
+
+    if (!usingExistingFacility) {
+      const { data: facility, error: facilityError } = await supabase
+        .from('facilities')
+        .insert({
+          organization_id: organizationId,
+          name: commercial.facility_name.trim(),
+          address: commercial.facility_address || null,
+          city: commercial.facility_city || null,
+          state: commercial.facility_state || null,
+          zip_code: commercial.facility_zip || null,
+          contact_name: commercial.facility_contact_name || null,
+          contact_phone: commercial.facility_contact_phone ? normalizePhoneField(commercial.facility_contact_phone) : null,
+          contact_email: client.email || null,
+          notes: commercial.facility_notes || null,
+        })
+        .select('id, name')
+        .single();
+      if (facilityError) throw facilityError;
+      facilityId = facility.id;
+      facilityName = facility.name;
+    }
+
+    const { error: poolError } = await supabase.from('pools').insert({
+      facility_id: facilityId,
+      client_id: clientId,
+      name: commercial.pool_name.trim(),
+      pool_use: commercial.pool_use || null,
+      pool_type: commercial.pool_type || client.pool_type || null,
+      pool_size: commercial.pool_size ? Number(commercial.pool_size) : client.pool_size || null,
+      sanitizer_type: commercial.sanitizer_type || null,
+      service_frequency: commercial.pool_service_frequency || null,
+      season_start: commercial.season_start || null,
+      season_end: commercial.season_end || null,
+      notes: commercial.pool_notes || null,
+    });
+    if (poolError) throw poolError;
+
+    await loadCommercialLookups();
+    return { organizationId, organizationName, facilityId, facilityName };
+  };
+
+
   const handleSave = async () => {
     console.log('🚀 Starting handleSave, client data:', client);
     
@@ -147,6 +239,20 @@ export default function NewClient() {
         variant: "destructive"
       });
       return;
+    }
+
+    if (isCommercial) {
+      const problems: string[] = [];
+      if (commercial.org_mode === 'existing' && !commercial.organization_id) problems.push('Select a commercial organization');
+      if (commercial.org_mode === 'new' && !commercial.org_name.trim()) problems.push('Organization name is required');
+      const usingExistingFacility = commercial.org_mode === 'existing' && commercial.facility_mode === 'existing';
+      if (usingExistingFacility && !commercial.facility_id) problems.push('Select a facility');
+      if (!usingExistingFacility && !commercial.facility_name.trim()) problems.push('Facility name is required');
+      if (!commercial.pool_name.trim()) problems.push('Pool name is required');
+      if (problems.length) {
+        toast({ title: 'Commercial details incomplete', description: problems.join(' · '), variant: 'destructive' });
+        return;
+      }
     }
 
     const phoneProblem = phoneFieldError(client.phone);
@@ -313,20 +419,32 @@ export default function NewClient() {
       if (error) throw error;
 
       setCreatedClient(data);
-      
+
+      let commercialCreated: { organizationId: string; organizationName: string; facilityId: string; facilityName: string } | null = null;
+
+      if (isCommercial) {
+        commercialCreated = await createCommercialRecords(data.id);
+      }
+
       toast({
         title: "Success",
-        description: "Client created successfully"
+        description: isCommercial
+          ? "Commercial client created and linked to the portal"
+          : "Client created successfully"
       });
 
-      // Show invite dialog if client has email or phone (admin only)
-      if (isAdmin && (client.email || client.phone)) {
+      if (commercialCreated) {
+        setPortalInvite(commercialCreated);
+        if (isAdmin && (client.email || client.phone)) setShowInviteDialog(true);
+      } else if (isAdmin && (client.email || client.phone)) {
+        // Show invite dialog if client has email or phone (admin only)
         setShowInviteDialog(true);
       } else if (isTech) {
         navigate('/tech');
       } else {
         navigate(`/admin/clients/${data.id}`);
       }
+
 
     } catch (error) {
       console.error('❌ Error creating client:', error);
@@ -434,7 +552,40 @@ export default function NewClient() {
         </div>
       </div>
 
+      {isAdmin && (
+        <Card className="border-primary/40">
+          <CardContent className="p-4 space-y-2">
+            <Label htmlFor="clientType" className="text-base font-semibold">Client Type *</Label>
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+              <Select value={clientType} onValueChange={(v: 'residential' | 'commercial') => setClientType(v)}>
+                <SelectTrigger id="clientType" className="sm:w-72">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="residential">Residential</SelectItem>
+                  <SelectItem value="commercial">Commercial</SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-sm text-muted-foreground">
+                {clientType === 'commercial'
+                  ? 'Adds organization, facility and pool details, then links the commercial pool to this client record.'
+                  : 'Standard Aqua Clear client creation.'}
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {isCommercial && (
+          <CommercialClientFields
+            value={commercial}
+            onChange={setCommercial}
+            organizations={organizations}
+            facilities={facilityOptions}
+          />
+        )}
+
         {/* Client Information */}
         <Card>
           <CardHeader>
@@ -917,7 +1068,7 @@ export default function NewClient() {
           open={showInviteDialog}
           onOpenChange={(open) => {
             setShowInviteDialog(open);
-            if (!open) {
+            if (!open && !portalInvite) {
               navigate(`/admin/clients/${createdClient.id}`);
             }
           }}
@@ -927,6 +1078,23 @@ export default function NewClient() {
             email: createdClient.contact_email,
             phone: createdClient.contact_phone
           }}
+        />
+      )}
+
+      {/* Optional next step: invite commercial portal users */}
+      {portalInvite && createdClient && (
+        <CommercialPortalInviteDialog
+          open={!showInviteDialog}
+          onOpenChange={(open) => {
+            if (!open) {
+              setPortalInvite(null);
+              navigate(`/admin/clients/${createdClient.id}`);
+            }
+          }}
+          organizationId={portalInvite.organizationId}
+          organizationName={portalInvite.organizationName}
+          facilityId={portalInvite.facilityId}
+          facilityName={portalInvite.facilityName}
         />
       )}
     </div>

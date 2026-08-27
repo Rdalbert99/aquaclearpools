@@ -1,5 +1,7 @@
 import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { Helmet } from 'react-helmet-async';
+
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -129,6 +131,22 @@ const Commercial = () => {
 
   return (
     <div className="min-h-screen bg-background">
+      <Helmet>
+        <title>Commercial Pool Management | Aqua Clear Pools</title>
+        <meta name="description" content="Professional commercial aquatic facility management with digital service reports, chemistry tracking, equipment monitoring, and complete transparency." />
+        <link rel="canonical" href="https://getaquaclear.com/commercial" />
+        <meta property="og:site_name" content="Aqua Clear Pools" />
+        <meta property="og:type" content="website" />
+        <meta property="og:title" content="Commercial Pool Management | Aqua Clear Pools" />
+        <meta property="og:description" content="Professional commercial aquatic facility management with digital service reports, chemistry tracking, equipment monitoring, and complete transparency." />
+        <meta property="og:url" content="https://getaquaclear.com/commercial" />
+        <meta property="og:image" content="https://getaquaclear.com/og-aqua-clear-commercial.jpg" />
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" content="Commercial Pool Management | Aqua Clear Pools" />
+        <meta name="twitter:description" content="Professional commercial aquatic facility management with digital service reports, chemistry tracking, equipment monitoring, and complete transparency." />
+        <meta name="twitter:image" content="https://getaquaclear.com/og-aqua-clear-commercial.jpg" />
+      </Helmet>
+
       <PublicNavbar />
 
       {/* HERO */}

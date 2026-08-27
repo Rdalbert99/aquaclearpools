@@ -1068,7 +1068,7 @@ export default function NewClient() {
           open={showInviteDialog}
           onOpenChange={(open) => {
             setShowInviteDialog(open);
-            if (!open) {
+            if (!open && !portalInvite) {
               navigate(`/admin/clients/${createdClient.id}`);
             }
           }}
@@ -1078,6 +1078,23 @@ export default function NewClient() {
             email: createdClient.contact_email,
             phone: createdClient.contact_phone
           }}
+        />
+      )}
+
+      {/* Optional next step: invite commercial portal users */}
+      {portalInvite && createdClient && (
+        <CommercialPortalInviteDialog
+          open={!showInviteDialog}
+          onOpenChange={(open) => {
+            if (!open) {
+              setPortalInvite(null);
+              navigate(`/admin/clients/${createdClient.id}`);
+            }
+          }}
+          organizationId={portalInvite.organizationId}
+          organizationName={portalInvite.organizationName}
+          facilityId={portalInvite.facilityId}
+          facilityName={portalInvite.facilityName}
         />
       )}
     </div>

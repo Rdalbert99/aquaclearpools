@@ -105,6 +105,7 @@ export default function ManageClients() {
     loadClients();
     loadTechnicians();
     loadDuplicateCandidates();
+    loadCommercialLinks();
     
     // Timeout to prevent infinite loading
     const timeout = setTimeout(() => {
@@ -115,9 +116,16 @@ export default function ManageClients() {
     return () => clearTimeout(timeout);
   }, []);
 
+  const loadCommercialLinks = async () => {
+    const { data } = await supabase.from('pools').select('client_id').not('client_id', 'is', null);
+    setCommercialClientIds(new Set((data ?? []).map((p: any) => p.client_id as string)));
+  };
+
+  const isCommercialClient = (id: string) => commercialClientIds.has(id);
+
   useEffect(() => {
     filterClients();
-  }, [clients, searchTerm, statusFilter, poolTypeFilter]);
+  }, [clients, searchTerm, statusFilter, poolTypeFilter, accountTypeFilter, commercialClientIds]);
 
   const loadClients = async () => {
     try {

@@ -167,6 +167,20 @@ export default function NewClient() {
       return;
     }
 
+    if (isCommercial) {
+      const problems: string[] = [];
+      if (commercial.org_mode === 'existing' && !commercial.organization_id) problems.push('Select a commercial organization');
+      if (commercial.org_mode === 'new' && !commercial.org_name.trim()) problems.push('Organization name is required');
+      const usingExistingFacility = commercial.org_mode === 'existing' && commercial.facility_mode === 'existing';
+      if (usingExistingFacility && !commercial.facility_id) problems.push('Select a facility');
+      if (!usingExistingFacility && !commercial.facility_name.trim()) problems.push('Facility name is required');
+      if (!commercial.pool_name.trim()) problems.push('Pool name is required');
+      if (problems.length) {
+        toast({ title: 'Commercial details incomplete', description: problems.join(' · '), variant: 'destructive' });
+        return;
+      }
+    }
+
     const phoneProblem = phoneFieldError(client.phone);
     if (phoneProblem) {
       toast({ title: "Invalid phone number", description: phoneProblem, variant: "destructive" });

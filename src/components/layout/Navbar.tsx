@@ -105,7 +105,7 @@ export const Navbar = () => {
           <div className="flex items-center">
             <Link to="/" className="flex items-center space-x-2">
               <img 
-                src="/lovable-uploads/77c07711-430c-44ce-bbd3-290293acb2c4.png" 
+                src="/aqua-clear-logo.png" 
                 alt="Aqua Clear Pools" 
                 className="h-8 w-8 object-contain"
               />

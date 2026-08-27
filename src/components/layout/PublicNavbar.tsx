@@ -59,7 +59,7 @@ export const PublicNavbar = ({ onRequestService }: PublicNavbarProps) => {
           {/* Logo */}
           <div className="flex items-center space-x-3">
             <img 
-              src="/lovable-uploads/ac1a09a4-823e-491c-bf59-fb76c8abb196.png" 
+              src="/aqua-clear-logo.png" 
               alt="Aqua Clear Pools" 
               className="h-12 w-12 object-contain bg-transparent"
               style={{ 

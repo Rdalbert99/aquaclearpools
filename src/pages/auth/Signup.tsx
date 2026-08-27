@@ -140,7 +140,7 @@ export default function Signup() {
         <CardHeader className="text-center">
           <div className="mx-auto mb-4 w-16 h-16 flex items-center justify-center">
             <img 
-              src="/lovable-uploads/77c07711-430c-44ce-bbd3-290293acb2c4.png" 
+              src="/aqua-clear-logo.png" 
               alt="Aqua Clear Pools logo for signup page" 
               className="w-16 h-16 object-contain"
               loading="lazy"

@@ -230,7 +230,7 @@ const handler = async (req: Request): Promise<Response> => {
             </div>
 
             <div style="text-align: center; margin: 30px 0;">
-              <a href="https://aquaclearpools.lovable.app/client" style="background: #3b82f6; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; display: inline-block;">View in Customer Portal</a>
+              <a href="https://getaquaclear.com/client" style="background: #3b82f6; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; display: inline-block;">View in Customer Portal</a>
             </div>
 
             <p>We're looking forward to keeping your pool crystal clear!</p>

@@ -146,6 +146,8 @@ export default function NewClient() {
     setClient({ ...client, new_user_password: password });
   };
 
+  const isCommercial = isAdmin && clientType === 'commercial';
+
   const handleSave = async () => {
     console.log('🚀 Starting handleSave, client data:', client);
     

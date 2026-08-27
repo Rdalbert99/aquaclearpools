@@ -69,6 +69,11 @@ export default function NewClient() {
   const [users, setUsers] = useState<any[]>([]);
   const [showInviteDialog, setShowInviteDialog] = useState(false);
   const [createdClient, setCreatedClient] = useState<any>(null);
+  const [clientType, setClientType] = useState<'residential' | 'commercial'>('residential');
+  const [commercial, setCommercial] = useState<CommercialFormData>(emptyCommercial);
+  const [organizations, setOrganizations] = useState<{ id: string; name: string }[]>([]);
+  const [facilityOptions, setFacilityOptions] = useState<{ id: string; name: string; organization_id: string }[]>([]);
+  const [portalInvite, setPortalInvite] = useState<{ organizationId: string; organizationName: string; facilityId: string; facilityName: string } | null>(null);
   const [client, setClient] = useState<ClientFormData>({
     customer: '',
     email: '',

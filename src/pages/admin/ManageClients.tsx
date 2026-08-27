@@ -604,11 +604,24 @@ export default function ManageClients() {
                 </SelectContent>
               </Select>
 
+              <Select value={accountTypeFilter} onValueChange={setAccountTypeFilter}>
+                <SelectTrigger className="w-40">
+                  <SelectValue placeholder="Account Type" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Accounts</SelectItem>
+                  <SelectItem value="residential">Residential</SelectItem>
+                  <SelectItem value="commercial">Commercial</SelectItem>
+                </SelectContent>
+              </Select>
+
               <Button variant="outline" size="sm" onClick={() => {
                 setSearchTerm('');
                 setStatusFilter('all');
                 setPoolTypeFilter('all');
+                setAccountTypeFilter('all');
               }}>
+
                 <Filter className="h-4 w-4 mr-2" />
                 Clear
               </Button>

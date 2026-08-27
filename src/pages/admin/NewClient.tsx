@@ -347,20 +347,32 @@ export default function NewClient() {
       if (error) throw error;
 
       setCreatedClient(data);
-      
+
+      let commercialCreated: { organizationId: string; organizationName: string; facilityId: string; facilityName: string } | null = null;
+
+      if (isCommercial) {
+        commercialCreated = await createCommercialRecords(data.id);
+      }
+
       toast({
         title: "Success",
-        description: "Client created successfully"
+        description: isCommercial
+          ? "Commercial client created and linked to the portal"
+          : "Client created successfully"
       });
 
-      // Show invite dialog if client has email or phone (admin only)
-      if (isAdmin && (client.email || client.phone)) {
+      if (commercialCreated) {
+        setPortalInvite(commercialCreated);
+        if (isAdmin && (client.email || client.phone)) setShowInviteDialog(true);
+      } else if (isAdmin && (client.email || client.phone)) {
+        // Show invite dialog if client has email or phone (admin only)
         setShowInviteDialog(true);
       } else if (isTech) {
         navigate('/tech');
       } else {
         navigate(`/admin/clients/${data.id}`);
       }
+
 
     } catch (error) {
       console.error('❌ Error creating client:', error);

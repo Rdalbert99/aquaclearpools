@@ -39,7 +39,7 @@ const CommercialPortal = () => {
   const [tab, setTab] = useState('dashboard');
 
   useEffect(() => {
-    if (!authLoading && !isAuthenticated) navigate('/login');
+    if (!authLoading && !isAuthenticated) navigate('/auth/login');
   }, [authLoading, isAuthenticated, navigate]);
 
   useEffect(() => {

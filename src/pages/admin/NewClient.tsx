@@ -108,8 +108,19 @@ export default function NewClient() {
   useEffect(() => {
     if (isAdmin) {
       loadUsers();
+      loadCommercialLookups();
     }
   }, [isAdmin]);
+
+  const loadCommercialLookups = async () => {
+    const [orgRes, facRes] = await Promise.all([
+      supabase.from('commercial_organizations').select('id, name').order('name'),
+      supabase.from('facilities').select('id, name, organization_id').order('name'),
+    ]);
+    setOrganizations(orgRes.data ?? []);
+    setFacilityOptions(facRes.data ?? []);
+  };
+
 
   const loadUsers = async () => {
     try {

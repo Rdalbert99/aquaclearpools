@@ -12,6 +12,7 @@ import { AddressComponents } from '@/lib/address-validation';
 import { useToast } from '@/hooks/use-toast';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { validatePasswordComplexity } from '@/lib/security';
+import { BrandLogo } from "@/components/layout/BrandLogo";
 
 export default function Signup() {
   const [formData, setFormData] = useState({
@@ -139,9 +140,8 @@ export default function Signup() {
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
           <div className="mx-auto mb-4 w-16 h-16 flex items-center justify-center">
-            <img 
-              src="/aqua-clear-logo.png" 
-              alt="Aqua Clear Pools logo for signup page" 
+            <BrandLogo 
+                            alt="Aqua Clear Pools logo for signup page" 
               className="w-16 h-16 object-contain"
               loading="lazy"
             />

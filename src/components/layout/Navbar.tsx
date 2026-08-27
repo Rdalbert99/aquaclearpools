@@ -16,6 +16,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Home, Calculator, Users, FileText, LogOut, User, Star, Calendar, BarChart3, Mail, Menu, MessageSquare, MessageSquareReply, Radio, Building2 } from 'lucide-react';
 import { NotificationBell } from '@/components/notifications/NotificationBell';
+import { BrandLogo } from "@/components/layout/BrandLogo";
 
 export const Navbar = () => {
   const { user, signOut, isAdmin, isTech, isClient } = useAuth();
@@ -104,9 +105,8 @@ export const Navbar = () => {
         <div className="flex justify-between h-16">
           <div className="flex items-center">
             <Link to="/" className="flex items-center space-x-2">
-              <img 
-                src="/aqua-clear-logo.png" 
-                alt="Aqua Clear Pools" 
+              <BrandLogo 
+                                alt="Aqua Clear Pools" 
                 className="h-8 w-8 object-contain"
               />
               <span className="text-xl font-bold text-gray-900">Aqua Clear Pools</span>

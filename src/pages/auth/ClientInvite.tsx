@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
+import { BrandLogo } from "@/components/layout/BrandLogo";
 
 
 interface InvitePayload {
@@ -206,9 +207,8 @@ export default function ClientInvite() {
         <Card className="max-w-md mx-auto">
           <CardHeader className="text-center pb-4">
             <div className="flex justify-center mb-4">
-              <img 
-                src="/aqua-clear-logo.png" 
-                alt="Aqua Clear Pools" 
+              <BrandLogo 
+                                alt="Aqua Clear Pools" 
                 className="h-16 w-auto"
               />
             </div>
@@ -238,9 +238,8 @@ export default function ClientInvite() {
       <Card className="max-w-2xl mx-auto">
         <CardHeader className="text-center pb-4">
           <div className="flex justify-center mb-4">
-            <img 
-              src="/aqua-clear-logo.png" 
-              alt="Aqua Clear Pools" 
+            <BrandLogo 
+                            alt="Aqua Clear Pools" 
               className="h-16 w-auto"
             />
           </div>

@@ -19,6 +19,7 @@ import Footer from '@/components/layout/Footer';
 import { PublicNavbar } from '@/components/layout/PublicNavbar';
 import { PortalShowcaseSection } from '@/components/portal/PortalShowcaseSection';
 import { ServicesSection } from '@/components/services/ServicesSection';
+import { BrandLogo } from "@/components/layout/BrandLogo";
 
 
 
@@ -48,9 +49,8 @@ const Index = () => {
         <div className="relative z-10 text-center text-white max-w-4xl mx-auto px-4">
           <div className="mb-4 flex justify-center">
             <div className="perspective-1000">
-              <img 
-                src="/aqua-clear-logo.png" 
-                alt="Aqua Clear Pools 3D Logo" 
+              <BrandLogo 
+                                alt="Aqua Clear Pools 3D Logo" 
                 className="w-[300px] h-[500px] object-contain transform-gpu animate-spin-y-3d"
                 style={{ 
                   filter: 'drop-shadow(0 0 30px rgba(59, 130, 246, 0.8))',

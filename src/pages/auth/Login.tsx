@@ -9,6 +9,7 @@ import { Eye, EyeOff, Droplets } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { initializeDemoUsers } from '@/lib/demo-users';
 import { supabase } from '@/integrations/supabase/client';
+import { BrandLogo } from "@/components/layout/BrandLogo";
 export default function Login() {
   const [login, setLogin] = useState('');
   const [password, setPassword] = useState('');
@@ -155,9 +156,8 @@ export default function Login() {
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
           <div className="mx-auto mb-4 w-16 h-16 flex items-center justify-center">
-            <img 
-              src="/aqua-clear-logo.png" 
-              alt="Aqua Clear Pools Logo" 
+            <BrandLogo 
+                            alt="Aqua Clear Pools Logo" 
               className="w-16 h-16 object-contain"
             />
           </div>

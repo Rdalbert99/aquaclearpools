@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Menu, Phone, Calendar, LogIn } from 'lucide-react';
+import { BrandLogo } from "@/components/layout/BrandLogo";
 
 interface PublicNavbarProps {
   onRequestService?: () => void;
@@ -58,9 +59,8 @@ export const PublicNavbar = ({ onRequestService }: PublicNavbarProps) => {
         <div className="flex justify-between items-center">
           {/* Logo */}
           <div className="flex items-center space-x-3">
-            <img 
-              src="/aqua-clear-logo.png" 
-              alt="Aqua Clear Pools" 
+            <BrandLogo 
+                            alt="Aqua Clear Pools" 
               className="h-12 w-12 object-contain bg-transparent"
               style={{ 
                 filter: 'drop-shadow(0 0 10px rgba(255,255,255,0.3))',

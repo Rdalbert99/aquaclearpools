@@ -119,13 +119,22 @@ serve(async (req) => {
         throw new Error("Email channel selected but no email provided");
       }
       const logoUrl = `${PUBLIC_BASE_URL}/aqua-clear-logo.png`;
+      const logoDarkUrl = `${PUBLIC_BASE_URL}/aqua-clear-logo-dark.png`;
       const primary = "#0099E5";
       const secondary = "#005B96";
       const html = `
+        <style>
+          @media (prefers-color-scheme: dark) {
+            .ac-logo-light { display: none !important; }
+            .ac-logo-dark { display: inline-block !important; }
+          }
+        </style>
         <div style="font-family:system-ui,Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:#111;max-width:600px;margin:0 auto;padding:8px">
           <div style="text-align:center;margin-bottom:20px">
-            <img src="${logoUrl}" alt="Aqua Clear Pools" style="max-width:220px;height:auto" />
+            <img class="ac-logo-light" src="${logoUrl}" alt="Aqua Clear Pools" style="max-width:220px;height:auto" />
+            <img class="ac-logo-dark" src="${logoDarkUrl}" alt="Aqua Clear Pools" style="max-width:220px;height:auto;display:none" />
           </div>
+
           <h2 style="margin:0 0 16px;color:${primary}">Welcome to Aqua Clear Pools!</h2>
           <p>Thank you for choosing Aqua Clear Pools for your pool care.</p>
           <p>Your customer portal gives you access to:</p>

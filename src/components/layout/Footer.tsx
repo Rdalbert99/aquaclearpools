@@ -1,5 +1,6 @@
 import { Phone, Mail, MapPin, Clock } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { BrandLogo } from "@/components/layout/BrandLogo";
 
 const Footer = () => {
   return (
@@ -9,8 +10,8 @@ const Footer = () => {
           {/* Company Info */}
           <div className="space-y-4">
             <div className="flex items-center space-x-3">
-              <img 
-                src="/aqua-clear-logo.png" 
+              <BrandLogo 
+                forceDark
                 alt="Aqua Clear Pools" 
                 className="h-12 w-12 object-contain"
               />

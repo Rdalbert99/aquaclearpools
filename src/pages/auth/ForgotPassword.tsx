@@ -7,6 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { ArrowLeft, Mail } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { BrandLogo } from "@/components/layout/BrandLogo";
 
 export default function ForgotPassword() {
   const [identifier, setIdentifier] = useState('');
@@ -147,9 +148,8 @@ export default function ForgotPassword() {
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
           <div className="mx-auto mb-4 w-16 h-16 flex items-center justify-center">
-            <img 
-              src="/aqua-clear-logo.png" 
-              alt="Aqua Clear Pools Logo" 
+            <BrandLogo 
+                            alt="Aqua Clear Pools Logo" 
               className="w-16 h-16 object-contain"
             />
           </div>

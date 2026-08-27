@@ -17,6 +17,7 @@ import { LoadingSpinner } from '@/components/ui/loading-spinner';
 import { UsernameInput } from '@/components/ui/username-input';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Droplets, ArrowLeft, CheckCircle, Mail } from 'lucide-react';
+import { BrandLogo } from "@/components/layout/BrandLogo";
 
 
 const formSchema = z.object({
@@ -180,9 +181,8 @@ export default function ClientSignup() {
             Back to Home
           </Link>
           <div className="flex items-center justify-center mb-4">
-            <img 
-              src="/aqua-clear-logo.png" 
-              alt="Aqua Clear Pools" 
+            <BrandLogo 
+                            alt="Aqua Clear Pools" 
               className="h-12 w-12 object-contain mr-3"
             />
             <span className="text-2xl font-bold">Aqua Clear Pools</span>

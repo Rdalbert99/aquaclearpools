@@ -148,6 +148,78 @@ export default function NewClient() {
 
   const isCommercial = isAdmin && clientType === 'commercial';
 
+  /**
+   * Creates the commercial organization → facility → pool chain and links the
+   * pool to the newly created Aqua Clear client record. Additive only: the
+   * clients row is the operational source of truth for service.
+   */
+  const createCommercialRecords = async (clientId: string) => {
+    let organizationId = commercial.organization_id;
+    let organizationName = organizations.find((o) => o.id === organizationId)?.name ?? '';
+
+    if (commercial.org_mode === 'new') {
+      const { data: org, error: orgError } = await supabase
+        .from('commercial_organizations')
+        .insert({
+          name: commercial.org_name.trim(),
+          primary_contact_name: commercial.org_primary_contact || null,
+          billing_email: commercial.org_email || null,
+          phone: commercial.org_phone ? normalizePhoneField(commercial.org_phone) : null,
+          billing_notes: commercial.org_billing_notes || null,
+        })
+        .select('id, name')
+        .single();
+      if (orgError) throw orgError;
+      organizationId = org.id;
+      organizationName = org.name;
+    }
+
+    let facilityId = commercial.facility_id;
+    let facilityName = facilityOptions.find((f) => f.id === facilityId)?.name ?? '';
+    const usingExistingFacility = commercial.org_mode === 'existing' && commercial.facility_mode === 'existing';
+
+    if (!usingExistingFacility) {
+      const { data: facility, error: facilityError } = await supabase
+        .from('facilities')
+        .insert({
+          organization_id: organizationId,
+          name: commercial.facility_name.trim(),
+          address: commercial.facility_address || null,
+          city: commercial.facility_city || null,
+          state: commercial.facility_state || null,
+          zip_code: commercial.facility_zip || null,
+          contact_name: commercial.facility_contact_name || null,
+          contact_phone: commercial.facility_contact_phone ? normalizePhoneField(commercial.facility_contact_phone) : null,
+          contact_email: client.email || null,
+          notes: commercial.facility_notes || null,
+        })
+        .select('id, name')
+        .single();
+      if (facilityError) throw facilityError;
+      facilityId = facility.id;
+      facilityName = facility.name;
+    }
+
+    const { error: poolError } = await supabase.from('pools').insert({
+      facility_id: facilityId,
+      client_id: clientId,
+      name: commercial.pool_name.trim(),
+      pool_use: commercial.pool_use || null,
+      pool_type: commercial.pool_type || client.pool_type || null,
+      pool_size: commercial.pool_size ? Number(commercial.pool_size) : client.pool_size || null,
+      sanitizer_type: commercial.sanitizer_type || null,
+      service_frequency: commercial.pool_service_frequency || null,
+      season_start: commercial.season_start || null,
+      season_end: commercial.season_end || null,
+      notes: commercial.pool_notes || null,
+    });
+    if (poolError) throw poolError;
+
+    await loadCommercialLookups();
+    return { organizationId, organizationName, facilityId, facilityName };
+  };
+
+
   const handleSave = async () => {
     console.log('🚀 Starting handleSave, client data:', client);
     

@@ -15,6 +15,8 @@ import { UsernameInput } from '@/components/ui/username-input';
 import { AddressInput } from '@/components/ui/address-input';
 import { validateAddress, type AddressComponents } from '@/lib/address-validation';
 import { ClientInviteDialog } from '@/components/admin/ClientInviteDialog';
+import { CommercialClientFields, emptyCommercial, type CommercialFormData } from '@/components/admin/CommercialClientFields';
+import { CommercialPortalInviteDialog } from '@/components/admin/CommercialPortalInviteDialog';
 import { PhoneField } from '@/components/common/PhoneField';
 import { normalizePhoneField, phoneFieldError } from '@/lib/phone';
 import { 

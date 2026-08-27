@@ -296,6 +296,13 @@ export default function ManageClients() {
       filtered = filtered.filter(client => client.pool_type.toLowerCase() === poolTypeFilter);
     }
 
+    // Account type filter (residential vs commercial)
+    if (accountTypeFilter === 'commercial') {
+      filtered = filtered.filter(client => isCommercialClient(client.id));
+    } else if (accountTypeFilter === 'residential') {
+      filtered = filtered.filter(client => !isCommercialClient(client.id));
+    }
+
     setFilteredClients(filtered);
   };
 

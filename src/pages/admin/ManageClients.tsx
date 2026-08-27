@@ -677,11 +677,20 @@ export default function ManageClients() {
                         <td className="p-4">
                           <div>
                             <p className="font-medium">{client.customer}</p>
+                            <Badge
+                              variant="outline"
+                              className={isCommercialClient(client.id)
+                                ? 'mt-1 border-primary/40 bg-primary/10 text-primary'
+                                : 'mt-1 text-muted-foreground'}
+                            >
+                              {isCommercialClient(client.id) ? 'Commercial' : 'Residential'}
+                            </Badge>
                             <p className="text-sm text-muted-foreground">
                               ID: {client.id.slice(0, 8)}...
                             </p>
                           </div>
                         </td>
+
                         
                          <td className="p-4">
                            <div className="space-y-1">

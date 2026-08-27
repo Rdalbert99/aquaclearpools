@@ -49,7 +49,7 @@ const Index = () => {
           <div className="mb-4 flex justify-center">
             <div className="perspective-1000">
               <img 
-                src="/lovable-uploads/ac1a09a4-823e-491c-bf59-fb76c8abb196.png" 
+                src="/__l5e/assets-v1/de5b46ee-deff-464a-b5b1-889af36d1530/aqua-clear-logo.png" 
                 alt="Aqua Clear Pools 3D Logo" 
                 className="w-[300px] h-[500px] object-contain transform-gpu animate-spin-y-3d"
                 style={{ 

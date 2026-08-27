@@ -207,7 +207,7 @@ export default function ClientInvite() {
           <CardHeader className="text-center pb-4">
             <div className="flex justify-center mb-4">
               <img 
-                src="/lovable-uploads/ac1a09a4-823e-491c-bf59-fb76c8abb196.png" 
+                src="/__l5e/assets-v1/de5b46ee-deff-464a-b5b1-889af36d1530/aqua-clear-logo.png" 
                 alt="Aqua Clear Pools" 
                 className="h-16 w-auto"
               />
@@ -239,7 +239,7 @@ export default function ClientInvite() {
         <CardHeader className="text-center pb-4">
           <div className="flex justify-center mb-4">
             <img 
-              src="/lovable-uploads/ac1a09a4-823e-491c-bf59-fb76c8abb196.png" 
+              src="/__l5e/assets-v1/de5b46ee-deff-464a-b5b1-889af36d1530/aqua-clear-logo.png" 
               alt="Aqua Clear Pools" 
               className="h-16 w-auto"
             />

@@ -1026,7 +1026,10 @@ export default function FieldService() {
                   <Button type="button" size="sm" variant={equipment[item.id] === true ? 'default' : 'outline'}
                     onClick={() => setEquipment(p => ({ ...p, [item.id]: true }))}>OK</Button>
                   <Button type="button" size="sm" variant={equipment[item.id] === false ? 'destructive' : 'outline'}
-                    onClick={() => setEquipment(p => ({ ...p, [item.id]: false }))}>Issue</Button>
+                    onClick={() => {
+                      setEquipment(p => ({ ...p, [item.id]: false }));
+                      setIssuePromptItem({ id: item.id, label: item.label });
+                    }}>Issue</Button>
                 </div>
               </div>
             ))}
@@ -1218,6 +1221,15 @@ export default function FieldService() {
         saving={saving}
         onSkip={() => { setFollowUpOpen(false); leaveVisit(); }}
         onConfirm={createFollowUp}
+      />
+
+      <IssueFollowUpPrompt
+        open={!!issuePromptItem}
+        saving={issueSaving}
+        equipmentLabel={issuePromptItem?.label ?? 'Equipment'}
+        initialDescription={equipmentIssue.trim() || undefined}
+        onSkip={() => setIssuePromptItem(null)}
+        onConfirm={createIssueFollowUp}
       />
     </div>
   );

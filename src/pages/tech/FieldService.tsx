@@ -630,6 +630,55 @@ export default function FieldService() {
     navigate((user as any)?.role === 'admin' ? '/admin' : '/tech');
   }
 
+  async function createIssueFollowUp(value: IssueFollowUpValue) {
+    if (!client || !issuePromptItem) return;
+    setIssueSaving(true);
+    try {
+      const parts = value.partsNeeded
+        ? `Parts needed — ordered by ${value.orderedBy === 'customer' ? 'customer' : 'Aqua Clear'}`
+        : 'No parts needed';
+      const notes = [value.description, parts].filter(Boolean).join(' — ');
+
+      const { error } = await supabase.from('follow_up_visits').insert({
+        client_id: client.id,
+        source_service_id: savedServiceId,
+        scheduled_date: value.date,
+        reason: 'Equipment repair',
+        notes: `${issuePromptItem.label}: ${notes}`,
+        assigned_technician_id: user?.id ?? null,
+        created_by: user?.id ?? null,
+      });
+      if (error) throw error;
+
+      if (value.description) {
+        setEquipmentIssue(prev => {
+          const line = `${issuePromptItem.label}: ${value.description} (${parts})`;
+          return prev.trim() ? `${prev.trim()}\n${line}` : line;
+        });
+      }
+
+      await logVisitEvent({
+        serviceId: savedServiceId,
+        clientId: client.id,
+        technicianId: user?.id ?? null,
+        technicianName: (user as any)?.name ?? null,
+        eventType: 'follow_up_created',
+        detail: `${issuePromptItem.label} issue — ${parts} — follow-up ${value.date}`,
+      });
+
+      toast({
+        title: 'Follow-up scheduled',
+        description: `${issuePromptItem.label} repair on ${new Date(`${value.date}T00:00:00`).toLocaleDateString()}. ${parts}.`,
+      });
+      setIssuePromptItem(null);
+    } catch (e: any) {
+      console.error(e);
+      toast({ title: 'Error', description: e.message || 'Could not create follow-up', variant: 'destructive' });
+    } finally {
+      setIssueSaving(false);
+    }
+  }
+
   async function createFollowUp(value: FollowUpValue) {
     if (!client) return;
     setSaving(true);

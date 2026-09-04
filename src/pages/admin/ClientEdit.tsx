@@ -70,6 +70,9 @@ interface ClientFormData {
   notify_on_assignment: boolean;
   notification_method: string;
   salt_cell_last_cleaned: string;
+  algaecide_interval_days: number | '';
+  algaecide_product: string;
+  algaecide_last_dosed: string;
 }
 
 const CLIENT_STATUSES = ['Active', 'Inactive', 'Suspended'] as const;
@@ -185,7 +188,10 @@ export default function ClientEdit() {
         notify_on_confirmation: data.notify_on_confirmation ?? true,
         notify_on_assignment: data.notify_on_assignment ?? true,
         notification_method: data.notification_method || 'email',
-        salt_cell_last_cleaned: (data as any).salt_cell_last_cleaned ? String((data as any).salt_cell_last_cleaned).split('T')[0] : ''
+        salt_cell_last_cleaned: (data as any).salt_cell_last_cleaned ? String((data as any).salt_cell_last_cleaned).split('T')[0] : '',
+        algaecide_interval_days: (data as any).algaecide_interval_days ?? '',
+        algaecide_product: (data as any).algaecide_product || '',
+        algaecide_last_dosed: (data as any).algaecide_last_dosed ? String((data as any).algaecide_last_dosed).split('T')[0] : ''
       });
 
       setMustChangePassword(userData?.must_change_password || false);
@@ -315,6 +321,9 @@ export default function ClientEdit() {
         contact_email: client.email || null,
         contact_phone: client.phone || null,
         salt_cell_last_cleaned: client.salt_cell_last_cleaned || null,
+        algaecide_interval_days: client.algaecide_interval_days === '' ? null : Number(client.algaecide_interval_days),
+        algaecide_product: client.algaecide_product?.trim() || null,
+        algaecide_last_dosed: client.algaecide_last_dosed || null,
         updated_at: new Date().toISOString()
       };
 

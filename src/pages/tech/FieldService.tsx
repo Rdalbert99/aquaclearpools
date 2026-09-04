@@ -40,6 +40,7 @@ import { getAlgaecideStatus } from '@/lib/algaecide';
 import { buildVisitSnapshot, logVisitEvent } from '@/lib/visit-log';
 import { ServiceStickyHeader, type VisitStatus } from '@/components/tech/ServiceStickyHeader';
 import { FollowUpPrompt, type FollowUpValue } from '@/components/tech/FollowUpPrompt';
+import { IssueFollowUpPrompt, type IssueFollowUpValue } from '@/components/tech/IssueFollowUpPrompt';
 
 type Client = {
   id: string;
@@ -222,6 +223,8 @@ export default function FieldService() {
   const [lastSaltCleaning, setLastSaltCleaning] = useState<string | null>(null);
   const [followUpOpen, setFollowUpOpen] = useState(false);
   const [savedServiceId, setSavedServiceId] = useState<string | null>(null);
+  const [issuePromptItem, setIssuePromptItem] = useState<{ id: string; label: string } | null>(null);
+  const [issueSaving, setIssueSaving] = useState(false);
 
   const isSaltPool = !!client?.pool_type && /salt/i.test(client.pool_type);
   const saltCellDueDays = (() => {

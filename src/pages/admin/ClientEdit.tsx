@@ -70,6 +70,9 @@ interface ClientFormData {
   notify_on_assignment: boolean;
   notification_method: string;
   salt_cell_last_cleaned: string;
+  algaecide_interval_days: number | '';
+  algaecide_product: string;
+  algaecide_last_dosed: string;
 }
 
 const CLIENT_STATUSES = ['Active', 'Inactive', 'Suspended'] as const;
@@ -185,7 +188,10 @@ export default function ClientEdit() {
         notify_on_confirmation: data.notify_on_confirmation ?? true,
         notify_on_assignment: data.notify_on_assignment ?? true,
         notification_method: data.notification_method || 'email',
-        salt_cell_last_cleaned: (data as any).salt_cell_last_cleaned ? String((data as any).salt_cell_last_cleaned).split('T')[0] : ''
+        salt_cell_last_cleaned: (data as any).salt_cell_last_cleaned ? String((data as any).salt_cell_last_cleaned).split('T')[0] : '',
+        algaecide_interval_days: (data as any).algaecide_interval_days ?? '',
+        algaecide_product: (data as any).algaecide_product || '',
+        algaecide_last_dosed: (data as any).algaecide_last_dosed ? String((data as any).algaecide_last_dosed).split('T')[0] : ''
       });
 
       setMustChangePassword(userData?.must_change_password || false);
@@ -315,6 +321,9 @@ export default function ClientEdit() {
         contact_email: client.email || null,
         contact_phone: client.phone || null,
         salt_cell_last_cleaned: client.salt_cell_last_cleaned || null,
+        algaecide_interval_days: client.algaecide_interval_days === '' ? null : Number(client.algaecide_interval_days),
+        algaecide_product: client.algaecide_product?.trim() || null,
+        algaecide_last_dosed: client.algaecide_last_dosed || null,
         updated_at: new Date().toISOString()
       };
 
@@ -1094,6 +1103,56 @@ export default function ClientEdit() {
             </CardContent>
           </Card>
         )}
+
+        {/* Algaecide Schedule */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center space-x-2">
+              <Droplets className="h-5 w-5" />
+              <span>Maintenance Algaecide</span>
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              Set how often this pool gets a maintenance algaecide dose. The technician's service screen will
+              calculate the dose from pool volume and flag it when it's due.
+            </p>
+            <div className="grid gap-4 md:grid-cols-3">
+              <div className="space-y-2">
+                <Label htmlFor="algaecideInterval">Dose every (days)</Label>
+                <Input
+                  id="algaecideInterval"
+                  type="number"
+                  min={0}
+                  placeholder="e.g. 14 (0 = off)"
+                  value={client.algaecide_interval_days === '' ? '' : client.algaecide_interval_days}
+                  onChange={(e) => handleInputChange('algaecide_interval_days', e.target.value === '' ? '' : Number(e.target.value))}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="algaecideProduct">Product</Label>
+                <Input
+                  id="algaecideProduct"
+                  placeholder="60% polyquat algaecide"
+                  value={client.algaecide_product}
+                  onChange={(e) => handleInputChange('algaecide_product', e.target.value)}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="algaecideLastDosed">Last dosed on</Label>
+                <Input
+                  id="algaecideLastDosed"
+                  type="date"
+                  max={new Date().toISOString().split('T')[0]}
+                  value={client.algaecide_last_dosed || ''}
+                  onChange={(e) => handleInputChange('algaecide_last_dosed', e.target.value)}
+                />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+
 
         {/* Last Tech Visit */}
         {lastTechVisit && (

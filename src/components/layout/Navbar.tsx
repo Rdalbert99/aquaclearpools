@@ -74,6 +74,7 @@ export const Navbar = () => {
         { label: 'SMS Forwarding', icon: MessageSquareReply, path: '/admin/sms-forwarding' },
         { label: 'Send Log', icon: MessageSquareReply, path: '/admin/message-logs' },
         { label: 'Telnyx Status', icon: Radio, path: '/admin/telnyx-status' },
+        { label: 'Follow-Ups', icon: Calendar, path: '/follow-ups' },
       ];
     }
     
@@ -82,6 +83,7 @@ export const Navbar = () => {
         { label: 'Dashboard', icon: Home, path: '/tech' },
         { label: 'Schedule', icon: Calendar, path: '/tech/schedule' },
         { label: 'My Clients', icon: Users, path: '/tech/clients' },
+        { label: 'Follow-Ups', icon: Calendar, path: '/follow-ups' },
         { label: 'Calculator', icon: Calculator, path: '/tech/calculator' },
         { label: 'Send Log', icon: MessageSquareReply, path: '/admin/message-logs' },
       ];

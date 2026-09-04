@@ -383,6 +383,9 @@ export type Database = {
       }
       clients: {
         Row: {
+          algaecide_interval_days: number | null
+          algaecide_last_dosed: string | null
+          algaecide_product: string | null
           assigned_technician_id: string | null
           company_name: string | null
           contact_address: string | null
@@ -419,6 +422,9 @@ export type Database = {
           user_id: string | null
         }
         Insert: {
+          algaecide_interval_days?: number | null
+          algaecide_last_dosed?: string | null
+          algaecide_product?: string | null
           assigned_technician_id?: string | null
           company_name?: string | null
           contact_address?: string | null
@@ -455,6 +461,9 @@ export type Database = {
           user_id?: string | null
         }
         Update: {
+          algaecide_interval_days?: number | null
+          algaecide_last_dosed?: string | null
+          algaecide_product?: string | null
           assigned_technician_id?: string | null
           company_name?: string | null
           contact_address?: string | null
@@ -823,6 +832,76 @@ export type Database = {
             columns: ["facility_id"]
             isOneToOne: false
             referencedRelation: "facilities"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      follow_up_visits: {
+        Row: {
+          assigned_technician_id: string | null
+          client_id: string
+          completed_at: string | null
+          completed_service_id: string | null
+          created_at: string
+          created_by: string | null
+          id: string
+          notes: string | null
+          reason: string
+          scheduled_date: string
+          source_service_id: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          assigned_technician_id?: string | null
+          client_id: string
+          completed_at?: string | null
+          completed_service_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          notes?: string | null
+          reason: string
+          scheduled_date: string
+          source_service_id?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          assigned_technician_id?: string | null
+          client_id?: string
+          completed_at?: string | null
+          completed_service_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          notes?: string | null
+          reason?: string
+          scheduled_date?: string
+          source_service_id?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "follow_up_visits_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "follow_up_visits_completed_service_id_fkey"
+            columns: ["completed_service_id"]
+            isOneToOne: false
+            referencedRelation: "services"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "follow_up_visits_source_service_id_fkey"
+            columns: ["source_service_id"]
+            isOneToOne: false
+            referencedRelation: "services"
             referencedColumns: ["id"]
           },
         ]
@@ -1608,6 +1687,54 @@ export type Database = {
           },
         ]
       }
+      service_status_events: {
+        Row: {
+          client_id: string | null
+          created_at: string
+          detail: string | null
+          event_type: string
+          id: string
+          service_id: string | null
+          technician_id: string | null
+          technician_name: string | null
+        }
+        Insert: {
+          client_id?: string | null
+          created_at?: string
+          detail?: string | null
+          event_type: string
+          id?: string
+          service_id?: string | null
+          technician_id?: string | null
+          technician_name?: string | null
+        }
+        Update: {
+          client_id?: string | null
+          created_at?: string
+          detail?: string | null
+          event_type?: string
+          id?: string
+          service_id?: string | null
+          technician_id?: string | null
+          technician_name?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "service_status_events_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "service_status_events_service_id_fkey"
+            columns: ["service_id"]
+            isOneToOne: false
+            referencedRelation: "services"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       services: {
         Row: {
           actions: Json | null
@@ -1615,27 +1742,35 @@ export type Database = {
           alkalinity_level: number | null
           before_photo_url: string | null
           calcium_hardness_level: number | null
+          checklist: Json
           chemicals_added: string | null
           chemicals_cost: number
           chlorine_level: number | null
           client_id: string | null
+          completed_at: string | null
           cost: number | null
           created_at: string | null
           cyanuric_acid_level: number | null
           duration: number | null
           duration_minutes: number | null
+          equipment_check: Json
+          health_score: number | null
           id: string
           message_preview: string | null
           notes: string | null
+          on_my_way_at: string | null
           performed_at: string
           ph_level: number | null
           readings: Json | null
           service_date: string
           services_performed: string | null
+          started_at: string | null
           status: string | null
           technician_id: string | null
+          technician_locked: boolean
           tests_performed: string[]
           updated_at: string | null
+          visit_snapshot: Json | null
         }
         Insert: {
           actions?: Json | null
@@ -1643,27 +1778,35 @@ export type Database = {
           alkalinity_level?: number | null
           before_photo_url?: string | null
           calcium_hardness_level?: number | null
+          checklist?: Json
           chemicals_added?: string | null
           chemicals_cost?: number
           chlorine_level?: number | null
           client_id?: string | null
+          completed_at?: string | null
           cost?: number | null
           created_at?: string | null
           cyanuric_acid_level?: number | null
           duration?: number | null
           duration_minutes?: number | null
+          equipment_check?: Json
+          health_score?: number | null
           id?: string
           message_preview?: string | null
           notes?: string | null
+          on_my_way_at?: string | null
           performed_at?: string
           ph_level?: number | null
           readings?: Json | null
           service_date?: string
           services_performed?: string | null
+          started_at?: string | null
           status?: string | null
           technician_id?: string | null
+          technician_locked?: boolean
           tests_performed?: string[]
           updated_at?: string | null
+          visit_snapshot?: Json | null
         }
         Update: {
           actions?: Json | null
@@ -1671,27 +1814,35 @@ export type Database = {
           alkalinity_level?: number | null
           before_photo_url?: string | null
           calcium_hardness_level?: number | null
+          checklist?: Json
           chemicals_added?: string | null
           chemicals_cost?: number
           chlorine_level?: number | null
           client_id?: string | null
+          completed_at?: string | null
           cost?: number | null
           created_at?: string | null
           cyanuric_acid_level?: number | null
           duration?: number | null
           duration_minutes?: number | null
+          equipment_check?: Json
+          health_score?: number | null
           id?: string
           message_preview?: string | null
           notes?: string | null
+          on_my_way_at?: string | null
           performed_at?: string
           ph_level?: number | null
           readings?: Json | null
           service_date?: string
           services_performed?: string | null
+          started_at?: string | null
           status?: string | null
           technician_id?: string | null
+          technician_locked?: boolean
           tests_performed?: string[]
           updated_at?: string | null
+          visit_snapshot?: Json | null
         }
         Relationships: [
           {

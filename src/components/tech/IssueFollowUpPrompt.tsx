@@ -131,6 +131,7 @@ export function IssueFollowUpPrompt({ open, saving, equipmentLabel, initialDescr
               description: description.trim() || undefined,
               partsNeeded: partsNeeded === true,
               orderedBy: partsNeeded ? orderedBy : undefined,
+              photoUrl,
             })}
           >
             Create follow-up

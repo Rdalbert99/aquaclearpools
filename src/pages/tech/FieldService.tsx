@@ -40,6 +40,7 @@ import { getAlgaecideStatus } from '@/lib/algaecide';
 import { buildVisitSnapshot, logVisitEvent } from '@/lib/visit-log';
 import { ServiceStickyHeader, type VisitStatus } from '@/components/tech/ServiceStickyHeader';
 import { FollowUpPrompt, type FollowUpValue } from '@/components/tech/FollowUpPrompt';
+import { IssueFollowUpPrompt, type IssueFollowUpValue } from '@/components/tech/IssueFollowUpPrompt';
 
 type Client = {
   id: string;
@@ -222,6 +223,8 @@ export default function FieldService() {
   const [lastSaltCleaning, setLastSaltCleaning] = useState<string | null>(null);
   const [followUpOpen, setFollowUpOpen] = useState(false);
   const [savedServiceId, setSavedServiceId] = useState<string | null>(null);
+  const [issuePromptItem, setIssuePromptItem] = useState<{ id: string; label: string } | null>(null);
+  const [issueSaving, setIssueSaving] = useState(false);
 
   const isSaltPool = !!client?.pool_type && /salt/i.test(client.pool_type);
   const saltCellDueDays = (() => {
@@ -627,6 +630,55 @@ export default function FieldService() {
     navigate((user as any)?.role === 'admin' ? '/admin' : '/tech');
   }
 
+  async function createIssueFollowUp(value: IssueFollowUpValue) {
+    if (!client || !issuePromptItem) return;
+    setIssueSaving(true);
+    try {
+      const parts = value.partsNeeded
+        ? `Parts needed — ordered by ${value.orderedBy === 'customer' ? 'customer' : 'Aqua Clear'}`
+        : 'No parts needed';
+      const notes = [value.description, parts].filter(Boolean).join(' — ');
+
+      const { error } = await supabase.from('follow_up_visits').insert({
+        client_id: client.id,
+        source_service_id: savedServiceId,
+        scheduled_date: value.date,
+        reason: 'Equipment repair',
+        notes: `${issuePromptItem.label}: ${notes}`,
+        assigned_technician_id: user?.id ?? null,
+        created_by: user?.id ?? null,
+      });
+      if (error) throw error;
+
+      if (value.description) {
+        setEquipmentIssue(prev => {
+          const line = `${issuePromptItem.label}: ${value.description} (${parts})`;
+          return prev.trim() ? `${prev.trim()}\n${line}` : line;
+        });
+      }
+
+      await logVisitEvent({
+        serviceId: savedServiceId,
+        clientId: client.id,
+        technicianId: user?.id ?? null,
+        technicianName: (user as any)?.name ?? null,
+        eventType: 'follow_up_created',
+        detail: `${issuePromptItem.label} issue — ${parts} — follow-up ${value.date}`,
+      });
+
+      toast({
+        title: 'Follow-up scheduled',
+        description: `${issuePromptItem.label} repair on ${new Date(`${value.date}T00:00:00`).toLocaleDateString()}. ${parts}.`,
+      });
+      setIssuePromptItem(null);
+    } catch (e: any) {
+      console.error(e);
+      toast({ title: 'Error', description: e.message || 'Could not create follow-up', variant: 'destructive' });
+    } finally {
+      setIssueSaving(false);
+    }
+  }
+
   async function createFollowUp(value: FollowUpValue) {
     if (!client) return;
     setSaving(true);
@@ -974,7 +1026,10 @@ export default function FieldService() {
                   <Button type="button" size="sm" variant={equipment[item.id] === true ? 'default' : 'outline'}
                     onClick={() => setEquipment(p => ({ ...p, [item.id]: true }))}>OK</Button>
                   <Button type="button" size="sm" variant={equipment[item.id] === false ? 'destructive' : 'outline'}
-                    onClick={() => setEquipment(p => ({ ...p, [item.id]: false }))}>Issue</Button>
+                    onClick={() => {
+                      setEquipment(p => ({ ...p, [item.id]: false }));
+                      setIssuePromptItem({ id: item.id, label: item.label });
+                    }}>Issue</Button>
                 </div>
               </div>
             ))}
@@ -1166,6 +1221,15 @@ export default function FieldService() {
         saving={saving}
         onSkip={() => { setFollowUpOpen(false); leaveVisit(); }}
         onConfirm={createFollowUp}
+      />
+
+      <IssueFollowUpPrompt
+        open={!!issuePromptItem}
+        saving={issueSaving}
+        equipmentLabel={issuePromptItem?.label ?? 'Equipment'}
+        initialDescription={equipmentIssue.trim() || undefined}
+        onSkip={() => setIssuePromptItem(null)}
+        onConfirm={createIssueFollowUp}
       />
     </div>
   );

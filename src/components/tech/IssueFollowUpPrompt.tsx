@@ -70,6 +70,20 @@ export function IssueFollowUpPrompt({ open, saving, equipmentLabel, initialDescr
           </div>
 
           <div>
+            <Label className="flex items-center gap-2">
+              <Camera className="h-4 w-4" /> Photo of the issue <span className="text-destructive">*</span>
+            </Label>
+            <p className="text-xs text-muted-foreground mb-2">A photo is required for every equipment issue.</p>
+            <ImageUpload
+              onImageUploaded={setPhotoUrl}
+              currentImage={photoUrl}
+              path="equipment-issues"
+              label="Take / upload equipment photo"
+            />
+          </div>
+
+
+          <div>
             <Label>Are parts needed?</Label>
             <div className="mt-2 flex gap-2">
               <Button type="button" size="sm" variant={partsNeeded === true ? 'default' : 'outline'}

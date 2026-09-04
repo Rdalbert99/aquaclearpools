@@ -36,6 +36,7 @@ export function IssueFollowUpPrompt({ open, saving, equipmentLabel, initialDescr
   const [description, setDescription] = useState('');
   const [partsNeeded, setPartsNeeded] = useState<boolean | null>(null);
   const [orderedBy, setOrderedBy] = useState<'aqua_clear' | 'customer'>('aqua_clear');
+  const [photoUrl, setPhotoUrl] = useState('');
 
   useEffect(() => {
     if (open) {
@@ -43,10 +44,11 @@ export function IssueFollowUpPrompt({ open, saving, equipmentLabel, initialDescr
       setDescription(initialDescription ?? '');
       setPartsNeeded(null);
       setOrderedBy('aqua_clear');
+      setPhotoUrl('');
     }
   }, [open, initialDescription]);
 
-  const canConfirm = !!date && partsNeeded !== null && (!partsNeeded || !!orderedBy);
+  const canConfirm = !!date && !!photoUrl && partsNeeded !== null && (!partsNeeded || !!orderedBy);
 
   return (
     <Dialog open={open} onOpenChange={(o) => { if (!o && !saving) onSkip(); }}>

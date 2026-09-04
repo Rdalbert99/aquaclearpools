@@ -1,63 +1,67 @@
-# Convert Aqua Clear into an installable PWA
+# Tech-First Service Workflow Redesign
 
-No redesign, no schema changes, no auth/role changes, no route changes. Everything below is additive packaging plus one important fix to a risky service worker that already exists in your project.
+Rebuild the technician service screen so a visit runs top-to-bottom with big action buttons,
+automatic logging, and structured history that can be analyzed later.
 
-## What I found today
+## Sticky header
+Always visible while scrolling:
+- Customer name + address (tap to navigate)
+- Visit status chip: Scheduled -> On My Way -> In Progress -> Complete
+- Assigned technician (locked once the visit starts)
+- Live timer that starts on "Start Service"
+- Pool Health Score 0-100, color coded (green 85+, yellow 60-84, orange 40-59, red under 40),
+  computed from chemistry deviation, equipment issues, overdue service, and salt-cell status
 
-- `index.html` already has a manifest link, theme color, and iOS tags.
-- `public/manifest.json` exists but references `/icon-192x192.png` and `/icon-512x512.png` (those files exist), while `index.html` points `apple-touch-icon` at `/icons/icon-192.png` — **that folder does not exist**, so the iPhone home-screen icon is currently broken.
-- `public/sw.js` is a hand-written **cache-first** service worker registered unconditionally in `src/main.tsx`. This is the single biggest risk in the app right now: it can serve technicians a stale version of the app indefinitely after you publish, and it also runs inside the Lovable preview.
-- 60+ routes across public site, Admin, Technician, and Client areas — all stay exactly as they are.
+## Collapsible cards
+One accordion, opened in the order a tech works:
+1. **Today's Service** - action buttons + what is included this visit
+2. **Chemistry** - test entry, dosing recommendations, algaecide schedule
+3. **Equipment** - pump/filter/salt cell status, flag an issue
+4. **Checklist** - brushed, skimmed, baskets, filter pressure, robot cleaned / in water
+5. **Photos & Notes** - before/after upload, client notes from the portal, tech notes
+6. **Repairs & Estimates** - open issues, add a repair need with rough estimate
+7. **Billing** - placeholder card showing visit cost and chemical cost, wired later
 
-## What I intend to change
+## Today's Service actions
+- **Send "On My Way" text** - existing arrival notification with ETA
+- **Start Service** - stamps `started_at`, starts the timer, locks the tech assignment
+- **Complete Service** - stamps `completed_at`, saves everything, then opens the follow-up prompt
+Each action writes a timestamped status event so the office sees the visit progress live.
 
-**1. Replace the risky service worker (highest value)**
-- Generate the service worker with `vite-plugin-pwa` (Workbox) at the same `/sw.js` path so already-installed phones pick up the replacement.
-- HTML navigations use network-first (never stale pages); only hashed JS/CSS/image assets are cached for offline shell + fast loads.
-- Registration moves into a single guarded wrapper that refuses to register in dev, in the Lovable editor preview, and inside iframes, and supports `?sw=off` as a kill switch to unregister if anything ever goes wrong in the field.
-- Supabase API calls are never cached, so no stale customer/service data.
+## Chemistry: algaecide schedule
+- Per-customer setting: algaecide interval (e.g. every 2 or 4 weeks) and product
+- Dose computed from pool volume (oz/gal math like the existing dosage engine)
+- The card flags "Algaecide due today - add X oz" and records it when the tech confirms
 
-**2. Manifest + icons + splash**
-- Update `manifest.json`: name, short name, `display: standalone`, theme/background color matching your existing blue, `id`, `scope`, maskable icon entries, and app shortcuts to Schedule / Clients.
-- Generate proper 192/512 (regular + maskable) icons and an `apple-touch-icon` from the existing Aqua Clear logo, and fix the broken `/icons/...` reference in `index.html`.
-- iOS splash comes from the manifest name/background color + apple meta tags already present.
+## Follow-up flow
+On completion, a dialog asks for a follow-up date and a reason (recheck chemistry, repair,
+algae treatment, equipment install, other). Saving creates the follow-up visit automatically and
+it appears on a new **Follow-Ups dashboard** for admins and techs, filterable by date and reason.
 
-**3. Update detection and forced refresh**
-- `registerType: "autoUpdate"` plus a small non-intrusive banner: "A new version of Aqua Clear is available — Update now." One tap reloads into the new build.
-- Periodic update check while the app is open (every ~15 min and on tab focus), so a technician working all day gets prompted rather than silently running an old build.
+## Structured visit history
+Every visit is stored in a consistent, machine-readable shape: readings, doses added with
+quantity and unit, checklist items completed, equipment flags, durations, photos, and outcome.
+This gives clean data for later AI analysis and cross-customer trend reporting (e.g. "which
+pools drift low on chlorine in August").
 
-**4. Version display and What's New**
-- A generated build version (from `package.json` version + build timestamp) exposed to the app.
-- Version shown on the Profile/Settings page (small text, no layout change).
-- New route `/whats-new` with a simple release-notes list read from a `src/releaseNotes.ts` file I maintain as we ship. After an update, users see a one-time "What's new in this version" link/toast; the page is also reachable from the version text.
+## Technical notes
+- New DB columns/tables: visit lifecycle timestamps and status events on `services`,
+  `follow_up_visits`, algaecide schedule fields on `clients`, and a structured
+  `visit_snapshot` JSON column for analysis.
+- New shared health-score helper in `src/lib/pool-health.ts` reusing `pool-chemistry`/`pool-status`.
+- `src/pages/tech/FieldService.tsx` is rebuilt around the sticky header + accordion; existing
+  logic (chemical usage, cost tracking, notifications, photo upload) is reused, not rewritten.
+- New route `/follow-ups` for the follow-up dashboard.
 
-**5. Phone polish (light touch only)**
-- Add safe-area padding and `viewport-fit=cover` so content clears the iPhone notch/home bar in standalone mode.
-- Bottom navigation for Admin/Tech/Client **only on small screens in the app shell** — same links your current mobile menu has, no changes to desktop navbar or page layouts.
-- Ensure tap targets in that bottom bar are 44px+.
-- Camera and GPS: your photo upload inputs get `capture` support and the route map keeps using the browser geolocation API — both already work in standalone PWAs; no new permissions flow.
+## Build order
+1. Database migration (visit lifecycle, follow-ups, algaecide schedule, snapshot)
+2. Health-score helper + sticky header
+3. Card-by-card rebuild of the service screen
+4. Action buttons with auto-logging and assignment lock
+5. Follow-up prompt + dashboard
+6. Structured snapshot written on completion
 
-## Risks and how I'll contain them
-
-| Risk | Mitigation |
-| --- | --- |
-| Existing cache-first SW has already cached old files on your techs' devices | New SW ships at the same `/sw.js` path with `skipWaiting` + cleanup of the old `acp-v1` cache, so the first visit after publish evicts it |
-| Offline shell hides real errors (e.g. tech thinks a service saved offline) | No offline write queue. Offline = app shell loads and shows a clear "no connection" state; saves still require network, exactly like today |
-| Bottom nav could crowd existing mobile pages | Mobile-only, fixed height, with matching bottom padding added to the app shell; no changes inside any page component |
-| iOS caches manifest fields at install time | I set `start_url`/`scope`/`id` correctly now (`/`), so no future reinstall is needed |
-| Service worker in Lovable preview causing white screens | Registration is hard-blocked on preview/iframe/dev hostnames |
-
-## Not included (tell me if you want them)
-
-- Offline data entry / background sync for service records.
-- Native app store builds (that's the separate Capacitor path).
-- Push notifications (separate messaging worker; your SMS/email flow is untouched).
-
-## Technical detail
-
-- Add `vite-plugin-pwa` with `injectRegister: null`, `devOptions.enabled: false`, `registerType: "autoUpdate"`, `filename: "sw.js"`, navigation fallback excluding `/~oauth` and Supabase paths.
-- New files: `src/pwa/registerServiceWorker.ts`, `src/components/pwa/UpdatePrompt.tsx`, `src/components/pwa/InstallPrompt.tsx`, `src/components/layout/MobileBottomNav.tsx`, `src/pages/WhatsNew.tsx`, `src/releaseNotes.ts`, new icon assets.
-- Edited files: `vite.config.ts`, `index.html`, `public/manifest.json`, `src/main.tsx`, `src/App.tsx` (one added route + mount prompts), `src/pages/Profile.tsx` (version line), delete hand-written `public/sw.js` source in favor of the generated one.
-- Note: `src/components/security/SecurityHeader.tsx` injects a CSP with `default-src 'self'` — I'll verify the service worker and manifest still load under it and add `worker-src 'self'` / `manifest-src 'self'` if needed.
-
-Approve and I'll implement it in this order: SW + manifest/icons → update prompt → version/What's New → mobile bottom nav, verifying the app builds and renders after each step.
+## Separate item: messaging
+Outbound SMS is working (recent sends all logged as `sent`). Inbound replies and delivery
+receipts are dead because the `TELNYX_PUBLIC_KEY` secret is not set, so every webhook is
+rejected as unsigned. Adding that key re-enables both.

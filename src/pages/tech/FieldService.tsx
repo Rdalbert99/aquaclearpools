@@ -1,20 +1,23 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useParams, useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Badge } from '@/components/ui/badge';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
 import { useToast } from '@/hooks/use-toast';
 import { ServicePhotoUpload } from '@/components/tech/ServicePhotoUpload';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
-import { 
-  Clock, Droplets, TestTube, CheckCircle, ArrowLeft, AlertTriangle, Send, Zap, Info, MapPin, HelpCircle,
+import {
+  Clock, Droplets, TestTube, CheckCircle, ArrowLeft, AlertTriangle, Send, Zap, Info, HelpCircle,
+  Truck, PlayCircle, Wrench, ListChecks, Camera, Receipt, Sparkles,
 } from 'lucide-react';
 import { isInRange, getDosageInstruction, type ChemicalId } from '@/lib/pool-chemistry';
 import { POOL_TESTS, TEST_BY_ID, normalizeDefaultTests, sortTests, type TestId } from '@/lib/pool-tests';
@@ -28,11 +31,15 @@ import { useChemicalCatalog } from '@/hooks/useChemicalCatalog';
 import { useUnitCosts } from '@/hooks/useUnitCosts';
 import { computeServiceCost, fmtMoney } from '@/lib/inventory-cost';
 import { CHEMICAL_OPTIONS } from '@/lib/chemicals-added';
-import { extractSendError } from '@/lib/send-error';
 import { logMessageSend } from '@/lib/message-log';
 import { sendClientMessage, summarizeResults, makeTrackingLink, type SendChannel } from '@/lib/client-message';
 import { SmsPreview } from '@/components/tech/SmsPreview';
 import { analyzeSms } from '@/lib/sms-segments';
+import { calculatePoolHealth } from '@/lib/pool-health';
+import { getAlgaecideStatus } from '@/lib/algaecide';
+import { buildVisitSnapshot, logVisitEvent } from '@/lib/visit-log';
+import { ServiceStickyHeader, type VisitStatus } from '@/components/tech/ServiceStickyHeader';
+import { FollowUpPrompt, type FollowUpValue } from '@/components/tech/FollowUpPrompt';
 
 type Client = {
   id: string;
@@ -49,6 +56,11 @@ type Client = {
   state?: string | null;
   zip_code?: string | null;
   address?: string | null;
+  service_days?: string[] | null;
+  algaecide_interval_days?: number | null;
+  algaecide_product?: string | null;
+  algaecide_last_dosed?: string | null;
+  assigned_technician_id?: string | null;
 };
 
 function buildClientAddress(c: Client): string {
@@ -83,6 +95,24 @@ const ALL_SERVICES = [
 ];
 
 const CHEM_TEST_SERVICE = 'Chemical Testing & Balancing';
+
+/** Quick per-visit checklist, separate from the customer's service plan. */
+const CHECKLIST_ITEMS: { id: string; label: string }[] = [
+  { id: 'brushed', label: 'Brushed walls & steps' },
+  { id: 'skimmed', label: 'Skimmed surface' },
+  { id: 'baskets', label: 'Emptied baskets' },
+  { id: 'vacuumed', label: 'Vacuumed floor' },
+  { id: 'waterline', label: 'Cleaned waterline' },
+  { id: 'water_level', label: 'Water level OK' },
+];
+
+const EQUIPMENT_ITEMS: { id: string; label: string }[] = [
+  { id: 'pump', label: 'Pump running normally' },
+  { id: 'filter', label: 'Filter / pressure normal' },
+  { id: 'heater', label: 'Heater OK' },
+  { id: 'automation', label: 'Automation / timer OK' },
+  { id: 'salt_cell', label: 'Salt cell reading normal' },
+];
 
 /** Which ServiceData field stores each test's reading. */
 const TEST_FIELD: Record<TestId, keyof ServiceData> = {
@@ -128,6 +158,16 @@ const SALT_CELL_STEPS = [
   'Verify the generator shows normal salt/voltage readings. Log the cleaning in the service notes.',
 ];
 
+function fmtElapsed(ms: number) {
+  const total = Math.max(0, Math.floor(ms / 1000));
+  const h = Math.floor(total / 3600);
+  const m = Math.floor((total % 3600) / 60);
+  const s = total % 60;
+  return h > 0
+    ? `${h}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`
+    : `${m}:${String(s).padStart(2, '0')}`;
+}
+
 export default function FieldService() {
   const [sendingPoolNeeds, setSendingPoolNeeds] = useState(false);
   const { clientId } = useParams();
@@ -149,7 +189,6 @@ export default function FieldService() {
   const [client, setClient] = useState<Client | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [startTime] = useState(new Date());
   const [serviceData, setServiceData] = useState<ServiceData>({
     services_performed: [],
     cleaned_robot: false,
@@ -158,6 +197,21 @@ export default function FieldService() {
     salt_cell_cleaned: false,
     chemical_entries: [],
   });
+  const [checklist, setChecklist] = useState<Record<string, boolean>>({});
+  const [equipment, setEquipment] = useState<Record<string, boolean>>({});
+  const [equipmentIssue, setEquipmentIssue] = useState('');
+  const [repairNotes, setRepairNotes] = useState('');
+  const [repairEstimate, setRepairEstimate] = useState('');
+  const [algaecideDosed, setAlgaecideDosed] = useState(false);
+
+  // Visit lifecycle
+  const [onMyWayAt, setOnMyWayAt] = useState<Date | null>(null);
+  const [startedAt, setStartedAt] = useState<Date | null>(null);
+  const [technicianLocked, setTechnicianLocked] = useState(false);
+  const [now, setNow] = useState(Date.now());
+  const tickRef = useRef<number | null>(null);
+  const [openCards, setOpenCards] = useState<string[]>(['today']);
+
   const [reviewOpen, setReviewOpen] = useState(false);
   const [reviewMessage, setReviewMessage] = useState('');
   const [trackToken, setTrackToken] = useState<string | null>(null);
@@ -166,15 +220,32 @@ export default function FieldService() {
   const [saltInstructionsOpen, setSaltInstructionsOpen] = useState(false);
   const [selectedTests, setSelectedTests] = useState<TestId[]>(normalizeDefaultTests(null));
   const [lastSaltCleaning, setLastSaltCleaning] = useState<string | null>(null);
+  const [followUpOpen, setFollowUpOpen] = useState(false);
+  const [savedServiceId, setSavedServiceId] = useState<string | null>(null);
 
   const isSaltPool = !!client?.pool_type && /salt/i.test(client.pool_type);
   const saltCellDueDays = (() => {
     if (!isSaltPool) return null;
     if (!lastSaltCleaning) return Infinity;
-    const days = Math.floor((Date.now() - new Date(lastSaltCleaning).getTime()) / 86400000);
-    return days;
+    return Math.floor((Date.now() - new Date(lastSaltCleaning).getTime()) / 86400000);
   })();
   const saltCellDue = isSaltPool && (saltCellDueDays === Infinity || (typeof saltCellDueDays === 'number' && saltCellDueDays >= 180));
+
+  const algaecide = useMemo(() => getAlgaecideStatus(
+    {
+      intervalDays: client?.algaecide_interval_days ?? null,
+      product: client?.algaecide_product ?? null,
+      lastDosed: client?.algaecide_last_dosed ?? null,
+    },
+    client?.pool_size ?? null,
+  ), [client]);
+
+  // Live timer
+  useEffect(() => {
+    if (!startedAt) return;
+    tickRef.current = window.setInterval(() => setNow(Date.now()), 1000);
+    return () => { if (tickRef.current) window.clearInterval(tickRef.current); };
+  }, [startedAt]);
 
   useEffect(() => {
     let mounted = true;
@@ -184,13 +255,9 @@ export default function FieldService() {
         const { data, error } = await supabase.from('clients').select('*').eq('id', clientId).single();
         if (error) throw error;
         let clientRecord: any = data;
-        // Fall back to the linked user profile for contact info when the client record is missing it
         if (clientRecord?.user_id && (!clientRecord.contact_phone || !clientRecord.contact_email)) {
           const { data: profile } = await supabase
-            .from('users')
-            .select('phone, email')
-            .eq('id', clientRecord.user_id)
-            .maybeSingle();
+            .from('users').select('phone, email').eq('id', clientRecord.user_id).maybeSingle();
           if (profile) {
             clientRecord = {
               ...clientRecord,
@@ -204,7 +271,6 @@ export default function FieldService() {
           setSelectedTests(normalizeDefaultTests(clientRecord?.default_tests, clientRecord?.pool_type));
         }
 
-        // Load recent services for salt-cell history + optional prefill from last visit
         const { data: prior } = await supabase
           .from('services')
           .select('service_date, actions')
@@ -224,7 +290,6 @@ export default function FieldService() {
               cleaned_robot: !!a.cleaned_robot,
               robot_plugged_in: !!a.robot_plugged_in,
               robot_in_water: !!a.robot_in_water,
-              // Do NOT prefill salt_cell_cleaned — that's a periodic task, not a per-visit default
             }));
             toast({
               title: 'Defaults prefilled',
@@ -254,7 +319,6 @@ export default function FieldService() {
     }
   }
 
-  /** Readings for the tests the tech actually ran (skipped tests read as null). */
   function selectedReadings(): Partial<Record<ChemicalId, number | null>> {
     const out: Partial<Record<ChemicalId, number | null>> = {};
     selectedTests.forEach(id => {
@@ -283,14 +347,46 @@ export default function FieldService() {
     return out;
   }
 
-  function calculateDuration() {
-    const endTime = new Date();
-    const minutes = Math.max(1, Math.round((endTime.getTime() - startTime.getTime()) / 60000));
-    setServiceData(prev => ({ ...prev, duration: minutes }));
+  const equipmentFlags = EQUIPMENT_ITEMS.filter(i => equipment[i.id] === false).length
+    + (equipmentIssue.trim() ? 1 : 0);
+
+  const health = useMemo(() => calculatePoolHealth({
+    readings: selectedReadings(),
+    openEquipmentIssues: equipmentFlags,
+    saltCellDays: typeof saltCellDueDays === 'number' && Number.isFinite(saltCellDueDays) ? saltCellDueDays : (saltCellDue ? 999 : null),
+  }), [serviceData, selectedTests, equipmentFlags, saltCellDueDays, saltCellDue]);
+
+  const visitStatus: VisitStatus = savedServiceId ? 'complete' : startedAt ? 'in_progress' : onMyWayAt ? 'on_my_way' : 'scheduled';
+  const elapsedLabel = startedAt ? fmtElapsed(now - startedAt.getTime()) : null;
+
+  function currentDurationMinutes() {
+    if (!startedAt) return serviceData.duration ?? null;
+    return Math.max(1, Math.round((Date.now() - startedAt.getTime()) / 60000));
   }
 
-  // Keep texts inside carrier limits: strip non-GSM characters (they force
-  // UCS-2 encoding, which halves the per-segment size) and cap total length.
+  async function handleStartService() {
+    if (!client || startedAt) return;
+    const stamp = new Date();
+    setStartedAt(stamp);
+    setTechnicianLocked(true);
+    setOpenCards(prev => Array.from(new Set([...prev, 'chemistry'])));
+    await logVisitEvent({
+      clientId: client.id,
+      technicianId: user?.id ?? null,
+      technicianName: (user as any)?.name ?? null,
+      eventType: 'started',
+      detail: `Service started at ${stamp.toLocaleTimeString()}`,
+    });
+    await logVisitEvent({
+      clientId: client.id,
+      technicianId: user?.id ?? null,
+      technicianName: (user as any)?.name ?? null,
+      eventType: 'assignment_locked',
+      detail: 'Technician assignment locked for this visit',
+    });
+    toast({ title: 'Service started', description: 'Timer running and technician locked to this visit.' });
+  }
+
   function sanitizeSms(text: string, maxLength = 1200) {
     const cleaned = text
       .replace(/[\u2018\u2019]/g, "'")
@@ -301,26 +397,17 @@ export default function FieldService() {
       .replace(/[^\x00-\x7F]/g, '')
       .replace(/[ \t]+/g, ' ')
       .trim();
-    return cleaned.length > maxLength
-      ? `${cleaned.slice(0, maxLength - 3).trimEnd()}...`
-      : cleaned;
+    return cleaned.length > maxLength ? `${cleaned.slice(0, maxLength - 3).trimEnd()}...` : cleaned;
   }
 
-
-  function buildServiceMessage(clientName: string, data: ServiceData, trackedLink?: string) {
+  function buildServiceMessage(_clientName: string, _data: ServiceData, trackedLink?: string) {
     const hour = new Date().getHours();
     const greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
     const techName = (user as any)?.name?.trim();
     const intro = `${greeting}, this is Aqua Clear Pools${techName ? ` - your technician ${techName}` : ''}.`;
     const loginLink = trackedLink || 'https://getaquaclear.com/auth/login';
-
-    return sanitizeSms(
-      `${intro} Your pool service is complete. Log in to see your full results: ${loginLink}`,
-      600
-    );
+    return sanitizeSms(`${intro} Your pool service is complete. Log in to see your full results: ${loginLink}`, 600);
   }
-
-
 
   function openReview() {
     if (!client) return;
@@ -337,13 +424,11 @@ export default function FieldService() {
     setSendingPoolNeeds(true);
     try {
       const instructions = dosageInstructions();
-
       if (!instructions.length) {
-        toast({ title: 'No Needs', description: 'All readings are in range — nothing to send.', variant: 'default' });
+        toast({ title: 'No Needs', description: 'All readings are in range — nothing to send.' });
         setSendingPoolNeeds(false);
         return;
       }
-
       const { error } = await supabase.from('pool_needs_messages').insert({
         client_id: client.id,
         client_name: client.customer,
@@ -354,7 +439,6 @@ export default function FieldService() {
         chemical_needs: instructions,
         test_results: readingsPayload(),
       } as any);
-
       if (error) throw error;
       toast({ title: 'Sent!', description: 'Pool needs sent to admin.' });
     } catch (e: any) {
@@ -369,11 +453,44 @@ export default function FieldService() {
     if (!client) return;
     setSaving(true);
     try {
-      calculateDuration();
-
+      const duration = currentDurationMinutes();
+      const completedAt = new Date();
       const message = reviewMessage.trim() || buildServiceMessage(client.customer, serviceData);
+      const { lines, total } = computeServiceCost(serviceData.chemical_entries ?? [], labelFor, unitCosts);
 
-      const payload = {
+      const notesParts = [serviceData.notes?.trim(), equipmentIssue.trim() && `Equipment issue: ${equipmentIssue.trim()}`,
+        repairNotes.trim() && `Repair needed: ${repairNotes.trim()}${repairEstimate.trim() ? ` (est. ${repairEstimate.trim()})` : ''}`]
+        .filter(Boolean) as string[];
+
+      const snapshot = buildVisitSnapshot({
+        clientId: client.id,
+        clientName: client.customer,
+        poolSize: client.pool_size,
+        poolType: client.pool_type,
+        technicianId: user?.id ?? null,
+        technicianName: (user as any)?.name ?? null,
+        readings: readingsPayload(),
+        testsPerformed: selectedTests,
+        chemicals: lines.map(l => ({
+          chemical_id: l.chemical_id, chemical_label: l.chemical_label, unit: l.unit,
+          quantity: l.quantity_used, cost: l.line_cost,
+        })),
+        checklist,
+        equipment: { ...equipment, reported_issue: equipmentIssue.trim() || null },
+        servicesPerformed: serviceData.services_performed ?? [],
+        healthScore: health.score,
+        durationMinutes: duration,
+        onMyWayAt: onMyWayAt?.toISOString() ?? null,
+        startedAt: startedAt?.toISOString() ?? null,
+        completedAt: completedAt.toISOString(),
+        photos: { before: serviceData.beforePhotoUrl ?? null, after: serviceData.afterPhotoUrl ?? null },
+        notes: notesParts.join(' | ') || null,
+        algaecide: algaecide.enabled
+          ? { due: algaecide.due, dosedOz: algaecideDosed ? algaecide.doseOz : null, product: algaecide.product }
+          : null,
+      });
+
+      const payload: any = {
         client_id: client.id,
         technician_id: user?.id ?? null,
         readings: readingsPayload(),
@@ -384,30 +501,40 @@ export default function FieldService() {
           robot_plugged_in: !!serviceData.robot_plugged_in,
           robot_in_water: !!serviceData.robot_in_water,
           salt_cell_cleaned: !!serviceData.salt_cell_cleaned,
+          algaecide_dosed: algaecideDosed,
         },
         chemicals_added: entriesToString(serviceData.chemical_entries ?? [], chemCatalog) || serviceData.chemicals_added || null,
-        notes: serviceData.notes || null,
-        duration_minutes: serviceData.duration ?? null,
+        notes: notesParts.join(' | ') || null,
+        duration_minutes: duration,
         before_photo_url: serviceData.beforePhotoUrl || null,
         after_photo_url: serviceData.afterPhotoUrl || null,
         message_preview: message,
         status: 'completed',
-        chemicals_cost: (() => {
-          const { total } = computeServiceCost(serviceData.chemical_entries ?? [], labelFor, unitCosts);
-          return Number(total.toFixed(2));
-        })(),
+        chemicals_cost: Number(total.toFixed(2)),
+        on_my_way_at: onMyWayAt?.toISOString() ?? null,
+        started_at: startedAt?.toISOString() ?? null,
+        completed_at: completedAt.toISOString(),
+        technician_locked: technicianLocked,
+        checklist,
+        equipment_check: { ...equipment, reported_issue: equipmentIssue.trim() || null },
+        visit_snapshot: snapshot,
+        health_score: health.score,
       };
 
-      const { data: inserted, error } = await supabase
-        .from('services')
-        .insert(payload)
-        .select('id')
-        .single();
+      const { data: inserted, error } = await supabase.from('services').insert(payload).select('id').single();
       if (error) throw error;
+      setSavedServiceId(inserted?.id ?? null);
 
-      // Persist per-chemical usage lines for cost roll-ups
+      await logVisitEvent({
+        serviceId: inserted?.id ?? null,
+        clientId: client.id,
+        technicianId: user?.id ?? null,
+        technicianName: (user as any)?.name ?? null,
+        eventType: notify ? 'completed' : 'completed_no_notify',
+        detail: `Health score ${health.score}${duration ? ` · ${duration} min` : ''}`,
+      });
+
       try {
-        const { lines } = computeServiceCost(serviceData.chemical_entries ?? [], labelFor, unitCosts);
         if (inserted?.id && lines.length > 0) {
           await supabase.from('service_chemical_usage').insert(
             lines.map(l => ({
@@ -424,23 +551,15 @@ export default function FieldService() {
         console.error('Chemical usage log failed:', usageErr);
       }
 
-      // Mark the client as serviced today so the calendar updates for everyone
-      // (admin + all techs). Use local date (YYYY-MM-DD).
       const today = new Date();
       const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
-      await supabase
-        .from('clients')
-        .update({ last_service_date: todayStr })
-        .eq('id', client.id);
+      const clientUpdate: any = { last_service_date: todayStr };
+      if (algaecideDosed) clientUpdate.algaecide_last_dosed = todayStr;
+      await supabase.from('clients').update(clientUpdate).eq('id', client.id);
 
-      // Auto-notify admin if any out-of-range readings weren't addressed by chemicals added
       try {
         const chemsText = entriesToString(serviceData.chemical_entries ?? [], chemCatalog) || serviceData.chemicals_added || '';
-        const missing = getMissingFixes(
-          selectedReadings(),
-          chemsText,
-          client.pool_size ?? 10000,
-        );
+        const missing = getMissingFixes(selectedReadings(), chemsText, client.pool_size ?? 10000);
         if (missing.length > 0) {
           await supabase.from('pool_needs_messages').insert({
             client_id: client.id,
@@ -457,13 +576,10 @@ export default function FieldService() {
         console.error('Pool needs auto-notify failed:', notifyErr);
       }
 
-
-      // Re-fetch client to get any contact info added during this session
       const { data: freshClient } = await supabase.from('clients').select('contact_phone, contact_email').eq('id', client.id).single();
       const phone = freshClient?.contact_phone || client.contact_phone;
       const email = freshClient?.contact_email || client.contact_email;
 
-      // Send completion SMS via Telnyx (only when notify=true)
       const logBase = {
         clientId: client.id,
         clientName: client.customer,
@@ -482,13 +598,9 @@ export default function FieldService() {
         toast({ title: 'Service completed', description: 'Service saved. Customer was not notified.' });
       } else if (channels.length) {
         const results = await sendClientMessage({
-          channels,
-          phone,
-          email,
-          message,
+          channels, phone, email, message,
           subject: 'Aqua Clear Pools - Service Update',
-          log: logBase,
-          trackToken,
+          log: logBase, trackToken,
         });
         const summary = summarizeResults(results);
         toast({
@@ -500,8 +612,9 @@ export default function FieldService() {
         await logMessageSend({ ...logBase, channel: 'none', status: 'failed', errorDetail: 'No phone or email on file for this client' });
         toast({ title: 'Service completed', description: 'Service saved successfully.' });
       }
+
       setReviewOpen(false);
-      navigate((user as any)?.role === 'admin' ? '/admin' : '/tech');
+      setFollowUpOpen(true);
     } catch (e: any) {
       console.error(e);
       toast({ title: 'Error', description: e.message || 'Could not complete service', variant: 'destructive' });
@@ -510,12 +623,56 @@ export default function FieldService() {
     }
   }
 
+  function leaveVisit() {
+    navigate((user as any)?.role === 'admin' ? '/admin' : '/tech');
+  }
+
+  async function createFollowUp(value: FollowUpValue) {
+    if (!client) return;
+    setSaving(true);
+    try {
+      const { error } = await supabase.from('follow_up_visits').insert({
+        client_id: client.id,
+        source_service_id: savedServiceId,
+        scheduled_date: value.date,
+        reason: value.reason,
+        notes: value.notes ?? null,
+        assigned_technician_id: user?.id ?? null,
+        created_by: user?.id ?? null,
+      });
+      if (error) throw error;
+
+      if (savedServiceId) {
+        const { data: svc } = await supabase.from('services').select('visit_snapshot').eq('id', savedServiceId).maybeSingle();
+        const snap: any = (svc as any)?.visit_snapshot;
+        if (snap?.outcome) {
+          snap.outcome.follow_up = { date: value.date, reason: value.reason, notes: value.notes ?? null };
+          await supabase.from('services').update({ visit_snapshot: snap }).eq('id', savedServiceId);
+        }
+      }
+
+      await logVisitEvent({
+        serviceId: savedServiceId,
+        clientId: client.id,
+        technicianId: user?.id ?? null,
+        technicianName: (user as any)?.name ?? null,
+        eventType: 'follow_up_created',
+        detail: `${value.reason} on ${value.date}`,
+      });
+
+      toast({ title: 'Follow-up scheduled', description: `${value.reason} on ${new Date(`${value.date}T00:00:00`).toLocaleDateString()}.` });
+      setFollowUpOpen(false);
+      leaveVisit();
+    } catch (e: any) {
+      console.error(e);
+      toast({ title: 'Error', description: e.message || 'Could not create follow-up', variant: 'destructive' });
+    } finally {
+      setSaving(false);
+    }
+  }
+
   if (loading) {
-    return (
-      <div className="p-6 flex items-center justify-center min-h-[300px]">
-        <LoadingSpinner />
-      </div>
-    );
+    return <div className="p-6 flex items-center justify-center min-h-[300px]"><LoadingSpinner /></div>;
   }
 
   if (!client) {
@@ -533,153 +690,417 @@ export default function FieldService() {
     );
   }
 
-  return (
-    <div className="p-6 space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold flex items-center gap-2">
-          <Droplets className="h-5 w-5" /> {client.customer}
-        </h1>
-        <Button variant="outline" onClick={() => navigate((user as any)?.role === 'admin' ? '/admin' : '/tech')}>
-          <ArrowLeft className="h-4 w-4 mr-2" /> Back
-        </Button>
-      </div>
-      {(() => {
-        const addr = buildClientAddress(client);
-        if (!addr) return null;
-        return (
-          <a
-            href={clientMapsHref(addr)}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-1 text-sm text-primary hover:underline break-words"
-          >
-            <MapPin className="h-4 w-4 shrink-0" /> {addr}
-          </a>
-        );
-      })()}
-      {/* Customer notes / requests */}
-      <ClientNotesPanel clientId={client.id} />
+  const address = buildClientAddress(client);
+  const planServices = (client.included_services && client.included_services.length > 0) ? client.included_services : ALL_SERVICES;
+  const performed = serviceData.services_performed ?? [];
+  const chemCostTotals = computeServiceCost(serviceData.chemical_entries ?? [], labelFor, unitCosts);
+  const chemistryOpen = performed.includes(CHEM_TEST_SERVICE) || selectedTests.length > 0;
 
-      {/* Arrival Notification */}
-      <ArrivalNotification
-        clientName={client.customer}
-        clientId={client.id}
-        clientPhone={client.contact_phone}
-        clientEmail={client.contact_email}
+  const CardHeaderRow = ({ icon: Icon, title, hint, badge }: { icon: any; title: string; hint?: string; badge?: React.ReactNode }) => (
+    <div className="flex flex-1 items-center gap-3 text-left">
+      <Icon className="h-5 w-5 shrink-0 text-primary" />
+      <div className="min-w-0">
+        <div className="flex flex-wrap items-center gap-2 font-semibold">{title}{badge}</div>
+        {hint && <p className="truncate text-xs font-normal text-muted-foreground">{hint}</p>}
+      </div>
+    </div>
+  );
+
+  return (
+    <div className="p-4 sm:p-6 pb-24">
+      <ServiceStickyHeader
+        customerName={client.customer}
+        address={address || null}
+        mapsHref={address ? clientMapsHref(address) : null}
+        status={visitStatus}
+        technicianName={(user as any)?.name ?? null}
+        technicianLocked={technicianLocked}
+        elapsedLabel={elapsedLabel}
+        health={health}
+        onBack={leaveVisit}
       />
 
-      {/* Actions */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2"><Clock className="h-5 w-5" /> Actions</CardTitle>
-          <CardDescription>Check off everything you did today. Items reflect this customer's regular service plan.</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-5">
-          {(() => {
-            const planServices = (client.included_services && client.included_services.length > 0)
-              ? client.included_services
-              : ALL_SERVICES;
-            const performed = serviceData.services_performed ?? [];
-            const toggle = (svc: string, checked: boolean) => {
-              const next = checked
-                ? Array.from(new Set([...performed, svc]))
-                : performed.filter(s => s !== svc);
-              handleInputChange('services_performed', next);
-            };
-            return (
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <Label className="text-sm font-semibold">Services performed</Label>
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="outline"
-                    onClick={() => {
-                      const all = planServices.every(s => performed.includes(s));
-                      handleInputChange('services_performed', all ? [] : [...planServices]);
-                    }}
-                  >
-                    {planServices.every(s => performed.includes(s)) ? 'Deselect All' : 'Select All'}
-                  </Button>
-                </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                  {planServices.map(svc => (
-                    <div key={svc} className="flex items-center gap-2">
-                      <Checkbox
-                        id={`svc-${svc}`}
-                        checked={performed.includes(svc)}
-                        onCheckedChange={v => toggle(svc, !!v)}
-                      />
-                      <Label htmlFor={`svc-${svc}`} className="text-sm font-normal cursor-pointer">{svc}</Label>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            );
-          })()}
-
-          <div className="pt-2 border-t">
-            <Label className="text-sm font-semibold">Robot</Label>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mt-2">
-              <div className="flex items-center gap-2">
-                <Checkbox id="robot-cleaned" checked={!!serviceData.cleaned_robot} onCheckedChange={v => handleInputChange('cleaned_robot', !!v)} />
-                <Label htmlFor="robot-cleaned" className="text-sm font-normal cursor-pointer">Cleaned Robot</Label>
-              </div>
-              <div className="flex items-center gap-2">
-                <Checkbox id="robot-plugged" checked={!!serviceData.robot_plugged_in} onCheckedChange={v => handleInputChange('robot_plugged_in', !!v)} />
-                <Label htmlFor="robot-plugged" className="text-sm font-normal cursor-pointer">Plugged in Robot</Label>
-              </div>
-              <div className="flex items-center gap-2">
-                <Checkbox id="robot-water" checked={!!serviceData.robot_in_water} onCheckedChange={v => handleInputChange('robot_in_water', !!v)} />
-                <Label htmlFor="robot-water" className="text-sm font-normal cursor-pointer">Put Robot in Water</Label>
-              </div>
+      <Accordion type="multiple" value={openCards} onValueChange={setOpenCards} className="space-y-3">
+        {/* 1. TODAY'S SERVICE */}
+        <AccordionItem value="today" className="rounded-lg border bg-card px-4">
+          <AccordionTrigger className="hover:no-underline">
+            <CardHeaderRow icon={Clock} title="Today's Service" hint="Actions, plan items, robot & salt cell" />
+          </AccordionTrigger>
+          <AccordionContent className="space-y-5 pb-4">
+            <div className="grid gap-2 sm:grid-cols-3">
+              <ArrivalNotification
+                clientName={client.customer}
+                clientId={client.id}
+                clientPhone={client.contact_phone}
+                clientEmail={client.contact_email}
+              />
             </div>
-          </div>
+            <div className="grid gap-2 sm:grid-cols-2">
+              <Button
+                type="button"
+                variant={onMyWayAt ? 'secondary' : 'outline'}
+                className="h-12"
+                onClick={async () => {
+                  const stamp = new Date();
+                  setOnMyWayAt(stamp);
+                  await logVisitEvent({
+                    clientId: client.id,
+                    technicianId: user?.id ?? null,
+                    technicianName: (user as any)?.name ?? null,
+                    eventType: 'on_my_way',
+                    detail: `Marked on my way at ${stamp.toLocaleTimeString()}`,
+                  });
+                  toast({ title: 'On my way logged', description: 'Use the notification panel above to text the customer.' });
+                }}
+              >
+                <Truck className="mr-2 h-4 w-4" />
+                {onMyWayAt ? `On my way · ${onMyWayAt.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}` : 'Mark "On My Way"'}
+              </Button>
+              <Button type="button" className="h-12" disabled={!!startedAt} onClick={handleStartService}>
+                <PlayCircle className="mr-2 h-4 w-4" />
+                {startedAt ? `Started · ${startedAt.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}` : 'Start Service'}
+              </Button>
+            </div>
 
-          {isSaltPool && (
-            <div className="pt-2 border-t">
-              <div className="flex items-center justify-between mb-2 gap-2 flex-wrap">
-                <Label className="text-sm font-semibold flex items-center gap-2">
-                  <Zap className="h-4 w-4 text-blue-500" /> Salt Cell
-                </Label>
-                <Button type="button" size="sm" variant="outline" onClick={() => setSaltInstructionsOpen(true)}>
-                  <Info className="h-4 w-4 mr-1" /> Cleaning Instructions
+            <ClientNotesPanel clientId={client.id} />
+
+            <div>
+              <div className="mb-2 flex items-center justify-between">
+                <Label className="text-sm font-semibold">Services performed</Label>
+                <Button
+                  type="button" size="sm" variant="outline"
+                  onClick={() => {
+                    const all = planServices.every(s => performed.includes(s));
+                    handleInputChange('services_performed', all ? [] : [...planServices]);
+                  }}
+                >
+                  {planServices.every(s => performed.includes(s)) ? 'Deselect All' : 'Select All'}
                 </Button>
               </div>
-              {saltCellDue && (
-                <Alert className="mb-2 border-orange-300 bg-orange-50 dark:bg-orange-950/30">
-                  <AlertTriangle className="h-4 w-4 text-orange-600" />
-                  <AlertDescription className="text-sm">
-                    Salt cell cleaning is due (recommended every 6 months).{' '}
-                    {lastSaltCleaning
-                      ? `Last cleaned ${new Date(lastSaltCleaning).toLocaleDateString()}.`
-                      : 'No prior cleaning on record.'}
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                {planServices.map(svc => (
+                  <div key={svc} className="flex items-center gap-2">
+                    <Checkbox
+                      id={`svc-${svc}`}
+                      checked={performed.includes(svc)}
+                      onCheckedChange={v => handleInputChange('services_performed',
+                        v ? Array.from(new Set([...performed, svc])) : performed.filter(s => s !== svc))}
+                    />
+                    <Label htmlFor={`svc-${svc}`} className="cursor-pointer text-sm font-normal">{svc}</Label>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="border-t pt-3">
+              <Label className="text-sm font-semibold">Robot</Label>
+              <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-3">
+                <div className="flex items-center gap-2">
+                  <Checkbox id="robot-cleaned" checked={!!serviceData.cleaned_robot} onCheckedChange={v => handleInputChange('cleaned_robot', !!v)} />
+                  <Label htmlFor="robot-cleaned" className="cursor-pointer text-sm font-normal">Cleaned Robot</Label>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Checkbox id="robot-plugged" checked={!!serviceData.robot_plugged_in} onCheckedChange={v => handleInputChange('robot_plugged_in', !!v)} />
+                  <Label htmlFor="robot-plugged" className="cursor-pointer text-sm font-normal">Plugged in Robot</Label>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Checkbox id="robot-water" checked={!!serviceData.robot_in_water} onCheckedChange={v => handleInputChange('robot_in_water', !!v)} />
+                  <Label htmlFor="robot-water" className="cursor-pointer text-sm font-normal">Put Robot in Water</Label>
+                </div>
+              </div>
+            </div>
+
+            {isSaltPool && (
+              <div className="border-t pt-3">
+                <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+                  <Label className="flex items-center gap-2 text-sm font-semibold">
+                    <Zap className="h-4 w-4 text-blue-500" /> Salt Cell
+                  </Label>
+                  <Button type="button" size="sm" variant="outline" onClick={() => setSaltInstructionsOpen(true)}>
+                    <Info className="mr-1 h-4 w-4" /> Cleaning Instructions
+                  </Button>
+                </div>
+                {saltCellDue && (
+                  <Alert className="mb-2 border-orange-300 bg-orange-50 dark:bg-orange-950/30">
+                    <AlertTriangle className="h-4 w-4 text-orange-600" />
+                    <AlertDescription className="text-sm">
+                      Salt cell cleaning is due (recommended every 6 months).{' '}
+                      {lastSaltCleaning ? `Last cleaned ${new Date(lastSaltCleaning).toLocaleDateString()}.` : 'No prior cleaning on record.'}
+                    </AlertDescription>
+                  </Alert>
+                )}
+                <div className="flex items-center gap-2">
+                  <Checkbox id="salt-cell-cleaned" checked={!!serviceData.salt_cell_cleaned}
+                    onCheckedChange={v => handleInputChange('salt_cell_cleaned', !!v)} />
+                  <Label htmlFor="salt-cell-cleaned" className="cursor-pointer text-sm font-normal">Cleaned Salt Cell</Label>
+                </div>
+              </div>
+            )}
+          </AccordionContent>
+        </AccordionItem>
+
+        {/* 2. CHEMISTRY */}
+        <AccordionItem value="chemistry" className="rounded-lg border bg-card px-4">
+          <AccordionTrigger className="hover:no-underline">
+            <CardHeaderRow
+              icon={TestTube}
+              title="Chemistry"
+              hint="Tests, dosing and algaecide schedule"
+              badge={algaecide.due ? <Badge variant="outline" className="border-orange-500/40 bg-orange-500/15 text-orange-700 dark:text-orange-300">Algaecide due</Badge> : undefined}
+            />
+          </AccordionTrigger>
+          <AccordionContent className="space-y-4 pb-4">
+            {algaecide.enabled && (
+              <Alert className={algaecide.due ? 'border-orange-300 bg-orange-50 dark:bg-orange-950/30' : ''}>
+                <Sparkles className="h-4 w-4" />
+                <AlertDescription className="text-sm">
+                  <span className="font-semibold">Maintenance algaecide:</span>{' '}
+                  {algaecide.due
+                    ? `Due now — add ${algaecide.doseLabel} for this ${(client.pool_size ?? 10000).toLocaleString()} gal pool.`
+                    : `Next dose in ${algaecide.daysUntilDue} day(s) (every ${algaecide.intervalDays} days).`}
+                  {algaecide.lastDosed && ` Last dosed ${algaecide.lastDosed.toLocaleDateString()}.`}
+                  <div className="mt-2 flex items-center gap-2">
+                    <Checkbox id="algaecide-dosed" checked={algaecideDosed} onCheckedChange={v => setAlgaecideDosed(!!v)} />
+                    <Label htmlFor="algaecide-dosed" className="cursor-pointer text-sm font-normal">
+                      Added {algaecide.doseOz} fl oz today
+                    </Label>
+                  </div>
+                </AlertDescription>
+              </Alert>
+            )}
+            {!algaecide.enabled && (
+              <p className="text-xs text-muted-foreground">
+                No algaecide schedule set for this customer. Set an interval on the client's edit page to get automatic dosing reminders.
+              </p>
+            )}
+
+            <div className="rounded-lg border bg-muted/30 p-3">
+              <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Tests performed this visit</p>
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                {POOL_TESTS.map(t => (
+                  <div key={t.id} className="flex items-center gap-2 rounded-md border bg-background px-3 py-2">
+                    <Checkbox id={`test-${t.id}`} checked={selectedTests.includes(t.id)} disabled={!t.optional}
+                      onCheckedChange={v => toggleTest(t.id, !!v)} />
+                    <Label htmlFor={`test-${t.id}`} className="flex-1 cursor-pointer text-sm font-normal">
+                      {t.label}
+                      {!t.optional && <span className="ml-1 text-[10px] uppercase text-muted-foreground">required</span>}
+                    </Label>
+                    <TestGuideDialog testId={t.id} />
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <p className="text-xs text-muted-foreground">
+              Values turn <span className="font-medium text-green-600">green</span> in range, <span className="font-medium text-red-600">red</span> out.
+              Tap <HelpCircle className="inline h-3.5 w-3.5 align-[-2px]" /> for Taylor kit steps.
+            </p>
+
+            <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
+              {POOL_TESTS.filter(t => selectedTests.includes(t.id)).map(t => {
+                const field = TEST_FIELD[t.id];
+                const val = serviceData[field] as number | null | undefined;
+                const status = t.chemId ? isInRange(t.chemId, val) : 'none';
+                const colorClass = status === 'in' ? 'text-green-600 border-green-500 ring-green-400'
+                  : status === 'out' ? 'text-red-600 border-red-500 ring-red-400' : '';
+                return (
+                  <div key={t.id}>
+                    <div className="flex items-center gap-1">
+                      <Label htmlFor={`reading-${t.id}`}>{t.short}</Label>
+                      <TestGuideDialog testId={t.id} className="h-5 w-5" />
+                    </div>
+                    <Input
+                      id={`reading-${t.id}`} type="number" inputMode="decimal" step={t.step} value={val ?? ''}
+                      onChange={e => {
+                        const raw = e.target.value;
+                        const parsed = raw === '' ? null : (t.integer ? parseInt(raw, 10) : parseFloat(raw));
+                        handleInputChange(field, (Number.isNaN(parsed as number) ? null : parsed) as any);
+                      }}
+                      className={colorClass ? `font-semibold ${colorClass}` : ''}
+                    />
+                  </div>
+                );
+              })}
+            </div>
+
+            {(() => {
+              const instructions = dosageInstructions();
+              if (!instructions.length) return null;
+              return (
+                <Alert variant="destructive" className="border-red-300 bg-red-50 text-red-900">
+                  <AlertTriangle className="h-4 w-4" />
+                  <AlertDescription>
+                    <p className="mb-1 font-semibold">
+                      Chemical adjustments needed ({(client.pool_size ?? 10000).toLocaleString()} gal pool):
+                    </p>
+                    <ul className="list-disc space-y-1 pl-4 text-sm">
+                      {instructions.map((inst, i) => <li key={i}>{inst}</li>)}
+                    </ul>
+                    <Button size="sm" variant="outline" className="mt-3 border-red-400 text-red-800 hover:bg-red-100"
+                      disabled={sendingPoolNeeds} onClick={sendPoolNeedsToAdmin}>
+                      <Send className="mr-1.5 h-4 w-4" />
+                      {sendingPoolNeeds ? 'Sending...' : 'Send Pool Needs to Admin'}
+                    </Button>
                   </AlertDescription>
                 </Alert>
-              )}
-              <div className="flex items-center gap-2">
-                <Checkbox
-                  id="salt-cell-cleaned"
-                  checked={!!serviceData.salt_cell_cleaned}
-                  onCheckedChange={v => handleInputChange('salt_cell_cleaned', !!v)}
-                />
-                <Label htmlFor="salt-cell-cleaned" className="text-sm font-normal cursor-pointer">
-                  Cleaned Salt Cell
-                </Label>
-              </div>
-              {!saltCellDue && lastSaltCleaning && (
-                <p className="text-xs text-muted-foreground mt-1">
-                  Last cleaned {new Date(lastSaltCleaning).toLocaleDateString()}.
-                </p>
-              )}
-            </div>
-          )}
-        </CardContent>
-      </Card>
+              );
+            })()}
 
-      {/* Salt cell cleaning instructions */}
+            <div>
+              <Label>Chemicals Added</Label>
+              <p className="mb-2 text-xs text-muted-foreground">
+                Add each chemical you applied. The customer message will explain what each one does.
+              </p>
+              <ChemicalsAddedInput
+                value={serviceData.chemical_entries ?? []}
+                onChange={(entries) => handleInputChange('chemical_entries', entries)}
+              />
+            </div>
+          </AccordionContent>
+        </AccordionItem>
+
+        {/* 3. EQUIPMENT */}
+        <AccordionItem value="equipment" className="rounded-lg border bg-card px-4">
+          <AccordionTrigger className="hover:no-underline">
+            <CardHeaderRow icon={Wrench} title="Equipment"
+              hint="Pump, filter, heater, automation, salt cell"
+              badge={equipmentFlags > 0 ? <Badge variant="destructive">{equipmentFlags} flagged</Badge> : undefined} />
+          </AccordionTrigger>
+          <AccordionContent className="space-y-3 pb-4">
+            {EQUIPMENT_ITEMS.map(item => (
+              <div key={item.id} className="flex flex-wrap items-center justify-between gap-2 rounded-md border px-3 py-2">
+                <span className="text-sm">{item.label}</span>
+                <div className="flex gap-1">
+                  <Button type="button" size="sm" variant={equipment[item.id] === true ? 'default' : 'outline'}
+                    onClick={() => setEquipment(p => ({ ...p, [item.id]: true }))}>OK</Button>
+                  <Button type="button" size="sm" variant={equipment[item.id] === false ? 'destructive' : 'outline'}
+                    onClick={() => setEquipment(p => ({ ...p, [item.id]: false }))}>Issue</Button>
+                </div>
+              </div>
+            ))}
+            <div>
+              <Label htmlFor="equipment-issue">Describe any equipment issue</Label>
+              <Textarea id="equipment-issue" rows={2} value={equipmentIssue}
+                onChange={e => setEquipmentIssue(e.target.value)} placeholder="What is wrong and what did you observe..." />
+            </div>
+          </AccordionContent>
+        </AccordionItem>
+
+        {/* 4. CHECKLIST */}
+        <AccordionItem value="checklist" className="rounded-lg border bg-card px-4">
+          <AccordionTrigger className="hover:no-underline">
+            <CardHeaderRow icon={ListChecks} title="Checklist"
+              hint={`${Object.values(checklist).filter(Boolean).length} of ${CHECKLIST_ITEMS.length} done`} />
+          </AccordionTrigger>
+          <AccordionContent className="pb-4">
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+              {CHECKLIST_ITEMS.map(item => (
+                <div key={item.id} className="flex items-center gap-2">
+                  <Checkbox id={`chk-${item.id}`} checked={!!checklist[item.id]}
+                    onCheckedChange={v => setChecklist(p => ({ ...p, [item.id]: !!v }))} />
+                  <Label htmlFor={`chk-${item.id}`} className="cursor-pointer text-sm font-normal">{item.label}</Label>
+                </div>
+              ))}
+            </div>
+          </AccordionContent>
+        </AccordionItem>
+
+        {/* 5. PHOTOS & NOTES */}
+        <AccordionItem value="photos" className="rounded-lg border bg-card px-4">
+          <AccordionTrigger className="hover:no-underline">
+            <CardHeaderRow icon={Camera} title="Photos & Notes" hint="Before / after photos and visit notes" />
+          </AccordionTrigger>
+          <AccordionContent className="space-y-4 pb-4">
+            <div className="grid gap-6 md:grid-cols-2">
+              <ServicePhotoUpload clientId={client.id} label="Before Photo"
+                onUploaded={(url) => handleInputChange('beforePhotoUrl', url)} />
+              <ServicePhotoUpload clientId={client.id} label="After Photo"
+                onUploaded={(url) => handleInputChange('afterPhotoUrl', url)} />
+            </div>
+            <div>
+              <Label htmlFor="notes">Notes</Label>
+              <Textarea id="notes" rows={3} value={serviceData.notes ?? ''}
+                onChange={e => handleInputChange('notes', e.target.value)} placeholder="Any issues or special actions..." />
+            </div>
+          </AccordionContent>
+        </AccordionItem>
+
+        {/* 6. REPAIRS & ESTIMATES */}
+        <AccordionItem value="repairs" className="rounded-lg border bg-card px-4">
+          <AccordionTrigger className="hover:no-underline">
+            <CardHeaderRow icon={Wrench} title="Repairs & Estimates" hint="Flag work that needs a return visit" />
+          </AccordionTrigger>
+          <AccordionContent className="space-y-3 pb-4">
+            <div>
+              <Label htmlFor="repair-notes">Repair needed</Label>
+              <Textarea id="repair-notes" rows={2} value={repairNotes} onChange={e => setRepairNotes(e.target.value)}
+                placeholder="Part, symptom, and what it will take to fix..." />
+            </div>
+            <div>
+              <Label htmlFor="repair-estimate">Rough estimate</Label>
+              <Input id="repair-estimate" value={repairEstimate} onChange={e => setRepairEstimate(e.target.value)}
+                placeholder="$150 parts + 1 hr labor" />
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Repairs are saved with the visit. Schedule the return visit in the follow-up prompt when you complete service.
+            </p>
+          </AccordionContent>
+        </AccordionItem>
+
+        {/* 7. BILLING (placeholder) */}
+        <AccordionItem value="billing" className="rounded-lg border bg-card px-4">
+          <AccordionTrigger className="hover:no-underline">
+            <CardHeaderRow icon={Receipt} title="Billing" hint="Internal cost of this visit — invoicing coming soon" />
+          </AccordionTrigger>
+          <AccordionContent className="pb-4">
+            {chemCostTotals.lines.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No chemicals logged yet — costs appear here as you add them.</p>
+            ) : (
+              <div className="rounded-md border bg-muted/40 p-3 text-sm">
+                <div className="mb-1 font-medium">Cost of this service (internal only)</div>
+                <ul className="space-y-0.5 text-xs text-muted-foreground">
+                  {chemCostTotals.lines.map((l, i) => (
+                    <li key={i} className="flex justify-between">
+                      <span>{l.quantity_used.toFixed(2)} {l.unit} {l.chemical_label} @ {fmtMoney(l.unit_cost_snapshot)}/{l.unit}</span>
+                      <span>{fmtMoney(l.line_cost)}</span>
+                    </li>
+                  ))}
+                </ul>
+                <div className="mt-2 flex justify-between border-t pt-2 font-semibold">
+                  <span>Service chemical cost</span><span>{fmtMoney(chemCostTotals.total)}</span>
+                </div>
+                {chemCostTotals.lines.some(l => l.unit_cost_snapshot === 0) && (
+                  <div className="mt-1 text-xs text-amber-600">
+                    Some chemicals have no purchase logged yet — log them in Inventory for accurate costs.
+                  </div>
+                )}
+              </div>
+            )}
+            <p className="mt-3 text-xs text-muted-foreground">Customer invoicing will be wired into this card later.</p>
+          </AccordionContent>
+        </AccordionItem>
+      </Accordion>
+
+      {/* Complete bar */}
+      <div className="mt-4 space-y-3 rounded-lg border bg-card p-4">
+        <SmsPreview
+          message={buildServiceMessage(client.customer, serviceData)}
+          target={client.contact_phone || client.contact_email || null}
+        />
+        <div className="flex flex-wrap gap-2">
+          <Button onClick={openReview} disabled={saving} className="h-12 min-w-[180px] flex-1">
+            <CheckCircle className="mr-2 h-4 w-4" /> Complete Service
+          </Button>
+          <Button variant="secondary" onClick={() => completeService(false)} disabled={saving} className="h-12 flex-1 min-w-[180px]">
+            Complete without notifying
+          </Button>
+        </div>
+        {chemistryOpen && <p className="text-xs text-muted-foreground">Health score at completion: {health.score}/100 — {health.label}.</p>}
+      </div>
+
+      {/* Salt cell instructions */}
       <Dialog open={saltInstructionsOpen} onOpenChange={setSaltInstructionsOpen}>
-        <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
+        <DialogContent className="max-h-[85vh] max-w-lg overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Zap className="h-5 w-5 text-blue-500" /> Salt Cell Cleaning — Step by Step
@@ -688,237 +1109,16 @@ export default function FieldService() {
               Perform every 6 months on all salt pools. Always wear gloves and eye protection when handling acid.
             </DialogDescription>
           </DialogHeader>
-          <ol className="list-decimal list-outside pl-5 space-y-2 text-sm">
-            {SALT_CELL_STEPS.map((step, i) => (
-              <li key={i}>{step}</li>
-            ))}
+          <ol className="list-outside list-decimal space-y-2 pl-5 text-sm">
+            {SALT_CELL_STEPS.map((step, i) => <li key={i}>{step}</li>)}
           </ol>
-          <DialogFooter>
-            <Button onClick={() => setSaltInstructionsOpen(false)}>Got it</Button>
-          </DialogFooter>
+          <DialogFooter><Button onClick={() => setSaltInstructionsOpen(false)}>Got it</Button></DialogFooter>
         </DialogContent>
       </Dialog>
 
-      {/* Readings — only when chemical testing was performed */}
-      {(serviceData.services_performed ?? []).includes(CHEM_TEST_SERVICE) && (
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2"><TestTube className="h-5 w-5" /> Readings</CardTitle>
-          <CardDescription>
-            Pick the tests you are running on this visit, then enter results. Values turn <span className="text-green-600 font-medium">green</span> if in range, <span className="text-red-600 font-medium">red</span> if out.
-            Tap the <HelpCircle className="inline h-3.5 w-3.5 align-[-2px]" /> for Taylor kit steps.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {/* Test selection for this visit */}
-          <div className="rounded-lg border bg-muted/30 p-3">
-            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2">
-              Tests performed this visit
-            </p>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
-              {POOL_TESTS.map(t => {
-                const checked = selectedTests.includes(t.id);
-                return (
-                  <div key={t.id} className="flex items-center gap-2 rounded-md border bg-background px-3 py-2">
-                    <Checkbox
-                      id={`test-${t.id}`}
-                      checked={checked}
-                      disabled={!t.optional}
-                      onCheckedChange={v => toggleTest(t.id, !!v)}
-                    />
-                    <Label htmlFor={`test-${t.id}`} className="flex-1 text-sm font-normal cursor-pointer">
-                      {t.label}
-                      {!t.optional && <span className="ml-1 text-[10px] uppercase text-muted-foreground">required</span>}
-                    </Label>
-                    <TestGuideDialog testId={t.id} />
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            {POOL_TESTS.filter(t => selectedTests.includes(t.id)).map(t => {
-              const field = TEST_FIELD[t.id];
-              const val = serviceData[field] as number | null | undefined;
-              const status = t.chemId ? isInRange(t.chemId, val) : 'none';
-              const colorClass = status === 'in' ? 'text-green-600 border-green-500 ring-green-400'
-                : status === 'out' ? 'text-red-600 border-red-500 ring-red-400' : '';
-              return (
-                <div key={t.id}>
-                  <div className="flex items-center gap-1">
-                    <Label htmlFor={`reading-${t.id}`}>{t.short}</Label>
-                    <TestGuideDialog testId={t.id} className="h-5 w-5" />
-                  </div>
-                  <Input
-                    id={`reading-${t.id}`}
-                    type="number"
-                    inputMode="decimal"
-                    step={t.step}
-                    value={val ?? ''}
-                    onChange={e => {
-                      const raw = e.target.value;
-                      const parsed = raw === '' ? null : (t.integer ? parseInt(raw, 10) : parseFloat(raw));
-                      handleInputChange(field, (Number.isNaN(parsed as number) ? null : parsed) as any);
-                    }}
-                    className={colorClass ? `font-semibold ${colorClass}` : ''}
-                  />
-                </div>
-              );
-            })}
-          </div>
-
-          {/* Dosage instructions for out-of-range readings */}
-          {client && (() => {
-            const poolGallons = client.pool_size ?? 10000;
-            const instructions = dosageInstructions();
-
-
-            if (!instructions.length) return null;
-            return (
-              <Alert variant="destructive" className="border-red-300 bg-red-50 text-red-900">
-                <AlertTriangle className="h-4 w-4" />
-                <AlertDescription>
-                  <p className="font-semibold mb-1">Chemical adjustments needed (based on {poolGallons.toLocaleString()} gal pool):</p>
-                  <ul className="list-disc pl-4 space-y-1 text-sm">
-                    {instructions.map((inst, i) => <li key={i}>{inst}</li>)}
-                  </ul>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="mt-3 border-red-400 text-red-800 hover:bg-red-100"
-                    disabled={sendingPoolNeeds}
-                    onClick={sendPoolNeedsToAdmin}
-                  >
-                    <Send className="h-4 w-4 mr-1.5" />
-                    {sendingPoolNeeds ? 'Sending...' : 'Send Pool Needs to Admin'}
-                  </Button>
-                </AlertDescription>
-              </Alert>
-            );
-          })()}
-        </CardContent>
-      </Card>
-      )}
-
-      {/* Photos */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2"><Droplets className="h-5 w-5" /> Photos</CardTitle>
-          <CardDescription>Snap before/after from your phone.</CardDescription>
-        </CardHeader>
-        <CardContent className="grid md:grid-cols-2 gap-6">
-          <ServicePhotoUpload
-            clientId={client.id}
-            label="Before Photo"
-            onUploaded={(url) => handleInputChange('beforePhotoUrl', url)}
-          />
-          <ServicePhotoUpload
-            clientId={client.id}
-            label="After Photo"
-            onUploaded={(url) => handleInputChange('afterPhotoUrl', url)}
-          />
-        </CardContent>
-      </Card>
-
-      {/* Notes / Chemicals */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Details</CardTitle>
-          <CardDescription>Notes and chemicals added.</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {/* Auto-generated dosage suggestions */}
-          {(() => {
-            const poolGallons = client.pool_size ?? 10000;
-            const suggestions = dosageInstructions();
-
-            if (!suggestions.length) return null;
-            return (
-              <div className="p-3 rounded-lg border border-red-300 bg-red-50 text-red-900 text-sm space-y-1">
-                <p className="font-semibold flex items-center gap-1"><AlertTriangle className="h-4 w-4" /> Suggested additions ({poolGallons.toLocaleString()} gal):</p>
-                <ul className="list-disc pl-5 space-y-0.5">
-                  {suggestions.map((s, i) => <li key={i}>{s}</li>)}
-                </ul>
-              </div>
-            );
-          })()}
-          <div>
-            <Label>Chemicals Added</Label>
-            <p className="text-xs text-muted-foreground mb-2">
-              Add each chemical you applied. The customer message will explain what each one does.
-            </p>
-            <ChemicalsAddedInput
-              value={serviceData.chemical_entries ?? []}
-              onChange={(entries) => handleInputChange('chemical_entries', entries)}
-            />
-            {(() => {
-              const { lines, total } = computeServiceCost(serviceData.chemical_entries ?? [], labelFor, unitCosts);
-              if (lines.length === 0) return null;
-              return (
-                <div className="mt-3 rounded-md border bg-muted/40 p-3 text-sm">
-                  <div className="font-medium mb-1">Cost of this service (internal only)</div>
-                  <ul className="text-xs text-muted-foreground space-y-0.5">
-                    {lines.map((l, i) => (
-                      <li key={i} className="flex justify-between">
-                        <span>{l.quantity_used.toFixed(2)} {l.unit} {l.chemical_label} @ {fmtMoney(l.unit_cost_snapshot)}/{l.unit}</span>
-                        <span>{fmtMoney(l.line_cost)}</span>
-                      </li>
-                    ))}
-                  </ul>
-                  <div className="flex justify-between font-semibold mt-2 pt-2 border-t">
-                    <span>Service chemical cost</span>
-                    <span>{fmtMoney(total)}</span>
-                  </div>
-                  {lines.some(l => l.unit_cost_snapshot === 0) && (
-                    <div className="text-xs text-amber-600 mt-1">
-                      Some chemicals have no purchase logged yet — log them in Inventory for accurate costs.
-                    </div>
-                  )}
-                </div>
-              );
-            })()}
-          </div>
-          <div>
-            <Label htmlFor="notes">Notes</Label>
-            <Textarea id="notes" rows={3}
-              value={serviceData.notes ?? ''}
-              onChange={e => handleInputChange('notes', e.target.value)}
-              placeholder="Any issues or special actions..."
-            />
-          </div>
-          <div className="flex items-center gap-3">
-            <Button type="button" variant="outline" onClick={calculateDuration}>
-              <Clock className="h-4 w-4 mr-2" /> Calc Duration
-            </Button>
-            <div className="text-sm text-muted-foreground">
-              {serviceData.duration ? `Duration: ${serviceData.duration} min` : 'Duration not set'}
-            </div>
-          </div>
-          {client && (
-            <SmsPreview
-              message={buildServiceMessage(client.customer, serviceData)}
-              target={client.contact_phone || client.contact_email || null}
-            />
-          )}
-          <div className="pt-2 flex flex-wrap gap-2">
-            <Button onClick={openReview} disabled={saving} className="min-w-[160px]">
-              <CheckCircle className="h-4 w-4 mr-2" /> Review & Send
-            </Button>
-            <Button
-              variant="secondary"
-              onClick={() => completeService(false)}
-              disabled={saving}
-              className="min-w-[200px]"
-            >
-              <CheckCircle className="h-4 w-4 mr-2" /> Complete without notifying
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
-
+      {/* Review & send */}
       <Dialog open={reviewOpen} onOpenChange={(o) => !saving && setReviewOpen(o)}>
-        <DialogContent className="max-w-lg w-[calc(100vw-1.5rem)] max-h-[90dvh] overflow-y-auto p-4 sm:p-6">
+        <DialogContent className="max-h-[90dvh] w-[calc(100vw-1.5rem)] max-w-lg overflow-y-auto p-4 sm:p-6">
           <DialogHeader>
             <DialogTitle>Review Customer Message</DialogTitle>
             <DialogDescription>
@@ -927,68 +1127,46 @@ export default function FieldService() {
           </DialogHeader>
           <div className="flex flex-wrap gap-4">
             <label className="flex items-center gap-2 text-sm">
-              <Checkbox
-                checked={notifySms}
-                disabled={!client?.contact_phone}
-                onCheckedChange={(c) => setNotifySms(!!c)}
-              />
+              <Checkbox checked={notifySms} disabled={!client?.contact_phone} onCheckedChange={(c) => setNotifySms(!!c)} />
               Text {client?.contact_phone ? `(${client.contact_phone})` : '(no phone on file)'}
             </label>
             <label className="flex items-center gap-2 text-sm">
-              <Checkbox
-                checked={notifyEmail}
-                disabled={!client?.contact_email}
-                onCheckedChange={(c) => setNotifyEmail(!!c)}
-              />
+              <Checkbox checked={notifyEmail} disabled={!client?.contact_email} onCheckedChange={(c) => setNotifyEmail(!!c)} />
               Email {client?.contact_email ? `(${client.contact_email})` : '(no email on file)'}
             </label>
           </div>
-          <Textarea
-            rows={6}
-            value={reviewMessage}
-            onChange={(e) => setReviewMessage(e.target.value)}
-            className="font-mono text-sm max-h-[35dvh]"
-          />
+          <Textarea rows={6} value={reviewMessage} onChange={(e) => setReviewMessage(e.target.value)}
+            className="max-h-[35dvh] font-mono text-sm" />
           <SmsPreview
             message={reviewMessage}
             showBody={false}
             target={client?.contact_phone ? `Text to ${client.contact_phone}` : client?.contact_email ? `Email to ${client.contact_email}` : null}
           />
-          <DialogFooter className="gap-2 flex-col sm:flex-row sm:flex-wrap">
-            <Button
-              className="w-full sm:w-auto sm:order-4"
-              onClick={() => completeService(true)}
-              disabled={saving || !reviewMessage.trim() || (!notifySms && !notifyEmail) || (notifySms && analyzeSms(reviewMessage).overLimit)}
-            >
-              {saving ? <LoadingSpinner /> : (<><Send className="h-4 w-4 mr-2" /> Send &amp; Complete</>)}
+          <DialogFooter className="flex-col gap-2 sm:flex-row sm:flex-wrap">
+            <Button className="w-full sm:order-4 sm:w-auto" onClick={() => completeService(true)}
+              disabled={saving || !reviewMessage.trim() || (!notifySms && !notifyEmail) || (notifySms && analyzeSms(reviewMessage).overLimit)}>
+              {saving ? <LoadingSpinner /> : (<><Send className="mr-2 h-4 w-4" /> Send &amp; Complete</>)}
             </Button>
-            <Button
-              variant="secondary"
-              className="w-full sm:w-auto sm:order-3"
-              onClick={() => completeService(false)}
-              disabled={saving}
-            >
+            <Button variant="secondary" className="w-full sm:order-3 sm:w-auto" onClick={() => completeService(false)} disabled={saving}>
               Complete without notifying
             </Button>
-            <Button
-              variant="ghost"
-              className="w-full sm:w-auto sm:order-2"
-              onClick={() => client && setReviewMessage(buildServiceMessage(client.customer, serviceData))}
-              disabled={saving}
-            >
+            <Button variant="ghost" className="w-full sm:order-2 sm:w-auto" disabled={saving}
+              onClick={() => client && setReviewMessage(buildServiceMessage(client.customer, serviceData))}>
               Reset
             </Button>
-            <Button
-              variant="outline"
-              className="w-full sm:w-auto sm:order-1"
-              onClick={() => setReviewOpen(false)}
-              disabled={saving}
-            >
+            <Button variant="outline" className="w-full sm:order-1 sm:w-auto" onClick={() => setReviewOpen(false)} disabled={saving}>
               Cancel
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <FollowUpPrompt
+        open={followUpOpen}
+        saving={saving}
+        onSkip={() => { setFollowUpOpen(false); leaveVisit(); }}
+        onConfirm={createFollowUp}
+      />
     </div>
   );
 }

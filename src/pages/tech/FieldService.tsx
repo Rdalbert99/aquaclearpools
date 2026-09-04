@@ -647,7 +647,8 @@ export default function FieldService() {
         notes: `${issuePromptItem.label}: ${notes}`,
         assigned_technician_id: user?.id ?? null,
         created_by: user?.id ?? null,
-      });
+        photo_url: value.photoUrl,
+      } as any);
       if (error) throw error;
 
       if (value.description) {

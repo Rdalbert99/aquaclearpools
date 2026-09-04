@@ -5,13 +5,15 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { AlertTriangle } from 'lucide-react';
+import { AlertTriangle, Camera } from 'lucide-react';
+import { ImageUpload } from '@/components/ui/image-upload';
 
 export interface IssueFollowUpValue {
   date: string;
   description?: string;
   partsNeeded: boolean;
   orderedBy?: 'aqua_clear' | 'customer';
+  photoUrl: string;
 }
 
 interface Props {
@@ -34,6 +36,7 @@ export function IssueFollowUpPrompt({ open, saving, equipmentLabel, initialDescr
   const [description, setDescription] = useState('');
   const [partsNeeded, setPartsNeeded] = useState<boolean | null>(null);
   const [orderedBy, setOrderedBy] = useState<'aqua_clear' | 'customer'>('aqua_clear');
+  const [photoUrl, setPhotoUrl] = useState('');
 
   useEffect(() => {
     if (open) {
@@ -41,10 +44,11 @@ export function IssueFollowUpPrompt({ open, saving, equipmentLabel, initialDescr
       setDescription(initialDescription ?? '');
       setPartsNeeded(null);
       setOrderedBy('aqua_clear');
+      setPhotoUrl('');
     }
   }, [open, initialDescription]);
 
-  const canConfirm = !!date && partsNeeded !== null && (!partsNeeded || !!orderedBy);
+  const canConfirm = !!date && !!photoUrl && partsNeeded !== null && (!partsNeeded || !!orderedBy);
 
   return (
     <Dialog open={open} onOpenChange={(o) => { if (!o && !saving) onSkip(); }}>
@@ -64,6 +68,20 @@ export function IssueFollowUpPrompt({ open, saving, equipmentLabel, initialDescr
             <Textarea id="issue-desc" rows={2} value={description} onChange={(e) => setDescription(e.target.value)}
               placeholder={`Describe the ${equipmentLabel.toLowerCase()} issue...`} />
           </div>
+
+          <div>
+            <Label className="flex items-center gap-2">
+              <Camera className="h-4 w-4" /> Photo of the issue <span className="text-destructive">*</span>
+            </Label>
+            <p className="text-xs text-muted-foreground mb-2">A photo is required for every equipment issue.</p>
+            <ImageUpload
+              onImageUploaded={setPhotoUrl}
+              currentImage={photoUrl}
+              path="equipment-issues"
+              label="Take / upload equipment photo"
+            />
+          </div>
+
 
           <div>
             <Label>Are parts needed?</Label>
@@ -113,6 +131,7 @@ export function IssueFollowUpPrompt({ open, saving, equipmentLabel, initialDescr
               description: description.trim() || undefined,
               partsNeeded: partsNeeded === true,
               orderedBy: partsNeeded ? orderedBy : undefined,
+              photoUrl,
             })}
           >
             Create follow-up

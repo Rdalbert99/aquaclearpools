@@ -1104,6 +1104,56 @@ export default function ClientEdit() {
           </Card>
         )}
 
+        {/* Algaecide Schedule */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center space-x-2">
+              <Droplets className="h-5 w-5" />
+              <span>Maintenance Algaecide</span>
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              Set how often this pool gets a maintenance algaecide dose. The technician's service screen will
+              calculate the dose from pool volume and flag it when it's due.
+            </p>
+            <div className="grid gap-4 md:grid-cols-3">
+              <div className="space-y-2">
+                <Label htmlFor="algaecideInterval">Dose every (days)</Label>
+                <Input
+                  id="algaecideInterval"
+                  type="number"
+                  min={0}
+                  placeholder="e.g. 14 (0 = off)"
+                  value={client.algaecide_interval_days === '' ? '' : client.algaecide_interval_days}
+                  onChange={(e) => handleInputChange('algaecide_interval_days', e.target.value === '' ? '' : Number(e.target.value))}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="algaecideProduct">Product</Label>
+                <Input
+                  id="algaecideProduct"
+                  placeholder="60% polyquat algaecide"
+                  value={client.algaecide_product}
+                  onChange={(e) => handleInputChange('algaecide_product', e.target.value)}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="algaecideLastDosed">Last dosed on</Label>
+                <Input
+                  id="algaecideLastDosed"
+                  type="date"
+                  max={new Date().toISOString().split('T')[0]}
+                  value={client.algaecide_last_dosed || ''}
+                  onChange={(e) => handleInputChange('algaecide_last_dosed', e.target.value)}
+                />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+
+
         {/* Last Tech Visit */}
         {lastTechVisit && (
           <Card className="lg:col-span-2">

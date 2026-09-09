@@ -427,6 +427,14 @@ const AppRoutes = () => {
             </ProtectedRoute>
           }
         />
+        <Route
+          path="/admin/commercial-dashboard"
+          element={
+            <ProtectedRoute allowedRoles={['admin']}>
+              <CommercialExecutive />
+            </ProtectedRoute>
+          }
+        />
 
         <Route 
           path="/admin/notification-templates" 

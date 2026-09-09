@@ -1,22 +1,16 @@
-# Aqua Clear Roadmap
+# Roadmap
 
 ## In progress
-- **Monthly executive summary email** — build `send-monthly-executive-summary` edge function
-  (Mailjet), schedule it on the last day of each month, log sends in
-  `commercial_monthly_report_sends`, add a manual "send now" for admins.
-- **HCC portal users** — admin UI on Commercial Accounts page to link users (role, facility,
-  monthly-report flag). HCC contact names/emails still needed from Randy to complete linking.
-- **Service dashboard** — new `/service-dashboard` (admin + techs): scheduled visits,
-  upcoming visits, tech calendar wired to the new service workflow.
-- **Publish + re-scrape** — publish so logo/favicon/social previews go live on
-  getaquaclear.com, then re-scrape the URL to confirm.
-- **Messaging health check** — outbound SMS confirmed working; inbound replies and delivery
-  receipts are blocked because the `TELNYX_PUBLIC_KEY` secret is missing (webhooks rejected as
-  unsigned). Needs the key added, then Telnyx portal webhook URLs verified.
+- [ ] Monthly executive summary email: deploy send-monthly-executive-summary, verify cron job, test send (recipients: org billing email + opted-in portal users)
+- [ ] Set TELNYX_PUBLIC_KEY secret (user must paste value from Telnyx portal) so inbound texts + delivery receipts land
+- [ ] Service dashboard page: route + nav links added; verify rendering
+- [ ] HCC portal users: link management users via new Portal Users panel (needs names/emails or existing accounts)
+- [ ] Publish site so new favicon/logo/social previews go live on getaquaclear.com, then re-scrape the URL
 
 ## Done
-- **Tech-first service workflow redesign** (sticky header + health score, collapsible cards,
-  visit actions with auto-logging, algaecide scheduling, follow-up prompt + dashboard,
-  structured visit snapshots).
-
-- Dark-mode logo variant applied across app + email templates.
+- Tech-first service workflow (sticky header, health score, collapsible cards, follow-ups)
+- Issue follow-up prompt with required equipment photo
+- Dark-mode logo variant + BrandLogo switching
+- PortalUsersPanel: grant access, role, monthly-report/alerts toggles, manual send, send history
+- Migration: commercial_monthly_report_sends table + cron schedule send-monthly-executive-summary
+- send-monthly-executive-summary edge function created (last-day auto send, America/Chicago)

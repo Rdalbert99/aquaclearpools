@@ -13,6 +13,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from '@/hooks/use-toast';
 import { Building2, Loader2, Plus } from 'lucide-react';
 import { ISSUE_STATUSES, ISSUE_STATUS_LABEL, IssueStatus, formatDate } from '@/lib/commercial';
+import { PortalUsersPanel } from '@/components/admin/PortalUsersPanel';
 
 interface Row { [key: string]: unknown }
 
@@ -28,10 +29,11 @@ const CommercialAccounts = () => {
   const [issues, setIssues] = useState<Row[]>([]);
   const [clients, setClients] = useState<Row[]>([]);
   const [users, setUsers] = useState<Row[]>([]);
+  const [sends, setSends] = useState<Row[]>([]);
 
   const load = useCallback(async () => {
     setLoading(true);
-    const [o, f, p, m, e, i, c, u] = await Promise.all([
+    const [o, f, p, m, e, i, c, u, s] = await Promise.all([
       supabase.from('commercial_organizations').select('*').order('name'),
       supabase.from('facilities').select('*').order('name'),
       supabase.from('pools').select('*').order('name'),
@@ -40,6 +42,7 @@ const CommercialAccounts = () => {
       supabase.from('equipment_issues').select('*').order('opened_at', { ascending: false }),
       supabase.from('clients').select('id, customer').order('customer'),
       supabase.from('users').select('id, name, email, login, role').order('name'),
+      supabase.from('commercial_monthly_report_sends').select('*').order('created_at', { ascending: false }).limit(50),
     ]);
     setOrgs(o.data ?? []);
     setFacilities(f.data ?? []);
@@ -49,6 +52,7 @@ const CommercialAccounts = () => {
     setIssues(i.data ?? []);
     setClients(c.data ?? []);
     setUsers(u.data ?? []);
+    setSends(s.data ?? []);
     setLoading(false);
   }, []);
 
@@ -190,31 +194,14 @@ const CommercialAccounts = () => {
 
           {/* PORTAL USERS */}
           <TabsContent value="users" className="space-y-3">
-            <RecordDialog
-              title="Grant portal access"
-              trigger="Add portal user"
-              description="Read-only access. The person must already have an Aqua Clear login."
-              fields={[
-                { name: 'organization_id', label: 'Organization', required: true, options: orgs.map((o) => ({ value: o.id as string, label: o.name as string })) },
-                { name: 'user_id', label: 'User account', required: true, options: users.map((u) => ({ value: u.id as string, label: `${u.name as string} (${u.email as string})` })) },
-                { name: 'facility_id', label: 'Limit to one facility (optional)', options: facilities.map((f) => ({ value: f.id as string, label: f.name as string })) },
-                { name: 'title', label: 'Title' },
-              ]}
-              onSubmit={(v) => insert('commercial_org_users', v)}
+            <PortalUsersPanel
+              orgs={orgs}
+              facilities={facilities}
+              members={members}
+              users={users}
+              sends={sends}
+              reload={load}
             />
-            {members.map((m) => (
-              <Card key={m.id as string}>
-                <CardContent className="flex flex-wrap items-center justify-between gap-2 p-4">
-                  <div>
-                    <p className="font-medium">{(users.find((u) => u.id === m.user_id)?.name as string) ?? 'User'}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {orgName(m.organization_id)}{m.facility_id ? ` · ${facilityName(m.facility_id)}` : ' · all facilities'}
-                    </p>
-                  </div>
-                  <Badge variant="secondary">{m.role as string}</Badge>
-                </CardContent>
-              </Card>
-            ))}
           </TabsContent>
 
           {/* EQUIPMENT */}

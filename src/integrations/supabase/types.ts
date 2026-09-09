@@ -523,6 +523,57 @@ export type Database = {
           },
         ]
       }
+      commercial_monthly_report_sends: {
+        Row: {
+          created_at: string
+          error_detail: string | null
+          facility_id: string
+          id: string
+          organization_id: string | null
+          period_key: string
+          recipients: string[]
+          status: string
+          triggered_by: string
+        }
+        Insert: {
+          created_at?: string
+          error_detail?: string | null
+          facility_id: string
+          id?: string
+          organization_id?: string | null
+          period_key: string
+          recipients?: string[]
+          status?: string
+          triggered_by?: string
+        }
+        Update: {
+          created_at?: string
+          error_detail?: string | null
+          facility_id?: string
+          id?: string
+          organization_id?: string | null
+          period_key?: string
+          recipients?: string[]
+          status?: string
+          triggered_by?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "commercial_monthly_report_sends_facility_id_fkey"
+            columns: ["facility_id"]
+            isOneToOne: false
+            referencedRelation: "facilities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "commercial_monthly_report_sends_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "commercial_organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       commercial_org_users: {
         Row: {
           created_at: string

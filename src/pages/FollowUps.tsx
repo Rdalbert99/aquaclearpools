@@ -11,6 +11,22 @@ import { LoadingSpinner } from '@/components/ui/loading-spinner';
 import { useToast } from '@/hooks/use-toast';
 import { CalendarClock, CheckCircle2, PlayCircle, Search } from 'lucide-react';
 import { FOLLOW_UP_REASONS } from '@/components/tech/FollowUpPrompt';
+import { getSignedStorageUrl } from '@/lib/storage-urls';
+
+function IssuePhoto({ url }: { url: string }) {
+  const [src, setSrc] = useState<string | null>(null);
+  useEffect(() => {
+    let active = true;
+    getSignedStorageUrl(url, 'pool-images').then((s) => { if (active) setSrc(s); });
+    return () => { active = false; };
+  }, [url]);
+  if (!src) return null;
+  return (
+    <a href={src} target="_blank" rel="noopener noreferrer" className="mt-2 inline-block">
+      <img src={src} alt="Equipment issue" className="h-20 w-20 rounded-md border object-cover" />
+    </a>
+  );
+}
 
 type Row = {
   id: string;

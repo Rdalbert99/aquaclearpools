@@ -63,6 +63,7 @@ import Contact from "./pages/Contact";
 import Services from './pages/Services';
 import Commercial from './pages/Commercial';
 import CommercialPortal from './pages/commercial/Portal';
+import CommercialPortalLogin from './pages/commercial/PortalLogin';
 import CommercialAccounts from './pages/admin/CommercialAccounts';
 import CommercialExecutive from './pages/admin/CommercialExecutive';
 
@@ -100,6 +101,7 @@ const AppRoutes = () => {
         <Route path="/" element={<Index />} />
         <Route path="/services" element={<Services />} />
         <Route path="/commercial" element={<Commercial />} />
+        <Route path="/commercial/login" element={<CommercialPortalLogin />} />
         <Route path="/commercial/portal" element={<CommercialPortal />} />
 
 

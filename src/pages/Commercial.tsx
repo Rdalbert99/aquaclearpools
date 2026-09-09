@@ -181,7 +181,7 @@ const Commercial = () => {
               </Link>
             </Button>
             <Button asChild size="lg" variant="outline" className="text-base bg-white/10 border-white text-white hover:bg-white/20">
-              <Link to="/auth/login">
+              <Link to="/commercial/login">
                 <LogIn className="mr-2 h-5 w-5" />
                 Commercial Client Login
               </Link>
@@ -513,7 +513,7 @@ const Commercial = () => {
               <Link to="/contact?type=commercial">Request Commercial Service</Link>
             </Button>
             <Button asChild size="lg" variant="outline">
-              <Link to="/auth/login">Commercial Client Login</Link>
+              <Link to="/commercial/login">Commercial Client Login</Link>
             </Button>
           </div>
         </div>

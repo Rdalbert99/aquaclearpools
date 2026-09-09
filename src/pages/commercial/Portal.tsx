@@ -39,7 +39,7 @@ const CommercialPortal = () => {
   const [tab, setTab] = useState('dashboard');
 
   useEffect(() => {
-    if (!authLoading && !isAuthenticated) navigate('/auth/login');
+    if (!authLoading && !isAuthenticated) navigate('/commercial/login');
   }, [authLoading, isAuthenticated, navigate]);
 
   useEffect(() => {
@@ -66,6 +66,7 @@ const CommercialPortal = () => {
       issues: data.issues.filter((i) => i.facility_id === facility.id),
       issueEvents: data.issueEvents,
       documents: data.documents.filter((d) => d.facility_id === facility.id),
+      followUps: data.followUps.filter((f) => clientIds.has(f.client_id)),
       technicianNames: data.technicianNames,
     };
   }, [data, facilityId]);

@@ -1,7 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { StatusBadge } from './StatusBadge';
-import { FacilityScope, technicianName } from './types';
+import { FacilityScope, poolNameForClient, technicianName } from './types';
 import {
   CHEM_RANGES,
   chemStatus,
@@ -12,7 +12,7 @@ import {
   readingsFromService,
   worstStatus,
 } from '@/lib/commercial';
-import { CalendarClock, Droplets, Gauge, Wrench } from 'lucide-react';
+import { CalendarClock, ClipboardList, Droplets, Gauge, Wrench } from 'lucide-react';
 
 interface Props {
   scope: FacilityScope;
@@ -47,6 +47,14 @@ export const PortalDashboard = ({ scope, onNavigate }: Props) => {
       openIssueCount: poolIssues.length,
     };
   });
+
+  const openFollowUps = (scope.followUps ?? [])
+    .filter((f) => f.status !== 'completed' && f.status !== 'cancelled')
+    .sort((a, b) => a.scheduled_date.localeCompare(b.scheduled_date));
+
+  const recentVisits = [...scope.services]
+    .sort((a, b) => new Date(b.performed_at).getTime() - new Date(a.performed_at).getTime())
+    .slice(0, 5);
 
   const overall = worstStatus(
     ...poolCards.map((p) => p.overall),
@@ -86,6 +94,65 @@ export const PortalDashboard = ({ scope, onNavigate }: Props) => {
         <SummaryTile icon={CalendarClock} label="Next Scheduled" value={formatDate(nextService)} />
         <SummaryTile icon={Wrench} label="Open Issues" value={String(openIssues.length)} onClick={() => onNavigate('issues')} />
         <SummaryTile icon={Gauge} label="Equipment Alerts" value={String(equipmentAlerts.length)} onClick={() => onNavigate('equipment')} />
+      </div>
+
+      {/* Recent visits + follow-ups */}
+      <div className="grid gap-3 lg:grid-cols-2">
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="flex items-center gap-2 text-base">
+              <Droplets className="h-4 w-4" /> Recent visits
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            {recentVisits.length === 0 && (
+              <p className="text-sm text-muted-foreground">No service visits recorded yet.</p>
+            )}
+            {recentVisits.map((s) => (
+              <div key={s.id} className="flex items-start justify-between gap-3 rounded-lg border p-2.5">
+                <div className="min-w-0">
+                  <p className="text-sm font-medium">{formatDate(s.performed_at)}</p>
+                  <p className="truncate text-xs text-muted-foreground">
+                    {s.services_performed || s.notes || 'Routine maintenance visit'}
+                  </p>
+                </div>
+                <Badge variant="secondary" className="shrink-0 text-[10px]">
+                  {technicianName(scope, s.technician_id)}
+                </Badge>
+              </div>
+            ))}
+            {scope.services.length > recentVisits.length && (
+              <button onClick={() => onNavigate('history')} className="text-xs font-medium text-primary underline-offset-2 hover:underline">
+                View full service history
+              </button>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="flex items-center gap-2 text-base">
+              <ClipboardList className="h-4 w-4" /> Scheduled follow-ups
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            {openFollowUps.length === 0 && (
+              <p className="text-sm text-muted-foreground">No follow-up visits are scheduled right now.</p>
+            )}
+            {openFollowUps.slice(0, 6).map((f) => (
+              <div key={f.id} className="rounded-lg border p-2.5">
+                <div className="flex items-center justify-between gap-2">
+                  <p className="text-sm font-medium">{f.reason}</p>
+                  <Badge variant="outline" className="shrink-0 text-[10px]">{formatDate(f.scheduled_date)}</Badge>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  {poolNameForClient(scope, f.client_id)}
+                  {f.notes ? ` · ${f.notes}` : ''}
+                </p>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
       </div>
 
       {/* Per pool */}

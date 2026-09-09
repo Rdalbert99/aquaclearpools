@@ -115,6 +115,16 @@ export interface FacilityDocument {
   created_at: string;
 }
 
+export interface FollowUpVisit {
+  id: string;
+  client_id: string;
+  scheduled_date: string;
+  reason: string;
+  notes: string | null;
+  status: string;
+  assigned_technician_id: string | null;
+}
+
 export interface CommercialData {
   loading: boolean;
   error: string | null;
@@ -129,6 +139,7 @@ export interface CommercialData {
   issues: Issue[];
   issueEvents: IssueEvent[];
   documents: FacilityDocument[];
+  followUps: FollowUpVisit[];
   technicianNames: Record<string, string>;
   reload: () => void;
 }
@@ -152,6 +163,7 @@ export function useCommercialPortal(): CommercialData {
     issues: [],
     issueEvents: [],
     documents: [],
+    followUps: [],
     technicianNames: {},
   });
   const [tick, setTick] = useState(0);
@@ -207,7 +219,7 @@ export function useCommercialPortal(): CommercialData {
         const clientIds = pools.map((p) => p.client_id).filter((v): v is string => !!v);
         const issues = (issueRes.data ?? []) as Issue[];
 
-        const [clientRes, serviceRes, eventRes] = await Promise.all([
+        const [clientRes, serviceRes, eventRes, followUpRes] = await Promise.all([
           clientIds.length
             ? supabase
                 .from('clients')
@@ -224,6 +236,13 @@ export function useCommercialPortal(): CommercialData {
             : Promise.resolve({ data: [], error: null } as never),
           issues.length
             ? supabase.from('equipment_issue_events').select('*').in('issue_id', issues.map((i) => i.id)).order('created_at')
+            : Promise.resolve({ data: [], error: null } as never),
+          clientIds.length
+            ? supabase
+                .from('follow_up_visits')
+                .select('id, client_id, scheduled_date, reason, notes, status, assigned_technician_id')
+                .in('client_id', clientIds)
+                .order('scheduled_date')
             : Promise.resolve({ data: [], error: null } as never),
         ]);
 
@@ -260,6 +279,7 @@ export function useCommercialPortal(): CommercialData {
           issues,
           issueEvents: ((eventRes as { data: unknown[] }).data ?? []) as IssueEvent[],
           documents: (docRes.data ?? []) as FacilityDocument[],
+          followUps: ((followUpRes as { data: unknown[] }).data ?? []) as FollowUpVisit[],
           technicianNames,
         });
       } catch (err) {

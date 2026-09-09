@@ -3,6 +3,7 @@ import type {
   ClientRow,
   Equipment,
   Facility,
+  FollowUpVisit,
   FacilityDocument,
   Issue,
   IssueEvent,
@@ -26,6 +27,7 @@ export interface FacilityScope {
   issues: Issue[];
   issueEvents: IssueEvent[];
   documents: FacilityDocument[];
+  followUps: FollowUpVisit[];
   technicianNames: Record<string, string>;
 }
 

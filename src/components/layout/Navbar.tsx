@@ -63,6 +63,7 @@ export const Navbar = () => {
         { label: 'Dashboard', icon: Home, path: '/admin' },
         { label: 'Clients', icon: Users, path: '/admin/clients' },
         { label: 'Commercial', icon: Building2, path: '/admin/commercial' },
+        { label: 'Exec Dashboard', icon: Building2, path: '/admin/commercial-dashboard' },
 
         { label: 'Requests', icon: FileText, path: '/admin/service-request-management' },
         { label: 'Messages', icon: MessageSquare, path: '/admin/inbound-messages', badge: unreadCount },

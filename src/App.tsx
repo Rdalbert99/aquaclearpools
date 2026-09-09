@@ -64,6 +64,7 @@ import Services from './pages/Services';
 import Commercial from './pages/Commercial';
 import CommercialPortal from './pages/commercial/Portal';
 import CommercialAccounts from './pages/admin/CommercialAccounts';
+import CommercialExecutive from './pages/admin/CommercialExecutive';
 
 
 
@@ -423,6 +424,14 @@ const AppRoutes = () => {
           element={
             <ProtectedRoute allowedRoles={['admin']}>
               <CommercialAccounts />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/commercial-dashboard"
+          element={
+            <ProtectedRoute allowedRoles={['admin']}>
+              <CommercialExecutive />
             </ProtectedRoute>
           }
         />

@@ -20,6 +20,7 @@ type Row = {
   notes: string | null;
   status: string;
   created_at: string;
+  photo_url?: string | null;
   clients?: { customer: string } | null;
 };
 
@@ -42,7 +43,7 @@ export default function FollowUps() {
     setLoading(true);
     const { data, error } = await supabase
       .from('follow_up_visits')
-      .select('id, client_id, scheduled_date, reason, notes, status, created_at, clients(customer)')
+      .select('id, client_id, scheduled_date, reason, notes, status, created_at, photo_url, clients(customer)')
       .order('scheduled_date', { ascending: true });
     if (error) {
       toast({ title: 'Error', description: error.message, variant: 'destructive' });

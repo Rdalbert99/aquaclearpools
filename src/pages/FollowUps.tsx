@@ -11,6 +11,22 @@ import { LoadingSpinner } from '@/components/ui/loading-spinner';
 import { useToast } from '@/hooks/use-toast';
 import { CalendarClock, CheckCircle2, PlayCircle, Search } from 'lucide-react';
 import { FOLLOW_UP_REASONS } from '@/components/tech/FollowUpPrompt';
+import { getSignedStorageUrl } from '@/lib/storage-urls';
+
+function IssuePhoto({ url }: { url: string }) {
+  const [src, setSrc] = useState<string | null>(null);
+  useEffect(() => {
+    let active = true;
+    getSignedStorageUrl(url, 'pool-images').then((s) => { if (active) setSrc(s); });
+    return () => { active = false; };
+  }, [url]);
+  if (!src) return null;
+  return (
+    <a href={src} target="_blank" rel="noopener noreferrer" className="mt-2 inline-block">
+      <img src={src} alt="Equipment issue" className="h-20 w-20 rounded-md border object-cover" />
+    </a>
+  );
+}
 
 type Row = {
   id: string;
@@ -20,6 +36,7 @@ type Row = {
   notes: string | null;
   status: string;
   created_at: string;
+  photo_url?: string | null;
   clients?: { customer: string } | null;
 };
 
@@ -42,7 +59,7 @@ export default function FollowUps() {
     setLoading(true);
     const { data, error } = await supabase
       .from('follow_up_visits')
-      .select('id, client_id, scheduled_date, reason, notes, status, created_at, clients(customer)')
+      .select('id, client_id, scheduled_date, reason, notes, status, created_at, photo_url, clients(customer)')
       .order('scheduled_date', { ascending: true });
     if (error) {
       toast({ title: 'Error', description: error.message, variant: 'destructive' });
@@ -104,6 +121,7 @@ export default function FollowUps() {
                     {r.status === 'open' && (diff < 0 ? ` · ${Math.abs(diff)} day(s) overdue` : diff === 0 ? ' · today' : ` · in ${diff} day(s)`)}
                   </p>
                   {r.notes && <p className="mt-1 text-sm">{r.notes}</p>}
+                  {r.photo_url && <IssuePhoto url={r.photo_url} />}
                 </div>
                 <div className="flex flex-wrap gap-2">
                   <Button asChild size="sm" variant="outline">

@@ -1,0 +1,1 @@
+ALTER TABLE public.follow_up_visits ADD COLUMN IF NOT EXISTS photo_url text;

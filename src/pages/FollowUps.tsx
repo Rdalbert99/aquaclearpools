@@ -105,6 +105,7 @@ export default function FollowUps() {
                     {r.status === 'open' && (diff < 0 ? ` · ${Math.abs(diff)} day(s) overdue` : diff === 0 ? ' · today' : ` · in ${diff} day(s)`)}
                   </p>
                   {r.notes && <p className="mt-1 text-sm">{r.notes}</p>}
+                  {r.photo_url && <IssuePhoto url={r.photo_url} />}
                 </div>
                 <div className="flex flex-wrap gap-2">
                   <Button asChild size="sm" variant="outline">

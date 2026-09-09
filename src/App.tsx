@@ -74,6 +74,7 @@ import InboundMessages from "./pages/admin/InboundMessages";
 import MessageLogs from "./pages/admin/MessageLogs";
 import TelnyxStatus from "./pages/admin/TelnyxStatus";
 import FollowUps from "./pages/FollowUps";
+import ServiceDashboard from "./pages/ServiceDashboard";
 import NotificationTemplates from "./pages/admin/NotificationTemplates";
 import SMSForwardingSettings from "./pages/admin/SMSForwardingSettings";
 
@@ -174,6 +175,14 @@ const AppRoutes = () => {
           element={
             <ProtectedRoute allowedRoles={['tech', 'admin']}>
               <FollowUps />
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/service-dashboard" 
+          element={
+            <ProtectedRoute allowedRoles={['tech', 'admin']}>
+              <ServiceDashboard />
             </ProtectedRoute>
           } 
         />

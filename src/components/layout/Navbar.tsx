@@ -14,7 +14,7 @@ import {
   DropdownMenuSeparator, 
   DropdownMenuTrigger 
 } from '@/components/ui/dropdown-menu';
-import { Home, Calculator, Users, FileText, LogOut, User, Star, Calendar, BarChart3, Mail, Menu, MessageSquare, MessageSquareReply, Radio, Building2 } from 'lucide-react';
+import { Home, Calculator, Users, FileText, LogOut, User, Star, Calendar, CalendarDays, BarChart3, Mail, Menu, MessageSquare, MessageSquareReply, Radio, Building2 } from 'lucide-react';
 import { NotificationBell } from '@/components/notifications/NotificationBell';
 import { BrandLogo } from "@/components/layout/BrandLogo";
 
@@ -75,6 +75,7 @@ export const Navbar = () => {
         { label: 'Send Log', icon: MessageSquareReply, path: '/admin/message-logs' },
         { label: 'Telnyx Status', icon: Radio, path: '/admin/telnyx-status' },
         { label: 'Follow-Ups', icon: Calendar, path: '/follow-ups' },
+        { label: 'Service Dashboard', icon: CalendarDays, path: '/service-dashboard' },
       ];
     }
     
@@ -84,6 +85,7 @@ export const Navbar = () => {
         { label: 'Schedule', icon: Calendar, path: '/tech/schedule' },
         { label: 'My Clients', icon: Users, path: '/tech/clients' },
         { label: 'Follow-Ups', icon: Calendar, path: '/follow-ups' },
+        { label: 'Service Dashboard', icon: CalendarDays, path: '/service-dashboard' },
         { label: 'Calculator', icon: Calculator, path: '/tech/calculator' },
         { label: 'Send Log', icon: MessageSquareReply, path: '/admin/message-logs' },
       ];

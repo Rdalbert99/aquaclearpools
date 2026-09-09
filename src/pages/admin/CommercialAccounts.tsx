@@ -13,6 +13,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from '@/hooks/use-toast';
 import { Building2, Loader2, Plus } from 'lucide-react';
 import { ISSUE_STATUSES, ISSUE_STATUS_LABEL, IssueStatus, formatDate } from '@/lib/commercial';
+import { PortalUsersPanel } from '@/components/admin/PortalUsersPanel';
 
 interface Row { [key: string]: unknown }
 

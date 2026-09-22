@@ -229,7 +229,7 @@ export function NextAppointmentCard({
       </CardContent>
 
       <Dialog open={rescheduleOpen} onOpenChange={setRescheduleOpen}>
-        <DialogContent className="z-[100] max-h-[85vh] overflow-y-auto">
+        <DialogContent className="max-h-[85vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Request a reschedule</DialogTitle>
             <DialogDescription>
@@ -270,7 +270,7 @@ export function NextAppointmentCard({
       </Dialog>
 
       <Dialog open={noteOpen} onOpenChange={setNoteOpen}>
-        <DialogContent className="z-[100] max-h-[85vh] overflow-y-auto">
+        <DialogContent className="max-h-[85vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Note for your technician</DialogTitle>
             <DialogDescription>

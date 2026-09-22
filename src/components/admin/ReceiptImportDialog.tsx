@@ -334,7 +334,7 @@ export default function ReceiptImportDialog({ open, onOpenChange, onImported }: 
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-3xl max-h-[92vh] overflow-y-auto z-[100]">
+      <DialogContent className="max-w-3xl max-h-[92vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Scan a receipt or invoice</DialogTitle>
           <DialogDescription>

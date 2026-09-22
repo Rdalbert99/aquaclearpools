@@ -141,6 +141,7 @@ export default function ReceiptImportDialog({ open, onOpenChange, onImported }: 
 
   async function handleFile(f: File | undefined) {
     if (!f) return;
+    setReadError(null);
     setFile(f);
     setPreviewUrl(f.type.startsWith('image/') ? URL.createObjectURL(f) : null);
     setStep('analyzing');
@@ -168,7 +169,9 @@ export default function ReceiptImportDialog({ open, onOpenChange, onImported }: 
         parsed.total != null ? String(parsed.total) : '',
       );
     } catch (err: any) {
-      toast({ title: 'Could not read that receipt', description: err.message, variant: 'destructive' });
+      const msg = err?.message || 'Please try another photo or file.';
+      setReadError(msg);
+      toast({ title: 'Could not read that receipt', description: msg, variant: 'destructive' });
       setStep('capture');
     }
   }

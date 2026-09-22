@@ -13,8 +13,10 @@ import { CHEMICAL_OPTIONS } from '@/lib/chemicals-added';
 import { CHEMICAL_BASE_UNIT, fmtMoney } from '@/lib/inventory-cost';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from '@/hooks/use-toast';
-import { Trash2, AlertTriangle } from 'lucide-react';
+import { Trash2, AlertTriangle, ScanLine, PencilLine } from 'lucide-react';
 import ChemicalBaseCosts from '@/components/admin/ChemicalBaseCosts';
+import ReceiptImportDialog from '@/components/admin/ReceiptImportDialog';
+import ReceiptHistory from '@/components/admin/ReceiptHistory';
 
 const LOOKBACK_DAYS = 30;
 const LOW_STOCK_DAYS = 14;

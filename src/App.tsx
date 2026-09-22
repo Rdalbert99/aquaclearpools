@@ -1,4 +1,3 @@
-import ReceiptTest from '@/pages/__ReceiptTest';
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -246,7 +245,6 @@ const AppRoutes = () => {
             </ProtectedRoute>
           }
         />
-        <Route path="/__receipt-test" element={<ReceiptTest />} />
         <Route
           path="/admin/inventory"
           element={

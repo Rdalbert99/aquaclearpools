@@ -13,8 +13,10 @@ import { CHEMICAL_OPTIONS } from '@/lib/chemicals-added';
 import { CHEMICAL_BASE_UNIT, fmtMoney } from '@/lib/inventory-cost';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from '@/hooks/use-toast';
-import { Trash2, AlertTriangle } from 'lucide-react';
+import { Trash2, AlertTriangle, ScanLine, PencilLine } from 'lucide-react';
 import ChemicalBaseCosts from '@/components/admin/ChemicalBaseCosts';
+import ReceiptImportDialog from '@/components/admin/ReceiptImportDialog';
+import ReceiptHistory from '@/components/admin/ReceiptHistory';
 
 const LOOKBACK_DAYS = 30;
 const LOW_STOCK_DAYS = 14;
@@ -55,6 +57,9 @@ export default function Inventory() {
   const [totalCost, setTotalCost] = useState('');
   const [notes, setNotes] = useState('');
   const [saving, setSaving] = useState(false);
+  const [scanOpen, setScanOpen] = useState(false);
+  const [showManual, setShowManual] = useState(false);
+  const [receiptKey, setReceiptKey] = useState(0);
 
   const currentBase = CHEMICAL_BASE_UNIT[chemicalId] ?? 'lbs';
 
@@ -183,11 +188,39 @@ export default function Inventory() {
         </Alert>
       )}
 
+      <Card>
+        <CardHeader><CardTitle>Add inventory</CardTitle></CardHeader>
+        <CardContent className="space-y-3">
+          <p className="text-sm font-medium">Do you have a receipt or invoice?</p>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <Button className="h-16 text-base" onClick={() => setScanOpen(true)}>
+              <ScanLine className="mr-2 h-5 w-5" /> Yes — scan it
+            </Button>
+            <Button
+              variant="outline"
+              className="h-16 text-base"
+              onClick={() => {
+                setShowManual(true);
+                setTimeout(() => document.getElementById('manual-purchase')?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 50);
+              }}
+            >
+              <PencilLine className="mr-2 h-5 w-5" /> No — enter manually
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      <ReceiptImportDialog
+        open={scanOpen}
+        onOpenChange={setScanOpen}
+        onImported={() => { setReceiptKey(k => k + 1); refresh(); }}
+      />
+
+      <ReceiptHistory refreshKey={receiptKey} />
+
       <ChemicalBaseCosts />
 
-
-
-      <Card>
+      <Card id="manual-purchase" className={showManual ? 'ring-2 ring-primary/40' : undefined}>
         <CardHeader><CardTitle>Log a purchase</CardTitle></CardHeader>
         <CardContent className="grid gap-3 sm:grid-cols-2 md:grid-cols-5">
           <div className="sm:col-span-2">

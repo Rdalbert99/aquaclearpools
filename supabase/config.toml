@@ -70,3 +70,6 @@ verify_jwt = false
 
 [functions.send-monthly-executive-summary]
 verify_jwt = false
+
+[functions.parse-receipt]
+verify_jwt = true

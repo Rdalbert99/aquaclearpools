@@ -71,6 +71,7 @@ export default function ReceiptImportDialog({ open, onOpenChange, onImported }: 
   const [lines, setLines] = useState<ReviewLine[]>([]);
   const [raw, setRaw] = useState<ParsedReceipt | null>(null);
   const [duplicate, setDuplicate] = useState<string | null>(null);
+  const [readError, setReadError] = useState<string | null>(null);
 
   const cameraRef = useRef<HTMLInputElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);

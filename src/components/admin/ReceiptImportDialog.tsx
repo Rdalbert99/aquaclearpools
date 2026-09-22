@@ -331,27 +331,56 @@ export default function ReceiptImportDialog({ open, onOpenChange, onImported }: 
 
         {step === 'capture' && (
           <div className="space-y-3">
-            <input
-              ref={cameraRef}
-              type="file"
-              accept="image/*"
-              capture="environment"
-              className="hidden"
-              onChange={e => handleFile(e.target.files?.[0])}
-            />
-            <input
-              ref={fileRef}
-              type="file"
-              accept="image/*,application/pdf"
-              className="hidden"
-              onChange={e => handleFile(e.target.files?.[0])}
-            />
-            <Button className="w-full h-20 text-base" onClick={() => cameraRef.current?.click()}>
-              <Camera className="mr-2 h-6 w-6" /> Take Photo
-            </Button>
-            <Button variant="outline" className="w-full h-20 text-base" onClick={() => fileRef.current?.click()}>
-              <Upload className="mr-2 h-6 w-6" /> Choose Photo / File
-            </Button>
+            {readError && (
+              <Alert variant="destructive">
+                <AlertTriangle className="h-4 w-4" />
+                <AlertTitle>Could not read that file</AlertTitle>
+                <AlertDescription>{readError}</AlertDescription>
+              </Alert>
+            )}
+
+            {/* Labels wrap the inputs so the native picker opens from the tap itself.
+                iOS Safari ignores clicks on display:none inputs, so they are only visually hidden. */}
+            <label
+              htmlFor="receipt-camera-input"
+              className="relative flex h-20 w-full cursor-pointer items-center justify-center gap-2 rounded-md bg-primary text-base font-medium text-primary-foreground transition-colors hover:bg-primary/90 active:bg-primary/80"
+            >
+              <Camera className="h-6 w-6" /> Take Photo
+              <input
+                id="receipt-camera-input"
+                ref={cameraRef}
+                type="file"
+                accept="image/*"
+                capture="environment"
+                className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
+                onChange={e => {
+                  handleFile(e.target.files?.[0]);
+                  e.target.value = '';
+                }}
+              />
+            </label>
+
+            <label
+              htmlFor="receipt-file-input"
+              className="relative flex h-20 w-full cursor-pointer items-center justify-center gap-2 rounded-md border border-input bg-background text-base font-medium text-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
+            >
+              <Upload className="h-6 w-6" /> Choose Photo / File
+              <input
+                id="receipt-file-input"
+                ref={fileRef}
+                type="file"
+                accept="image/*,image/heic,image/heif,application/pdf"
+                className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
+                onChange={e => {
+                  handleFile(e.target.files?.[0]);
+                  e.target.value = '';
+                }}
+              />
+            </label>
+
+            <p className="text-center text-xs text-muted-foreground">
+              If your device can't open the camera directly, use "Choose Photo / File" — it can also take a new photo.
+            </p>
           </div>
         )}
 

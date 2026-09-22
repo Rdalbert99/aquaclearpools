@@ -127,6 +127,7 @@ export type Database = {
           is_other: boolean
           label: string
           purpose: string
+          sku: string | null
           slug: string
           sort_order: number
           units: string[]
@@ -139,6 +140,7 @@ export type Database = {
           is_other?: boolean
           label: string
           purpose?: string
+          sku?: string | null
           slug: string
           sort_order?: number
           units?: string[]
@@ -151,6 +153,7 @@ export type Database = {
           is_other?: boolean
           label?: string
           purpose?: string
+          sku?: string | null
           slug?: string
           sort_order?: number
           units?: string[]
@@ -1019,6 +1022,123 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      inventory_receipt_items: {
+        Row: {
+          base_quantity: number | null
+          chemical_id: string | null
+          chemical_label: string | null
+          created_at: string
+          description: string | null
+          id: string
+          line_total: number | null
+          package_size: number | null
+          package_unit: string | null
+          purchase_id: string | null
+          quantity: number | null
+          receipt_id: string
+          sku: string | null
+          unit: string | null
+          unit_price: number | null
+        }
+        Insert: {
+          base_quantity?: number | null
+          chemical_id?: string | null
+          chemical_label?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          line_total?: number | null
+          package_size?: number | null
+          package_unit?: string | null
+          purchase_id?: string | null
+          quantity?: number | null
+          receipt_id: string
+          sku?: string | null
+          unit?: string | null
+          unit_price?: number | null
+        }
+        Update: {
+          base_quantity?: number | null
+          chemical_id?: string | null
+          chemical_label?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          line_total?: number | null
+          package_size?: number | null
+          package_unit?: string | null
+          purchase_id?: string | null
+          quantity?: number | null
+          receipt_id?: string
+          sku?: string | null
+          unit?: string | null
+          unit_price?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inventory_receipt_items_purchase_id_fkey"
+            columns: ["purchase_id"]
+            isOneToOne: false
+            referencedRelation: "chemical_inventory_purchases"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_receipt_items_receipt_id_fkey"
+            columns: ["receipt_id"]
+            isOneToOne: false
+            referencedRelation: "inventory_receipts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      inventory_receipts: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          image_path: string | null
+          invoice_date: string | null
+          invoice_number: string | null
+          notes: string | null
+          raw_extraction: Json | null
+          subtotal: number | null
+          tax: number | null
+          total: number | null
+          updated_at: string
+          vendor: string | null
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          image_path?: string | null
+          invoice_date?: string | null
+          invoice_number?: string | null
+          notes?: string | null
+          raw_extraction?: Json | null
+          subtotal?: number | null
+          tax?: number | null
+          total?: number | null
+          updated_at?: string
+          vendor?: string | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          image_path?: string | null
+          invoice_date?: string | null
+          invoice_number?: string | null
+          notes?: string | null
+          raw_extraction?: Json | null
+          subtotal?: number | null
+          tax?: number | null
+          total?: number | null
+          updated_at?: string
+          vendor?: string | null
+        }
+        Relationships: []
       }
       invitation_access_log: {
         Row: {

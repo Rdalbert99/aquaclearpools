@@ -52,7 +52,7 @@ export function IssueFollowUpPrompt({ open, saving, equipmentLabel, initialDescr
 
   return (
     <Dialog open={open} onOpenChange={(o) => { if (!o && !saving) onSkip(); }}>
-      <DialogContent className="max-w-md w-[calc(100vw-1.5rem)] p-4 sm:p-6 z-[100]">
+      <DialogContent className="max-w-md w-[calc(100vw-1.5rem)] p-4 sm:p-6">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <AlertTriangle className="h-5 w-5 text-destructive" /> {equipmentLabel} issue — schedule follow-up?

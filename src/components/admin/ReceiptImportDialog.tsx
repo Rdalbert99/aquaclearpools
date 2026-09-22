@@ -35,25 +35,34 @@ interface Props {
 
 const MAX_EDGE = 1800;
 
+function readAsDataUrl(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const fr = new FileReader();
+    fr.onload = () => resolve(String(fr.result));
+    fr.onerror = () => reject(new Error('That file could not be read from your device.'));
+    fr.readAsDataURL(file);
+  });
+}
+
 async function fileToDataUrl(file: File): Promise<string> {
-  if (!file.type.startsWith('image/')) {
-    return await new Promise((resolve, reject) => {
-      const fr = new FileReader();
-      fr.onload = () => resolve(String(fr.result));
-      fr.onerror = reject;
-      fr.readAsDataURL(file);
-    });
-  }
+  const looksLikeImage = file.type.startsWith('image/') || /\.(jpe?g|png|webp|heic|heif)$/i.test(file.name);
+  if (!looksLikeImage) return await readAsDataUrl(file);
+
   // Downscale photos so large camera shots upload and analyze quickly.
-  const bitmap = await createImageBitmap(file);
-  const scale = Math.min(1, MAX_EDGE / Math.max(bitmap.width, bitmap.height));
-  const canvas = document.createElement('canvas');
-  canvas.width = Math.round(bitmap.width * scale);
-  canvas.height = Math.round(bitmap.height * scale);
-  const ctx = canvas.getContext('2d');
-  if (!ctx) throw new Error('Could not read the photo.');
-  ctx.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
-  return canvas.toDataURL('image/jpeg', 0.85);
+  // HEIC and some Safari cases can't be decoded here — fall back to the raw file.
+  try {
+    const bitmap = await createImageBitmap(file);
+    const scale = Math.min(1, MAX_EDGE / Math.max(bitmap.width, bitmap.height));
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.round(bitmap.width * scale);
+    canvas.height = Math.round(bitmap.height * scale);
+    const ctx = canvas.getContext('2d');
+    if (!ctx) throw new Error('no 2d context');
+    ctx.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+    return canvas.toDataURL('image/jpeg', 0.85);
+  } catch {
+    return await readAsDataUrl(file);
+  }
 }
 
 export default function ReceiptImportDialog({ open, onOpenChange, onImported }: Props) {
@@ -71,6 +80,7 @@ export default function ReceiptImportDialog({ open, onOpenChange, onImported }: 
   const [lines, setLines] = useState<ReviewLine[]>([]);
   const [raw, setRaw] = useState<ParsedReceipt | null>(null);
   const [duplicate, setDuplicate] = useState<string | null>(null);
+  const [readError, setReadError] = useState<string | null>(null);
 
   const cameraRef = useRef<HTMLInputElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -140,6 +150,7 @@ export default function ReceiptImportDialog({ open, onOpenChange, onImported }: 
 
   async function handleFile(f: File | undefined) {
     if (!f) return;
+    setReadError(null);
     setFile(f);
     setPreviewUrl(f.type.startsWith('image/') ? URL.createObjectURL(f) : null);
     setStep('analyzing');
@@ -167,7 +178,9 @@ export default function ReceiptImportDialog({ open, onOpenChange, onImported }: 
         parsed.total != null ? String(parsed.total) : '',
       );
     } catch (err: any) {
-      toast({ title: 'Could not read that receipt', description: err.message, variant: 'destructive' });
+      const msg = err?.message || 'Please try another photo or file.';
+      setReadError(msg);
+      toast({ title: 'Could not read that receipt', description: msg, variant: 'destructive' });
       setStep('capture');
     }
   }
@@ -321,7 +334,7 @@ export default function ReceiptImportDialog({ open, onOpenChange, onImported }: 
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-3xl max-h-[92vh] overflow-y-auto z-[100]">
+      <DialogContent className="max-w-3xl max-h-[92vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Scan a receipt or invoice</DialogTitle>
           <DialogDescription>
@@ -331,27 +344,56 @@ export default function ReceiptImportDialog({ open, onOpenChange, onImported }: 
 
         {step === 'capture' && (
           <div className="space-y-3">
-            <input
-              ref={cameraRef}
-              type="file"
-              accept="image/*"
-              capture="environment"
-              className="hidden"
-              onChange={e => handleFile(e.target.files?.[0])}
-            />
-            <input
-              ref={fileRef}
-              type="file"
-              accept="image/*,application/pdf"
-              className="hidden"
-              onChange={e => handleFile(e.target.files?.[0])}
-            />
-            <Button className="w-full h-20 text-base" onClick={() => cameraRef.current?.click()}>
-              <Camera className="mr-2 h-6 w-6" /> Take Photo
-            </Button>
-            <Button variant="outline" className="w-full h-20 text-base" onClick={() => fileRef.current?.click()}>
-              <Upload className="mr-2 h-6 w-6" /> Choose Photo / File
-            </Button>
+            {readError && (
+              <Alert variant="destructive">
+                <AlertTriangle className="h-4 w-4" />
+                <AlertTitle>Could not read that file</AlertTitle>
+                <AlertDescription>{readError}</AlertDescription>
+              </Alert>
+            )}
+
+            {/* Labels wrap the inputs so the native picker opens from the tap itself.
+                iOS Safari ignores clicks on display:none inputs, so they are only visually hidden. */}
+            <label
+              htmlFor="receipt-camera-input"
+              className="relative flex h-20 w-full cursor-pointer items-center justify-center gap-2 rounded-md bg-primary text-base font-medium text-primary-foreground transition-colors hover:bg-primary/90 active:bg-primary/80"
+            >
+              <Camera className="h-6 w-6" /> Take Photo
+              <input
+                id="receipt-camera-input"
+                ref={cameraRef}
+                type="file"
+                accept="image/*"
+                capture="environment"
+                className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
+                onChange={e => {
+                  handleFile(e.target.files?.[0]);
+                  e.target.value = '';
+                }}
+              />
+            </label>
+
+            <label
+              htmlFor="receipt-file-input"
+              className="relative flex h-20 w-full cursor-pointer items-center justify-center gap-2 rounded-md border border-input bg-background text-base font-medium text-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
+            >
+              <Upload className="h-6 w-6" /> Choose Photo / File
+              <input
+                id="receipt-file-input"
+                ref={fileRef}
+                type="file"
+                accept="image/*,image/heic,image/heif,application/pdf"
+                className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
+                onChange={e => {
+                  handleFile(e.target.files?.[0]);
+                  e.target.value = '';
+                }}
+              />
+            </label>
+
+            <p className="text-center text-xs text-muted-foreground">
+              If your device can't open the camera directly, use "Choose Photo / File" — it can also take a new photo.
+            </p>
           </div>
         )}
 

@@ -157,11 +157,22 @@ export function sniffPackage(description: string): { size: number | null; unit: 
   return { size, unit };
 }
 
+/** Vendors write units freely ("lb", "#", "1 gal bottles per case") — map to ours. */
+export function normalizePackageUnit(raw: string | null | undefined): ReviewLine['packageUnit'] {
+  const v = (raw ?? '').toLowerCase();
+  if (!v) return '';
+  if (v.includes('gal')) return 'gal';
+  if (v.includes('qt') || v.includes('quart')) return 'qt';
+  if (v.includes('oz') || v.includes('ounce')) return 'oz';
+  if (v.includes('lb') || v.includes('pound') || v.includes('#')) return 'lbs';
+  return '';
+}
+
 export function toReviewLines(parsed: ParsedReceipt, catalog: CatalogItem[]): ReviewLine[] {
   return (parsed.line_items ?? []).map((li, i) => {
     const description = li.description ?? '';
     const sniffed = sniffPackage(description);
-    const packageUnit = (li.package_unit as ReviewLine['packageUnit']) || sniffed.unit || '';
+    const packageUnit = normalizePackageUnit(li.package_unit) || sniffed.unit || '';
     const packageSize = li.package_size ?? (packageUnit ? sniffed.size : null);
     const match = matchLine({ sku: li.sku ?? '', description }, catalog);
     const baseUnit: 'lbs' | 'gal' =

@@ -17,7 +17,7 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import {
   Clock, Droplets, TestTube, CheckCircle, ArrowLeft, AlertTriangle, Send, Zap, Info, HelpCircle,
-  Truck, PlayCircle, Wrench, ListChecks, Camera, Receipt, Sparkles,
+  Truck, PlayCircle, Wrench, ListChecks, Camera, Receipt, Sparkles, Mic,
 } from 'lucide-react';
 import { isInRange, getDosageInstruction, type ChemicalId } from '@/lib/pool-chemistry';
 import { POOL_TESTS, TEST_BY_ID, normalizeDefaultTests, sortTests, type TestId } from '@/lib/pool-tests';
@@ -40,6 +40,7 @@ import { getAlgaecideStatus } from '@/lib/algaecide';
 import { buildVisitSnapshot, logVisitEvent } from '@/lib/visit-log';
 import { ServiceStickyHeader, type VisitStatus } from '@/components/tech/ServiceStickyHeader';
 import { FollowUpPrompt, type FollowUpValue } from '@/components/tech/FollowUpPrompt';
+import { VoiceEntryDialog, type VoiceApplyPayload } from '@/components/tech/VoiceEntryDialog';
 import { IssueFollowUpPrompt, type IssueFollowUpValue } from '@/components/tech/IssueFollowUpPrompt';
 
 type Client = {
@@ -225,6 +226,7 @@ export default function FieldService() {
   const [savedServiceId, setSavedServiceId] = useState<string | null>(null);
   const [issuePromptItem, setIssuePromptItem] = useState<{ id: string; label: string } | null>(null);
   const [issueSaving, setIssueSaving] = useState(false);
+  const [voiceOpen, setVoiceOpen] = useState(false);
 
   const isSaltPool = !!client?.pool_type && /salt/i.test(client.pool_type);
   const saltCellDueDays = (() => {
@@ -312,6 +314,47 @@ export default function FieldService() {
 
   function handleInputChange<K extends keyof ServiceData>(field: K, value: ServiceData[K]) {
     setServiceData(prev => ({ ...prev, [field]: value }));
+  }
+
+  /** Merge voice-interpreted values into the unsaved form, exactly like manual edits. */
+  function applyVoice(p: VoiceApplyPayload) {
+    const appendText = (prev: string | undefined, add: string | null) =>
+      add ? (prev?.trim() ? `${prev.trim()}\n${add}` : add) : (prev ?? '');
+    if (p.readings.length) {
+      setSelectedTests(prev => sortTests(Array.from(new Set([...prev, ...p.readings.map(r => r.field as TestId)]))));
+    }
+    setServiceData(prev => {
+      const next: ServiceData = { ...prev };
+      p.readings.forEach(r => {
+        const def = TEST_BY_ID[r.field as TestId];
+        const v = def?.integer ? Math.round(r.value) : r.value;
+        (next as any)[TEST_FIELD[r.field as TestId]] = v;
+      });
+      if (p.chemicals.length) {
+        next.chemical_entries = [...(prev.chemical_entries ?? []).filter(e => e.amount.trim()), ...p.chemicals];
+      }
+      if (p.services.length) {
+        next.services_performed = Array.from(new Set([...(prev.services_performed ?? []), ...p.services]));
+      }
+      p.actions.forEach(a => { (next as any)[a] = true; });
+      next.notes = appendText(prev.notes, p.notes);
+      return next;
+    });
+    if (p.checklist.length) setChecklist(prev => ({ ...prev, ...Object.fromEntries(p.checklist.map(id => [id, true])) }));
+    if (p.equipment.length) setEquipment(prev => ({ ...prev, ...Object.fromEntries(p.equipment.map(e => [e.id, e.status === 'ok'])) }));
+    const eqNotes = [p.equipmentNotes, ...p.equipment.filter(e => e.note).map(e => `${EQUIPMENT_ITEMS.find(x => x.id === e.id)?.label ?? e.id}: ${e.note}`)]
+      .filter(Boolean).join('; ');
+    if (eqNotes) setEquipmentIssue(prev => appendText(prev, eqNotes));
+    if (p.repairNotes) setRepairNotes(prev => appendText(prev, p.repairNotes));
+    setOpenCards(prev => Array.from(new Set([...prev, 'today', 'chemistry',
+      ...(p.equipment.length || eqNotes ? ['equipment'] : []), ...(p.checklist.length ? ['checklist'] : []),
+      ...(p.notes ? ['photos'] : []), ...(p.repairNotes ? ['repairs'] : [])])));
+    const firstIssue = p.equipment.find(e => e.status === 'issue');
+    if (firstIssue) {
+      const item = EQUIPMENT_ITEMS.find(x => x.id === firstIssue.id);
+      if (item) setIssuePromptItem({ id: item.id, label: item.label });
+    }
+    toast({ title: 'Voice entries added', description: 'Review the form, then save or complete the visit as usual.' });
   }
 
   function toggleTest(id: TestId, on: boolean) {
@@ -771,6 +814,21 @@ export default function FieldService() {
         elapsedLabel={elapsedLabel}
         health={health}
         onBack={leaveVisit}
+      />
+
+      <div className="my-3 flex justify-end">
+        <Button type="button" size="lg" onClick={() => setVoiceOpen(true)} className="gap-2">
+          <Mic className="h-5 w-5" /> Voice entry
+        </Button>
+      </div>
+      <VoiceEntryDialog
+        open={voiceOpen}
+        onOpenChange={setVoiceOpen}
+        catalog={chemCatalog}
+        checklist={CHECKLIST_ITEMS}
+        equipment={EQUIPMENT_ITEMS}
+        services={ALL_SERVICES}
+        onApply={applyVoice}
       />
 
       <Accordion type="multiple" value={openCards} onValueChange={setOpenCards} className="space-y-3">

@@ -9,3 +9,4 @@
 - Portal Users admin panel: grant access, role, monthly-report/alert toggles, "Send summary now", send history
 - Service Dashboard at /service-dashboard (admin + tech): month calendar, day detail, next-14-days, per-tech workload; nav links added
 - Typecheck clean; site published — getaquaclear.com live with Aqua Clear title/OG/social image (verified by re-fetch)
+- [x] Voice entry on service visit screen (not published)

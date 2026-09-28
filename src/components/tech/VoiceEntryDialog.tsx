@@ -8,7 +8,6 @@ import { Badge } from '@/components/ui/badge';
 import { AlertTriangle, Loader2, Mic, Square } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import type { ChemicalOption, ChemicalUnit } from '@/lib/chemicals-added';
-import { CHEMICAL_RANGES, type ChemicalId } from '@/lib/pool-chemistry';
 
 export type VoiceReadingField = 'chlorine' | 'ph' | 'alkalinity' | 'cya' | 'calcium' | 'salt';
 
@@ -278,7 +277,7 @@ export function VoiceEntryDialog({ open, onOpenChange, catalog, checklist, equip
                       <span className="flex-1 text-sm font-medium">{READING_LABEL[r.data.field]}</span>
                       <Input className="h-9 w-28" inputMode="decimal" value={r.data.value}
                         onChange={e => setReadings(p => p.map((x, j) => j === i ? { ...x, data: { ...x.data, value: e.target.value } } : x))} />
-                      <span className="w-8 text-xs text-muted-foreground">{CHEMICAL_RANGES[(r.data.field === 'calcium' ? 'ph' : r.data.field) as ChemicalId]?.unit && r.data.field !== 'ph' ? 'ppm' : ''}</span>
+                      <span className="w-8 text-xs text-muted-foreground">{r.data.field === 'ph' ? '' : 'ppm'}</span>
                     </div>
                     {r.flag && <p className="mt-1 flex items-center gap-1 text-xs text-orange-700 dark:text-orange-300"><AlertTriangle className="h-3 w-3" />{r.flag} Check and tick to include.</p>}
                   </div>

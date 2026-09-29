@@ -1,52 +1,113 @@
-# Charlie + Aqua Clear: feasibility and cost analysis (no build yet)
+# Provider-neutral AI command layer for Aqua Clear: analysis and phased plan
 
-This is analysis only. Approving it does not build or publish anything. Tell me which layer to build, or when.
+This is a plan and discussion only. Approving it does not build or publish anything.
 
-## What already exists
-- **Layer 1 is already built in Preview** and not published. The service visit screen has a Voice entry button. It makes two paid AI requests: one to turn speech into text, and one to turn that text into readings, chemicals, tasks, equipment notes and follow-ups. Then a review screen appears, and the visit is saved only when the tech taps Save.
-- **Service actions run inside the app screen.** On My Way, start, readings, chemicals, complete and follow-ups are all handled by the service visit screen, which writes straight to the database. No server-side "action" layer exists for an outside assistant to call.
-- **Permissions already exist in the database.** Techs only see customers where they are the primary or secondary technician, and the visit history log is append-only. An outside assistant can reuse those rules if it acts as the tech.
-- **Constraints:** Customer texts depend on Telnyx, and inbound replies and delivery receipts still need `TELNYX_PUBLIC_KEY`. The chemical math (gallons for liquids, pounds for powders) and the pool health score live in shared code that can be reused.
+## Recommendation in one line
+Build **one secure Aqua Clear Actions API** (Option B) as the core. Any assistant can use it: ChatGPT, Claude, Gemini, Grok, or a future one. Add an MCP adapter on top later (Option C), once hosting allows. Keep in-app voice (Option A) as a separate feature. With this design, commands from outside assistants use **no Lovable AI credits**.
 
-## Layer 1: voice entry inside the app
-- **Status:** Done in Preview. What's left is testing in the field and tuning.
-- **Optional way to save money:** Use the phone's free built-in dictation, then run a simple local reader that recognises patterns like "chlorine 2.5" or "pH 7.6". Send text to the AI only when the local reader can't understand it. Most routine dictations would then cost nothing.
-- **Remaining build effort:** Small. Field tuning plus the free-dictation option is about 1–3 build messages.
+## What exists today
+- **In-app voice entry** is built in Preview and not published. Each use makes two paid Lovable AI requests: one to turn speech into text, and one to fill in the form.
+- **No server-side action layer.** On My Way, start, readings, chemicals, notes, follow-ups and complete are all handled inside the service visit screen, which writes straight to the database.
+- **Permissions to reuse:**
+  - Techs see only customers where they are the primary or secondary technician.
+  - Visits are logged append-only in the visit history (`service_status_events`).
+  - Admin checks run on the server.
+- **Important limit:** This app uses Randy's own Supabase account, not Lovable Cloud. Lovable can deploy regular backend functions there, which is how the receipt scanner and voice entry run. **Lovable cannot deploy an app-hosted MCP server on this setup.** Option C needs either a later move to Lovable Cloud or a small MCP adapter hosted somewhere else.
 
-## Layer 2: Charlie controls Aqua Clear from a conversation
+## Options compared
 
-### What needs to be added
-1. **Server-side action functions** that do the same things the service screen does today: find a customer, show today's route, mark On My Way, start a visit, add readings, log chemicals, add notes or follow-ups, and complete a visit. This is the main work. It's a moderate refactor, not a rewrite: the logic moves from the service screen into shared server actions, and the screen then calls those same actions.
-2. **A draft visit.** Charlie fills in an unsaved draft for the visit. Randy can finish it by voice ("Charlie, complete it") or review it in the app.
-3. **An MCP server** (a secure tool connection for AI assistants) that offers those actions as tools. ChatGPT supports connecting to MCP servers, and this is the mechanism most like how QuickBooks and Gmail work with ChatGPT. A plain API would also work, but ChatGPT has no native way to call a custom API without a custom GPT, so MCP is the better choice.
-4. **Sign-in for Charlie.** Randy connects Charlie once, from ChatGPT, by signing in with his own Aqua Clear account (a standard OAuth sign-in). After that, every action runs as Randy, so the existing "techs only see their own customers" rules apply automatically. Randy can cut Charlie off from the admin area. The master admin key is never given to ChatGPT.
-5. **Audit trail.** Every action is written to the existing visit history log, marked "via Charlie".
+| | A. In-app voice | B. Actions API (recommended core) | C. MCP tool layer |
+|---|---|---|---|
+| What it is | Mic inside Aqua Clear, speech turned into form fields, then review | Secure web endpoints with defined actions and permissions | The same actions offered in the MCP tool format that AI clients understand |
+| Works with | Aqua Clear only | Any assistant that can call a web API (Custom GPT actions, Gemini/Claude tool use, scripts, Zapier) | ChatGPT, Claude and others with MCP support; growing standard |
+| Vendor lock-in | None | None (published OpenAPI description) | None (open standard) |
+| Lovable AI credits per use | Yes, 2 requests per dictation | **None**: fixed actions, no AI | **None**: calls the same API |
+| Who pays for the AI thinking | Aqua Clear (Lovable credits) | Randy's AI subscription (ChatGPT, Claude, etc.) | Randy's AI subscription |
+| Build effort | Done; small tuning left | Medium | Small once B exists, but hosting is blocked on this setup |
 
-### Which actions need confirmation
-| Immediate (read-only or easy to undo) | Charlie reads back and waits for "yes" |
+**Why B first:** It carries all the security, permissions, confirmations and audit logging. MCP (C) then becomes a thin translator that calls the same API, so none of the safety logic has to be written twice. Both are open standards, so nothing ties Aqua Clear to one AI company.
+
+## Architecture (Option B, with C layered on)
+
+```text
+Assistant (ChatGPT / Claude / Gemini / Grok / ...)
+      |  OAuth sign-in as Randy (or a scoped personal token)
+      v
+Aqua Clear Actions API  (backend functions, fixed actions, no AI)
+      |  checks: identity -> permission scope -> customer assignment
+      |  risky action? -> returns "confirmation needed" + one-time code
+      v
+Database (all access rules still apply)  +  audit log "via <assistant>"
+      ^
+Optional MCP adapter (later) -> calls the same API
+```
+
+### Identity and permissions
+- Every call acts **as a real Aqua Clear user**, never with the master admin key. Database access rules still apply, so a tech can only reach their own assigned customers.
+- **Connection:**
+  - Phase 1 uses **personal access tokens** that Randy creates in Settings → Connected Assistants. They are stored only in scrambled (hashed) form, can be given an expiry, and can be revoked at any time.
+  - Phase 3 adds standard **OAuth** sign-in so assistants connect with Log in with Aqua Clear.
+- **Permission scopes** on each token or connection:
+  - `read:route`: customers, today's stops, last readings
+  - `write:visit`: draft readings, chemicals, notes, equipment
+  - `notify:customer`: On My Way and completion texts or emails
+  - `complete:visit`: finalize a visit
+  - `admin:*`: never granted in the first versions
+- **Rate limits** use the existing `check_rate_limit` function.
+
+### Confirmation model
+
+| Immediate | Needs confirmation (a second call with a one-time code, shown in the assistant as "Say yes to send") |
 |---|---|
-| Find a customer, today's route, last readings, dosing advice | On My Way (texts the customer) |
-| Add readings, chemicals, notes and tasks to the draft visit | Complete visit (saves it, uses up inventory, may notify the customer) |
-| Start visit (records a time; can be cleared) | Complete without notifying, create a follow-up, send any message |
-| | Anything outside Randy's own assigned customers is blocked outright |
+| Find customer, today's route, last readings, dosing advice | Send On My Way (texts or emails the customer) |
+| Open a draft visit, start the visit timer | Complete visit (saves it, uses inventory, may notify the customer) |
+| Add or edit draft readings, chemicals, notes, equipment observations, follow-up flag | Complete without notifying, create a scheduled follow-up, send any message |
+| | Blocked: customers not assigned to you, and admin or billing actions |
 
-### Build effort
-- Server actions plus moving the service screen onto them: medium, about 6–10 build messages.
-- MCP server plus the sign-in and revoke flow: medium, about 5–8 messages. This part carries the most risk, because it needs testing with ChatGPT's connector setup.
-- Testing and polish: 2–4 messages.
-- **Total for Layer 2: about 13–22 build messages.** Layer 1 is roughly a fifth of that. I can't predict exact Lovable build credits, because they depend on how complex each message is and how many fixes are needed. Treat Layer 2 as about 4–6 times the cost of Layer 1.
+- **Draft first:** assistant edits go into an unsaved draft visit. That draft is what Randy sees in the app, and he can review and save it there as well.
+- **Audit log:** every call is recorded with who made it, which assistant, the action, the customer, the result, and the time. It also appears in the visit history as "via Claude", "via ChatGPT" and so on.
 
-## Ongoing AI cost per use (separate from build cost)
-- **Layer 1, 30–60 seconds of dictation:** 2 AI requests (speech-to-text, then filling in the form). They are billed separately. Speech-to-text cost grows with recording length. Form-filling is a small request. Both show up in the project's AI request logs.
-- **With free dictation plus the local reader:** 0 requests for routine readings, and 1 small request only when the reader can't understand the text.
-- **Layer 2 "run this stop with me" session:** Charlie's own listening and thinking happen in ChatGPT and are covered by Randy's ChatGPT plan, not Lovable credits. Aqua Clear's tools are simple database actions and use no AI. So a full session costs **about zero Lovable AI credits**, unless Charlie sends raw text to Aqua Clear's AI reader. The design avoids that: Charlie sends structured values like `{chlorine: 2.5}`.
-- **Other costs:** Customer texts (Telnyx per message) and emails, the same as today.
-- **How to measure actual cost:** Do one realistic 45-second dictation in Preview, then check the AI request logs and your credit balance before and after. I can pull these numbers for you after the test.
+### First set of actions
+`find_customer`, `todays_route`, `get_customer_summary`, `open_visit`, `start_visit`, `set_readings`, `add_chemicals`, `add_note`, `flag_equipment`, `flag_follow_up`, `send_on_my_way` (confirmation), `complete_visit` (confirmation).
 
-## Recommendation
-1. Now: test Layer 1 in the field, and optionally add free dictation to bring routine cost close to zero. This is cheap.
-2. When credits allow: build Layer 2 in the order above. The server actions are worth having even without Charlie, because they make the app more reliable.
+Inputs are structured. For example, `{chlorine: 2.5, ph: 7.6}`, or chemicals as `{product, quantity, unit}` with gallons for liquids and pounds for powders, matched to the chemical catalog. Because the assistant does the understanding, Aqua Clear needs no AI of its own for these actions.
 
-## Open questions
-- Should Charlie be Randy-only at first, or available to every tech?
-- Should On My Way ever send without a spoken "yes" (for example, as a per-tech setting)?
+## Phased rollout and build cost
+
+Exact Lovable credits can't be predicted. They depend on how complex each message is and how many fixes are needed. These relative estimates count build messages.
+
+| Phase | Scope | Effort |
+|---|---|---|
+| 1. Shared visit actions | Move the service-screen logic into shared server actions; the app screen uses them too. This makes the app more reliable even without AI. | Medium, about 5–8 messages |
+| 2. Actions API MVP | Personal tokens with scopes, a Connected Assistants settings page, read and draft actions, a confirmation flow for On My Way and Complete, audit log, rate limits, OpenAPI description, one test with a Custom GPT or Claude tool | Medium, about 6–9 messages |
+| 3. OAuth sign-in | Log in with Aqua Clear for assistants; consent screen; revoke | Medium, about 3–5 messages |
+| 4. MCP adapter | Offers the same actions as MCP tools. Needs Lovable Cloud or outside hosting (see limit above). | Small, about 2–4 messages, after the hosting decision |
+| A. In-app voice | Already built. Optional: free phone dictation plus a local reader for readings to cut cost. | About 1–3 messages |
+
+**Useful MVP is Phases 1 and 2: about 11–17 build messages.** Phases 1–3 together are about 14–22. For comparison, Option A's remaining work is about a tenth of that.
+
+## Ongoing running costs
+
+| Item | Paid by | Rough cost |
+|---|---|---|
+| Assistant listening, thinking and speech (ChatGPT, Claude, etc.) | Randy's AI subscription | Covered by his plan; no Aqua Clear cost |
+| Actions API calls | Aqua Clear's Supabase hosting | Uses the existing plan's backend-function allowance (Supabase Pro includes about 2M calls a month). One stop is about 5–15 calls, so effectively $0 at this scale. |
+| Lovable AI credits for outside assistant commands | none | **$0**: the actions are fixed and use no AI |
+| Customer texts and emails from On My Way or Complete | Aqua Clear (Telnyx, Mailjet) | Same as today, per message |
+| Option A: one 30–60 second dictation | Aqua Clear (Lovable AI credits) | 2 requests: speech-to-text, which grows with recording length, plus a small form-filling request. After one real test, check the project's AI request logs for the exact amount. |
+| Option A with free phone dictation plus local reader | Aqua Clear | 0 requests for routine readings; 1 small request only when the reader can't understand the text |
+| OAuth and tokens | Aqua Clear | $0 (existing Supabase sign-in) |
+| MCP adapter hosted outside Lovable (if chosen) | Aqua Clear | Usually free to a few dollars a month on a basic serverless host |
+
+**One design rule keeps this cheap:** Aqua Clear never sends raw conversation text to its own AI when the request comes from an outside assistant. The assistant sends structured values. If an assistant ever sends free text, the API rejects it and asks for fields, rather than paying for an AI to interpret it.
+
+## Constraints to keep in mind
+- **Inbound texts:** `TELNYX_PUBLIC_KEY` is still missing, so replies and delivery receipts don't land. On My Way sending still works.
+- **MCP hosting** is blocked on this setup until there's a hosting decision.
+- **Draft visit table:** a new draft table, or a draft status on existing visits, will be needed.
+- **Existing site:** nothing changes for current users until Phase 1 is approved. Nothing is published without your go-ahead.
+
+## Decisions needed
+1. Start with Randy only, or with every tech?
+2. Is the Phase 1 personal token connection acceptable, or should the MVP wait for OAuth sign-in?
+3. MCP later: move to Lovable Cloud, host the adapter elsewhere, or skip MCP and use the API only?

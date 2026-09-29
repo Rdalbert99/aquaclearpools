@@ -390,6 +390,7 @@ export type Database = {
           algaecide_last_dosed: string | null
           algaecide_product: string | null
           assigned_technician_id: string | null
+          auto_return_in_season: boolean
           company_name: string | null
           contact_address: string | null
           contact_email: string | null
@@ -399,6 +400,7 @@ export type Database = {
           default_tests: string[]
           id: string
           in_balance: boolean | null
+          in_season_frequency: string
           included_services: string[] | null
           is_multi_property: boolean | null
           join_date: string | null
@@ -408,6 +410,10 @@ export type Database = {
           notification_method: string | null
           notify_on_assignment: boolean | null
           notify_on_confirmation: boolean | null
+          off_season_end: string | null
+          off_season_frequency: string
+          off_season_start: string | null
+          off_season_weeks: string
           pool_image_uploaded_at: string | null
           pool_image_url: string | null
           pool_size: number
@@ -418,6 +424,7 @@ export type Database = {
           secondary_technician_id: string | null
           service_days: string[] | null
           service_frequency: string | null
+          service_mode: string
           service_notes: string | null
           service_rate: number | null
           status: string | null
@@ -429,6 +436,7 @@ export type Database = {
           algaecide_last_dosed?: string | null
           algaecide_product?: string | null
           assigned_technician_id?: string | null
+          auto_return_in_season?: boolean
           company_name?: string | null
           contact_address?: string | null
           contact_email?: string | null
@@ -438,6 +446,7 @@ export type Database = {
           default_tests?: string[]
           id?: string
           in_balance?: boolean | null
+          in_season_frequency?: string
           included_services?: string[] | null
           is_multi_property?: boolean | null
           join_date?: string | null
@@ -447,6 +456,10 @@ export type Database = {
           notification_method?: string | null
           notify_on_assignment?: boolean | null
           notify_on_confirmation?: boolean | null
+          off_season_end?: string | null
+          off_season_frequency?: string
+          off_season_start?: string | null
+          off_season_weeks?: string
           pool_image_uploaded_at?: string | null
           pool_image_url?: string | null
           pool_size: number
@@ -457,6 +470,7 @@ export type Database = {
           secondary_technician_id?: string | null
           service_days?: string[] | null
           service_frequency?: string | null
+          service_mode?: string
           service_notes?: string | null
           service_rate?: number | null
           status?: string | null
@@ -468,6 +482,7 @@ export type Database = {
           algaecide_last_dosed?: string | null
           algaecide_product?: string | null
           assigned_technician_id?: string | null
+          auto_return_in_season?: boolean
           company_name?: string | null
           contact_address?: string | null
           contact_email?: string | null
@@ -477,6 +492,7 @@ export type Database = {
           default_tests?: string[]
           id?: string
           in_balance?: boolean | null
+          in_season_frequency?: string
           included_services?: string[] | null
           is_multi_property?: boolean | null
           join_date?: string | null
@@ -486,6 +502,10 @@ export type Database = {
           notification_method?: string | null
           notify_on_assignment?: boolean | null
           notify_on_confirmation?: boolean | null
+          off_season_end?: string | null
+          off_season_frequency?: string
+          off_season_start?: string | null
+          off_season_weeks?: string
           pool_image_uploaded_at?: string | null
           pool_image_url?: string | null
           pool_size?: number
@@ -496,6 +516,7 @@ export type Database = {
           secondary_technician_id?: string | null
           service_days?: string[] | null
           service_frequency?: string | null
+          service_mode?: string
           service_notes?: string | null
           service_rate?: number | null
           status?: string | null

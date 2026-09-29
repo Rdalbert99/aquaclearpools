@@ -1,6 +1,7 @@
 # Roadmap
 
 ## In progress
+- [ ] In-Season / Off-Season scheduling (customer edit UI, schema, calendar/route logic; billing untouched)
 - [ ] Telnyx public key: secure form was dismissed — inbound texts/delivery receipts still reject until TELNYX_PUBLIC_KEY value is saved (user must paste it from the Telnyx portal)
 - [ ] HCC portal users: link Hattiesburg Country Club management via Admin → Commercial → Portal Users (needs their names/emails / existing Aqua Clear logins); HCC has no service visits yet, so their dashboard will populate after the first logged service
 

@@ -7,10 +7,10 @@ import { ChevronLeft, ChevronRight, CalendarDays, Users, Eye, RotateCcw, CheckCi
 import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { isServiceWeek, seasonLabel } from '@/lib/service-season';
+import { isServiceWeek, seasonLabel, type SeasonFields } from "@/lib/service-season";
 
 
-export interface CalendarClient extends import("@/lib/service-season").SeasonFields {
+export interface CalendarClient extends SeasonFields {
   id: string;
   customer: string;
   pool_size?: number | null;

@@ -334,6 +334,9 @@ export function ClientsCalendarView({ clients, adminMode = false }: Props) {
                 <div className="min-w-0">
                   <p className="font-medium truncate flex items-center gap-2">
                     {client.customer}
+                    {seasonLabel(client, selectedDate) && (
+                      <Badge variant="secondary" className="font-normal">{seasonLabel(client, selectedDate)}</Badge>
+                    )}
                     {saltDueIdSet.has(client.id) && (
                       <Badge variant="outline" className="border-orange-400 text-orange-600 gap-1">
                         <Zap className="h-3 w-3" /> Salt cell due

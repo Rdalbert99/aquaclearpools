@@ -196,6 +196,8 @@ export default function ClientView() {
       clientData?.client?.service_days,
       clientData?.lastServiceDate,
       clientData?.client?.next_service_date,
+      new Date(),
+      clientData?.client as any,
     );
   };
 
@@ -715,7 +717,7 @@ export default function ClientView() {
             </div>
 
             {(() => {
-              const next = getNextDueDate(client.service_days);
+              const next = getNextDueDate(client.service_days, new Date(), client as any);
               return next ? (
                 <div>
                   <p className="text-sm font-medium text-muted-foreground">Next Service Due</p>

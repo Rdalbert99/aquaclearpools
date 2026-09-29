@@ -7,6 +7,7 @@ import { ChevronLeft, ChevronRight, CalendarDays, Users, Eye, RotateCcw, CheckCi
 import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { isServiceWeek, seasonLabel } from '@/lib/service-season';
 
 
 export interface CalendarClient {
@@ -42,7 +43,7 @@ function scheduledDows(client: CalendarClient): number[] {
 
 function clientScheduledOn(client: CalendarClient, date: Date): boolean {
   const dows = scheduledDows(client);
-  return dows.includes(date.getDay());
+  return dows.includes(date.getDay()) && isServiceWeek(client, date);
 }
 
 /** Minimum gap (in days) between scheduled visits. Defaults to 7 if single/none. */

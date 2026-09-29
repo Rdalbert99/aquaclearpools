@@ -1,3 +1,4 @@
+import { isServiceWeek } from '@/lib/service-season';
 import { useState, useEffect, lazy, Suspense } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
@@ -74,12 +75,12 @@ export default function TechSchedule() {
       const todayClients = assignedClients?.filter(client => 
         client.service_days?.includes(todayDayName) || 
         client.service_days?.includes(todayDayName.substring(0, 3))
-      ) || [];
+      ).filter(client => isServiceWeek(client, today)) || [];
 
       const tomorrowClients = assignedClients?.filter(client => 
         client.service_days?.includes(tomorrowDayName) ||
         client.service_days?.includes(tomorrowDayName.substring(0, 3))
-      ) || [];
+      ).filter(client => isServiceWeek(client, tomorrow)) || [];
 
       // Build weekly schedule starting from today for next 7 days
       const weeklySchedule: { [key: string]: any[] } = {};
@@ -93,7 +94,7 @@ export default function TechSchedule() {
         weeklySchedule[dayName] = assignedClients?.filter(client => 
           client.service_days?.includes(dayNameLower) || 
           client.service_days?.includes(shortDay)
-        ) || [];
+        ).filter(client => isServiceWeek(client, date)) || [];
       }
 
       // Get clients needing service (no service in last 7 days)

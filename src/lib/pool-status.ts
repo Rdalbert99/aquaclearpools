@@ -1,6 +1,7 @@
 // Helpers for computing pool service & balance status from client schedule and readings.
 
 import { CHEMICAL_RANGES, isInRange, getDosageInstruction, type ChemicalId } from './pool-chemistry';
+import { isServiceWeek, type SeasonFields } from './service-season';
 
 const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
@@ -10,41 +11,33 @@ function normalizeDay(d: string): number {
   return idx;
 }
 
-/** Most recent scheduled service date on or before today (returns null if no days set). */
-export function getPreviousDueDate(serviceDays: string[] | null | undefined, now = new Date()): Date | null {
+/** Most recent scheduled service date on or before today (returns null if no days set).
+ *  Pass `season` to skip weeks the customer's off-season frequency excludes. */
+export function getPreviousDueDate(serviceDays: string[] | null | undefined, now = new Date(), season?: SeasonFields): Date | null {
   if (!serviceDays || serviceDays.length === 0) return null;
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  const todayDow = today.getDay();
   const dows = serviceDays.map(normalizeDay).filter(i => i >= 0);
   if (!dows.length) return null;
-
-  let bestOffset = Infinity;
-  for (const dow of dows) {
-    // days since most recent occurrence of this DOW (0 = today)
-    const offset = (todayDow - dow + 7) % 7;
-    if (offset < bestOffset) bestOffset = offset;
+  for (let i = 0; i < 70; i++) {
+    const d = new Date(today);
+    d.setDate(today.getDate() - i);
+    if (dows.includes(d.getDay()) && (!season || isServiceWeek(season, d))) return d;
   }
-  const due = new Date(today);
-  due.setDate(today.getDate() - bestOffset);
-  return due;
+  return null;
 }
 
-/** Next scheduled service date strictly after today. */
-export function getNextDueDate(serviceDays: string[] | null | undefined, now = new Date()): Date | null {
+/** Next scheduled service date strictly after today (respects season when provided). */
+export function getNextDueDate(serviceDays: string[] | null | undefined, now = new Date(), season?: SeasonFields): Date | null {
   if (!serviceDays || serviceDays.length === 0) return null;
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  const todayDow = today.getDay();
   const dows = serviceDays.map(normalizeDay).filter(i => i >= 0);
   if (!dows.length) return null;
-
-  let bestOffset = Infinity;
-  for (const dow of dows) {
-    const offset = ((dow - todayDow + 7) % 7) || 7; // strictly after today
-    if (offset < bestOffset) bestOffset = offset;
+  for (let i = 1; i <= 70; i++) {
+    const d = new Date(today);
+    d.setDate(today.getDate() + i);
+    if (dows.includes(d.getDay()) && (!season || isServiceWeek(season, d))) return d;
   }
-  const next = new Date(today);
-  next.setDate(today.getDate() + bestOffset);
-  return next;
+  return null;
 }
 
 /**
@@ -58,11 +51,12 @@ export function getPoolServiceStatus(
   lastServiceDate: string | Date | null | undefined,
   nextServiceDate?: string | Date | null,
   now = new Date(),
+  season?: SeasonFields,
 ): 'current' | 'needs_service' {
   const lastServed = lastServiceDate ? new Date(lastServiceDate) : null;
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
 
-  const prevDue = getPreviousDueDate(serviceDays, now);
+  const prevDue = getPreviousDueDate(serviceDays, now, season);
   if (prevDue) {
     if (!lastServed) return 'needs_service';
     const served = new Date(lastServed.getFullYear(), lastServed.getMonth(), lastServed.getDate());

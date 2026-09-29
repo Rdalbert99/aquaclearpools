@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
+import { isServiceWeek } from '@/lib/service-season';
 import { CalendarDays, ChevronLeft, ChevronRight, ClipboardList, PlayCircle } from 'lucide-react';
 
 const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
@@ -22,6 +23,13 @@ type Client = {
   status: string | null;
   assigned_technician_id: string | null;
   secondary_technician_id: string | null;
+  service_mode?: string | null;
+  in_season_frequency?: string | null;
+  off_season_frequency?: string | null;
+  off_season_weeks?: string | null;
+  off_season_start?: string | null;
+  off_season_end?: string | null;
+  auto_return_in_season?: boolean | null;
 };
 
 type FollowUp = {
@@ -52,7 +60,7 @@ const clientDueOnDay = (c: Client, date: Date): boolean => {
   if (c.next_service_date && dayKey(new Date(c.next_service_date)) === key) return true;
   const full = DAYS[date.getDay()].toLowerCase();
   const short = DAY_SHORT[date.getDay()].toLowerCase();
-  if (c.service_days?.some((d) => d.toLowerCase() === full || d.toLowerCase() === short)) return true;
+  if (c.service_days?.some((d) => d.toLowerCase() === full || d.toLowerCase() === short) && isServiceWeek(c, date)) return true;
   return false;
 };
 
@@ -79,8 +87,8 @@ export default function ServiceDashboard() {
       setLoading(true);
 
       const clientFilter = isAdmin
-        ? supabase.from('clients').select('id, customer, service_days, next_service_date, last_service_date, status, assigned_technician_id, secondary_technician_id')
-        : supabase.from('clients').select('id, customer, service_days, next_service_date, last_service_date, status, assigned_technician_id, secondary_technician_id')
+        ? supabase.from('clients').select('id, customer, service_days, next_service_date, last_service_date, status, assigned_technician_id, secondary_technician_id, service_mode, in_season_frequency, off_season_frequency, off_season_weeks, off_season_start, off_season_end, auto_return_in_season')
+        : supabase.from('clients').select('id, customer, service_days, next_service_date, last_service_date, status, assigned_technician_id, secondary_technician_id, service_mode, in_season_frequency, off_season_frequency, off_season_weeks, off_season_start, off_season_end, auto_return_in_season')
             .or(`assigned_technician_id.eq.${user.id},secondary_technician_id.eq.${user.id}`);
 
       const [cRes, fRes, rRes, tRes] = await Promise.all([

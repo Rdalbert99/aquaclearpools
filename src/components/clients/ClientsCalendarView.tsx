@@ -7,9 +7,10 @@ import { ChevronLeft, ChevronRight, CalendarDays, Users, Eye, RotateCcw, CheckCi
 import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { isServiceWeek, seasonLabel, type SeasonFields } from "@/lib/service-season";
 
 
-export interface CalendarClient {
+export interface CalendarClient extends SeasonFields {
   id: string;
   customer: string;
   pool_size?: number | null;
@@ -42,7 +43,7 @@ function scheduledDows(client: CalendarClient): number[] {
 
 function clientScheduledOn(client: CalendarClient, date: Date): boolean {
   const dows = scheduledDows(client);
-  return dows.includes(date.getDay());
+  return dows.includes(date.getDay()) && isServiceWeek(client, date);
 }
 
 /** Minimum gap (in days) between scheduled visits. Defaults to 7 if single/none. */
@@ -333,6 +334,9 @@ export function ClientsCalendarView({ clients, adminMode = false }: Props) {
                 <div className="min-w-0">
                   <p className="font-medium truncate flex items-center gap-2">
                     {client.customer}
+                    {seasonLabel(client, selectedDate) && (
+                      <Badge variant="secondary" className="font-normal">{seasonLabel(client, selectedDate)}</Badge>
+                    )}
                     {saltDueIdSet.has(client.id) && (
                       <Badge variant="outline" className="border-orange-400 text-orange-600 gap-1">
                         <Zap className="h-3 w-3" /> Salt cell due

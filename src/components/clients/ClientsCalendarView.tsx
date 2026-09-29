@@ -10,7 +10,7 @@ import { useToast } from '@/hooks/use-toast';
 import { isServiceWeek, seasonLabel } from '@/lib/service-season';
 
 
-export interface CalendarClient {
+export interface CalendarClient extends import("@/lib/service-season").SeasonFields {
   id: string;
   customer: string;
   pool_size?: number | null;

@@ -10,23 +10,19 @@ function normalizeDay(d: string): number {
   return idx;
 }
 
-/** Most recent scheduled service date on or before today (returns null if no days set). */
-export function getPreviousDueDate(serviceDays: string[] | null | undefined, now = new Date()): Date | null {
+/** Most recent scheduled service date on or before today (returns null if no days set).
+ *  Pass `season` to skip weeks the customer's off-season frequency excludes. */
+export function getPreviousDueDate(serviceDays: string[] | null | undefined, now = new Date(), season?: SeasonFields): Date | null {
   if (!serviceDays || serviceDays.length === 0) return null;
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  const todayDow = today.getDay();
   const dows = serviceDays.map(normalizeDay).filter(i => i >= 0);
   if (!dows.length) return null;
-
-  let bestOffset = Infinity;
-  for (const dow of dows) {
-    // days since most recent occurrence of this DOW (0 = today)
-    const offset = (todayDow - dow + 7) % 7;
-    if (offset < bestOffset) bestOffset = offset;
+  for (let i = 0; i < 70; i++) {
+    const d = new Date(today);
+    d.setDate(today.getDate() - i);
+    if (dows.includes(d.getDay()) && (!season || isServiceWeek(season, d))) return d;
   }
-  const due = new Date(today);
-  due.setDate(today.getDate() - bestOffset);
-  return due;
+  return null;
 }
 
 /** Next scheduled service date strictly after today. */

@@ -1,0 +1,1 @@
+- Seasonal scheduling: all route/calendar/status due-day checks go through `src/lib/service-season.ts` (`isServiceWeek`); why: one source of truth, billing stays independent.

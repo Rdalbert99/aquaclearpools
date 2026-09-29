@@ -41,6 +41,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { TechnicianPicker } from '@/components/admin/TechnicianPicker';
 import { POOL_TESTS, normalizeDefaultTests, sortTests, type TestId } from '@/lib/pool-tests';
 import { TestGuideDialog } from '@/components/pool/TestGuideDialog';
+import { IN_SEASON_FREQUENCIES, OFF_SEASON_FREQUENCIES, OFF_SEASON_WEEK_OPTIONS, effectiveServiceMode } from '@/lib/service-season';
 
 interface ClientFormData {
   customer: string;
@@ -60,6 +61,13 @@ interface ClientFormData {
   default_tests: string[];
   service_notes: string;
   service_days: string[];
+  service_mode: string;
+  in_season_frequency: string;
+  off_season_frequency: string;
+  off_season_weeks: string;
+  off_season_start: string;
+  off_season_end: string;
+  auto_return_in_season: boolean;
   street_address: string;
   city: string;
   state: string;
@@ -179,6 +187,13 @@ export default function ClientEdit() {
         default_tests: normalizeDefaultTests((data as any).default_tests, data.pool_type),
         service_notes: (data as any).service_notes || '',
         service_days: (data as any).service_days || [],
+        service_mode: (data as any).service_mode || 'in_season',
+        in_season_frequency: (data as any).in_season_frequency || 'weekly',
+        off_season_frequency: (data as any).off_season_frequency || 'twice_monthly',
+        off_season_weeks: (data as any).off_season_weeks || '1_3',
+        off_season_start: (data as any).off_season_start || '',
+        off_season_end: (data as any).off_season_end || '',
+        auto_return_in_season: (data as any).auto_return_in_season ?? true,
         street_address: streetAddr,
         city: cityVal,
         state: stateVal,
@@ -314,6 +329,13 @@ export default function ClientEdit() {
         default_tests: normalizeDefaultTests(client.default_tests, client.pool_type),
         service_notes: client.service_notes,
         service_days: client.service_days,
+        service_mode: client.service_mode,
+        in_season_frequency: client.in_season_frequency,
+        off_season_frequency: client.off_season_frequency,
+        off_season_weeks: client.off_season_weeks,
+        off_season_start: client.off_season_start || null,
+        off_season_end: client.off_season_end || null,
+        auto_return_in_season: client.auto_return_in_season,
         notify_on_confirmation: client.notify_on_confirmation,
         notify_on_assignment: client.notify_on_assignment,
         notification_method: client.notification_method,
@@ -1279,6 +1301,73 @@ export default function ClientEdit() {
                   </div>
                 ))}
               </div>
+            </div>
+
+            <div className="space-y-4 rounded-lg border p-4">
+              <div>
+                <Label className="text-base font-semibold">Seasonal Schedule</Label>
+                <p className="text-sm text-muted-foreground">Controls which weeks this customer appears on the route. Billing and pricing are not changed.</p>
+              </div>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <Label>Service Mode</Label>
+                  <Select value={client.service_mode} onValueChange={(v) => setClient({ ...client, service_mode: v })}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="in_season">In-Season</SelectItem>
+                      <SelectItem value="off_season">Off-Season</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>In-Season Frequency</Label>
+                  <Select value={client.in_season_frequency} onValueChange={(v) => setClient({ ...client, in_season_frequency: v })}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {IN_SEASON_FREQUENCIES.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>Off-Season Frequency</Label>
+                  <Select value={client.off_season_frequency} onValueChange={(v) => setClient({ ...client, off_season_frequency: v })}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {OFF_SEASON_FREQUENCIES.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+                {client.off_season_frequency === 'twice_monthly' && (
+                  <div className="space-y-2">
+                    <Label>Off-Season Weeks</Label>
+                    <Select value={client.off_season_weeks} onValueChange={(v) => setClient({ ...client, off_season_weeks: v })}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        {OFF_SEASON_WEEK_OPTIONS.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+                <div className="space-y-2">
+                  <Label htmlFor="offStart">Off-Season Start</Label>
+                  <Input id="offStart" type="date" value={client.off_season_start} onChange={(e) => setClient({ ...client, off_season_start: e.target.value })} />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="offEnd">Off-Season End</Label>
+                  <Input id="offEnd" type="date" value={client.off_season_end} min={client.off_season_start || undefined} onChange={(e) => setClient({ ...client, off_season_end: e.target.value })} />
+                </div>
+              </div>
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <Label htmlFor="autoReturn">Automatically return to In-Season</Label>
+                  <p className="text-xs text-muted-foreground">When the off-season end date passes, go back to the in-season schedule.</p>
+                </div>
+                <Switch id="autoReturn" checked={client.auto_return_in_season} onCheckedChange={(v) => setClient({ ...client, auto_return_in_season: v })} />
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Currently active: <span className="font-medium">{effectiveServiceMode(client) === 'off_season' ? 'Off-Season' : 'In-Season'}</span>
+                {' '}· Weeks are counted by day of month (days 1–7 = 1st week, 8–14 = 2nd, and so on).
+              </p>
             </div>
 
             <div className="space-y-2">

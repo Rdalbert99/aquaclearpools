@@ -1,6 +1,8 @@
 # Roadmap
 
 ## In progress
+- [ ] Billing & accounting system: plan approved (plan only). Waiting on: processor choice, invoice style, tech cash/check, QuickBooks exports + subscription cost. First build step = Phase 1 foundation (billing off, admin-only)
+- [ ] Provider-neutral AI command layer: analysis drafted (Actions API core, MCP later needs Lovable Cloud or outside hosting); awaiting go-ahead
 
 - [ ] Telnyx public key: secure form was dismissed — inbound texts/delivery receipts still reject until TELNYX_PUBLIC_KEY value is saved (user must paste it from the Telnyx portal)
 - [ ] HCC portal users: link Hattiesburg Country Club management via Admin → Commercial → Portal Users (needs their names/emails / existing Aqua Clear logins); HCC has no service visits yet, so their dashboard will populate after the first logged service

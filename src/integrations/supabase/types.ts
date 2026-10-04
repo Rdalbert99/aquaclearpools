@@ -41,6 +41,175 @@ export type Database = {
         }
         Relationships: []
       }
+      billing_audit_log: {
+        Row: {
+          action: string
+          actor_id: string | null
+          business_id: string
+          created_at: string
+          detail: Json | null
+          id: string
+          target_id: string | null
+          target_table: string
+        }
+        Insert: {
+          action: string
+          actor_id?: string | null
+          business_id: string
+          created_at?: string
+          detail?: Json | null
+          id?: string
+          target_id?: string | null
+          target_table: string
+        }
+        Update: {
+          action?: string
+          actor_id?: string | null
+          business_id?: string
+          created_at?: string
+          detail?: Json | null
+          id?: string
+          target_id?: string | null
+          target_table?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "billing_audit_log_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      billing_customers: {
+        Row: {
+          active: boolean
+          autopay: boolean
+          business_id: string
+          client_id: string
+          created_at: string
+          id: string
+          monthly_rate_cents: number
+          notes: string | null
+          processor_customer_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          autopay?: boolean
+          business_id: string
+          client_id: string
+          created_at?: string
+          id?: string
+          monthly_rate_cents?: number
+          notes?: string | null
+          processor_customer_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          autopay?: boolean
+          business_id?: string
+          client_id?: string
+          created_at?: string
+          id?: string
+          monthly_rate_cents?: number
+          notes?: string | null
+          processor_customer_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "billing_customers_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "billing_customers_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      business_members: {
+        Row: {
+          business_id: string
+          created_at: string
+          id: string
+          role: string
+          user_id: string
+        }
+        Insert: {
+          business_id: string
+          created_at?: string
+          id?: string
+          role?: string
+          user_id: string
+        }
+        Update: {
+          business_id?: string
+          created_at?: string
+          id?: string
+          role?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "business_members_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      businesses: {
+        Row: {
+          billing_mode: string
+          branding: Json
+          created_at: string
+          id: string
+          invoice_prefix: string
+          name: string
+          next_invoice_number: number
+          payout_label: string | null
+          slug: string
+          timezone: string
+          updated_at: string
+        }
+        Insert: {
+          billing_mode?: string
+          branding?: Json
+          created_at?: string
+          id?: string
+          invoice_prefix?: string
+          name: string
+          next_invoice_number?: number
+          payout_label?: string | null
+          slug: string
+          timezone?: string
+          updated_at?: string
+        }
+        Update: {
+          billing_mode?: string
+          branding?: Json
+          created_at?: string
+          id?: string
+          invoice_prefix?: string
+          name?: string
+          next_invoice_number?: number
+          payout_label?: string | null
+          slug?: string
+          timezone?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       chemical_base_costs: {
         Row: {
           chemical_id: string
@@ -1199,6 +1368,210 @@ export type Database = {
           },
         ]
       }
+      invoice_lines: {
+        Row: {
+          amount_cents: number
+          business_id: string
+          created_at: string
+          description: string
+          id: string
+          invoice_id: string
+          kind: string
+          quantity: number
+          service_id: string | null
+          sort_order: number
+          tax_cents: number
+          unit_cents: number
+        }
+        Insert: {
+          amount_cents?: number
+          business_id: string
+          created_at?: string
+          description: string
+          id?: string
+          invoice_id: string
+          kind?: string
+          quantity?: number
+          service_id?: string | null
+          sort_order?: number
+          tax_cents?: number
+          unit_cents?: number
+        }
+        Update: {
+          amount_cents?: number
+          business_id?: string
+          created_at?: string
+          description?: string
+          id?: string
+          invoice_id?: string
+          kind?: string
+          quantity?: number
+          service_id?: string | null
+          sort_order?: number
+          tax_cents?: number
+          unit_cents?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "invoice_lines_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "invoice_lines_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "invoices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "invoice_lines_service_id_fkey"
+            columns: ["service_id"]
+            isOneToOne: false
+            referencedRelation: "services"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      invoices: {
+        Row: {
+          business_id: string
+          client_id: string
+          created_at: string
+          created_by: string | null
+          due_date: string | null
+          id: string
+          issue_date: string | null
+          locked_at: string | null
+          notes: string | null
+          number: string | null
+          paid_cents: number
+          period_end: string | null
+          period_start: string | null
+          source: string
+          status: string
+          subtotal_cents: number
+          tax_cents: number
+          total_cents: number
+          updated_at: string
+          void_reason: string | null
+        }
+        Insert: {
+          business_id: string
+          client_id: string
+          created_at?: string
+          created_by?: string | null
+          due_date?: string | null
+          id?: string
+          issue_date?: string | null
+          locked_at?: string | null
+          notes?: string | null
+          number?: string | null
+          paid_cents?: number
+          period_end?: string | null
+          period_start?: string | null
+          source?: string
+          status?: string
+          subtotal_cents?: number
+          tax_cents?: number
+          total_cents?: number
+          updated_at?: string
+          void_reason?: string | null
+        }
+        Update: {
+          business_id?: string
+          client_id?: string
+          created_at?: string
+          created_by?: string | null
+          due_date?: string | null
+          id?: string
+          issue_date?: string | null
+          locked_at?: string | null
+          notes?: string | null
+          number?: string | null
+          paid_cents?: number
+          period_end?: string | null
+          period_start?: string | null
+          source?: string
+          status?: string
+          subtotal_cents?: number
+          tax_cents?: number
+          total_cents?: number
+          updated_at?: string
+          void_reason?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "invoices_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "invoices_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ledger_entries: {
+        Row: {
+          account: string
+          actor_id: string | null
+          business_id: string
+          client_id: string | null
+          created_at: string
+          credit_cents: number
+          debit_cents: number
+          entry_group: string
+          id: string
+          memo: string | null
+          source_id: string
+          source_table: string
+        }
+        Insert: {
+          account: string
+          actor_id?: string | null
+          business_id: string
+          client_id?: string | null
+          created_at?: string
+          credit_cents?: number
+          debit_cents?: number
+          entry_group: string
+          id?: string
+          memo?: string | null
+          source_id: string
+          source_table: string
+        }
+        Update: {
+          account?: string
+          actor_id?: string | null
+          business_id?: string
+          client_id?: string | null
+          created_at?: string
+          credit_cents?: number
+          debit_cents?: number
+          entry_group?: string
+          id?: string
+          memo?: string | null
+          source_id?: string
+          source_table?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ledger_entries_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       message_send_logs: {
         Row: {
           channel: string
@@ -1369,6 +1742,121 @@ export type Database = {
           user_agent?: string | null
         }
         Relationships: []
+      }
+      payment_allocations: {
+        Row: {
+          amount_cents: number
+          business_id: string
+          created_at: string
+          id: string
+          invoice_id: string
+          payment_id: string
+        }
+        Insert: {
+          amount_cents: number
+          business_id: string
+          created_at?: string
+          id?: string
+          invoice_id: string
+          payment_id: string
+        }
+        Update: {
+          amount_cents?: number
+          business_id?: string
+          created_at?: string
+          id?: string
+          invoice_id?: string
+          payment_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payment_allocations_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payment_allocations_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "invoices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payment_allocations_payment_id_fkey"
+            columns: ["payment_id"]
+            isOneToOne: false
+            referencedRelation: "payments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      payments: {
+        Row: {
+          amount_cents: number
+          business_id: string
+          client_id: string
+          created_at: string
+          created_by: string | null
+          fee_cents: number
+          id: string
+          method: string
+          net_cents: number
+          notes: string | null
+          processor_payment_id: string | null
+          received_at: string
+          reference: string | null
+          status: string
+        }
+        Insert: {
+          amount_cents: number
+          business_id: string
+          client_id: string
+          created_at?: string
+          created_by?: string | null
+          fee_cents?: number
+          id?: string
+          method: string
+          net_cents: number
+          notes?: string | null
+          processor_payment_id?: string | null
+          received_at?: string
+          reference?: string | null
+          status?: string
+        }
+        Update: {
+          amount_cents?: number
+          business_id?: string
+          client_id?: string
+          created_at?: string
+          created_by?: string | null
+          fee_cents?: number
+          id?: string
+          method?: string
+          net_cents?: number
+          notes?: string | null
+          processor_payment_id?: string | null
+          received_at?: string
+          reference?: string | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payments_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payments_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       pool_equipment: {
         Row: {
@@ -2365,6 +2853,102 @@ export type Database = {
         Args: { p_identifier: string }
         Returns: boolean
       }
+      billing_issue_invoice: {
+        Args: { _due_date?: string; _invoice_id: string }
+        Returns: {
+          business_id: string
+          client_id: string
+          created_at: string
+          created_by: string | null
+          due_date: string | null
+          id: string
+          issue_date: string | null
+          locked_at: string | null
+          notes: string | null
+          number: string | null
+          paid_cents: number
+          period_end: string | null
+          period_start: string | null
+          source: string
+          status: string
+          subtotal_cents: number
+          tax_cents: number
+          total_cents: number
+          updated_at: string
+          void_reason: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "invoices"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      billing_record_payment: {
+        Args: {
+          _allocations: Json
+          _amount_cents: number
+          _business_id: string
+          _client_id: string
+          _method: string
+          _notes: string
+          _received_at: string
+          _reference: string
+        }
+        Returns: {
+          amount_cents: number
+          business_id: string
+          client_id: string
+          created_at: string
+          created_by: string | null
+          fee_cents: number
+          id: string
+          method: string
+          net_cents: number
+          notes: string | null
+          processor_payment_id: string | null
+          received_at: string
+          reference: string | null
+          status: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "payments"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      billing_void_invoice: {
+        Args: { _invoice_id: string; _reason: string }
+        Returns: {
+          business_id: string
+          client_id: string
+          created_at: string
+          created_by: string | null
+          due_date: string | null
+          id: string
+          issue_date: string | null
+          locked_at: string | null
+          notes: string | null
+          number: string | null
+          paid_cents: number
+          period_end: string | null
+          period_start: string | null
+          source: string
+          status: string
+          subtotal_cents: number
+          tax_cents: number
+          total_cents: number
+          updated_at: string
+          void_reason: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "invoices"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       can_read_client_media: { Args: { object_path: string }; Returns: boolean }
       check_rate_limit: {
         Args: {
@@ -2424,6 +3008,10 @@ export type Database = {
       get_email_by_login: { Args: { login_input: string }; Returns: string }
       get_user_public_info: { Args: { user_lookup_id: string }; Returns: Json }
       get_user_public_safe: { Args: { user_lookup_id: string }; Returns: Json }
+      has_business_role: {
+        Args: { _business: string; _roles?: string[] }
+        Returns: boolean
+      }
       hash_invitation_token: { Args: { token_input: string }; Returns: string }
       is_admin_user: { Args: never; Returns: boolean }
       is_staff: { Args: never; Returns: boolean }

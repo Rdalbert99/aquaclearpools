@@ -34,6 +34,7 @@ import ManageClients from "./pages/admin/ManageClients";
 import ChemicalCalculator from "./pages/admin/ChemicalCalculator";
 import ChemicalCatalog from "./pages/admin/ChemicalCatalog";
 import Inventory from "./pages/admin/Inventory";
+import Billing from "./pages/admin/Billing";
 import InventoryBackfill from "./pages/admin/InventoryBackfill";
 import ServiceHistory from "./pages/admin/ServiceHistory";
 import Reports from "./pages/admin/Reports";
@@ -250,6 +251,14 @@ const AppRoutes = () => {
           element={
             <ProtectedRoute allowedRoles={['admin', 'tech']}>
               <Inventory />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/billing"
+          element={
+            <ProtectedRoute allowedRoles={['admin']}>
+              <Billing />
             </ProtectedRoute>
           }
         />

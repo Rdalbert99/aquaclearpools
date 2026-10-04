@@ -1,1 +1,2 @@
 - Seasonal scheduling: all route/calendar/status due-day checks go through `src/lib/service-season.ts` (`isServiceWeek`); why: one source of truth, billing stays independent.
+- Billing: every money table carries business_id; issuing/voiding invoices and recording payments only via SECURITY DEFINER RPCs (billing_issue_invoice, billing_void_invoice, billing_record_payment) that write ledger_entries + billing_audit_log; amounts in integer cents; why: immutable books and multi-business separation.

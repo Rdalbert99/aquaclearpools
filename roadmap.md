@@ -1,7 +1,7 @@
 # Roadmap
 
 ## In progress
-- [ ] Billing & accounting system: plan approved (plan only). Waiting on: processor choice, invoice style, tech cash/check, QuickBooks exports + subscription cost. First build step = Phase 1 foundation (billing off, admin-only)
+- [ ] Billing & accounting system: plan approved (plan only). Waiting on: processor choice, invoice style, tech cash/check, QuickBooks exports + subscription cost. Phase 1 foundation BUILT in preview (billing off, admin-only /admin/billing). Next: Phase 2 QuickBooks import (needs exports + subscription cost); payment provider = check Lovable built-in (must be enabled from Lovable editor chat)
 - [ ] Provider-neutral AI command layer: analysis drafted (Actions API core, MCP later needs Lovable Cloud or outside hosting); awaiting go-ahead
 
 - [ ] Telnyx public key: secure form was dismissed — inbound texts/delivery receipts still reject until TELNYX_PUBLIC_KEY value is saved (user must paste it from the Telnyx portal)

@@ -41,53 +41,50 @@ const handler = async (req: Request): Promise<Response> => {
     const resend = new Resend(resendApiKey);
 
     const userData: CreateUserRequest = await req.json();
+    const reject = (reason: string, status = 400) => {
+      console.warn(`create-user-account rejected [${status}]: ${reason}`, {
+        role: userData?.role, loginLength: userData?.login?.length ?? 0,
+        hasEmail: !!userData?.email, passwordLength: userData?.password?.length ?? 0,
+        phoneLength: userData?.phone?.length ?? 0,
+      });
+      return new Response(JSON.stringify({ error: reason }), {
+        status, headers: { 'Content-Type': 'application/json', ...corsHeaders }
+      });
+    };
     
     // Enhanced input validation
     if (!userData.firstName?.trim() || userData.firstName.trim().length < 1 || userData.firstName.trim().length > 50) {
-      return new Response(JSON.stringify({ error: 'Invalid first name' }), {
-        status: 400, headers: { 'Content-Type': 'application/json', ...corsHeaders }
-      });
+      return reject('Invalid first name');
     }
     
     if (!userData.lastName?.trim() || userData.lastName.trim().length < 1 || userData.lastName.trim().length > 50) {
-      return new Response(JSON.stringify({ error: 'Invalid last name' }), {
-        status: 400, headers: { 'Content-Type': 'application/json', ...corsHeaders }
-      });
+      return reject('Invalid last name');
     }
     
     if (!userData.login?.trim() || userData.login.trim().length < 3 || userData.login.trim().length > 30 || !/^[a-zA-Z0-9_-]+$/.test(userData.login.trim())) {
-      return new Response(JSON.stringify({ error: 'Invalid login (3-30 chars, alphanumeric, underscore, dash only)' }), {
-        status: 400, headers: { 'Content-Type': 'application/json', ...corsHeaders }
-      });
+      return reject('Invalid login (3-30 chars, alphanumeric, underscore, dash only)');
     }
     
     if (!userData.email?.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(userData.email.trim())) {
-      return new Response(JSON.stringify({ error: 'Invalid email address' }), {
-        status: 400, headers: { 'Content-Type': 'application/json', ...corsHeaders }
-      });
+      return reject('Invalid email address');
     }
     
     if (!userData.password || userData.password.length < 8 || userData.password.length > 128) {
-      return new Response(JSON.stringify({ error: 'Password must be 8-128 characters' }), {
-        status: 400, headers: { 'Content-Type': 'application/json', ...corsHeaders }
-      });
+      return reject('Password must be 8-128 characters');
     }
     
     if (!['admin', 'tech', 'client'].includes(userData.role)) {
-      return new Response(JSON.stringify({ error: 'Invalid role' }), {
-        status: 400, headers: { 'Content-Type': 'application/json', ...corsHeaders }
-      });
+      return reject('Invalid role');
     }
     
     if (userData.phone && (userData.phone.length > 20 || !/^[\d\s\-\+\(\)\.]+$/.test(userData.phone))) {
-      return new Response(JSON.stringify({ error: 'Invalid phone number format' }), {
-        status: 400, headers: { 'Content-Type': 'application/json', ...corsHeaders }
-      });
+      return reject('Invalid phone number format');
     }
     
     // Enhanced role validation - only admins can assign privileged roles
     const authHeader = req.headers.get('Authorization') || '';
     let userRole = null;
+    let currentUser: { id: string } | null = null;
     
     if (authHeader.startsWith('Bearer ')) {
       try {
@@ -95,7 +92,8 @@ const handler = async (req: Request): Promise<Response> => {
           global: { headers: { Authorization: authHeader } },
           auth: { autoRefreshToken: false, persistSession: false },
         });
-        const { data: { user: currentUser } } = await userClient.auth.getUser();
+        const { data: { user } } = await userClient.auth.getUser();
+        currentUser = user;
         const { data: roleData } = await userClient.rpc('get_current_user_role');
         userRole = roleData;
       } catch (e) {
@@ -112,7 +110,7 @@ const handler = async (req: Request): Promise<Response> => {
     }
     
     // Rate limiting: stricter for unauthenticated, higher for admins
-    const identifier = userRole === 'admin' && (typeof currentUser !== 'undefined') && currentUser?.id
+    const identifier = userRole === 'admin' && currentUser?.id
       ? currentUser.id
       : (req.headers.get('x-real-ip') || req.headers.get('x-forwarded-for') || 'unknown');
     try {
@@ -145,13 +143,7 @@ const handler = async (req: Request): Promise<Response> => {
       .maybeSingle();
 
     if (existingUserByLogin) {
-      return new Response(
-        JSON.stringify({ error: 'Username already exists' }),
-        { 
-          status: 400, 
-          headers: { 'Content-Type': 'application/json', ...corsHeaders } 
-        }
-      );
+      return reject('Username already exists');
     }
 
     // Step 2: Create a distinct auth identity. Contact email is not account
@@ -261,9 +253,8 @@ const handler = async (req: Request): Promise<Response> => {
     `;
 
     try {
-      const fromEmailRaw = Deno.env.get('RESEND_FROM_EMAIL') || 'no-reply@getaquaclear.com';
-      const replyToEmail = Deno.env.get('RESEND_REPLY_TO') || undefined;
-      const fromDisplay = fromEmailRaw.includes('<') ? fromEmailRaw : `AquaClear Pools <${fromEmailRaw}>`;
+      const replyToEmail = 'randy@getaquaclear.com';
+      const fromDisplay = 'Aqua Clear Pools <randy@getaquaclear.com>';
       const emailResponse = await resend.emails.send({
         from: fromDisplay,
         to: [userData.email],
@@ -283,7 +274,7 @@ const handler = async (req: Request): Promise<Response> => {
     try {
       await supabaseAdmin.rpc('log_security_event_enhanced', {
         p_event_type: 'create_user_success',
-        p_user_id: (typeof currentUser !== 'undefined' && currentUser?.id) ? currentUser.id : null,
+        p_user_id: currentUser?.id ?? null,
         p_session_id: null,
         p_endpoint: 'create-user-account',
         p_payload: { target_email: userData.email, role: userData.role, login: userData.login },

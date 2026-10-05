@@ -1,6 +1,6 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.53.0";
-// Switched to Mailjet for email delivery
+// Email delivery via Resend
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -18,14 +18,6 @@ interface SendInviteRequest {
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-
-const MJ_API_URL = "https://api.mailjet.com/v3.1/send";
-function encodeBasicAuth(key: string, secret: string) {
-  try { return btoa(`${key}:${secret}`); } catch {
-    // @ts-ignore
-    return Buffer.from(`${key}:${secret}`).toString("base64");
-  }
-}
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -172,51 +164,39 @@ serve(async (req) => {
           <p style="font-size:12px;color:#9ca3af;text-align:center">This invitation expires in 7 days. If you need a new invitation, contact Aqua Clear Pools.</p>
         </div>`;
 
-      const replyToEmail = Deno.env.get("RESEND_REPLY_TO") || "randy@getaquaclear.com";
-      const defaultFromEmail = "randy@getaquaclear.com";
-      const defaultFromName = "Aqua Clear Pools";
-
-      const apiKey = Deno.env.get("MAILJET_API_KEY");
-      const apiSecret = Deno.env.get("MAILJET_API_SECRET");
-      if (!apiKey || !apiSecret) {
-        throw new Error("Missing MAILJET_API_KEY/MAILJET_API_SECRET");
+      const resendKey = Deno.env.get("RESEND_API_KEY");
+      if (!resendKey) {
+        console.error("RESEND_API_KEY is not configured");
+        return new Response(JSON.stringify({ error: "Email service is not configured. Please contact support." }), {
+          status: 500, headers: { "Content-Type": "application/json", ...corsHeaders },
+        });
       }
 
-      const payload = {
-        Messages: [
-          {
-            From: { Email: defaultFromEmail, Name: defaultFromName },
-            To: [{ Email: body.email }],
-            Bcc: [
-              { Email: "randy@getaquaclear.com" },
-              { Email: "rdalbert99@gmail.com" },
-              { Email: "untoothers@hotmail.com" }
-            ],
-            Subject: "Welcome to Aqua Clear Pools – Let's Get Your Account Ready",
-            TextPart: `Welcome to Aqua Clear Pools!\n\nThank you for choosing Aqua Clear Pools for your pool care.\n\nYour customer portal gives you access to:\n- Service history\n- Water test results\n- Chemical additions\n- Photos from each visit\n- Billing and invoices\n- Service schedule updates\n- Direct communication with our team\n\nTo activate your account, create your password here:\n${link}\n\nOnce your account is active, you can log in anytime to view your pool information and upcoming service visits.\n\nWhat Happens Next?\n1. Create your password.\n2. Log into your customer portal.\n3. Verify your contact information.\n4. Review your service schedule.\n5. Receive visit reports after every pool cleaning.\n\nNeed help?\nCall or text us at (601) 447-0399\nEmail: randy@getaquaclear.com\n\nMaking Your Pool Aqua Clear\nAqua Clear Pools\nServing Hattiesburg, Sumrall, Petal, Purvis, and surrounding areas.\n\nThis invitation expires in 7 days. If you need a new invitation, contact Aqua Clear Pools.`,
-            HTMLPart: html,
-            ReplyTo: { Email: replyToEmail, Name: defaultFromName },
-            Headers: { "List-Unsubscribe": `<mailto:${replyToEmail}>` }
-          }
-        ]
-      };
+      const textPart = `Welcome to Aqua Clear Pools!\n\nThank you for choosing Aqua Clear Pools for your pool care.\n\nYour customer portal gives you access to:\n- Service history\n- Water test results\n- Chemical additions\n- Photos from each visit\n- Billing and invoices\n- Service schedule updates\n- Direct communication with our team\n\nTo activate your account, create your password here:\n${link}\n\nOnce your account is active, you can log in anytime to view your pool information and upcoming service visits.\n\nWhat Happens Next?\n1. Create your password.\n2. Log into your customer portal.\n3. Verify your contact information.\n4. Review your service schedule.\n5. Receive visit reports after every pool cleaning.\n\nNeed help?\nCall or text us at (601) 447-0399\nEmail: randy@getaquaclear.com\n\nMaking Your Pool Aqua Clear\nAqua Clear Pools\nServing Hattiesburg, Sumrall, Petal, Purvis, and surrounding areas.\n\nThis invitation expires in 7 days. If you need a new invitation, contact Aqua Clear Pools.`;
 
-      const auth = encodeBasicAuth(apiKey, apiSecret);
-      const mjRes = await fetch(MJ_API_URL, {
+      const resendRes = await fetch("https://api.resend.com/emails", {
         method: "POST",
-        headers: {
-          "Authorization": `Basic ${auth}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(payload),
+        headers: { "Authorization": `Bearer ${resendKey}`, "Content-Type": "application/json" },
+        body: JSON.stringify({
+          from: "Aqua Clear Pools <randy@getaquaclear.com>",
+          to: [body.email],
+          bcc: ["randy@getaquaclear.com", "rdalbert99@gmail.com", "untoothers@hotmail.com"],
+          reply_to: "randy@getaquaclear.com",
+          subject: "Welcome to Aqua Clear Pools – Let's Get Your Account Ready",
+          html,
+          text: textPart,
+          headers: { "List-Unsubscribe": "<mailto:randy@getaquaclear.com>" },
+        }),
       });
 
-      const mjJson = await mjRes.json();
-      if (!mjRes.ok) {
-        console.error("Mailjet API error:", mjRes.status, JSON.stringify(mjJson));
-        throw new Error(`Mailjet send failed (${mjRes.status}): ${JSON.stringify(mjJson)}`);
+      const resendBody = await resendRes.text();
+      if (!resendRes.ok) {
+        console.error(`Resend API error [${resendRes.status}]: ${resendBody}`);
+        return new Response(JSON.stringify({ error: "The invitation was created but the email could not be sent. Please try again or contact support." }), {
+          status: 502, headers: { "Content-Type": "application/json", ...corsHeaders },
+        });
       }
-      emailStatus = mjJson;
+      emailStatus = resendBody;
     }
 
     // Send SMS via Telnyx if requested

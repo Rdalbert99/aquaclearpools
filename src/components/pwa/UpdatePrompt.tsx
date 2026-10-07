@@ -44,8 +44,8 @@ export const UpdatePrompt = () => {
 
   if (applyUpdate) {
     return (
-      <div className="fixed inset-x-0 bottom-0 z-[200] p-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))]">
-        <div className="mx-auto flex max-w-md items-center gap-3 rounded-lg border bg-card p-3 shadow-lg">
+      <div className="pointer-events-none fixed inset-x-0 bottom-0 z-[200] p-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))]">
+        <div className="pointer-events-auto mx-auto flex max-w-md items-center gap-3 rounded-lg border bg-card p-3 shadow-lg">
           <RefreshCw className={`h-5 w-5 shrink-0 text-primary ${reloading ? 'animate-spin' : ''}`} />
           <p className="flex-1 text-sm text-foreground">
             A new version of Aqua Clear is available.
@@ -67,8 +67,8 @@ export const UpdatePrompt = () => {
 
   if (showWhatsNew) {
     return (
-      <div className="fixed inset-x-0 bottom-0 z-[200] p-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))]">
-        <div className="mx-auto flex max-w-md items-center gap-3 rounded-lg border bg-card p-3 shadow-lg">
+      <div className="pointer-events-none fixed inset-x-0 bottom-0 z-[200] p-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))]">
+        <div className="pointer-events-auto mx-auto flex max-w-md items-center gap-3 rounded-lg border bg-card p-3 shadow-lg">
           <p className="flex-1 text-sm text-foreground">
             Aqua Clear was updated to v{APP_VERSION}.
           </p>

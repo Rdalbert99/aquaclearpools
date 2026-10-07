@@ -14,15 +14,17 @@ import {
   DropdownMenuSeparator, 
   DropdownMenuTrigger 
 } from '@/components/ui/dropdown-menu';
-import { Home, Calculator, Users, FileText, LogOut, User, Star, Calendar, CalendarDays, BarChart3, Mail, Menu, MessageSquare, MessageSquareReply, Radio, Building2, Receipt } from 'lucide-react';
+import { Home, Calculator, Users, FileText, LogOut, User, Star, Calendar, CalendarDays, BarChart3, Mail, Menu, MessageSquare, MessageSquareReply, Radio, Building2, Receipt, RefreshCw } from 'lucide-react';
 import { NotificationBell } from '@/components/notifications/NotificationBell';
 import { BrandLogo } from "@/components/layout/BrandLogo";
+import { RefreshButton, useRefreshApp } from "@/components/pwa/RefreshButton";
 
 export const Navbar = () => {
   const { user, signOut, isAdmin, isTech, isClient } = useAuth();
   const navigate = useNavigate();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
+  const { refresh, busy: refreshing } = useRefreshApp();
 
   // Load unread message count for admins
   useEffect(() => {
@@ -183,6 +185,19 @@ export const Navbar = () => {
                       <Button
                         variant="ghost"
                         size="lg"
+                        className="w-full justify-start"
+                        disabled={refreshing}
+                        onClick={() => {
+                          void refresh();
+                          setIsMobileMenuOpen(false);
+                        }}
+                      >
+                        <RefreshCw className={`h-5 w-5 mr-3 ${refreshing ? 'animate-spin' : ''}`} />
+                        <span className="text-lg">{refreshing ? 'Refreshing…' : 'Refresh app'}</span>
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="lg"
                         asChild
                         className="w-full justify-start"
                         onClick={() => setIsMobileMenuOpen(false)}
@@ -210,7 +225,9 @@ export const Navbar = () => {
               </Sheet>
             </div>
 
-            {/* User Menu */}
+            {/* Refresh app — pulls in a newly published version */}
+            <RefreshButton className="hidden sm:inline-flex" />
+
             {/* Notification Bell */}
             {(isAdmin || isTech) && <NotificationBell />}
 
@@ -256,6 +273,14 @@ export const Navbar = () => {
                     <User className="mr-2 h-4 w-4" />
                     <span>Profile</span>
                   </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => void refresh()}
+                  disabled={refreshing}
+                  className="text-primary"
+                >
+                  <RefreshCw className={`mr-2 h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
+                  <span>{refreshing ? 'Refreshing…' : 'Refresh app'}</span>
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={handleLogout} className="text-red-600">

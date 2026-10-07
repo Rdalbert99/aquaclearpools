@@ -6,7 +6,7 @@
  * both read from here.
  */
 
-export const APP_VERSION = "1.0.0";
+export const APP_VERSION = "1.1.0";
 
 export type ReleaseNote = {
   version: string;
@@ -15,6 +15,17 @@ export type ReleaseNote = {
 };
 
 export const RELEASE_NOTES: ReleaseNote[] = [
+  {
+    version: "1.1.0",
+    date: "2026-10-07",
+    highlights: [
+      "Refresh app button: pull in a newly published version straight from the menu, the top bar, or Settings.",
+      "Broadcast texting for admins: pick a template, see the exact customer count, confirm before anything sends.",
+      "Voice entry on the service visit screen — dictate readings, chemicals and tasks, then review before saving.",
+      "Tasks are ticked once and flow through to history and customer reports — no more entering the same job twice.",
+      "In-season and off-season scheduling per customer, honoured by calendars and routes.",
+    ],
+  },
   {
     version: "1.0.0",
     date: "2026-07-25",

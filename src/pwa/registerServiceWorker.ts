@@ -60,6 +60,11 @@ export type UpdateHandlers = {
 // How often to look for a newer deployment while the app stays open.
 const UPDATE_CHECK_INTERVAL_MS = 15 * 60 * 1000;
 
+// Live handles for the running registration, kept at module level so any screen
+// can ask "is there a newer deployment?" on demand (the Refresh app button).
+let registrationRef: ServiceWorkerRegistration | null = null;
+let updateSWRef: ((reloadPage?: boolean) => Promise<void>) | null = null;
+
 export async function registerServiceWorker(handlers: UpdateHandlers) {
   if (isRefusedContext()) {
     await unregisterExisting();
@@ -77,6 +82,8 @@ export async function registerServiceWorker(handlers: UpdateHandlers) {
       handlers.onReady?.();
     },
     onRegisteredSW(_url, registration) {
+      registrationRef = registration ?? null;
+      updateSWRef = updateSW;
       if (!registration) return;
 
       const checkForUpdate = () => {
@@ -90,4 +97,61 @@ export async function registerServiceWorker(handlers: UpdateHandlers) {
       window.addEventListener("online", checkForUpdate);
     },
   });
+
+  updateSWRef = updateSW;
+}
+
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+export type UpdateCheckResult =
+  | "updated" // a newer deployment was found and the app is reloading with it
+  | "latest" // asked the server, nothing newer exists
+  | "offline" // no connection right now
+  | "unavailable" // no service worker here (editor preview / plain dev tab)
+  | "error"; // the check itself failed
+
+/** True when an on-demand update check is possible in this context. */
+export function isUpdateCheckAvailable(): boolean {
+  return registrationRef !== null && updateSWRef !== null;
+}
+
+/**
+ * Immediately asks the server whether a newer deployment was published, and if
+ * one is waiting, swaps to it and reloads. Resolves "updated" only while the
+ * page is already navigating away.
+ */
+export async function checkForUpdateNow(): Promise<UpdateCheckResult> {
+  const registration = registrationRef;
+  const updateSW = updateSWRef;
+  if (!registration || !updateSW) return "unavailable";
+  if (typeof navigator !== "undefined" && navigator.onLine === false) return "offline";
+
+  const applyIfWaiting = async () => {
+    if (!registration.waiting) return false;
+    await updateSW(true);
+    return true;
+  };
+
+  // A newer version may already be waiting from an earlier background check.
+  if (await applyIfWaiting()) return "updated";
+
+  try {
+    await registration.update();
+  } catch {
+    return "error";
+  }
+
+  // Give the freshly fetched worker time to install and go waiting.
+  const started = Date.now();
+  while (Date.now() - started < 20000) {
+    if (await applyIfWaiting()) return "updated";
+    if (registration.installing) {
+      await sleep(200);
+      continue;
+    }
+    // Nothing installing: allow a beat for a late install, then conclude.
+    if (Date.now() - started > 1500) break;
+    await sleep(200);
+  }
+  return "latest";
 }

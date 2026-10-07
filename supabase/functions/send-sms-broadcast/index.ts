@@ -66,7 +66,7 @@ async function resolveAudience(admin: any, audience: string) {
   const { data: clients, error } = await admin
     .from("clients")
     .select("id, customer, contact_phone, status, notification_method")
-    .eq("status", "active");
+    .ilike("status", "active");
   if (error) throw error;
   const { data: optOuts } = await admin.from("sms_opt_outs").select("phone");
   const blocked = new Set((optOuts ?? []).map((o: any) => o.phone));

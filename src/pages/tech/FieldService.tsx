@@ -40,7 +40,7 @@ import { getAlgaecideStatus } from '@/lib/algaecide';
 import { buildVisitSnapshot, logVisitEvent } from '@/lib/visit-log';
 import { ServiceStickyHeader, type VisitStatus } from '@/components/tech/ServiceStickyHeader';
 import { FollowUpPrompt, type FollowUpValue } from '@/components/tech/FollowUpPrompt';
-import { VoiceEntryDialog, type VoiceApplyPayload } from '@/components/tech/VoiceEntryDialog';
+import { VoiceEntryDialog, voiceSupport, type VoiceApplyPayload } from '@/components/tech/VoiceEntryDialog';
 import { IssueFollowUpPrompt, type IssueFollowUpValue } from '@/components/tech/IssueFollowUpPrompt';
 
 type Client = {
@@ -191,6 +191,7 @@ export default function FieldService() {
   const [client, setClient] = useState<Client | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const voiceSupported = useMemo(() => voiceSupport(), []);
   const [serviceData, setServiceData] = useState<ServiceData>({
     services_performed: [],
     cleaned_robot: false,
@@ -833,11 +834,19 @@ export default function FieldService() {
         onBack={leaveVisit}
       />
 
-      <div className="my-3 flex justify-end">
+      <div className="my-3 flex flex-col items-end gap-1">
         <Button type="button" size="lg" onClick={() => setVoiceOpen(true)} className="gap-2">
           <Mic className="h-5 w-5" /> Voice entry
         </Button>
+        {!voiceSupported.ok && (
+          <p className="max-w-xs text-right text-xs text-muted-foreground">{voiceSupported.reason}</p>
+        )}
       </div>
+      {/* Always-reachable mic while scrolling (sits above the mobile bottom nav). */}
+      <Button type="button" size="icon" aria-label="Voice entry" onClick={() => setVoiceOpen(true)}
+        className="fixed bottom-24 right-4 z-40 h-14 w-14 rounded-full shadow-lg md:bottom-6">
+        <Mic className="h-6 w-6" />
+      </Button>
       <VoiceEntryDialog
         open={voiceOpen}
         onOpenChange={setVoiceOpen}

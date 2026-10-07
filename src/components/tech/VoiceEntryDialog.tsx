@@ -280,11 +280,11 @@ export function VoiceEntryDialog({ open, onOpenChange, catalog, checklist, equip
           <div className="flex flex-col items-center gap-4 py-4">
             <Button type="button" size="lg" onClick={step === 'idle' ? start : stop}
               variant={step === 'recording' ? 'destructive' : 'default'}
-              className="h-24 w-24 rounded-full" aria-label={step === 'idle' ? 'Start recording' : 'Stop recording'}>
+              className={`h-24 w-24 rounded-full ${step === 'recording' ? 'animate-pulse ring-4 ring-destructive/40' : ''}`} aria-label={step === 'idle' ? 'Start recording' : 'Stop recording'}>
               {step === 'idle' ? <Mic className="!h-10 !w-10" /> : <Square className="!h-9 !w-9" />}
             </Button>
             <p className="text-sm font-medium">
-              {step === 'idle' ? (error ? 'Tap the mic to try again' : 'Tap to start talking') : `🔴 Listening… ${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')} — tap to finish`}
+              {step === 'idle' ? (error ? 'Tap the mic to try again' : 'Tap to start talking') : `Listening… ${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')} — tap to finish`}
             </p>
             <p className="text-center text-xs text-muted-foreground">
               e.g. "Chlorine 2.5, pH seven six, alk 90, salt thirty-two fifty. Added two pounds shock and half a gallon muriatic acid. Skimmed, brushed, emptied baskets. Filter at 18 PSI."

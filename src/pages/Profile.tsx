@@ -12,6 +12,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Eye, EyeOff } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { APP_VERSION } from '@/releaseNotes';
+import { RefreshButton } from '@/components/pwa/RefreshButton';
 
 
 interface UserProfile {
@@ -431,9 +432,12 @@ export default function Profile() {
             <p className="text-sm font-medium">Aqua Clear Pools</p>
             <p className="text-sm text-muted-foreground">Version {APP_VERSION}</p>
           </div>
-          <Button variant="outline" size="sm" asChild>
-            <Link to="/whats-new">What's new</Link>
-          </Button>
+          <div className="flex items-center gap-2">
+            <RefreshButton variant="outline" size="sm" showLabel />
+            <Button variant="outline" size="sm" asChild>
+              <Link to="/whats-new">What's new</Link>
+            </Button>
+          </div>
         </CardContent>
       </Card>
     </div>

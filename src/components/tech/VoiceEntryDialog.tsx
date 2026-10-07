@@ -72,7 +72,7 @@ function encodeWav16k(chunks: Float32Array[], inRate: number): Blob {
 }
 
 /** Why voice can't run here (shown to the tech instead of hiding the control). */
-export function voiceSupport(): { ok: true } | { ok: false; reason: string } {
+export function voiceSupport(): { ok: boolean; reason: string } {
   if (typeof window === 'undefined') return { ok: false, reason: 'Voice entry is not available here.' };
   if (!window.isSecureContext) return { ok: false, reason: 'Voice entry needs a secure (https) page. Open getaquaclear.com and try again.' };
   if (!navigator.mediaDevices?.getUserMedia) {
@@ -81,7 +81,7 @@ export function voiceSupport(): { ok: true } | { ok: false; reason: string } {
   if (!((window as any).AudioContext || (window as any).webkitAudioContext)) {
     return { ok: false, reason: 'This browser cannot record audio. Please type the values instead.' };
   }
-  return { ok: true };
+  return { ok: true, reason: '' };
 }
 
 export function VoiceEntryDialog({ open, onOpenChange, catalog, checklist, equipment, services, onApply }: Props) {

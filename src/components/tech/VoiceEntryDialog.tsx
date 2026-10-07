@@ -71,6 +71,19 @@ function encodeWav16k(chunks: Float32Array[], inRate: number): Blob {
   return new Blob([buf], { type: 'audio/wav' });
 }
 
+/** Why voice can't run here (shown to the tech instead of hiding the control). */
+export function voiceSupport(): { ok: true } | { ok: false; reason: string } {
+  if (typeof window === 'undefined') return { ok: false, reason: 'Voice entry is not available here.' };
+  if (!window.isSecureContext) return { ok: false, reason: 'Voice entry needs a secure (https) page. Open getaquaclear.com and try again.' };
+  if (!navigator.mediaDevices?.getUserMedia) {
+    return { ok: false, reason: 'This browser cannot use the microphone. On iPhone, update iOS and use Safari or the installed Aqua Clear app. You can still type the values.' };
+  }
+  if (!((window as any).AudioContext || (window as any).webkitAudioContext)) {
+    return { ok: false, reason: 'This browser cannot record audio. Please type the values instead.' };
+  }
+  return { ok: true };
+}
+
 export function VoiceEntryDialog({ open, onOpenChange, catalog, checklist, equipment, services, onApply }: Props) {
   const [step, setStep] = useState<Step>('idle');
   const [error, setError] = useState<string | null>(null);
@@ -84,6 +97,8 @@ export function VoiceEntryDialog({ open, onOpenChange, catalog, checklist, equip
 
   const rec = useRef<{ stream: MediaStream; ctx: AudioContext; node: ScriptProcessorNode; src: MediaStreamAudioSourceNode; chunks: Float32Array[] } | null>(null);
   const timer = useRef<number | null>(null);
+  const starting = useRef(false);
+  const stopping = useRef(false);
 
   const cleanup = () => {
     if (timer.current) window.clearInterval(timer.current);
@@ -101,21 +116,28 @@ export function VoiceEntryDialog({ open, onOpenChange, catalog, checklist, equip
   useEffect(() => () => cleanup(), []);
 
   async function start() {
+    if (step !== 'idle' || starting.current) return;
     setError(null);
-    if (!navigator.mediaDevices?.getUserMedia) {
-      setError('This browser cannot record audio. Please type the values instead.');
-      return;
-    }
+    const support = voiceSupport();
+    if (!support.ok) { setError(support.reason); return; }
+    starting.current = true;
+    // iOS Safari/PWA: the AudioContext must be created and resumed synchronously inside
+    // the tap, BEFORE awaiting the mic prompt, or it stays suspended and records silence.
+    const AC: typeof AudioContext = (window as any).AudioContext || (window as any).webkitAudioContext;
+    const ctx = new AC();
+    const resumed = ctx.resume().catch(() => undefined);
+    let stream: MediaStream | null = null;
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const ctx = new AudioContext();
-      await ctx.resume();
+      stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true } });
+      await resumed;
       const src = ctx.createMediaStreamSource(stream);
       const node = ctx.createScriptProcessor(4096, 1, 1);
       const chunks: Float32Array[] = [];
       node.onaudioprocess = e => chunks.push(new Float32Array(e.inputBuffer.getChannelData(0)));
       src.connect(node); node.connect(ctx.destination);
       rec.current = { stream, ctx, node, src, chunks };
+      // If iOS interrupts the mic (call, Siri, app backgrounded), stop cleanly instead of hanging.
+      stream.getAudioTracks().forEach(t => { t.onended = () => { if (rec.current) void stop(); }; });
       setSeconds(0);
       setStep('recording');
       timer.current = window.setInterval(() => {
@@ -124,19 +146,34 @@ export function VoiceEntryDialog({ open, onOpenChange, catalog, checklist, equip
           return s + 1;
         });
       }, 1000);
-    } catch {
-      setError('Microphone access was blocked. Allow the microphone in your browser settings, or type the values.');
+    } catch (err: any) {
+      stream?.getTracks().forEach(t => t.stop());
+      ctx.close().catch(() => undefined);
+      const name = err?.name ?? '';
+      setError(
+        name === 'NotAllowedError' || name === 'SecurityError'
+          ? 'Microphone access is blocked. On iPhone: Settings → Safari (or the Aqua Clear app) → Microphone → Allow, then reopen this screen. You can keep typing values meanwhile.'
+          : name === 'NotFoundError' || name === 'OverconstrainedError'
+          ? 'No microphone was found on this device. Please type the values instead.'
+          : name === 'NotReadableError' || name === 'AbortError'
+          ? 'The microphone is in use by another app (call, Siri, recorder). Close it and tap the mic again.'
+          : 'Could not start the microphone. Tap the mic to try again, or type the values.'
+      );
+    } finally {
+      starting.current = false;
     }
   }
 
   async function stop() {
     const r = rec.current;
-    if (!r) return;
+    if (!r || stopping.current) return;
+    stopping.current = true;
     const rate = r.ctx.sampleRate;
     const chunks = r.chunks;
     cleanup();
+    stopping.current = false;
     const blob = encodeWav16k(chunks, rate);
-    if (blob.size < 8000) { setError('Recording was too short. Tap the mic and try again.'); setStep('idle'); return; }
+    if (blob.size < 8000) { setError('Nothing was recorded. Speak for a few seconds after tapping the mic, then tap stop.'); setStep('idle'); return; }
     setStep('processing');
     try {
       const fd = new FormData();
@@ -247,7 +284,7 @@ export function VoiceEntryDialog({ open, onOpenChange, catalog, checklist, equip
               {step === 'idle' ? <Mic className="!h-10 !w-10" /> : <Square className="!h-9 !w-9" />}
             </Button>
             <p className="text-sm font-medium">
-              {step === 'idle' ? 'Tap to start talking' : `Listening… ${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')} — tap to finish`}
+              {step === 'idle' ? (error ? 'Tap the mic to try again' : 'Tap to start talking') : `🔴 Listening… ${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')} — tap to finish`}
             </p>
             <p className="text-center text-xs text-muted-foreground">
               e.g. "Chlorine 2.5, pH seven six, alk 90, salt thirty-two fifty. Added two pounds shock and half a gallon muriatic acid. Skimmed, brushed, emptied baskets. Filter at 18 PSI."

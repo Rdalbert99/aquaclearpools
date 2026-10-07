@@ -8,6 +8,7 @@
 - [ ] HCC portal users: link Hattiesburg Country Club management via Admin → Commercial → Portal Users (needs their names/emails / existing Aqua Clear logins); HCC has no service visits yet, so their dashboard will populate after the first logged service
 
 ## Done
+- Customer Broadcast SMS (/admin/broadcast): built, not yet used for a real send; awaiting admin test-send + publish
 - In-Season / Off-Season scheduling (customer edit, calendars, tech schedule, status; billing untouched)
 - Monthly executive summary: function deployed, cron active (last day of month, America/Chicago), manual test returned 200 (HCC skipped — no opted-in recipients yet); auto-sends to org billing email + opted-in portal users
 - Portal Users admin panel: grant access, role, monthly-report/alert toggles, "Send summary now", send history

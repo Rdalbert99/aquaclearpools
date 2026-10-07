@@ -2544,6 +2544,152 @@ export type Database = {
           },
         ]
       }
+      sms_broadcast_recipients: {
+        Row: {
+          broadcast_id: string
+          client_id: string | null
+          client_name: string | null
+          created_at: string
+          error_code: string | null
+          error_detail: string | null
+          id: string
+          phone_masked: string | null
+          provider_message_id: string | null
+          status: string
+        }
+        Insert: {
+          broadcast_id: string
+          client_id?: string | null
+          client_name?: string | null
+          created_at?: string
+          error_code?: string | null
+          error_detail?: string | null
+          id?: string
+          phone_masked?: string | null
+          provider_message_id?: string | null
+          status: string
+        }
+        Update: {
+          broadcast_id?: string
+          client_id?: string | null
+          client_name?: string | null
+          created_at?: string
+          error_code?: string | null
+          error_detail?: string | null
+          id?: string
+          phone_masked?: string | null
+          provider_message_id?: string | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sms_broadcast_recipients_broadcast_id_fkey"
+            columns: ["broadcast_id"]
+            isOneToOne: false
+            referencedRelation: "sms_broadcasts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sms_broadcast_templates: {
+        Row: {
+          active: boolean
+          body: string
+          created_at: string
+          id: string
+          name: string
+          sort_order: number
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          active?: boolean
+          body: string
+          created_at?: string
+          id?: string
+          name: string
+          sort_order?: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          active?: boolean
+          body?: string
+          created_at?: string
+          id?: string
+          name?: string
+          sort_order?: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
+      sms_broadcasts: {
+        Row: {
+          audience: string
+          completed_at: string | null
+          created_at: string
+          encoding: string | null
+          error_summary: string | null
+          excluded_invalid_count: number
+          excluded_opt_out_count: number
+          failed_count: number
+          id: string
+          intended_count: number
+          is_test: boolean
+          message: string
+          segments: number | null
+          sent_by: string
+          sent_by_name: string | null
+          sent_count: number
+          status: string
+          template_id: string | null
+          template_name: string | null
+        }
+        Insert: {
+          audience?: string
+          completed_at?: string | null
+          created_at?: string
+          encoding?: string | null
+          error_summary?: string | null
+          excluded_invalid_count?: number
+          excluded_opt_out_count?: number
+          failed_count?: number
+          id?: string
+          intended_count?: number
+          is_test?: boolean
+          message: string
+          segments?: number | null
+          sent_by: string
+          sent_by_name?: string | null
+          sent_count?: number
+          status?: string
+          template_id?: string | null
+          template_name?: string | null
+        }
+        Update: {
+          audience?: string
+          completed_at?: string | null
+          created_at?: string
+          encoding?: string | null
+          error_summary?: string | null
+          excluded_invalid_count?: number
+          excluded_opt_out_count?: number
+          failed_count?: number
+          id?: string
+          intended_count?: number
+          is_test?: boolean
+          message?: string
+          segments?: number | null
+          sent_by?: string
+          sent_by_name?: string | null
+          sent_count?: number
+          status?: string
+          template_id?: string | null
+          template_name?: string | null
+        }
+        Relationships: []
+      }
       sms_forwarding_recipients: {
         Row: {
           created_at: string
@@ -2584,6 +2730,36 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      sms_opt_outs: {
+        Row: {
+          client_id: string | null
+          created_at: string
+          created_by: string | null
+          keyword: string | null
+          note: string | null
+          phone: string
+          source: string
+        }
+        Insert: {
+          client_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          keyword?: string | null
+          note?: string | null
+          phone: string
+          source?: string
+        }
+        Update: {
+          client_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          keyword?: string | null
+          note?: string | null
+          phone?: string
+          source?: string
+        }
+        Relationships: []
       }
       tech_invitations: {
         Row: {

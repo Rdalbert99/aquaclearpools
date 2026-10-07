@@ -79,6 +79,7 @@ import TelnyxStatus from "./pages/admin/TelnyxStatus";
 import FollowUps from "./pages/FollowUps";
 import ServiceDashboard from "./pages/ServiceDashboard";
 import NotificationTemplates from "./pages/admin/NotificationTemplates";
+import BroadcastSMS from "./pages/admin/BroadcastSMS";
 import SMSForwardingSettings from "./pages/admin/SMSForwardingSettings";
 
 const queryClient = new QueryClient();
@@ -455,6 +456,7 @@ const AppRoutes = () => {
             </ProtectedRoute>
           } 
         />
+        <Route path="/admin/broadcast" element={<ProtectedRoute allowedRoles={['admin']}><BroadcastSMS /></ProtectedRoute>} />
         <Route 
           path="/admin/sms-forwarding" 
           element={

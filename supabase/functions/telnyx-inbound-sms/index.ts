@@ -163,6 +163,24 @@ serve(async (req: Request) => {
       }
     }
 
+    // Broadcast opt-out keywords (carrier-standard). Only affects sms_opt_outs.
+    try {
+      const kw = String(messageText).trim().toUpperCase().replace(/[^A-Z]/g, "");
+      const e164 = cleanedFrom.length === 10 ? `+1${cleanedFrom}` : `+${cleanedFrom}`;
+      if (["STOP", "STOPALL", "UNSUBSCRIBE", "CANCEL", "END", "QUIT", "OPTOUT"].includes(kw)) {
+        await supabase.from("sms_opt_outs").upsert(
+          { phone: e164, client_id: client?.id ?? null, source: "inbound_keyword", keyword: kw },
+          { onConflict: "phone" },
+        );
+        console.log("Recorded SMS opt-out");
+      } else if (["START", "UNSTOP", "YES", "OPTIN"].includes(kw)) {
+        await supabase.from("sms_opt_outs").delete().eq("phone", e164).eq("source", "inbound_keyword");
+        console.log("Cleared keyword SMS opt-out");
+      }
+    } catch (optErr) {
+      console.error("Opt-out handling failed:", optErr);
+    }
+
     // Get tech info if client found
     let tech: { id: string; name: string; phone: string } | null = null;
     if (client?.assigned_technician_id) {

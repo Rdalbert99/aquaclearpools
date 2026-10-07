@@ -494,7 +494,9 @@ export default function FieldService() {
 
   /** Final, de-duplicated list saved to history and shown in customer reports. */
   function finalServicesPerformed(): string[] {
-    return Array.from(new Set([...(serviceData.services_performed ?? []), ...autoPerformedServices()]));
+    // Auto services are never taken from manual/prefilled state, only from what was logged this visit.
+    const manual = (serviceData.services_performed ?? []).filter(s => !AUTO_SERVICES.has(s));
+    return Array.from(new Set([...manual, ...autoPerformedServices()]));
   }
 
   function buildServiceMessage(_clientName: string, _data: ServiceData, trackedLink?: string) {

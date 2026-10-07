@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
@@ -65,6 +65,8 @@ export default function NewService() {
   const [technicians, setTechnicians] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const submittingRef = useRef(false);
+  const serviceIdRef = useRef<string>(crypto.randomUUID());
   const [calculating, setCalculating] = useState(false);
   const [recommendations, setRecommendations] = useState<ChemicalRecommendation[]>([]);
   
@@ -254,6 +256,8 @@ export default function NewService() {
       return;
     }
 
+    if (submittingRef.current) return;
+    submittingRef.current = true;
     setSaving(true);
     try {
       const { chemical_entries, ...rest } = formData;
@@ -273,9 +277,10 @@ export default function NewService() {
 
       const { error } = await supabase
         .from('services')
-        .insert([serviceData]);
+        .insert([{ ...serviceData, id: serviceIdRef.current }]);
 
-      if (error) throw error;
+      // 23505 = this exact record was already saved by an earlier attempt.
+      if (error && (error as any).code !== '23505') throw error;
 
       // Update client's last service date if service is completed
       if (formData.status === 'completed') {
@@ -301,6 +306,7 @@ export default function NewService() {
         variant: "destructive"
       });
     } finally {
+      submittingRef.current = false;
       setSaving(false);
     }
   };

@@ -40,7 +40,7 @@ import { getAlgaecideStatus } from '@/lib/algaecide';
 import { buildVisitSnapshot, logVisitEvent } from '@/lib/visit-log';
 import { ServiceStickyHeader, type VisitStatus } from '@/components/tech/ServiceStickyHeader';
 import { FollowUpPrompt, type FollowUpValue } from '@/components/tech/FollowUpPrompt';
-import { VoiceEntryDialog, type VoiceApplyPayload } from '@/components/tech/VoiceEntryDialog';
+import { VoiceEntryDialog, voiceSupport, type VoiceApplyPayload } from '@/components/tech/VoiceEntryDialog';
 import { IssueFollowUpPrompt, type IssueFollowUpValue } from '@/components/tech/IssueFollowUpPrompt';
 
 type Client = {
@@ -191,6 +191,7 @@ export default function FieldService() {
   const [client, setClient] = useState<Client | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const voiceSupported = useMemo(() => voiceSupport(), []);
   const [serviceData, setServiceData] = useState<ServiceData>({
     services_performed: [],
     cleaned_robot: false,
@@ -224,6 +225,13 @@ export default function FieldService() {
   const [lastSaltCleaning, setLastSaltCleaning] = useState<string | null>(null);
   const [followUpOpen, setFollowUpOpen] = useState(false);
   const [savedServiceId, setSavedServiceId] = useState<string | null>(null);
+  // One stable id per visit screen: the services row is inserted with this id, so a
+  // double tap, network retry, or re-tap after a partial failure can never create a
+  // second record (the DB primary key rejects it and we treat that as "already saved").
+  const visitIdRef = useRef<string>(crypto.randomUUID());
+  const submittingRef = useRef(false);
+  const insertedRef = useRef(false);
+  const usageLoggedRef = useRef(false);
   const [issuePromptItem, setIssuePromptItem] = useState<{ id: string; label: string } | null>(null);
   const [issueSaving, setIssueSaving] = useState(false);
   const [voiceOpen, setVoiceOpen] = useState(false);
@@ -497,6 +505,8 @@ export default function FieldService() {
 
   async function completeService(notify: boolean = true) {
     if (!client) return;
+    if (submittingRef.current) return; // synchronous guard against double taps
+    submittingRef.current = true;
     setSaving(true);
     try {
       const duration = currentDurationMinutes();
@@ -567,9 +577,15 @@ export default function FieldService() {
         health_score: health.score,
       };
 
-      const { data: inserted, error } = await supabase.from('services').insert(payload).select('id').single();
-      if (error) throw error;
-      setSavedServiceId(inserted?.id ?? null);
+      const serviceId = visitIdRef.current;
+      const inserted = { id: serviceId };
+      if (!insertedRef.current) {
+        const { error } = await supabase.from('services').insert({ ...payload, id: serviceId });
+        // 23505 = duplicate key: a previous attempt already saved this visit.
+        if (error && (error as any).code !== '23505') throw error;
+        insertedRef.current = true;
+      }
+      setSavedServiceId(serviceId);
 
       await logVisitEvent({
         serviceId: inserted?.id ?? null,
@@ -581,7 +597,8 @@ export default function FieldService() {
       });
 
       try {
-        if (inserted?.id && lines.length > 0) {
+        if (inserted?.id && lines.length > 0 && !usageLoggedRef.current) {
+          usageLoggedRef.current = true;
           await supabase.from('service_chemical_usage').insert(
             lines.map(l => ({
               service_id: inserted.id,
@@ -665,6 +682,7 @@ export default function FieldService() {
       console.error(e);
       toast({ title: 'Error', description: e.message || 'Could not complete service', variant: 'destructive' });
     } finally {
+      submittingRef.current = false;
       setSaving(false);
     }
   }
@@ -816,11 +834,19 @@ export default function FieldService() {
         onBack={leaveVisit}
       />
 
-      <div className="my-3 flex justify-end">
+      <div className="my-3 flex flex-col items-end gap-1">
         <Button type="button" size="lg" onClick={() => setVoiceOpen(true)} className="gap-2">
           <Mic className="h-5 w-5" /> Voice entry
         </Button>
+        {!voiceSupported.ok && (
+          <p className="max-w-xs text-right text-xs text-muted-foreground">{voiceSupported.reason}</p>
+        )}
       </div>
+      {/* Always-reachable mic while scrolling (sits above the mobile bottom nav). */}
+      <Button type="button" size="icon" aria-label="Voice entry" onClick={() => setVoiceOpen(true)}
+        className="fixed bottom-24 right-4 z-40 h-14 w-14 rounded-full shadow-lg md:bottom-6">
+        <Mic className="h-6 w-6" />
+      </Button>
       <VoiceEntryDialog
         open={voiceOpen}
         onOpenChange={setVoiceOpen}
@@ -1202,10 +1228,10 @@ export default function FieldService() {
           target={client.contact_phone || client.contact_email || null}
         />
         <div className="flex flex-wrap gap-2">
-          <Button onClick={openReview} disabled={saving} className="h-12 min-w-[180px] flex-1">
-            <CheckCircle className="mr-2 h-4 w-4" /> Complete Service
+          <Button onClick={openReview} disabled={saving || !!savedServiceId} className="h-12 min-w-[180px] flex-1">
+            <CheckCircle className="mr-2 h-4 w-4" /> {saving ? 'Saving…' : savedServiceId ? 'Service saved' : 'Complete Service'}
           </Button>
-          <Button variant="secondary" onClick={() => completeService(false)} disabled={saving} className="h-12 flex-1 min-w-[180px]">
+          <Button variant="secondary" onClick={() => completeService(false)} disabled={saving || !!savedServiceId} className="h-12 flex-1 min-w-[180px]">
             Complete without notifying
           </Button>
         </div>

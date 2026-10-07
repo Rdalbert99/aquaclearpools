@@ -73,6 +73,7 @@ export const Navbar = () => {
         { label: 'Billing', icon: Receipt, path: '/admin/billing' },
         { label: 'Mailjet Test', icon: Mail, path: '/admin/mailjet-test' },
         { label: 'Templates', icon: MessageSquare, path: '/admin/notification-templates' },
+        { label: 'Broadcast', icon: MessageSquareReply, path: '/admin/broadcast' },
         { label: 'SMS Forwarding', icon: MessageSquareReply, path: '/admin/sms-forwarding' },
         { label: 'Send Log', icon: MessageSquareReply, path: '/admin/message-logs' },
         { label: 'Telnyx Status', icon: Radio, path: '/admin/telnyx-status' },

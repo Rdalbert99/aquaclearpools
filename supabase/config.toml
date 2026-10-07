@@ -76,3 +76,6 @@ verify_jwt = true
 
 [functions.voice-service-entry]
 verify_jwt = true
+
+[functions.send-sms-broadcast]
+verify_jwt = false

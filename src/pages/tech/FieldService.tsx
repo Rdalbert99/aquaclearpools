@@ -485,7 +485,7 @@ export default function FieldService() {
   /** Plan services implied by readings, chemicals, algaecide and equipment checks. */
   function autoPerformedServices(): string[] {
     const out: string[] = [];
-    if (Object.values(readingsPayload() ?? {}).some(v => v != null && v !== '')) out.push(CHEM_TEST_SERVICE);
+    if (Object.values(readingsPayload() ?? {}).some(v => v != null)) out.push(CHEM_TEST_SERVICE);
     if ((serviceData.chemical_entries ?? []).some(e => e.amount?.trim())) out.push('Adding Chlorine/Chemicals');
     if (algaecideDosed) out.push('Algae Prevention');
     if (Object.keys(equipment).length > 0) out.push('Equipment Inspection');

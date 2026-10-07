@@ -108,6 +108,22 @@ const CHECKLIST_ITEMS: { id: string; label: string }[] = [
   { id: 'water_level', label: 'Water level OK' },
 ];
 
+/**
+ * Single source of truth: these checklist rows ARE plan services. Checking one
+ * records the plan service name in services_performed (what history and customer
+ * reports show), so the tech never enters the same task twice.
+ */
+const CHECKLIST_SERVICE: Record<string, string> = {
+  brushed: 'Brushing Pool Walls & Steps',
+  skimmed: 'Skimming Surface Debris',
+  baskets: 'Emptying Skimmer Baskets',
+  vacuumed: 'Vacuuming Pool Floor',
+  waterline: 'Cleaning Waterline Tile',
+};
+const CHECKLIST_LINKED_SERVICES = new Set(Object.values(CHECKLIST_SERVICE));
+/** Plan services recorded automatically from what the tech actually logged. */
+const AUTO_SERVICES = new Set([CHEM_TEST_SERVICE, 'Adding Chlorine/Chemicals', 'Algae Prevention', 'Equipment Inspection']);
+
 const EQUIPMENT_ITEMS: { id: string; label: string }[] = [
   { id: 'pump', label: 'Pump running normally' },
   { id: 'filter', label: 'Filter / pressure normal' },
@@ -200,7 +216,8 @@ export default function FieldService() {
     salt_cell_cleaned: false,
     chemical_entries: [],
   });
-  const [checklist, setChecklist] = useState<Record<string, boolean>>({});
+  // Only unlinked rows (e.g. water level) live here; linked rows are derived from services_performed.
+  const [checklistExtra, setChecklistExtra] = useState<Record<string, boolean>>({});
   const [equipment, setEquipment] = useState<Record<string, boolean>>({});
   const [equipmentIssue, setEquipmentIssue] = useState('');
   const [repairNotes, setRepairNotes] = useState('');
@@ -348,7 +365,7 @@ export default function FieldService() {
       next.notes = appendText(prev.notes, p.notes);
       return next;
     });
-    if (p.checklist.length) setChecklist(prev => ({ ...prev, ...Object.fromEntries(p.checklist.map(id => [id, true])) }));
+    if (p.checklist.length) p.checklist.forEach(id => setChecklistItem(id, true));
     if (p.equipment.length) setEquipment(prev => ({ ...prev, ...Object.fromEntries(p.equipment.map(e => [e.id, e.status === 'ok'])) }));
     const eqNotes = [p.equipmentNotes, ...p.equipment.filter(e => e.note).map(e => `${EQUIPMENT_ITEMS.find(x => x.id === e.id)?.label ?? e.id}: ${e.note}`)]
       .filter(Boolean).join('; ');
@@ -401,6 +418,8 @@ export default function FieldService() {
     return out;
   }
 
+  const checklist: Record<string, boolean> = Object.fromEntries(CHECKLIST_ITEMS.map(i => [i.id,
+    CHECKLIST_SERVICE[i.id] ? (serviceData.services_performed ?? []).includes(CHECKLIST_SERVICE[i.id]) : !!checklistExtra[i.id]]));
   const equipmentFlags = EQUIPMENT_ITEMS.filter(i => equipment[i.id] === false).length
     + (equipmentIssue.trim() ? 1 : 0);
 
@@ -452,6 +471,30 @@ export default function FieldService() {
       .replace(/[ \t]+/g, ' ')
       .trim();
     return cleaned.length > maxLength ? `${cleaned.slice(0, maxLength - 3).trimEnd()}...` : cleaned;
+  }
+
+  function setChecklistItem(id: string, v: boolean) {
+    const svc = CHECKLIST_SERVICE[id];
+    if (!svc) { setChecklistExtra(p => ({ ...p, [id]: v })); return; }
+    setServiceData(prev => {
+      const cur = prev.services_performed ?? [];
+      return { ...prev, services_performed: v ? Array.from(new Set([...cur, svc])) : cur.filter(s => s !== svc) };
+    });
+  }
+
+  /** Plan services implied by readings, chemicals, algaecide and equipment checks. */
+  function autoPerformedServices(): string[] {
+    const out: string[] = [];
+    if (Object.values(readingsPayload() ?? {}).some(v => v != null && v !== '')) out.push(CHEM_TEST_SERVICE);
+    if ((serviceData.chemical_entries ?? []).some(e => e.amount?.trim())) out.push('Adding Chlorine/Chemicals');
+    if (algaecideDosed) out.push('Algae Prevention');
+    if (Object.keys(equipment).length > 0) out.push('Equipment Inspection');
+    return out;
+  }
+
+  /** Final, de-duplicated list saved to history and shown in customer reports. */
+  function finalServicesPerformed(): string[] {
+    return Array.from(new Set([...(serviceData.services_performed ?? []), ...autoPerformedServices()]));
   }
 
   function buildServiceMessage(_clientName: string, _data: ServiceData, trackedLink?: string) {
@@ -533,7 +576,7 @@ export default function FieldService() {
         })),
         checklist,
         equipment: { ...equipment, reported_issue: equipmentIssue.trim() || null },
-        servicesPerformed: serviceData.services_performed ?? [],
+        servicesPerformed: finalServicesPerformed(),
         healthScore: health.score,
         durationMinutes: duration,
         onMyWayAt: onMyWayAt?.toISOString() ?? null,
@@ -552,13 +595,15 @@ export default function FieldService() {
         readings: readingsPayload(),
         tests_performed: selectedTests,
         actions: {
-          services_performed: serviceData.services_performed ?? [],
+          services_performed: finalServicesPerformed(),
           cleaned_robot: !!serviceData.cleaned_robot,
           robot_plugged_in: !!serviceData.robot_plugged_in,
           robot_in_water: !!serviceData.robot_in_water,
           salt_cell_cleaned: !!serviceData.salt_cell_cleaned,
           algaecide_dosed: algaecideDosed,
         },
+        // Same list, as text, for history/customer report views that read this column.
+        services_performed: finalServicesPerformed().join(', ') || null,
         chemicals_added: entriesToString(serviceData.chemical_entries ?? [], chemCatalog) || serviceData.chemicals_added || null,
         notes: notesParts.join(' | ') || null,
         duration_minutes: duration,
@@ -807,6 +852,8 @@ export default function FieldService() {
   const address = buildClientAddress(client);
   const planServices = (client.included_services && client.included_services.length > 0) ? client.included_services : ALL_SERVICES;
   const performed = serviceData.services_performed ?? [];
+  const autoServices = autoPerformedServices();
+  const manualPlanServices = planServices.filter(s => !CHECKLIST_LINKED_SERVICES.has(s) && !AUTO_SERVICES.has(s));
   const chemCostTotals = computeServiceCost(serviceData.chemical_entries ?? [], labelFor, unitCosts);
   const chemistryOpen = performed.includes(CHEM_TEST_SERVICE) || selectedTests.length > 0;
 
@@ -907,15 +954,17 @@ export default function FieldService() {
                 <Button
                   type="button" size="sm" variant="outline"
                   onClick={() => {
-                    const all = planServices.every(s => performed.includes(s));
-                    handleInputChange('services_performed', all ? [] : [...planServices]);
+                    const all = manualPlanServices.every(s => performed.includes(s));
+                    handleInputChange('services_performed', all
+                      ? performed.filter(s => !manualPlanServices.includes(s))
+                      : Array.from(new Set([...performed, ...manualPlanServices])));
                   }}
                 >
-                  {planServices.every(s => performed.includes(s)) ? 'Deselect All' : 'Select All'}
+                  {manualPlanServices.every(s => performed.includes(s)) ? 'Deselect All' : 'Select All'}
                 </Button>
               </div>
               <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                {planServices.map(svc => (
+                {manualPlanServices.map(svc => (
                   <div key={svc} className="flex items-center gap-2">
                     <Checkbox
                       id={`svc-${svc}`}
@@ -927,6 +976,10 @@ export default function FieldService() {
                   </div>
                 ))}
               </div>
+              <p className="mt-2 text-xs text-muted-foreground">
+                Brushing, skimming, baskets, vacuuming and waterline are ticked once in the Checklist below.
+                {autoServices.length > 0 ? ` Also recorded automatically: ${autoServices.join(', ')}.` : ' Testing, chemicals added, algaecide and equipment checks are recorded automatically from those sections.'}
+              </p>
             </div>
 
             <div className="border-t pt-3">
@@ -1137,7 +1190,7 @@ export default function FieldService() {
               {CHECKLIST_ITEMS.map(item => (
                 <div key={item.id} className="flex items-center gap-2">
                   <Checkbox id={`chk-${item.id}`} checked={!!checklist[item.id]}
-                    onCheckedChange={v => setChecklist(p => ({ ...p, [item.id]: !!v }))} />
+                    onCheckedChange={v => setChecklistItem(item.id, !!v)} />
                   <Label htmlFor={`chk-${item.id}`} className="cursor-pointer text-sm font-normal">{item.label}</Label>
                 </div>
               ))}

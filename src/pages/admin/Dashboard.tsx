@@ -250,9 +250,9 @@ export default function AdminDashboard() {
                 </Link>
               </Button>
               <Button asChild variant="outline" className="h-16 flex-col">
-                <Link to="/admin/sms-test">
+                <Link to="/admin/broadcast">
                   <MessageSquare className="h-5 w-5 mb-1" />
-                  <span className="text-sm">SMS Test</span>
+                  <span className="text-sm">Broadcast SMS</span>
                 </Link>
               </Button>
             </div>

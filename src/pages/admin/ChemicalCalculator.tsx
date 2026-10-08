@@ -4,7 +4,7 @@ import { ChemistryLab } from '@/components/chemistry/ChemistryLab';
 import { buildLabRows, labAdvice } from '@/lib/chemistry-lab';
 import { IdealChemistryChart } from '@/components/chemistry/IdealChemistryChart';
 import { latestFromService, profileFromClient, type PoolProfile, type Sanitizer, type ChemKey, type LatestReadings } from '@/lib/ideal-chemistry';
-import type { PoolSurface } from '@/lib/cya-calcium-dosing';
+import type { PoolSurface, CalciumProduct } from '@/lib/cya-calcium-dosing';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -50,6 +50,7 @@ export default function ChemicalCalculator() {
     salt: 0
   });
   const [entered, setEntered] = useState<Set<keyof TestResults>>(new Set());
+  const [calciumProduct, setCalciumProduct] = useState<CalciumProduct | null>(null);
   const labFields: Partial<Record<ChemKey, keyof TestResults>> = { fc: 'chlorine', ph: 'ph', ta: 'alkalinity', cya: 'cyanuricAcid', ch: 'calciumHardness', salt: 'salt' };
   const labReadings: LatestReadings = Object.fromEntries(Object.entries(labFields).map(([key, field]) => [key, entered.has(field) ? testResults[field] : null]));
   const editReading = (field: keyof TestResults, value: number | null) => {
@@ -98,7 +99,7 @@ export default function ChemicalCalculator() {
   const calculateRecommendations = (): ChemicalRecommendation[] => {
     return buildLabRows(profile, labReadings)
       .filter(row => row.status === 'low' || row.status === 'high')
-      .map(row => ({ chemical: row.name, amount: labAdvice(row, profile, poolInfo.size)[0],
+      .map(row => ({ chemical: row.name, amount: labAdvice(row, profile, poolInfo.size, calciumProduct ?? 'dihydrate', calciumProduct != null)[0],
         reason: `Current ${row.latest} ${row.unit} · Target ${row.targetLabel} · Range ${row.rangeLabel}`,
         priority: 'medium' as const }));
   };
@@ -277,6 +278,7 @@ export default function ChemicalCalculator() {
                 onReadingChange={(key, value) => { const field = labFields[key]; if (field) editReading(field, value); }}
                 renderAdvice={row => row.key === 'cya' || row.key === 'ch' ? <CyaCalciumDosing
                   key={`${selectedClient?.id ?? 'generic'}-${row.key}-${poolInfo.size}`} lockTargets
+                  onProductChange={product => { setCalciumProduct(product); setShowResults(false); }}
                   showCya={row.key === 'cya'} showCalcium={row.key === 'ch'} cya={labReadings.cya} calcium={labReadings.ch}
                   poolGallons={poolInfo.size} poolType={profile.sanitizer === 'salt' ? 'Saltwater' : 'Chlorine'}
                   linerType={profile.surface} chemistryTargets={profile.overrides} /> : undefined} />

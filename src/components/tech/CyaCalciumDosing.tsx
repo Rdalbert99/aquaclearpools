@@ -20,6 +20,7 @@ interface Props {
   linerType?: string | null;
   chemistryTargets?: unknown;
   lockTargets?: boolean;
+  onProductChange?: (product: CalciumProduct) => void;
 }
 
 function num(v: string): number | null {
@@ -29,9 +30,7 @@ function num(v: string): number | null {
 }
 
 function DoseCard({ title, r, target, onTarget, lockTargets }: { title: string; r: DoseResult; target: string; onTarget: (v: string) => void; lockTargets?: boolean }) {
-  const tone = r.status === 'low' ? 'border-amber-300 bg-amber-50'
-    : r.status === 'high' ? 'border-red-300 bg-red-50'
-    : r.status === 'needs_volume' ? 'border-amber-300 bg-amber-50' : 'bg-muted/40';
+  const tone = r.status === 'high' ? 'border-destructive/50' : 'border-border';
   return (
     <div className={`space-y-2 rounded-lg border p-3 ${tone}`}>
       <div className="flex items-center justify-between gap-2">
@@ -63,7 +62,7 @@ function DoseCard({ title, r, target, onTarget, lockTargets }: { title: string; 
   );
 }
 
-export function CyaCalciumDosing({ showCya, showCalcium, cya, calcium, poolGallons, poolType, linerType, chemistryTargets, lockTargets }: Props) {
+export function CyaCalciumDosing({ showCya, showCalcium, cya, calcium, poolGallons, poolType, linerType, chemistryTargets, lockTargets, onProductChange }: Props) {
   const { options } = useChemicalCatalog();
   const [gallonsText, setGallonsText] = useState(validGallons(poolGallons) ? String(poolGallons) : '');
   const [cyaTarget, setCyaTarget] = useState('');
@@ -97,7 +96,7 @@ export function CyaCalciumDosing({ showCya, showCalcium, cya, calcium, poolGallo
           <Label htmlFor="dose-gallons" className="text-xs">Pool volume (gal)</Label>
           <Input id="dose-gallons" type="number" inputMode="numeric" value={gallonsText}
             onChange={e => setGallonsText(e.target.value)} placeholder="Required"
-            className={gallonsValid ? '' : 'border-amber-500'} />
+            className={gallonsValid ? '' : 'border-destructive'} />
         </div>
         <p className="text-xs text-muted-foreground">
           {gallonsValid ? 'Doses use this volume for this visit only.' : 'No valid volume on file — enter gallons to see amounts.'}
@@ -112,16 +111,16 @@ export function CyaCalciumDosing({ showCya, showCalcium, cya, calcium, poolGallo
 
       {hasCh && (
         <div className="space-y-2">
-          <div className="w-64">
+          <div className="w-full max-w-64">
             <Label className="text-xs">Calcium chloride product</Label>
-            <Select value={product} onValueChange={v => setChosen(v as CalciumProduct)}>
+            <Select value={product} onValueChange={v => { setChosen(v as CalciumProduct); onProductChange?.(v as CalciumProduct); }}>
               <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="anhydrous">Anhydrous (94–97%)</SelectItem>
                 <SelectItem value="dihydrate">Dihydrate / flake (77–80%)</SelectItem>
               </SelectContent>
             </Select>
-            {!productKnown && <p className="mt-1 text-xs text-amber-700">Strength not confirmed — pick the type on the bag.</p>}
+            {!productKnown && <p className="mt-1 text-xs text-muted-foreground">Strength not confirmed — pick the type on the bag.</p>}
           </div>
           <DoseCard title="Calcium Hardness" target={chTarget} onTarget={setChTarget} lockTargets={lockTargets}
             r={calciumDose({ reading: calcium, gallons, target: num(chTarget), surface, product, productKnown, range: chRange })} />

@@ -19,6 +19,7 @@ interface Props {
   poolType?: string | null;
   linerType?: string | null;
   chemistryTargets?: unknown;
+  lockTargets?: boolean;
 }
 
 function num(v: string): number | null {
@@ -27,7 +28,7 @@ function num(v: string): number | null {
   return Number.isFinite(n) ? n : null;
 }
 
-function DoseCard({ title, r, target, onTarget }: { title: string; r: DoseResult; target: string; onTarget: (v: string) => void }) {
+function DoseCard({ title, r, target, onTarget, lockTargets }: { title: string; r: DoseResult; target: string; onTarget: (v: string) => void; lockTargets?: boolean }) {
   const tone = r.status === 'low' ? 'border-amber-300 bg-amber-50'
     : r.status === 'high' ? 'border-red-300 bg-red-50'
     : r.status === 'needs_volume' ? 'border-amber-300 bg-amber-50' : 'bg-muted/40';
@@ -41,8 +42,8 @@ function DoseCard({ title, r, target, onTarget }: { title: string; r: DoseResult
         <div><p className="text-muted-foreground">Current</p><p className="font-semibold">{r.current ?? '—'} ppm</p></div>
         <div>
           <Label className="text-xs text-muted-foreground">Target (ppm)</Label>
-          <Input className="h-8" type="number" inputMode="numeric" value={target} placeholder={String(r.range.target)}
-            onChange={e => onTarget(e.target.value)} />
+          {lockTargets ? <p className="font-semibold">{r.range.target}</p> : <Input className="h-8" type="number" inputMode="numeric" value={target} placeholder={String(r.range.target)}
+            onChange={e => onTarget(e.target.value)} />}
         </div>
         <div><p className="text-muted-foreground">Raise by</p><p className="font-semibold">{r.delta > 0 ? `${r.delta} ppm` : '—'}</p></div>
       </div>
@@ -62,7 +63,7 @@ function DoseCard({ title, r, target, onTarget }: { title: string; r: DoseResult
   );
 }
 
-export function CyaCalciumDosing({ showCya, showCalcium, cya, calcium, poolGallons, poolType, linerType, chemistryTargets }: Props) {
+export function CyaCalciumDosing({ showCya, showCalcium, cya, calcium, poolGallons, poolType, linerType, chemistryTargets, lockTargets }: Props) {
   const { options } = useChemicalCatalog();
   const [gallonsText, setGallonsText] = useState(validGallons(poolGallons) ? String(poolGallons) : '');
   const [cyaTarget, setCyaTarget] = useState('');
@@ -105,7 +106,7 @@ export function CyaCalciumDosing({ showCya, showCalcium, cya, calcium, poolGallo
       </div>
 
       {hasCya && (
-        <DoseCard title="Stabilizer (CYA)" target={cyaTarget} onTarget={setCyaTarget}
+        <DoseCard title="Stabilizer (CYA)" target={cyaTarget} onTarget={setCyaTarget} lockTargets={lockTargets}
           r={cyaDose({ reading: cya, gallons, target: num(cyaTarget), salt, range: cyaRange })} />
       )}
 
@@ -122,7 +123,7 @@ export function CyaCalciumDosing({ showCya, showCalcium, cya, calcium, poolGallo
             </Select>
             {!productKnown && <p className="mt-1 text-xs text-amber-700">Strength not confirmed — pick the type on the bag.</p>}
           </div>
-          <DoseCard title="Calcium Hardness" target={chTarget} onTarget={setChTarget}
+          <DoseCard title="Calcium Hardness" target={chTarget} onTarget={setChTarget} lockTargets={lockTargets}
             r={calciumDose({ reading: calcium, gallons, target: num(chTarget), surface, product, productKnown, range: chRange })} />
         </div>
       )}

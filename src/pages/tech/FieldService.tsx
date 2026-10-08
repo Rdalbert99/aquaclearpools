@@ -46,7 +46,6 @@ import { profileFromClient, type ChemKey, type LatestReadings } from '@/lib/idea
 import { ChemistryLab } from '@/components/chemistry/ChemistryLab';
 import { buildLabRows, labAdvice } from '@/lib/chemistry-lab';
 import { CyaCalciumDosing } from '@/components/tech/CyaCalciumDosing';
-import { cyaDose, isSaltPool as isSaltPoolType, validGallons } from '@/lib/cya-calcium-dosing';
 
 type Client = {
   id: string;
@@ -1095,7 +1094,7 @@ export default function FieldService() {
                 if (test) handleInputChange(TEST_FIELD[test.id], value);
               }}
               renderAdvice={row => row.key === 'cya' || row.key === 'ch' ? (
-                <CyaCalciumDosing key={row.key} showCya={row.key === 'cya'} showCalcium={row.key === 'ch'}
+                <CyaCalciumDosing key={row.key} lockTargets showCya={row.key === 'cya'} showCalcium={row.key === 'ch'}
                   cya={serviceData.cya_level} calcium={serviceData.calcium_hardness_level}
                   poolGallons={client.pool_size} poolType={client.pool_type}
                   linerType={(client as any).liner_type} chemistryTargets={(client as any).chemistry_targets} />

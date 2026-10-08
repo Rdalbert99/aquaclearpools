@@ -1,0 +1,2 @@
+ALTER TABLE public.clients ADD COLUMN IF NOT EXISTS chemistry_targets jsonb;
+COMMENT ON COLUMN public.clients.chemistry_targets IS 'Optional per-pool operational target overrides: {key:{min,max,target}}, plus salt_source text (e.g. cell manufacturer). Null = documented defaults.';

@@ -1,6 +1,7 @@
 # Roadmap
 
 ## In progress
+- [ ] Chemistry Lab: shared testing rack on technician visit, customer chemistry and calculator; synchronized inputs, pool targets, accessible mobile layout and tests. No publish or messages.
 - [ ] getaquaclear.app: checked available ($9.99 first year, renews $14.80/yr) — user deferred the purchase to later; when bought, connect it and set primary so getaquaclear.com redirects
 - [ ] Billing & accounting system: plan approved (plan only). Waiting on: processor choice, invoice style, tech cash/check, QuickBooks exports + subscription cost. Phase 1 foundation BUILT in preview (billing off, admin-only /admin/billing). Next: Phase 2 QuickBooks import (needs exports + subscription cost); payment provider = check Lovable built-in (must be enabled from Lovable editor chat)
 - [ ] Provider-neutral AI command layer: analysis drafted (Actions API core, MCP later needs Lovable Cloud or outside hosting); awaiting go-ahead

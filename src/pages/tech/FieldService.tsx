@@ -674,7 +674,7 @@ export default function FieldService() {
 
       try {
         const chemsText = entriesToString(serviceData.chemical_entries ?? [], chemCatalog) || serviceData.chemicals_added || '';
-        const missing = getMissingFixes(selectedReadings(), chemsText, client.pool_size ?? 10000);
+        const missing = getMissingFixes(selectedReadings(), chemsText, client.pool_size);
         if (missing.length > 0) {
           await supabase.from('pool_needs_messages').insert({
             client_id: client.id,
@@ -1053,13 +1053,13 @@ export default function FieldService() {
                 <AlertDescription className="text-sm">
                   <span className="font-semibold">Maintenance algaecide:</span>{' '}
                   {algaecide.due
-                    ? `Due now — add ${algaecide.doseLabel} for this ${(client.pool_size ?? 10000).toLocaleString()} gal pool.`
+                    ? `Due now — add ${algaecide.doseLabel} ${client.pool_size ? ` for this ${client.pool_size.toLocaleString()} gal pool` : ''}.`
                     : `Next dose in ${algaecide.daysUntilDue} day(s) (every ${algaecide.intervalDays} days).`}
                   {algaecide.lastDosed && ` Last dosed ${algaecide.lastDosed.toLocaleDateString()}.`}
                   <div className="mt-2 flex items-center gap-2">
                     <Checkbox id="algaecide-dosed" checked={algaecideDosed} onCheckedChange={v => setAlgaecideDosed(!!v)} />
                     <Label htmlFor="algaecide-dosed" className="cursor-pointer text-sm font-normal">
-                      Added {algaecide.doseOz} fl oz today
+                      Added {algaecide.doseOz != null ? `${algaecide.doseOz} fl oz` : 'algaecide'} today
                     </Label>
                   </div>
                 </AlertDescription>

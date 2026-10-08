@@ -4,12 +4,14 @@
  *
  * Dose rates (industry standard, per 10,000 gal per +10 ppm):
  *  - Cyanuric acid (dry stabilizer): 13 oz = 0.8125 lb  (≈ 1 lb per 12,000 gal)
- *  - Calcium chloride anhydrous (94–97%): 1.25 lb
- *  - Calcium chloride dihydrate (77–80%): 1.67 lb
+ *  - Calcium chloride anhydrous (94%): 0.98 lb   (0.8345 lb CaCO3 × 110.98/100.09 ÷ 0.94)
+ *  - Calcium chloride dihydrate (77% CaCl2): 1.20 lb
+ *  (Previous 1.25 / 1.67 values overdosed by ~27% / ~39%.)
+ * Unknown product strength → conservative anhydrous (lower) amount, flagged for manual verification.
  */
 
 export const CYA_LB_PER_10K_PER_10PPM = 13 / 16;
-export const CALCIUM_LB_PER_10K_PER_10PPM = { anhydrous: 1.25, dihydrate: 1.67 } as const;
+export const CALCIUM_LB_PER_10K_PER_10PPM = { anhydrous: 0.98, dihydrate: 1.20 } as const;
 
 export type CalciumProduct = 'anhydrous' | 'dihydrate';
 export type PoolSurface = 'plaster' | 'vinyl' | 'fiberglass' | 'unknown';
@@ -106,12 +108,15 @@ export function calciumDose(opts: {
   const range = opts.range ?? defaultCalciumTarget(opts.surface);
   const target = opts.target && opts.target > 0 ? opts.target : range.target;
   const current = validReading(opts.reading);
-  const product = `Calcium Chloride (${opts.product === 'anhydrous' ? 'anhydrous 94–97%' : 'dihydrate 77–80%'})`;
+  const effProduct: CalciumProduct = opts.productKnown ? opts.product : 'anhydrous';
+  const product = opts.productKnown
+    ? `Calcium Chloride (${opts.product === 'anhydrous' ? 'anhydrous 94–97%' : 'dihydrate 77–80%'})`
+    : 'Calcium Chloride (strength unconfirmed)';
   const notes = [
     'Calcium chloride gets hot as it dissolves — pre-dissolve in a bucket of pool water (add product to water, never water to product).',
     'Add per the product label, spread around the deep end with the pump running; add large doses in portions.',
   ];
-  if (!opts.productKnown) notes.unshift('Estimate — product strength not confirmed. Check the bag and pick anhydrous or dihydrate.');
+  if (!opts.productKnown) notes.unshift('Manual verification required — product strength not confirmed. Amount shown is the lower anhydrous figure; dihydrate needs ~22% more. Check the bag.');
   if (opts.surface === 'vinyl' || opts.surface === 'fiberglass') {
     notes.push(`${opts.surface === 'vinyl' ? 'Vinyl' : 'Fiberglass'} pools don't need plaster-level hardness — only raise if below the ${range.min} ppm minimum.`);
   }
@@ -132,10 +137,10 @@ export function calciumDose(opts: {
   if (gallons == null) {
     return { ...base, status: 'needs_volume', delta, lbs: null, oz: null, message: `Calcium is ${delta} ppm below target. Enter the pool volume to calculate a dose.` };
   }
-  const rate = CALCIUM_LB_PER_10K_PER_10PPM[opts.product];
+  const rate = CALCIUM_LB_PER_10K_PER_10PPM[effProduct];
   const { lbs, oz } = amounts((delta / 10) * rate * (gallons / 10000));
   return { ...base, status: 'low', delta, lbs, oz,
-    message: `${opts.productKnown ? '' : 'Estimate: '}Add ~${lbs} lb (${oz} oz) of ${product} to raise hardness ${delta} ppm.` };
+    message: `${opts.productKnown ? '' : 'Estimate (manual verification required): '}Add ~${lbs} lb (${oz} oz) of ${product} to raise hardness ${delta} ppm.` };
 }
 
 /** Infer calcium chloride strength from a catalog/inventory label, if stated. */

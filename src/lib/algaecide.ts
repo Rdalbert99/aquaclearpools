@@ -21,13 +21,14 @@ export interface AlgaecideStatus {
   daysSince: number | null;
   due: boolean;
   daysUntilDue: number | null;
-  doseOz: number;
+  doseOz: number | null;
   doseLabel: string;
 }
 
 /** Maintenance dose in fluid ounces for the given pool volume, rounded to 0.5 oz. */
-export function algaecideDoseOz(poolGallons: number | null | undefined): number {
-  const gallons = poolGallons && poolGallons > 0 ? poolGallons : 10000;
+export function algaecideDoseOz(poolGallons: number | null | undefined): number | null {
+  const gallons = typeof poolGallons === 'number' && Number.isFinite(poolGallons) && poolGallons >= 500 ? poolGallons : null;
+  if (gallons == null) return null; // never assume a pool size
   const raw = (gallons / 10000) * OZ_PER_10K_GALLONS;
   return Math.max(1, Math.round(raw * 2) / 2);
 }
@@ -56,6 +57,6 @@ export function getAlgaecideStatus(
     due,
     daysUntilDue,
     doseOz,
-    doseLabel: `${doseOz} fl oz of ${product}`,
+    doseLabel: doseOz == null ? `${product} (pool volume unknown — confirm gallons for the amount)` : `${doseOz} fl oz of ${product}`,
   };
 }

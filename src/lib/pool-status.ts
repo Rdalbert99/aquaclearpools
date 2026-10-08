@@ -390,7 +390,7 @@ export function getBalanceStatus(
 export function getMissingFixes(
   readings: Partial<Record<ChemicalId, number | null | undefined>>,
   chemicalsAddedText: string | null | undefined,
-  poolGallons: number,
+  poolGallons: number | null | undefined,
 ): string[] {
   const { unresolved } = getBalanceStatus(readings, { label: 'Chemicals added', value: chemicalsAddedText });
   return unresolved

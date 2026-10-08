@@ -47,6 +47,14 @@ type Step = 'idle' | 'recording' | 'processing' | 'review';
 
 interface Row<T> { id: string; include: boolean; flag: string | null; heard?: string; data: T }
 
+/** Exact decimal; rejects negatives, blanks, NaN; accepts comma decimals ("7,6"). */
+export function parseReadingValue(v: unknown): number | null {
+  const s = String(v ?? '').trim().replace(',', '.');
+  if (!s) return null;
+  const n = Number(s);
+  return Number.isFinite(n) && n >= 0 ? n : null;
+}
+
 function encodeWav16k(chunks: Float32Array[], inRate: number): Blob {
   const total = chunks.reduce((s, c) => s + c.length, 0);
   const merged = new Float32Array(total);
@@ -241,8 +249,8 @@ export function VoiceEntryDialog({ open, onOpenChange, catalog, checklist, equip
 
   function apply() {
     const payload: VoiceApplyPayload = {
-      readings: readings.filter(r => r.include && r.data.value !== '' && !Number.isNaN(Number(r.data.value)))
-        .map(r => ({ field: r.data.field, value: Number(r.data.value) })),
+      readings: readings.filter(r => r.include && parseReadingValue(r.data.value) != null)
+        .map(r => ({ field: r.data.field, value: parseReadingValue(r.data.value) as number })),
       chemicals: chems.filter(c => c.include && c.data.amount.trim() && c.data.unit)
         .map(c => ({ chemicalId: c.data.chemicalId, otherName: c.data.otherName, amount: c.data.amount.trim(), unit: c.data.unit as ChemicalUnit })),
       checklist: tasks.filter(t => t.include && t.data.kind === 'checklist').map(t => t.data.value),

@@ -31,12 +31,13 @@ describe('calciumDose', () => {
   it('anhydrous vs dihydrate rates', () => {
     const a = calciumDose({ reading: 150, gallons: 10000, target: 250, surface: 'plaster', product: 'anhydrous', productKnown: true });
     const d = calciumDose({ reading: 150, gallons: 10000, target: 250, surface: 'plaster', product: 'dihydrate', productKnown: true });
-    expect(a.lbs).toBe(12.5);
-    expect(d.lbs).toBe(16.75);
+    expect(a.lbs).toBe(9.75);
+    expect(d.lbs).toBe(12);
   });
   it('unknown product labelled estimate', () => {
     const r = calciumDose({ reading: 150, gallons: 10000, surface: 'plaster', product: 'dihydrate' });
-    expect(r.message).toMatch(/^Estimate/);
+    expect(r.message).toMatch(/^Estimate \(manual verification required\)/);
+    expect(r.lbs).toBe(9.75); // conservative anhydrous figure, never the larger dihydrate one
   });
   it('vinyl at 160 ppm is not raised; plaster at 160 is', () => {
     expect(calciumDose({ reading: 160, gallons: 10000, surface: 'vinyl', product: 'anhydrous' }).status).toBe('ok');

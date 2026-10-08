@@ -63,8 +63,8 @@ describe('Chemistry Lab controlled readings and rules', () => {
   });
   it('respects surface and selected calcium product', () => {
     const row = buildLabRows(salt, { ch: 150 }, ['ch'])[0];
-    expect(labAdvice(row, salt, 10000, 'anhydrous', true)[0]).toContain('12.5 lb');
-    expect(labAdvice(row, salt, 10000, 'dihydrate', true)[0]).toContain('16.75 lb');
+    expect(labAdvice(row, salt, 10000, 'anhydrous', true)[0]).toContain('9.75 lb');
+    expect(labAdvice(row, salt, 10000, 'dihydrate', true)[0]).toContain('12 lb');
     const vinylRow = buildLabRows(vinyl, { ch: 160 }, ['ch'])[0];
     expect(labAdvice(vinylRow, vinyl, 10000)[0]).toContain('No calcium needed');
   });

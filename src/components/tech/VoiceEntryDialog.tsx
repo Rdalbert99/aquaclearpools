@@ -1,3 +1,4 @@
+import { parseReadingValue } from '@/lib/pool-chemistry';
 import { useEffect, useRef, useState } from 'react';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -241,8 +242,8 @@ export function VoiceEntryDialog({ open, onOpenChange, catalog, checklist, equip
 
   function apply() {
     const payload: VoiceApplyPayload = {
-      readings: readings.filter(r => r.include && r.data.value !== '' && !Number.isNaN(Number(r.data.value)))
-        .map(r => ({ field: r.data.field, value: Number(r.data.value) })),
+      readings: readings.filter(r => r.include && parseReadingValue(r.data.value) != null)
+        .map(r => ({ field: r.data.field, value: parseReadingValue(r.data.value) as number })),
       chemicals: chems.filter(c => c.include && c.data.amount.trim() && c.data.unit)
         .map(c => ({ chemicalId: c.data.chemicalId, otherName: c.data.otherName, amount: c.data.amount.trim(), unit: c.data.unit as ChemicalUnit })),
       checklist: tasks.filter(t => t.include && t.data.kind === 'checklist').map(t => t.data.value),

@@ -10,7 +10,7 @@ import { AlertTriangle, Loader2, Mic, Square } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import type { ChemicalOption, ChemicalUnit } from '@/lib/chemicals-added';
 
-export type VoiceReadingField = 'chlorine' | 'ph' | 'alkalinity' | 'cya' | 'calcium' | 'salt';
+export type VoiceReadingField = 'chlorine' | 'ph' | 'alkalinity' | 'cya' | 'calcium' | 'salt' | 'phosphates' | 'iron' | 'copper';
 
 export interface VoiceApplyPayload {
   readings: { field: VoiceReadingField; value: number }[];
@@ -36,10 +36,12 @@ interface Props {
 
 const READING_LABEL: Record<VoiceReadingField, string> = {
   chlorine: 'Free Chlorine', ph: 'pH', alkalinity: 'Alkalinity', cya: 'CYA', calcium: 'Calcium Hardness', salt: 'Salt',
+  phosphates: 'Phosphates (ppb)', iron: 'Iron (ppm)', copper: 'Copper (ppm)',
 };
 // Plausible physical bounds; outside these we always ask for confirmation.
 const PLAUSIBLE: Record<VoiceReadingField, [number, number]> = {
   chlorine: [0, 20], ph: [6.0, 9.0], alkalinity: [0, 400], cya: [0, 300], calcium: [0, 1500], salt: [300, 8000],
+  phosphates: [0, 10000], iron: [0, 5], copper: [0, 5],
 };
 const MAX_SECONDS = 180;
 const TARGET_RATE = 16000;
@@ -207,13 +209,15 @@ export function VoiceEntryDialog({ open, onOpenChange, catalog, checklist, equip
     setReadings((r.readings ?? []).map((x: any) => {
       const field = x.field as VoiceReadingField;
       let flag: string | null = x.flag ?? null;
+      if (!PLAUSIBLE[field]) return null;
       if (x.value == null) flag = flag ?? 'No value heard';
+      else if (field === 'phosphates' && x.value > 0 && x.value < 5) flag = flag ?? `${x.value} ppb is very low — if you meant ${x.value} ppm, enter ${x.value * 1000} ppb.`;
       else {
         const [lo, hi] = PLAUSIBLE[field];
         if (x.value < lo || x.value > hi) flag = flag ?? `${x.value} looks unusual for ${READING_LABEL[field]} — please confirm.`;
       }
       return { id: id(), include: !flag, flag, heard: x.heard, data: { field, value: x.value == null ? '' : String(x.value) } };
-    }));
+    }).filter(Boolean) as Row<{ field: VoiceReadingField; value: string }>[]);
     setChems((r.chemicals ?? []).map((x: any) => {
       const opt = catalog.find(c => c.id === x.chemical_id);
       const unitOk = x.unit && (!opt || opt.units.includes(x.unit));

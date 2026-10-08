@@ -53,7 +53,7 @@ export function validPoolGallons(g: unknown): number | null {
 export function getDosageInstruction(chemId: ChemicalId, value: number | null | undefined, poolGallons: number | null | undefined, poolRange?: { min: number; max: number; target?: number }): string | null {
   if (value == null || typeof value !== 'number' || !Number.isFinite(value)) return null;
   if (value < 0) return `Reading ${value} is invalid (negative). Retest — ${MANUAL_VERIFY}.`;
-  const range = poolRange ?? CHEMICAL_RANGES[chemId];
+  const range: { min: number; max: number; target?: number } = poolRange ?? CHEMICAL_RANGES[chemId];
   if (value >= range.min && value <= range.max) return null;
   const tgt = range.target != null && range.target >= range.min && range.target <= range.max ? range.target : null;
 
@@ -68,7 +68,7 @@ export function getDosageInstruction(chemId: ChemicalId, value: number | null | 
 
   const gallons = validPoolGallons(poolGallons);
   const label = { alkalinity: 'Alkalinity', chlorine: 'Chlorine', cya: 'CYA', salt: 'Salt' }[chemId];
-  if (gallons == null) return `${label} is ${value < range.min ? 'low' : 'high'} (${value}${chemId === 'ph' ? '' : ' ppm'}). Pool volume unknown — confirm gallons before calculating an amount.`;
+  if (gallons == null) return `${label} is ${value < range.min ? 'low' : 'high'} (${value} ppm). Pool volume unknown — confirm gallons before calculating an amount.`;
   const factor = gallons / 10000;
   const round1 = (n: number) => Math.max(0.1, Math.round(n * 10) / 10);
   const raiseBy = (tgt ?? range.min) - value;

@@ -100,3 +100,11 @@ export function getDosageInstruction(chemId: ChemicalId, value: number | null | 
       return null;
   }
 }
+
+/** Exact decimal reading parse (voice/manual); rejects negatives, blanks, NaN; accepts "7,6". */
+export function parseReadingValue(v: unknown): number | null {
+  const s = String(v ?? '').trim().replace(',', '.');
+  if (!s) return null;
+  const n = Number(s);
+  return Number.isFinite(n) && n >= 0 ? n : null;
+}

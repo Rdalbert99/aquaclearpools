@@ -1,3 +1,4 @@
+import { parseReadingValue } from '@/lib/pool-chemistry';
 import { useEffect, useRef, useState } from 'react';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -46,14 +47,6 @@ const TARGET_RATE = 16000;
 type Step = 'idle' | 'recording' | 'processing' | 'review';
 
 interface Row<T> { id: string; include: boolean; flag: string | null; heard?: string; data: T }
-
-/** Exact decimal; rejects negatives, blanks, NaN; accepts comma decimals ("7,6"). */
-export function parseReadingValue(v: unknown): number | null {
-  const s = String(v ?? '').trim().replace(',', '.');
-  if (!s) return null;
-  const n = Number(s);
-  return Number.isFinite(n) && n >= 0 ? n : null;
-}
 
 function encodeWav16k(chunks: Float32Array[], inRate: number): Blob {
   const total = chunks.reduce((s, c) => s + c.length, 0);

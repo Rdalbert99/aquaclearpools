@@ -21,9 +21,8 @@ describe('Aqua Clear calcium chloride flake default', () => {
     expect(a).toBe(9.75);
     expect(1 - a / d).toBeCloseTo(0.19, 1);
   });
-  it('label strength is editable: 80% flake → 0.92529/0.80 × 10 = 11.6 lb', () => {
+  it('label strength is editable: 80% flake → 0.92529/0.80 × 10 ≈ 11.57 → 11.5 lb (¼ lb steps)', () => {
     const r = calciumDose({ ...base, product: 'dihydrate', productKnown: true, purityPct: 80 });
-    expect(r.lbs).toBeCloseTo(PURE_CACL2_LB_PER_10K_PER_10PPM / 0.8 * 10, 1);
     expect(r.lbs).toBe(11.5);
     expect(r.product).toMatch(/80%/);
   });

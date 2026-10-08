@@ -49,7 +49,7 @@ export function buildLabRows(profile: PoolProfile, readings: LatestReadings, sel
 
 /** Uses existing dose engines, passing the SAME pool-specific ranges as the reference chart. */
 export function labAdvice(row: ChartRow, profile: PoolProfile, gallons?: number | null,
-  product: CalciumProduct = 'dihydrate', productKnown = false): string[] {
+  product: CalciumProduct = 'dihydrate', productKnown = false, suitabilityVerified = false): string[] {
   if (row.latest == null) return ['No reading recorded.'];
   if (!row.range) return ['A confirmed target is needed before recommending a dose.', ...row.notes];
   if (row.key === 'cya') {
@@ -57,7 +57,7 @@ export function labAdvice(row: ChartRow, profile: PoolProfile, gallons?: number 
     return [result.message, ...result.notes];
   }
   if (row.key === 'ch') {
-    const result = calciumDose({ reading: row.latest, gallons, surface: profile.surface, range: row.range, product, productKnown });
+    const result = calciumDose({ reading: row.latest, gallons, surface: profile.surface, range: row.range, product, productKnown, suitabilityVerified });
     return [result.message, ...result.notes];
   }
   if (TRACE_KEYS.includes(row.key)) {

@@ -107,7 +107,7 @@ export default function ChemicalCalculator() {
   const calculateRecommendations = (): ChemicalRecommendation[] => {
     return buildLabRows(profile, labReadings, LAB_KEYS.filter(k => k !== 'cc' && (k !== 'salt' || profile.sanitizer === 'salt')))
       .filter(row => row.status === 'low' || row.status === 'high')
-      .map(row => ({ chemical: row.name, amount: labAdvice(row, profile, poolInfo.size, calciumProduct ?? 'dihydrate', calciumProduct != null)[0],
+      .map(row => ({ chemical: row.name, amount: labAdvice(row, profile, poolInfo.size, calciumProduct ?? 'dowflake_xtra', true, getDowflakeSuitability())[0],
         reason: `Current ${row.latest} ${row.unit} · Target ${row.targetLabel} · Range ${row.rangeLabel}`,
         priority: 'medium' as const }));
   };

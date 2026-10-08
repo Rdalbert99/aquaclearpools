@@ -5,7 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useChemicalCatalog } from '@/hooks/useChemicalCatalog';
 import {
-  calciumDose, calciumProductFromLabel, cyaDose, detectSurface, isSaltPool, validGallons,
+  calciumDose, calciumProductFromLabel, getDowflakeSuitability, setDowflakeSuitability, DOWFLAKE_XTRA, cyaDose, detectSurface, isSaltPool, validGallons,
   type CalciumProduct, type DoseResult,
 } from '@/lib/cya-calcium-dosing';
 import { calciumTargetFor, cyaTargetFor, profileFromClient } from '@/lib/ideal-chemistry';
@@ -52,7 +52,7 @@ function DoseCard({ title, r, target, onTarget, lockTargets }: { title: string; 
       <p className="text-sm font-medium">{r.message}</p>
       {r.lbs != null && (
         <p className="text-sm">
-          <span className="font-semibold">{r.lbs} lb ({r.oz} oz)</span> · {r.product}
+          <span className="font-semibold">{r.lbsMax != null ? `${r.lbs}–${r.lbsMax} lb (start ${r.lbs} lb)` : `${r.lbs} lb (${r.oz} oz)`}</span> · {r.product}
         </p>
       )}
       {r.notes.length > 0 && (
@@ -81,8 +81,9 @@ export function CyaCalciumDosing({ showCya, showCalcium, cya, calcium, poolGallo
   }, [options]);
   const [chosen, setChosen] = useState<CalciumProduct | null>(null);
   const [purity, setPurity] = useState('');
-  const product: CalciumProduct = onProductChange ? selectedProduct ?? 'dihydrate' : chosen ?? inventoryProduct ?? 'dihydrate';
-  const productKnown = onProductChange ? selectedProduct != null : chosen != null || inventoryProduct != null;
+  const product: CalciumProduct = onProductChange ? selectedProduct ?? 'dowflake_xtra' : chosen ?? inventoryProduct ?? 'dowflake_xtra';
+  const productKnown = product === 'dowflake_xtra' || (onProductChange ? selectedProduct != null : chosen != null || inventoryProduct != null);
+  const [suitable, setSuitable] = useState(getDowflakeSuitability());
 
   if (!showCya && !showCalcium) return null;
   const hasCya = showCya && cya != null;
@@ -119,17 +120,27 @@ export function CyaCalciumDosing({ showCya, showCalcium, cya, calcium, poolGallo
             <Select value={product} onValueChange={v => { setChosen(v as CalciumProduct); onProductChange?.(v as CalciumProduct); }}>
               <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
               <SelectContent>
+                <SelectItem value="dowflake_xtra">OxyChem DOWFLAKE Xtra (83–87%) — preferred</SelectItem>
                 <SelectItem value="anhydrous">Anhydrous (94–97%)</SelectItem>
                 <SelectItem value="dihydrate">Dihydrate / flake (77–80%)</SelectItem>
               </SelectContent>
             </Select>
-            {!productKnown && <p className="mt-1 text-xs text-muted-foreground">Default: calcium chloride flake. Strength not confirmed — check the bag and pick its type.</p>}
+            {product === 'dowflake_xtra' && (
+              <div className="mt-2 space-y-1 rounded-md border border-dashed p-2 text-xs">
+                <p className="text-muted-foreground">{DOWFLAKE_XTRA.manufacturer} · label {DOWFLAKE_XTRA.purityMin}–{DOWFLAKE_XTRA.purityMax}% pure · {DOWFLAKE_XTRA.bagLb} lb bag. Label says not for food/drug use.</p>
+                <label className="flex items-start gap-2">
+                  <input type="checkbox" className="mt-0.5 h-4 w-4" checked={suitable}
+                    onChange={e => { setSuitable(e.target.checked); setDowflakeSuitability(e.target.checked); }} />
+                  <span>I checked the bag label or the manufacturer: this product is suitable for swimming pool use.</span>
+                </label>
+              </div>
+            )}
             <Label htmlFor="cacl2-purity" className="mt-2 block text-xs">% calcium chloride on bag (optional)</Label>
             <Input id="cacl2-purity" className="h-9" type="number" inputMode="decimal" step="any" min="0" max="100"
-              placeholder={product === 'anhydrous' ? '94' : '77'} value={purity} onChange={e => setPurity(e.target.value)} />
+              placeholder={product === 'anhydrous' ? '94' : product === 'dowflake_xtra' ? '83–87' : '77'} value={purity} onChange={e => setPurity(e.target.value)} />
           </div>
           <DoseCard title="Calcium Hardness" target={chTarget} onTarget={setChTarget} lockTargets={lockTargets}
-            r={calciumDose({ reading: calcium, gallons, target: num(chTarget), surface, product, productKnown, range: chRange, purityPct: purity.trim() ? Number(purity.replace(',', '.')) : null })} />
+            r={calciumDose({ reading: calcium, gallons, target: num(chTarget), surface, product, productKnown, range: chRange, suitabilityVerified: suitable, purityPct: purity.trim() ? Number(purity.replace(',', '.')) : null })} />
         </div>
       )}
       <p className="text-xs text-muted-foreground">Nothing here is logged as added. Record what you actually used under Chemicals Added.</p>

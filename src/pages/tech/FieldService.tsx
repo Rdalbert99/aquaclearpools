@@ -19,7 +19,7 @@ import {
   Clock, Droplets, TestTube, CheckCircle, ArrowLeft, AlertTriangle, Send, Zap, Info, HelpCircle,
   Truck, PlayCircle, Wrench, ListChecks, Camera, Receipt, Sparkles, Mic,
 } from 'lucide-react';
-import { type ChemicalId } from '@/lib/pool-chemistry';
+import { type ChemicalId, parseReadingValue } from '@/lib/pool-chemistry';
 import { POOL_TESTS, TEST_BY_ID, normalizeDefaultTests, sortTests, type TestId } from '@/lib/pool-tests';
 import { TestGuideDialog } from '@/components/pool/TestGuideDialog';
 import { ArrivalNotification } from '@/components/tech/ArrivalNotification';

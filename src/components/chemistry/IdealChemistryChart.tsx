@@ -32,7 +32,7 @@ const SAN_LABEL = { salt: 'Salt water generator', chlorine: 'Manually chlorinate
 const EDITABLE: { key: ChemKey; label: string }[] = [
   { key: 'fc', label: 'Free Chlorine' }, { key: 'ph', label: 'pH' }, { key: 'ta', label: 'Total Alkalinity' },
   { key: 'ch', label: 'Calcium Hardness' }, { key: 'cya', label: 'CYA' }, { key: 'salt', label: 'Salt' },
-  { key: 'phosphates', label: 'Phosphates (ppb)' }, { key: 'metals', label: 'Metals' }, { key: 'borates', label: 'Borates' },
+  { key: 'phosphates', label: 'Phosphates (ppb PO4)' }, { key: 'iron', label: 'Iron (ppm)' }, { key: 'copper', label: 'Copper (ppm)' }, { key: 'metals', label: 'Total metals (ppm)' }, { key: 'borates', label: 'Borates' },
 ];
 
 interface Props {

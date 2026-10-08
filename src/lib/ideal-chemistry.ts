@@ -9,6 +9,7 @@
  * Pool volume changes dose amounts only, never ppm targets.
  */
 import { CHEMICAL_RANGES } from './pool-chemistry';
+import { COPPER_DEFAULT_MAX_PPM, IRON_DEFAULT_MAX_PPM, METAL_METHOD_NOTES, PHOSPHATE_DEFAULT_MAX_PPB, PHOSPHATE_NOTES, metalAlerts } from './phosphate-metals';
 import {
   defaultCalciumTarget, defaultCyaTarget, detectSurface, isSaltPool,
   type PoolSurface, type Target,
@@ -16,7 +17,7 @@ import {
 
 export type ChemKey =
   | 'fc' | 'cc' | 'ph' | 'ta' | 'ch' | 'cya' | 'salt'
-  | 'phosphates' | 'metals' | 'borates';
+  | 'phosphates' | 'iron' | 'copper' | 'metals' | 'borates';
 
 export type Sanitizer = 'salt' | 'chlorine' | 'unknown';
 export type RowStatus = 'low' | 'in_range' | 'high' | 'unknown';
@@ -130,7 +131,7 @@ function num(v: unknown): number | null {
 }
 
 /** Build the chart rows for a pool profile + latest readings. */
-export function buildIdealChart(p: PoolProfile, latest: LatestReadings = {}): ChartRow[] {
+export function buildIdealChart(p: PoolProfile, latest: LatestReadings = {}, include: ChemKey[] = []): ChartRow[] {
   const o = p.overrides ?? {};
   const rows: ChartRow[] = [];
   const fmt = (t: Target, unit: string) => `${t.min}–${t.max}${unit ? ' ' + unit : ''}`;
@@ -188,15 +189,21 @@ export function buildIdealChart(p: PoolProfile, latest: LatestReadings = {}): Ch
       salt.custom ? [] : ['Check the salt cell label/manual and save its target as a custom value.']);
   }
   // Optional — shown only when relevant (a reading or a custom target exists)
-  const optional: [ChemKey, string, string, Target, boolean, string][] = [
-    ['phosphates', 'Phosphates', 'ppb', { min: 0, max: 500, target: 0 }, true, 'Usually only matters with recurring algae'],
-    ['metals', 'Metals (copper/iron)', 'ppm', { min: 0, max: 0.2, target: 0 }, true, 'Stains; watch on well water'],
-    ['borates', 'Borates', 'ppm', { min: 30, max: 50, target: 50 }, false, 'Only if borates are used'],
+  const optional: [ChemKey, string, string, Target, boolean, string, string[]][] = [
+    ['phosphates', 'Phosphates (PO4)', 'ppb', { min: 0, max: PHOSPHATE_DEFAULT_MAX_PPB, target: 0 }, true, 'Algae-food indicator, not a sanitizer measure', PHOSPHATE_NOTES],
+    ['iron', 'Iron (Fe)', 'ppm', { min: 0, max: IRON_DEFAULT_MAX_PPM, target: 0 }, true, 'Staining risk; common with well water', METAL_METHOD_NOTES],
+    ['copper', 'Copper (Cu)', 'ppm', { min: 0, max: COPPER_DEFAULT_MAX_PPM, target: 0 }, true, 'Staining risk; ionizers, copper algaecides, heater corrosion', METAL_METHOD_NOTES],
+    ['metals', 'Total metals (combined)', 'ppm', { min: 0, max: 0.2, target: 0 }, true, 'Only when recorded as a combined value', METAL_METHOD_NOTES],
+    ['borates', 'Borates', 'ppm', { min: 30, max: 50, target: 50 }, false, 'Only if borates are used', []],
   ];
-  for (const [key, name, unit, base, maxOnly, basis] of optional) {
-    if (num(latest[key]) == null && !o[key]) continue;
+  for (const [key, name, unit, base, maxOnly, basis, baseNotes] of optional) {
+    if (num(latest[key]) == null && !o[key] && !include.includes(key)) continue;
     const m = merge(base, o[key]);
-    push(key, name, unit, m.t, m.custom, basis, [], maxOnly ? { maxOnly, rangeLabel: `≤ ${m.t.max} ${unit}` } : {});
+    const v = num(latest[key]);
+    const notes = key === 'iron' || key === 'copper' || key === 'metals'
+      ? [...metalAlerts(key, v, m.t.max, p.surface), ...baseNotes] : [...baseNotes];
+    push(key, name, unit, m.t, m.custom, m.custom ? `Custom limit for this pool · ${basis}` : basis, notes,
+      maxOnly ? { maxOnly, rangeLabel: `≤ ${m.t.max} ${unit}`, targetLabel: `0 ${unit}` } : {});
   }
   return rows;
 }
@@ -215,6 +222,8 @@ export function latestFromService(svc: any): LatestReadings {
     cya: r.cya ?? svc.cyanuric_acid_level ?? null,
     salt: r.salt ?? svc.salt_level ?? null,
     phosphates: r.phosphates ?? null,
+    iron: r.iron ?? null,
+    copper: r.copper ?? null,
     metals: r.metals ?? null,
     borates: r.borates ?? null,
   };

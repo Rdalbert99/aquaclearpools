@@ -2,7 +2,7 @@
 
 import type { ChemicalId } from './pool-chemistry';
 
-export type TestId = 'chlorine' | 'alkalinity' | 'ph' | 'cya' | 'calcium' | 'salt';
+export type TestId = 'chlorine' | 'alkalinity' | 'ph' | 'cya' | 'calcium' | 'salt' | 'phosphates' | 'iron' | 'copper';
 
 export interface TestDef {
   id: TestId;
@@ -168,6 +168,70 @@ export const POOL_TESTS: TestDef[] = [
       'Run the pump for a while before sampling so salt is evenly mixed.',
       'Silver nitrate stains skin, clothing and decks — rinse spills immediately.',
       'Trust the titration over the generator display; cell readouts drift as the cell ages.',
+    ],
+  },
+  {
+    id: 'phosphates',
+    label: 'Phosphates (ppb PO4)',
+    short: 'PO4',
+    unit: 'ppb',
+    step: '1',
+    readingKey: 'phosphates',
+    optional: true,
+    integer: false,
+    reagents: 'Phosphate test kit or comparator (follow that kit’s own reagent instructions)',
+    steps: [
+      'Collect the sample from elbow depth away from returns.',
+      'Run the phosphate test exactly as your kit’s instructions describe and wait the full color-development time.',
+      'Read the result and note the units the kit uses (ppb or ppm, as phosphate PO4).',
+      'Enter the value in ppb. If the kit reads ppm, multiply by 1,000 (0.5 ppm = 500 ppb).',
+    ],
+    tips: [
+      'Phosphates do not make water unsafe — free chlorine vs CYA decides sanitizer safety.',
+      'Some kits report phosphorus (P) instead of phosphate (PO4); 1 ppm P ≈ 3.07 ppm PO4. Confirm which one your kit uses.',
+      'Retest after phosphate remover and a filter cleaning before re-treating.',
+    ],
+  },
+  {
+    id: 'iron',
+    label: 'Iron (ppm)',
+    short: 'Fe',
+    unit: 'ppm',
+    step: '0.01',
+    readingKey: 'iron',
+    optional: true,
+    integer: false,
+    reagents: 'Iron test kit or comparator (follow that kit’s own reagent instructions)',
+    steps: [
+      'Collect the sample from elbow depth away from returns.',
+      'Run the iron test exactly as your kit describes and wait the full color-development time.',
+      'Compare against the iron color standard in open shade and enter the result in ppm.',
+    ],
+    tips: [
+      'Kits measure dissolved iron only — existing stains are not counted.',
+      'High chlorine or colored water can distort the reading; retest if it looks off.',
+      'Fill water from a well is the most common source of iron.',
+    ],
+  },
+  {
+    id: 'copper',
+    label: 'Copper (ppm)',
+    short: 'Cu',
+    unit: 'ppm',
+    step: '0.01',
+    readingKey: 'copper',
+    optional: true,
+    integer: false,
+    reagents: 'Copper test kit or comparator (follow that kit’s own reagent instructions)',
+    steps: [
+      'Collect the sample from elbow depth away from returns.',
+      'Run the copper test exactly as your kit describes and wait the full color-development time.',
+      'Compare against the copper color standard in open shade and enter the result in ppm.',
+    ],
+    tips: [
+      'Kits measure dissolved copper only — existing stains are not counted.',
+      'Common sources: ionizers, copper algaecides, and low pH corroding a copper heater.',
+      'High chlorine can interfere with some copper tests; follow the kit’s note on chlorine.',
     ],
   },
 ];

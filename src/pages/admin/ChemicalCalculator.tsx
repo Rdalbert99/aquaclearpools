@@ -1,7 +1,8 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { CyaCalciumDosing } from '@/components/tech/CyaCalciumDosing';
 import { ChemistryLab } from '@/components/chemistry/ChemistryLab';
-import { buildLabRows, labAdvice } from '@/lib/chemistry-lab';
+import { buildLabRows, labAdvice, LAB_KEYS } from '@/lib/chemistry-lab';
+import { TraceTreatmentHelper } from '@/components/chemistry/TraceTreatmentHelper';
 import { IdealChemistryChart } from '@/components/chemistry/IdealChemistryChart';
 import { latestFromService, profileFromClient, type PoolProfile, type Sanitizer, type ChemKey, type LatestReadings } from '@/lib/ideal-chemistry';
 import type { PoolSurface, CalciumProduct } from '@/lib/cya-calcium-dosing';
@@ -22,6 +23,9 @@ interface TestResults {
   cyanuricAcid: number;
   calciumHardness: number;
   salt: number;
+  phosphates: number;
+  iron: number;
+  copper: number;
 }
 
 interface PoolInfo {
@@ -47,11 +51,14 @@ export default function ChemicalCalculator() {
     alkalinity: 0,
     cyanuricAcid: 0,
     calciumHardness: 0,
-    salt: 0
+    salt: 0,
+    phosphates: 0,
+    iron: 0,
+    copper: 0,
   });
   const [entered, setEntered] = useState<Set<keyof TestResults>>(new Set());
   const [calciumProduct, setCalciumProduct] = useState<CalciumProduct | null>(null);
-  const labFields: Partial<Record<ChemKey, keyof TestResults>> = { fc: 'chlorine', ph: 'ph', ta: 'alkalinity', cya: 'cyanuricAcid', ch: 'calciumHardness', salt: 'salt' };
+  const labFields: Partial<Record<ChemKey, keyof TestResults>> = { fc: 'chlorine', ph: 'ph', ta: 'alkalinity', cya: 'cyanuricAcid', ch: 'calciumHardness', salt: 'salt', phosphates: 'phosphates', iron: 'iron', copper: 'copper' };
   const labReadings: LatestReadings = Object.fromEntries(Object.entries(labFields).map(([key, field]) => [key, entered.has(field) ? testResults[field] : null]));
   const editReading = (field: keyof TestResults, value: number | null) => {
     setTestResults(prev => ({ ...prev, [field]: value ?? 0 }));
@@ -98,7 +105,7 @@ export default function ChemicalCalculator() {
   };
 
   const calculateRecommendations = (): ChemicalRecommendation[] => {
-    return buildLabRows(profile, labReadings)
+    return buildLabRows(profile, labReadings, LAB_KEYS.filter(k => k !== 'cc' && (k !== 'salt' || profile.sanitizer === 'salt')))
       .filter(row => row.status === 'low' || row.status === 'high')
       .map(row => ({ chemical: row.name, amount: labAdvice(row, profile, poolInfo.size, calciumProduct ?? 'dihydrate', calciumProduct != null)[0],
         reason: `Current ${row.latest} ${row.unit} · Target ${row.targetLabel} · Range ${row.rangeLabel}`,
@@ -277,6 +284,7 @@ export default function ChemicalCalculator() {
             </CardHeader>
             <CardContent className="space-y-4">
               <ChemistryLab profile={profile} readings={labReadings} gallons={poolInfo.size}
+                selected={LAB_KEYS.filter(k => k !== 'cc' && (k !== 'salt' || profile.sanitizer === 'salt'))}
                 onReadingChange={(key, value) => { const field = labFields[key]; if (field) editReading(field, value); }}
                 renderAdvice={row => row.key === 'cya' || row.key === 'ch' ? <CyaCalciumDosing
                   key={`${selectedClient?.id ?? 'generic'}-${row.key}-${poolInfo.size}`} lockTargets
@@ -285,7 +293,8 @@ export default function ChemicalCalculator() {
                   onProductChange={product => { setCalciumProduct(product); setShowResults(false); }}
                   showCya={row.key === 'cya'} showCalcium={row.key === 'ch'} cya={labReadings.cya} calcium={labReadings.ch}
                   poolGallons={poolInfo.size} poolType={profile.sanitizer === 'salt' ? 'Saltwater' : 'Chlorine'}
-                  linerType={profile.surface} chemistryTargets={profile.overrides} /> : undefined} />
+                  linerType={profile.surface} chemistryTargets={profile.overrides} /> : row.key === 'phosphates' || row.key === 'iron' || row.key === 'copper'
+                  ? <TraceTreatmentHelper key={row.key} row={row} profile={profile} gallons={poolInfo.size} /> : undefined} />
               <details>
               <summary className="cursor-pointer text-sm font-medium">Reading fields</summary>
               <div className="mt-3 grid grid-cols-2 gap-4">

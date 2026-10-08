@@ -76,6 +76,7 @@ export default function ChemicalCalculator() {
     ? profileFromClient(selectedClient)
     : { sanitizer: manualSanitizer, surface: manualSurface, fromCustomer: false, overrides: null },
   [selectedClient, manualSanitizer, manualSurface]);
+  useEffect(() => { setShowResults(false); }, [poolInfo.size, poolInfo.type, profile]);
 
   // Load clients for selection
   useEffect(() => {
@@ -159,6 +160,7 @@ export default function ChemicalCalculator() {
   };
 
   const handleClientSelect = async (clientId: string) => {
+    setCalciumProduct(null);
     if (clientId === '__none') {
       setSelectedClient(null); setLatestSvc(null); setEntered(new Set()); setShowResults(false);
       setPoolInfo({ size: 0, type: '' });
@@ -278,6 +280,8 @@ export default function ChemicalCalculator() {
                 onReadingChange={(key, value) => { const field = labFields[key]; if (field) editReading(field, value); }}
                 renderAdvice={row => row.key === 'cya' || row.key === 'ch' ? <CyaCalciumDosing
                   key={`${selectedClient?.id ?? 'generic'}-${row.key}-${poolInfo.size}`} lockTargets
+                  selectedProduct={calciumProduct}
+                  onGallonsChange={gallons => setPoolInfo(prev => ({ ...prev, size: gallons ?? 0 }))}
                   onProductChange={product => { setCalciumProduct(product); setShowResults(false); }}
                   showCya={row.key === 'cya'} showCalcium={row.key === 'ch'} cya={labReadings.cya} calcium={labReadings.ch}
                   poolGallons={poolInfo.size} poolType={profile.sanitizer === 'salt' ? 'Saltwater' : 'Chlorine'}

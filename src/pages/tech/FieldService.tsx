@@ -54,6 +54,8 @@ type Client = {
   contact_email?: string | null;
   pool_size?: number | null;
   pool_type?: string | null;
+  liner_type?: string | null;
+  chemistry_targets?: unknown;
   included_services?: string[] | null;
   default_tests?: string[] | null;
   contact_address?: string | null;

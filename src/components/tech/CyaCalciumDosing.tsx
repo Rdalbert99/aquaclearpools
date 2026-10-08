@@ -21,6 +21,8 @@ interface Props {
   chemistryTargets?: unknown;
   lockTargets?: boolean;
   onProductChange?: (product: CalciumProduct) => void;
+  selectedProduct?: CalciumProduct | null;
+  onGallonsChange?: (gallons: number | null) => void;
 }
 
 function num(v: string): number | null {
@@ -62,7 +64,7 @@ function DoseCard({ title, r, target, onTarget, lockTargets }: { title: string; 
   );
 }
 
-export function CyaCalciumDosing({ showCya, showCalcium, cya, calcium, poolGallons, poolType, linerType, chemistryTargets, lockTargets, onProductChange }: Props) {
+export function CyaCalciumDosing({ showCya, showCalcium, cya, calcium, poolGallons, poolType, linerType, chemistryTargets, lockTargets, onProductChange, selectedProduct, onGallonsChange }: Props) {
   const { options } = useChemicalCatalog();
   const [gallonsText, setGallonsText] = useState(validGallons(poolGallons) ? String(poolGallons) : '');
   const [cyaTarget, setCyaTarget] = useState('');
@@ -78,8 +80,8 @@ export function CyaCalciumDosing({ showCya, showCalcium, cya, calcium, poolGallo
     return calciumProductFromLabel(opt?.label);
   }, [options]);
   const [chosen, setChosen] = useState<CalciumProduct | null>(null);
-  const product: CalciumProduct = chosen ?? inventoryProduct ?? 'dihydrate';
-  const productKnown = chosen != null || inventoryProduct != null;
+  const product: CalciumProduct = onProductChange ? selectedProduct ?? 'dihydrate' : chosen ?? inventoryProduct ?? 'dihydrate';
+  const productKnown = onProductChange ? selectedProduct != null : chosen != null || inventoryProduct != null;
 
   if (!showCya && !showCalcium) return null;
   const hasCya = showCya && cya != null;
@@ -95,7 +97,7 @@ export function CyaCalciumDosing({ showCya, showCalcium, cya, calcium, poolGallo
         <div className="w-40">
           <Label htmlFor="dose-gallons" className="text-xs">Pool volume (gal)</Label>
           <Input id="dose-gallons" type="number" inputMode="numeric" value={gallonsText}
-            onChange={e => setGallonsText(e.target.value)} placeholder="Required"
+            onChange={e => { setGallonsText(e.target.value); onGallonsChange?.(num(e.target.value)); }} placeholder="Required"
             className={gallonsValid ? '' : 'border-destructive'} />
         </div>
         <p className="text-xs text-muted-foreground">

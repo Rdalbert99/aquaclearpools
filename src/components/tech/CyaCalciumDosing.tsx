@@ -80,6 +80,7 @@ export function CyaCalciumDosing({ showCya, showCalcium, cya, calcium, poolGallo
     return calciumProductFromLabel(opt?.label);
   }, [options]);
   const [chosen, setChosen] = useState<CalciumProduct | null>(null);
+  const [purity, setPurity] = useState('');
   const product: CalciumProduct = onProductChange ? selectedProduct ?? 'dihydrate' : chosen ?? inventoryProduct ?? 'dihydrate';
   const productKnown = onProductChange ? selectedProduct != null : chosen != null || inventoryProduct != null;
 
@@ -122,10 +123,13 @@ export function CyaCalciumDosing({ showCya, showCalcium, cya, calcium, poolGallo
                 <SelectItem value="dihydrate">Dihydrate / flake (77–80%)</SelectItem>
               </SelectContent>
             </Select>
-            {!productKnown && <p className="mt-1 text-xs text-muted-foreground">Strength not confirmed — pick the type on the bag.</p>}
+            {!productKnown && <p className="mt-1 text-xs text-muted-foreground">Default: calcium chloride flake. Strength not confirmed — check the bag and pick its type.</p>}
+            <Label htmlFor="cacl2-purity" className="mt-2 block text-xs">% calcium chloride on bag (optional)</Label>
+            <Input id="cacl2-purity" className="h-9" type="number" inputMode="decimal" step="any" min="0" max="100"
+              placeholder={product === 'anhydrous' ? '94' : '77'} value={purity} onChange={e => setPurity(e.target.value)} />
           </div>
           <DoseCard title="Calcium Hardness" target={chTarget} onTarget={setChTarget} lockTargets={lockTargets}
-            r={calciumDose({ reading: calcium, gallons, target: num(chTarget), surface, product, productKnown, range: chRange })} />
+            r={calciumDose({ reading: calcium, gallons, target: num(chTarget), surface, product, productKnown, range: chRange, purityPct: purity.trim() ? Number(purity.replace(',', '.')) : null })} />
         </div>
       )}
       <p className="text-xs text-muted-foreground">Nothing here is logged as added. Record what you actually used under Chemicals Added.</p>

@@ -43,7 +43,7 @@ import { FollowUpPrompt, type FollowUpValue } from '@/components/tech/FollowUpPr
 import { VoiceEntryDialog, voiceSupport, type VoiceApplyPayload } from '@/components/tech/VoiceEntryDialog';
 import { IssueFollowUpPrompt, type IssueFollowUpValue } from '@/components/tech/IssueFollowUpPrompt';
 import { CyaCalciumDosing } from '@/components/tech/CyaCalciumDosing';
-import { cyaDose, isSaltPool, validGallons } from '@/lib/cya-calcium-dosing';
+import { cyaDose, isSaltPool as isSaltPoolType, validGallons } from '@/lib/cya-calcium-dosing';
 
 type Client = {
   id: string;
@@ -412,7 +412,7 @@ export default function FieldService() {
     const g = validGallons(client?.pool_size);
     const extra: (string | null)[] = [];
     if (readings.cya != null) {
-      const r = cyaDose({ reading: readings.cya, gallons: g, salt: isSaltPool(client?.pool_type) });
+      const r = cyaDose({ reading: readings.cya, gallons: g, salt: isSaltPoolType(client?.pool_type) });
       if (r.status !== 'ok' && r.status !== 'no_reading') extra.push(r.message);
     }
     return [...base, ...extra]

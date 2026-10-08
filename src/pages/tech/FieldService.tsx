@@ -44,6 +44,7 @@ import { VoiceEntryDialog, voiceSupport, type VoiceApplyPayload } from '@/compon
 import { IssueFollowUpPrompt, type IssueFollowUpValue } from '@/components/tech/IssueFollowUpPrompt';
 import { profileFromClient, type ChemKey, type LatestReadings } from '@/lib/ideal-chemistry';
 import { ChemistryLab } from '@/components/chemistry/ChemistryLab';
+import { TraceTreatmentHelper } from '@/components/chemistry/TraceTreatmentHelper';
 import { buildLabRows, labAdvice } from '@/lib/chemistry-lab';
 import { CyaCalciumDosing } from '@/components/tech/CyaCalciumDosing';
 
@@ -146,6 +147,9 @@ const TEST_FIELD: Record<TestId, keyof ServiceData> = {
   cya: 'cya_level',
   calcium: 'calcium_hardness_level',
   salt: 'salt_level',
+  phosphates: 'phosphates_ppb',
+  iron: 'iron_ppm',
+  copper: 'copper_ppm',
 };
 
 type ServiceData = {
@@ -155,6 +159,9 @@ type ServiceData = {
   cya_level?: number | null;
   calcium_hardness_level?: number | null;
   salt_level?: number | null;
+  phosphates_ppb?: number | null;
+  iron_ppm?: number | null;
+  copper_ppm?: number | null;
   services_performed?: string[];
   cleaned_robot?: boolean;
   robot_plugged_in?: boolean;
@@ -1100,6 +1107,8 @@ export default function FieldService() {
                   cya={serviceData.cya_level} calcium={serviceData.calcium_hardness_level}
                   poolGallons={client.pool_size} poolType={client.pool_type}
                   linerType={(client as any).liner_type} chemistryTargets={(client as any).chemistry_targets} />
+              ) : row.key === 'phosphates' || row.key === 'iron' || row.key === 'copper' ? (
+                <TraceTreatmentHelper key={row.key} row={row} profile={profileFromClient(client)} gallons={client.pool_size} />
               ) : <ul className="space-y-1 text-sm">{labAdvice(row, profileFromClient(client), client.pool_size).map(note => <li key={note}>{note}</li>)}</ul>}
             />
             <details className="rounded-md border p-3">
@@ -1118,8 +1127,8 @@ export default function FieldService() {
                       id={`reading-${t.id}`} type="number" inputMode="decimal" step="any" value={val ?? ''}
                       onChange={e => {
                         const raw = e.target.value;
-                        const parsed = raw === '' ? null : (t.integer ? parseInt(raw, 10) : parseFloat(raw));
-                        handleInputChange(field, (Number.isNaN(parsed as number) ? null : parsed) as any);
+                        const parsed = parseReadingValue(raw);
+                        handleInputChange(field, (parsed != null && t.integer ? Math.round(parsed) : parsed) as any);
                       }}
                       className="font-semibold"
                     />

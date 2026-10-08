@@ -55,7 +55,7 @@ function buildSchema(ctx: any) {
           type: "object", additionalProperties: false,
           required: ["field", "value", "heard", "flag"],
           properties: {
-            field: { type: "string", enum: ["chlorine", "ph", "alkalinity", "cya", "calcium", "salt"] },
+            field: { type: "string", enum: ["chlorine", "ph", "alkalinity", "cya", "calcium", "salt", ...(ctx.traceTests ? ["phosphates", "iron", "copper"] : [])] },
             value: { type: ["number", "null"] },
             heard: { type: "string", description: "The words spoken for this reading" },
             flag,
@@ -103,7 +103,8 @@ function buildSchema(ctx: any) {
 function instructions(ctx: any) {
   const chems = (ctx.chemicals ?? []).map((c: any) => `${c.id} = ${c.label} (units: ${c.units.join("/")})`).join("\n");
   return `You convert a pool technician's spoken visit notes into form fields. Only include what was actually said.
-Reading fields and normal ranges: chlorine = free chlorine ppm (1-3, "FC"/"chlorine"); ph (7.2-7.6); alkalinity ppm (80-120, "alk"/"TA"); cya ppm (30-50, "stabilizer"/"conditioner"); calcium = calcium hardness ppm; salt ppm (2700-3400).
+Reading fields and normal ranges: chlorine = free chlorine ppm (1-3, "FC"/"chlorine"); ph (7.2-7.6); alkalinity ppm (80-120, "alk"/"TA"); cya ppm (30-50, "stabilizer"/"conditioner"); calcium = calcium hardness ppm; salt ppm (2700-3400).${ctx.traceTests ? `
+phosphates = phosphate as PO4 in ppb (usually 0-1000). If spoken in ppm, value = ppm x 1000 and flag "Heard X ppm — converted to Y ppb". iron = iron ppm, copper = copper ppm (usually 0-0.5). If only "metals" is said without iron or copper, do not guess — put it in notes.` : ""}
 Spoken numbers: "seven six" for pH = 7.6; "thirty-two fifty" = 3250; "three" = 3.
 Ambiguity rules — NEVER silently correct. If a value is implausible or ambiguous, put your best interpretation in value AND explain in flag. Examples: "pH 76" -> value 7.6, flag "Heard 76 — did you mean 7.6?"; "salt 32" -> value 3200, flag "Heard 32 — did you mean 3200 ppm?". If a value cannot be determined, value null with a flag.
 Chemicals (choose chemical_id from this catalog; brand/slang like "shock", "cal hypo", "acid", "bicarb", "tabs" map to the closest one; otherwise "other" with other_name):

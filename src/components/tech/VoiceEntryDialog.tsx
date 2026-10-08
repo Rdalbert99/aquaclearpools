@@ -186,6 +186,7 @@ export function VoiceEntryDialog({ open, onOpenChange, catalog, checklist, equip
         checklist: checklist.map(c => c.id),
         equipment: equipment.map(e => e.id),
         services,
+        traceTests: true,
       }));
       const { data, error: fnErr } = await supabase.functions.invoke('voice-service-entry', { body: fd });
       if (fnErr || !data?.result) {
@@ -211,13 +212,15 @@ export function VoiceEntryDialog({ open, onOpenChange, catalog, checklist, equip
       let flag: string | null = x.flag ?? null;
       if (!PLAUSIBLE[field]) return null;
       if (x.value == null) flag = flag ?? 'No value heard';
-      else if (field === 'phosphates' && x.value > 0 && x.value < 5) flag = flag ?? `${x.value} ppb is very low — if you meant ${x.value} ppm, enter ${x.value * 1000} ppb.`;
+      else if (field === 'phosphates' && x.value > 0 && x.value < 5) flag = flag ?? `${x.value} ppb is very low — if you meant ${x.value} ppm, enter ${Math.round(x.value * 1000 * 1000) / 1000} ppb.`;
       else {
         const [lo, hi] = PLAUSIBLE[field];
         if (x.value < lo || x.value > hi) flag = flag ?? `${x.value} looks unusual for ${READING_LABEL[field]} — please confirm.`;
       }
       return { id: id(), include: !flag, flag, heard: x.heard, data: { field, value: x.value == null ? '' : String(x.value) } };
-    }).filter(Boolean) as Row<{ field: VoiceReadingField; value: string }>[]);
+    }).filter(Boolean).map((row: any, _i: number, all: any[]) => all.filter(o => o.data.field === row.data.field).length > 1
+      ? { ...row, include: false, flag: `${READING_LABEL[row.data.field as VoiceReadingField]} heard more than once — tick the one to keep.` } : row
+    ) as Row<{ field: VoiceReadingField; value: string }>[]);
     setChems((r.chemicals ?? []).map((x: any) => {
       const opt = catalog.find(c => c.id === x.chemical_id);
       const unitOk = x.unit && (!opt || opt.units.includes(x.unit));

@@ -6,6 +6,7 @@ import { TraceTreatmentHelper } from '@/components/chemistry/TraceTreatmentHelpe
 import { IdealChemistryChart } from '@/components/chemistry/IdealChemistryChart';
 import { latestFromService, profileFromClient, type PoolProfile, type Sanitizer, type ChemKey, type LatestReadings } from '@/lib/ideal-chemistry';
 import type { PoolSurface, CalciumProduct } from '@/lib/cya-calcium-dosing';
+import { getDowflakeSuitability } from '@/lib/cya-calcium-dosing';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -107,7 +108,7 @@ export default function ChemicalCalculator() {
   const calculateRecommendations = (): ChemicalRecommendation[] => {
     return buildLabRows(profile, labReadings, LAB_KEYS.filter(k => k !== 'cc' && (k !== 'salt' || profile.sanitizer === 'salt')))
       .filter(row => row.status === 'low' || row.status === 'high')
-      .map(row => ({ chemical: row.name, amount: labAdvice(row, profile, poolInfo.size, calciumProduct ?? 'dihydrate', calciumProduct != null)[0],
+      .map(row => ({ chemical: row.name, amount: labAdvice(row, profile, poolInfo.size, calciumProduct ?? 'dowflake_xtra', true, getDowflakeSuitability())[0],
         reason: `Current ${row.latest} ${row.unit} · Target ${row.targetLabel} · Range ${row.rangeLabel}`,
         priority: 'medium' as const }));
   };

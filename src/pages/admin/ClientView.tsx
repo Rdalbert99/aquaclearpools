@@ -40,6 +40,7 @@ import { TestsPerformedList } from '@/components/pool/TestsPerformedList';
 import { ClientStatusHistory } from '@/components/admin/ClientStatusHistory';
 
 import { IdealChemistryChart } from '@/components/chemistry/IdealChemistryChart';
+import { ChemistryLab } from '@/components/chemistry/ChemistryLab';
 import { latestFromService, profileFromClient } from '@/lib/ideal-chemistry';
 import type { ChemicalId } from '@/lib/pool-chemistry';
 
@@ -804,6 +805,8 @@ export default function ClientView() {
       </div>
 
       {/* Ideal Pool Chemistry — pool-specific targets */}
+      <ChemistryLab profile={profileFromClient(client)} readings={latestFromService(services[0])}
+        gallons={client.pool_size} latestDate={services[0]?.service_date} />
       <IdealChemistryChart
         title="Ideal Pool Chemistry"
         profile={profileFromClient(client as any)}

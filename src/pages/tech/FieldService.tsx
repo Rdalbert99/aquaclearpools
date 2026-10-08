@@ -19,7 +19,7 @@ import {
   Clock, Droplets, TestTube, CheckCircle, ArrowLeft, AlertTriangle, Send, Zap, Info, HelpCircle,
   Truck, PlayCircle, Wrench, ListChecks, Camera, Receipt, Sparkles, Mic,
 } from 'lucide-react';
-import { isInRange, getDosageInstruction, type ChemicalId } from '@/lib/pool-chemistry';
+import { type ChemicalId } from '@/lib/pool-chemistry';
 import { POOL_TESTS, TEST_BY_ID, normalizeDefaultTests, sortTests, type TestId } from '@/lib/pool-tests';
 import { TestGuideDialog } from '@/components/pool/TestGuideDialog';
 import { ArrivalNotification } from '@/components/tech/ArrivalNotification';
@@ -42,7 +42,9 @@ import { ServiceStickyHeader, type VisitStatus } from '@/components/tech/Service
 import { FollowUpPrompt, type FollowUpValue } from '@/components/tech/FollowUpPrompt';
 import { VoiceEntryDialog, voiceSupport, type VoiceApplyPayload } from '@/components/tech/VoiceEntryDialog';
 import { IssueFollowUpPrompt, type IssueFollowUpValue } from '@/components/tech/IssueFollowUpPrompt';
-import { cyaTargetFor, profileFromClient } from '@/lib/ideal-chemistry';
+import { profileFromClient, type ChemKey, type LatestReadings } from '@/lib/ideal-chemistry';
+import { ChemistryLab } from '@/components/chemistry/ChemistryLab';
+import { buildLabRows, labAdvice } from '@/lib/chemistry-lab';
 import { CyaCalciumDosing } from '@/components/tech/CyaCalciumDosing';
 import { cyaDose, isSaltPool as isSaltPoolType, validGallons } from '@/lib/cya-calcium-dosing';
 
@@ -404,20 +406,10 @@ export default function FieldService() {
   }
 
   function dosageInstructions(): string[] {
-    const poolGallons = client?.pool_size ?? 10000;
-    const readings = selectedReadings();
-    // CYA is handled by the dedicated CYA/Calcium dosing panel (volume-aware).
-    const base = (Object.keys(readings) as ChemicalId[])
-      .filter(chemId => chemId !== 'cya')
-      .map(chemId => getDosageInstruction(chemId, readings[chemId], poolGallons));
-    const g = validGallons(client?.pool_size);
-    const extra: (string | null)[] = [];
-    if (readings.cya != null) {
-      const r = cyaDose({ reading: readings.cya, gallons: g, salt: isSaltPoolType(client?.pool_type), range: cyaTargetFor(profileFromClient(client as any ?? {})).t });
-      if (r.status !== 'ok' && r.status !== 'no_reading') extra.push(r.message);
-    }
-    return [...base, ...extra]
-      .filter(Boolean) as string[];
+    const profile = profileFromClient(client ?? {});
+    return buildLabRows(profile, readingsPayload(), selectedTests.map(t => TEST_BY_ID[t].readingKey as ChemKey))
+      .filter(row => row.status === 'low' || row.status === 'high')
+      .map(row => labAdvice(row, profile, client?.pool_size)[0]);
   }
 
   function readingsPayload() {
@@ -1095,18 +1087,26 @@ export default function FieldService() {
               </div>
             </div>
 
-            <p className="text-xs text-muted-foreground">
-              Values turn <span className="font-medium text-green-600">green</span> in range, <span className="font-medium text-red-600">red</span> out.
-              Tap <HelpCircle className="inline h-3.5 w-3.5 align-[-2px]" /> for Taylor kit steps.
-            </p>
-
-            <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
+            <ChemistryLab
+              profile={profileFromClient(client)} readings={readingsPayload() as LatestReadings}
+              selected={selectedTests.map(t => TEST_BY_ID[t].readingKey as ChemKey)} gallons={client.pool_size}
+              onReadingChange={(key, value) => {
+                const test = POOL_TESTS.find(t => t.readingKey === key);
+                if (test) handleInputChange(TEST_FIELD[test.id], value);
+              }}
+              renderAdvice={row => row.key === 'cya' || row.key === 'ch' ? (
+                <CyaCalciumDosing key={row.key} showCya={row.key === 'cya'} showCalcium={row.key === 'ch'}
+                  cya={serviceData.cya_level} calcium={serviceData.calcium_hardness_level}
+                  poolGallons={client.pool_size} poolType={client.pool_type}
+                  linerType={(client as any).liner_type} chemistryTargets={(client as any).chemistry_targets} />
+              ) : <ul className="space-y-1 text-sm">{labAdvice(row, profileFromClient(client), client.pool_size).map(note => <li key={note}>{note}</li>)}</ul>}
+            />
+            <details className="rounded-md border p-3">
+              <summary className="cursor-pointer text-sm font-medium">Reading fields & Taylor test guides</summary>
+            <div className="mt-3 grid grid-cols-2 gap-4 md:grid-cols-4">
               {POOL_TESTS.filter(t => selectedTests.includes(t.id)).map(t => {
                 const field = TEST_FIELD[t.id];
                 const val = serviceData[field] as number | null | undefined;
-                const status = t.chemId ? isInRange(t.chemId, val) : 'none';
-                const colorClass = status === 'in' ? 'text-green-600 border-green-500 ring-green-400'
-                  : status === 'out' ? 'text-red-600 border-red-500 ring-red-400' : '';
                 return (
                   <div key={t.id}>
                     <div className="flex items-center gap-1">
@@ -1114,29 +1114,19 @@ export default function FieldService() {
                       <TestGuideDialog testId={t.id} className="h-5 w-5" />
                     </div>
                     <Input
-                      id={`reading-${t.id}`} type="number" inputMode="decimal" step={t.step} value={val ?? ''}
+                      id={`reading-${t.id}`} type="number" inputMode="decimal" step="any" value={val ?? ''}
                       onChange={e => {
                         const raw = e.target.value;
                         const parsed = raw === '' ? null : (t.integer ? parseInt(raw, 10) : parseFloat(raw));
                         handleInputChange(field, (Number.isNaN(parsed as number) ? null : parsed) as any);
                       }}
-                      className={colorClass ? `font-semibold ${colorClass}` : ''}
+                      className="font-semibold"
                     />
                   </div>
                 );
               })}
             </div>
-
-            <CyaCalciumDosing
-              showCya={selectedTests.includes('cya' as any)}
-              showCalcium={selectedTests.includes('calcium' as any)}
-              cya={serviceData.cya_level as number | null | undefined}
-              calcium={serviceData.calcium_hardness_level as number | null | undefined}
-              poolGallons={client.pool_size}
-              poolType={client.pool_type}
-              linerType={(client as any).liner_type}
-              chemistryTargets={(client as any).chemistry_targets}
-            />
+            </details>
 
             {(() => {
               const instructions = dosageInstructions();
@@ -1146,7 +1136,7 @@ export default function FieldService() {
                   <AlertTriangle className="h-4 w-4" />
                   <AlertDescription>
                     <p className="mb-1 font-semibold">
-                      Chemical adjustments needed ({(client.pool_size ?? 10000).toLocaleString()} gal pool):
+                      Chemical adjustments needed ({client.pool_size?.toLocaleString() ?? 'unknown volume'} gal pool):
                     </p>
                     <ul className="list-disc space-y-1 pl-4 text-sm">
                       {instructions.map((inst, i) => <li key={i}>{inst}</li>)}

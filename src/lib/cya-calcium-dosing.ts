@@ -71,8 +71,8 @@ function validReading(v: unknown): number | null {
   return typeof v === 'number' && Number.isFinite(v) && v >= 0 ? v : null;
 }
 
-export function cyaDose(opts: { reading: number | null | undefined; gallons: unknown; target?: number | null; salt?: boolean }): DoseResult {
-  const range = defaultCyaTarget(!!opts.salt);
+export function cyaDose(opts: { reading: number | null | undefined; gallons: unknown; target?: number | null; salt?: boolean; range?: Target }): DoseResult {
+  const range = opts.range ?? defaultCyaTarget(!!opts.salt);
   const target = opts.target && opts.target > 0 ? opts.target : range.target;
   const current = validReading(opts.reading);
   const product = 'Cyanuric Acid (CYA / Stabilizer)';
@@ -101,9 +101,9 @@ export function cyaDose(opts: { reading: number | null | undefined; gallons: unk
 
 export function calciumDose(opts: {
   reading: number | null | undefined; gallons: unknown; target?: number | null;
-  surface: PoolSurface; product: CalciumProduct; productKnown?: boolean;
+  surface: PoolSurface; product: CalciumProduct; productKnown?: boolean; range?: Target;
 }): DoseResult {
-  const range = defaultCalciumTarget(opts.surface);
+  const range = opts.range ?? defaultCalciumTarget(opts.surface);
   const target = opts.target && opts.target > 0 ? opts.target : range.target;
   const current = validReading(opts.reading);
   const product = `Calcium Chloride (${opts.product === 'anhydrous' ? 'anhydrous 94–97%' : 'dihydrate 77–80%'})`;

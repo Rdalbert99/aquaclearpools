@@ -164,10 +164,9 @@ export function buildIdealChart(p: PoolProfile, latest: LatestReadings = {}): Ch
   const ph = merge({ min: CHEMICAL_RANGES.ph.min, max: CHEMICAL_RANGES.ph.max, target: 7.4 }, o.ph);
   push('ph', 'pH', '', ph.t, ph.custom, 'Standard residential range', []);
   // Total alkalinity
-  const taBase = p.sanitizer === 'salt' ? { min: 60, max: 90, target: 70 } : { min: CHEMICAL_RANGES.alkalinity.min, max: CHEMICAL_RANGES.alkalinity.max, target: 100 };
-  const ta = merge(taBase, o.ta);
-  push('ta', 'Total Alkalinity (TA)', 'ppm', ta.t, ta.custom,
-    p.sanitizer === 'salt' ? 'Salt pools run lower TA (salt cells push pH up)' : 'Standard residential range', []);
+  const ta = merge({ min: CHEMICAL_RANGES.alkalinity.min, max: CHEMICAL_RANGES.alkalinity.max, target: 100 }, o.ta);
+  push('ta', 'Total Alkalinity (TA)', 'ppm', ta.t, ta.custom, ta.custom ? 'Custom target for this pool' : 'Standard residential range',
+    p.sanitizer === 'salt' ? ['Many salt pools run TA 60–80 to slow pH rise — save a custom target if this pool does.'] : []);
   // Calcium hardness — surface-specific, tied to CSI/LSI
   const ch = calciumTargetFor(p);
   const chNotes = ['Balance with pH, TA and temperature (CSI/LSI between −0.3 and +0.3) — calcium alone does not decide scaling or etching.'];

@@ -30,7 +30,7 @@ describe('stoichiometric reference fixtures', () => {
     expect(amt(r, /~(\d+) lbs/)).toBe(Math.ceil(800 * LB_PER_PPM_10K * 3.5));
   });
   it('CYA: 60k gal, 20→40 ≈ 10 lb', () => {
-    expect(cyaDose({ reading: 20, gallons: 60000, target: 40 }).lbs!).toBeCloseTo(2 * LB_PER_PPM_10K * 6, 0);
+    expect(cyaDose({ reading: 20, gallons: 60000, target: 40 }).lbs!).toBeCloseTo(20 * LB_PER_PPM_10K * 6, 0);
   });
   it('calcium: 12k gal plaster, 150→250 anhydrous', () => {
     expect(calciumDose({ reading: 150, gallons: 12000, surface: 'plaster', product: 'anhydrous', productKnown: true }).lbs).toBe(11.75);

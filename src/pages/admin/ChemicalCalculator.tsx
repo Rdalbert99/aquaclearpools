@@ -1,4 +1,7 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
+import { IdealChemistryChart } from '@/components/chemistry/IdealChemistryChart';
+import { buildIdealChart, latestFromService, profileFromClient, type PoolProfile, type Sanitizer } from '@/lib/ideal-chemistry';
+import type { PoolSurface } from '@/lib/cya-calcium-dosing';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -99,6 +102,34 @@ export default function ChemicalCalculator() {
     salt: { min: 2700, max: 3400, target: 3200, saltRatio: 0.000083 }
   });
   const [settingsOpen, setSettingsOpen] = useState(false);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const [selectedClient, setSelectedClient] = useState<any | null>(null);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const [latestSvc, setLatestSvc] = useState<any | null>(null);
+  const [manualSanitizer, setManualSanitizer] = useState<Sanitizer>('unknown');
+  const [manualSurface, setManualSurface] = useState<PoolSurface>('unknown');
+
+  const profile: PoolProfile = useMemo(() => selectedClient
+    ? profileFromClient(selectedClient)
+    : { sanitizer: manualSanitizer, surface: manualSurface, fromCustomer: false, overrides: null },
+  [selectedClient, manualSanitizer, manualSurface]);
+
+  // Keep calculator targets identical to the Ideal Pool Chemistry chart (shared rules).
+  useEffect(() => {
+    const byKey = Object.fromEntries(buildIdealChart(profile, {}).map(r => [r.key, r.range]));
+    setSettings(prev => {
+      const pick = <T extends { min: number; max: number; target: number }>(cur: T, r?: { min: number; max: number; target: number } | null): T =>
+        r ? { ...cur, min: r.min, max: r.max, target: r.target } : cur;
+      return {
+        ...prev,
+        ph: pick(prev.ph, byKey.ph),
+        alkalinity: pick(prev.alkalinity, byKey.ta),
+        cyanuricAcid: pick(prev.cyanuricAcid, byKey.cya),
+        calciumHardness: pick(prev.calciumHardness, byKey.ch),
+        salt: pick(prev.salt, byKey.salt),
+      };
+    });
+  }, [profile]);
 
   // Load clients for selection
   useEffect(() => {
@@ -109,7 +140,7 @@ export default function ChemicalCalculator() {
     try {
       const { data, error } = await supabase
         .from('clients')
-        .select('id, customer, pool_size, pool_type, status')
+        .select('id, customer, pool_size, pool_type, liner_type, chemistry_targets, status')
         .order('customer');
       
       if (error) throw error;
@@ -297,9 +328,19 @@ export default function ChemicalCalculator() {
     }
   };
 
-  const handleClientSelect = (clientId: string) => {
+  const handleClientSelect = async (clientId: string) => {
+    if (clientId === '__none') {
+      setSelectedClient(null); setLatestSvc(null);
+      setPoolInfo({ size: 0, type: '' });
+      return;
+    }
     const client = clients.find(c => c.id === clientId);
+    setSelectedClient(client ?? null);
+    setLatestSvc(null);
     if (client) {
+      supabase.from('services').select('*').eq('client_id', clientId)
+        .order('service_date', { ascending: false }).limit(1)
+        .then(({ data }) => setLatestSvc(data?.[0] ?? null));
       setPoolInfo({
         ...poolInfo,
         clientId,
@@ -722,6 +763,7 @@ export default function ChemicalCalculator() {
                     <SelectValue placeholder="Select a client..." />
                   </SelectTrigger>
                   <SelectContent>
+                    <SelectItem value="__none">No customer (generic pool)</SelectItem>
                     {clients.map((client) => (
                       <SelectItem key={client.id} value={client.id}>
                         {client.customer} - {client.pool_size?.toLocaleString()} gal {client.pool_type}
@@ -896,6 +938,47 @@ export default function ChemicalCalculator() {
           )}
         </div>
       </div>
+
+      {!selectedClient && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg">No customer selected</CardTitle>
+            <CardDescription>Choose the pool type and surface so the chart isn't guessed. Leave as Unknown for general guidance.</CardDescription>
+          </CardHeader>
+          <CardContent className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div className="space-y-2">
+              <Label htmlFor="manual-san">Pool type</Label>
+              <Select value={manualSanitizer} onValueChange={v => setManualSanitizer(v as Sanitizer)}>
+                <SelectTrigger id="manual-san"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="unknown">Unknown</SelectItem>
+                  <SelectItem value="salt">Salt water generator</SelectItem>
+                  <SelectItem value="chlorine">Manually chlorinated</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="manual-surface">Surface</Label>
+              <Select value={manualSurface} onValueChange={v => setManualSurface(v as PoolSurface)}>
+                <SelectTrigger id="manual-surface"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="unknown">Unknown</SelectItem>
+                  <SelectItem value="plaster">Plaster / gunite</SelectItem>
+                  <SelectItem value="vinyl">Vinyl</SelectItem>
+                  <SelectItem value="fiberglass">Fiberglass</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      <IdealChemistryChart
+        title={selectedClient ? `Ideal Pool Chemistry — ${selectedClient.customer}` : 'Ideal Pool Chemistry (generic)'}
+        profile={profile}
+        latest={selectedClient ? latestFromService(latestSvc) : {}}
+        latestDate={latestSvc?.service_date}
+      />
     </div>
   );
 }

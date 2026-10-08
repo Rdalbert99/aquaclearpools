@@ -1,3 +1,4 @@
 - Seasonal scheduling: all route/calendar/status due-day checks go through `src/lib/service-season.ts` (`isServiceWeek`); why: one source of truth, billing stays independent.
 - Billing: every money table carries business_id; issuing/voiding invoices and recording payments only via SECURITY DEFINER RPCs (billing_issue_invoice, billing_void_invoice, billing_record_payment) that write ledger_entries + billing_audit_log; amounts in integer cents; why: immutable books and multi-business separation.
 - Broadcast SMS: recipients are resolved and sent only server-side in `send-sms-broadcast` (admin-checked, confirm + matching expected count required); opt-outs live in `sms_opt_outs` keyed by E.164 and are honored by broadcasts; why: client can't widen audience or bypass consent.
+- Ideal chemistry targets (chart, calculator, CYA/calcium dosing) all come from `src/lib/ideal-chemistry.ts`, with per-pool overrides in `clients.chemistry_targets`; why: screens can never disagree.

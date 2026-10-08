@@ -8,6 +8,7 @@ import {
   calciumDose, calciumProductFromLabel, cyaDose, detectSurface, isSaltPool, validGallons,
   type CalciumProduct, type DoseResult,
 } from '@/lib/cya-calcium-dosing';
+import { calciumTargetFor, cyaTargetFor, profileFromClient } from '@/lib/ideal-chemistry';
 
 interface Props {
   showCya: boolean;
@@ -17,6 +18,7 @@ interface Props {
   poolGallons: number | null | undefined;
   poolType?: string | null;
   linerType?: string | null;
+  chemistryTargets?: unknown;
 }
 
 function num(v: string): number | null {
@@ -60,7 +62,7 @@ function DoseCard({ title, r, target, onTarget }: { title: string; r: DoseResult
   );
 }
 
-export function CyaCalciumDosing({ showCya, showCalcium, cya, calcium, poolGallons, poolType, linerType }: Props) {
+export function CyaCalciumDosing({ showCya, showCalcium, cya, calcium, poolGallons, poolType, linerType, chemistryTargets }: Props) {
   const { options } = useChemicalCatalog();
   const [gallonsText, setGallonsText] = useState(validGallons(poolGallons) ? String(poolGallons) : '');
   const [cyaTarget, setCyaTarget] = useState('');
@@ -68,6 +70,9 @@ export function CyaCalciumDosing({ showCya, showCalcium, cya, calcium, poolGallo
 
   const surface = detectSurface(linerType, poolType);
   const salt = isSaltPool(poolType, linerType);
+  const profile = profileFromClient({ pool_type: poolType, liner_type: linerType, chemistry_targets: chemistryTargets });
+  const cyaRange = cyaTargetFor(profile).t;
+  const chRange = calciumTargetFor(profile).t;
   const inventoryProduct = useMemo(() => {
     const opt = options.find(o => /calcium/i.test(o.label) || o.id === 'calcium_chloride');
     return calciumProductFromLabel(opt?.label);
@@ -101,7 +106,7 @@ export function CyaCalciumDosing({ showCya, showCalcium, cya, calcium, poolGallo
 
       {hasCya && (
         <DoseCard title="Stabilizer (CYA)" target={cyaTarget} onTarget={setCyaTarget}
-          r={cyaDose({ reading: cya, gallons, target: num(cyaTarget), salt })} />
+          r={cyaDose({ reading: cya, gallons, target: num(cyaTarget), salt, range: cyaRange })} />
       )}
 
       {hasCh && (
@@ -118,7 +123,7 @@ export function CyaCalciumDosing({ showCya, showCalcium, cya, calcium, poolGallo
             {!productKnown && <p className="mt-1 text-xs text-amber-700">Strength not confirmed — pick the type on the bag.</p>}
           </div>
           <DoseCard title="Calcium Hardness" target={chTarget} onTarget={setChTarget}
-            r={calciumDose({ reading: calcium, gallons, target: num(chTarget), surface, product, productKnown })} />
+            r={calciumDose({ reading: calcium, gallons, target: num(chTarget), surface, product, productKnown, range: chRange })} />
         </div>
       )}
       <p className="text-xs text-muted-foreground">Nothing here is logged as added. Record what you actually used under Chemicals Added.</p>

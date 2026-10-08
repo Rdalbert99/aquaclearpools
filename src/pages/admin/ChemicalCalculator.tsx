@@ -1,4 +1,5 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
+import { CyaCalciumDosing } from '@/components/tech/CyaCalciumDosing';
 import { ChemistryLab } from '@/components/chemistry/ChemistryLab';
 import { buildLabRows, labAdvice } from '@/lib/chemistry-lab';
 import { IdealChemistryChart } from '@/components/chemistry/IdealChemistryChart';
@@ -58,6 +59,9 @@ export default function ChemicalCalculator() {
   };
   const [recommendations, setRecommendations] = useState<ChemicalRecommendation[]>([]);
   const [loading, setLoading] = useState(false);
+  const calculationId = useRef(crypto.randomUUID());
+  const savingCalculation = useRef(false);
+  const [calculationSaved, setCalculationSaved] = useState(false);
   const [clients, setClients] = useState<any[]>([]);
   const [showResults, setShowResults] = useState(false);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -110,16 +114,21 @@ export default function ChemicalCalculator() {
     }
 
     const recs = calculateRecommendations();
+    calculationId.current = crypto.randomUUID();
+    setCalculationSaved(false);
     setRecommendations(recs);
     setShowResults(true);
   };
 
   const handleSaveCalculation = async () => {
+    if (savingCalculation.current || calculationSaved) return;
+    savingCalculation.current = true;
     setLoading(true);
     try {
       const { error } = await supabase
         .from('chemical_calculations')
         .insert({
+          id: calculationId.current,
           pool_size: poolInfo.size,
           pool_type: poolInfo.type,
           client_id: poolInfo.clientId || null,
@@ -128,7 +137,8 @@ export default function ChemicalCalculator() {
           chemical_recommendations: recommendations as any
         });
 
-      if (error) throw error;
+      if (error && error.code !== '23505') throw error;
+      setCalculationSaved(true);
 
       toast({
         title: "Calculation Saved",
@@ -142,6 +152,7 @@ export default function ChemicalCalculator() {
         variant: "destructive"
       });
     } finally {
+      savingCalculation.current = false;
       setLoading(false);
     }
   };
@@ -240,7 +251,7 @@ export default function ChemicalCalculator() {
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="poolType">Pool Type</Label>
-                  <Select value={poolInfo.type} onValueChange={(value) => { setPoolInfo({ ...poolInfo, type: value }); if (!selectedClient) setManualSanitizer(value === 'Saltwater' ? 'salt' : value === 'Chlorine' ? 'chlorine' : 'unknown'); }}>
+                  <Select disabled={!!selectedClient} value={poolInfo.type} onValueChange={(value) => { setPoolInfo({ ...poolInfo, type: value }); if (!selectedClient) setManualSanitizer(value === 'Saltwater' ? 'salt' : value === 'Chlorine' ? 'chlorine' : 'unknown'); }}>
                     <SelectTrigger>
                       <SelectValue placeholder="Select type..." />
                     </SelectTrigger>
@@ -263,7 +274,12 @@ export default function ChemicalCalculator() {
             </CardHeader>
             <CardContent className="space-y-4">
               <ChemistryLab profile={profile} readings={labReadings} gallons={poolInfo.size}
-                onReadingChange={(key, value) => { const field = labFields[key]; if (field) editReading(field, value); }} />
+                onReadingChange={(key, value) => { const field = labFields[key]; if (field) editReading(field, value); }}
+                renderAdvice={row => row.key === 'cya' || row.key === 'ch' ? <CyaCalciumDosing
+                  key={`${selectedClient?.id ?? 'generic'}-${row.key}-${poolInfo.size}`} lockTargets
+                  showCya={row.key === 'cya'} showCalcium={row.key === 'ch'} cya={labReadings.cya} calcium={labReadings.ch}
+                  poolGallons={poolInfo.size} poolType={profile.sanitizer === 'salt' ? 'Saltwater' : 'Chlorine'}
+                  linerType={profile.surface} chemistryTargets={profile.overrides} /> : undefined} />
               <details>
               <summary className="cursor-pointer text-sm font-medium">Reading fields</summary>
               <div className="mt-3 grid grid-cols-2 gap-4">
@@ -358,9 +374,9 @@ export default function ChemicalCalculator() {
               <CardHeader>
                 <CardTitle className="flex items-center justify-between">
                   <span>Chemical Recommendations</span>
-                  <Button onClick={handleSaveCalculation} disabled={loading} variant="outline">
+                  <Button onClick={handleSaveCalculation} disabled={loading || calculationSaved} variant="outline">
                     <Save className="mr-2 h-4 w-4" />
-                    Save Calculation
+                    {calculationSaved ? 'Calculation saved' : loading ? 'Saving…' : 'Save Calculation'}
                   </Button>
                 </CardTitle>
                 <CardDescription>
@@ -431,6 +447,7 @@ export default function ChemicalCalculator() {
 
       {selectedClient && <ChemistryLab profile={profile} readings={latestFromService(latestSvc)} gallons={poolInfo.size} latestDate={latestSvc?.service_date} />}
       <IdealChemistryChart
+        currentReadings
         title={selectedClient ? `Ideal Pool Chemistry — ${selectedClient.customer}` : 'Ideal Pool Chemistry (generic)'}
         profile={profile}
         latest={labReadings}

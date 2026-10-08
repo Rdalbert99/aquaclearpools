@@ -39,6 +39,8 @@ import { ServiceCostChart } from '@/components/admin/ServiceCostChart';
 import { TestsPerformedList } from '@/components/pool/TestsPerformedList';
 import { ClientStatusHistory } from '@/components/admin/ClientStatusHistory';
 
+import { IdealChemistryChart } from '@/components/chemistry/IdealChemistryChart';
+import { latestFromService, profileFromClient } from '@/lib/ideal-chemistry';
 import type { ChemicalId } from '@/lib/pool-chemistry';
 
 interface ClientData {
@@ -800,6 +802,20 @@ export default function ClientView() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Ideal Pool Chemistry — pool-specific targets */}
+      <IdealChemistryChart
+        title="Ideal Pool Chemistry"
+        profile={profileFromClient(client as any)}
+        latest={latestFromService(services[0])}
+        latestDate={services[0]?.service_date}
+        onSaveOverrides={async (o) => {
+          const { error } = await supabase.from('clients').update({ chemistry_targets: o as any }).eq('id', client.id);
+          if (error) throw new Error('Could not save targets.');
+          setClientData(prev => prev ? { ...prev, client: { ...prev.client, chemistry_targets: o } as any } : prev);
+          toast({ title: 'Targets saved', description: 'Custom targets apply to this pool only.' });
+        }}
+      />
 
       {/* Water Chemistry Trends */}
       <ClientReadingsChart services={services} onPointClick={(id) => setSelectedServiceId(id)} />

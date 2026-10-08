@@ -142,7 +142,7 @@ export function calciumDose(opts: {
   const range = opts.range ?? defaultCalciumTarget(opts.surface);
   const target = opts.target && opts.target > 0 ? opts.target : range.target;
   const current = validReading(opts.reading);
-  const effProduct: CalciumProduct = opts.productKnown ? opts.product : DEFAULT_CALCIUM_PRODUCT;
+  const effProduct = (opts.productKnown ? opts.product : DEFAULT_CALCIUM_PRODUCT) as 'anhydrous' | 'dihydrate';
   const [pMin, pMax] = CALCIUM_PURITY_RANGE[effProduct];
   const pctGiven = opts.purityPct != null && opts.purityPct !== 0;
   const pctValid = pctGiven && Number.isFinite(opts.purityPct!) && opts.purityPct! >= pMin && opts.purityPct! <= pMax;

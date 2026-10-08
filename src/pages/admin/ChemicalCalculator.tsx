@@ -6,6 +6,7 @@ import { TraceTreatmentHelper } from '@/components/chemistry/TraceTreatmentHelpe
 import { IdealChemistryChart } from '@/components/chemistry/IdealChemistryChart';
 import { latestFromService, profileFromClient, type PoolProfile, type Sanitizer, type ChemKey, type LatestReadings } from '@/lib/ideal-chemistry';
 import type { PoolSurface, CalciumProduct } from '@/lib/cya-calcium-dosing';
+import { getDowflakeSuitability } from '@/lib/cya-calcium-dosing';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';

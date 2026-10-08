@@ -19,6 +19,10 @@ interface Props {
   poolType?: string | null;
   linerType?: string | null;
   chemistryTargets?: unknown;
+  lockTargets?: boolean;
+  onProductChange?: (product: CalciumProduct) => void;
+  selectedProduct?: CalciumProduct | null;
+  onGallonsChange?: (gallons: number | null) => void;
 }
 
 function num(v: string): number | null {
@@ -27,10 +31,8 @@ function num(v: string): number | null {
   return Number.isFinite(n) ? n : null;
 }
 
-function DoseCard({ title, r, target, onTarget }: { title: string; r: DoseResult; target: string; onTarget: (v: string) => void }) {
-  const tone = r.status === 'low' ? 'border-amber-300 bg-amber-50'
-    : r.status === 'high' ? 'border-red-300 bg-red-50'
-    : r.status === 'needs_volume' ? 'border-amber-300 bg-amber-50' : 'bg-muted/40';
+function DoseCard({ title, r, target, onTarget, lockTargets }: { title: string; r: DoseResult; target: string; onTarget: (v: string) => void; lockTargets?: boolean }) {
+  const tone = r.status === 'high' ? 'border-destructive/50' : 'border-border';
   return (
     <div className={`space-y-2 rounded-lg border p-3 ${tone}`}>
       <div className="flex items-center justify-between gap-2">
@@ -41,8 +43,8 @@ function DoseCard({ title, r, target, onTarget }: { title: string; r: DoseResult
         <div><p className="text-muted-foreground">Current</p><p className="font-semibold">{r.current ?? '—'} ppm</p></div>
         <div>
           <Label className="text-xs text-muted-foreground">Target (ppm)</Label>
-          <Input className="h-8" type="number" inputMode="numeric" value={target} placeholder={String(r.range.target)}
-            onChange={e => onTarget(e.target.value)} />
+          {lockTargets ? <p className="font-semibold">{r.range.target}</p> : <Input className="h-8" type="number" inputMode="numeric" value={target} placeholder={String(r.range.target)}
+            onChange={e => onTarget(e.target.value)} />}
         </div>
         <div><p className="text-muted-foreground">Raise by</p><p className="font-semibold">{r.delta > 0 ? `${r.delta} ppm` : '—'}</p></div>
       </div>
@@ -62,7 +64,7 @@ function DoseCard({ title, r, target, onTarget }: { title: string; r: DoseResult
   );
 }
 
-export function CyaCalciumDosing({ showCya, showCalcium, cya, calcium, poolGallons, poolType, linerType, chemistryTargets }: Props) {
+export function CyaCalciumDosing({ showCya, showCalcium, cya, calcium, poolGallons, poolType, linerType, chemistryTargets, lockTargets, onProductChange, selectedProduct, onGallonsChange }: Props) {
   const { options } = useChemicalCatalog();
   const [gallonsText, setGallonsText] = useState(validGallons(poolGallons) ? String(poolGallons) : '');
   const [cyaTarget, setCyaTarget] = useState('');
@@ -78,8 +80,8 @@ export function CyaCalciumDosing({ showCya, showCalcium, cya, calcium, poolGallo
     return calciumProductFromLabel(opt?.label);
   }, [options]);
   const [chosen, setChosen] = useState<CalciumProduct | null>(null);
-  const product: CalciumProduct = chosen ?? inventoryProduct ?? 'dihydrate';
-  const productKnown = chosen != null || inventoryProduct != null;
+  const product: CalciumProduct = onProductChange ? selectedProduct ?? 'dihydrate' : chosen ?? inventoryProduct ?? 'dihydrate';
+  const productKnown = onProductChange ? selectedProduct != null : chosen != null || inventoryProduct != null;
 
   if (!showCya && !showCalcium) return null;
   const hasCya = showCya && cya != null;
@@ -95,8 +97,8 @@ export function CyaCalciumDosing({ showCya, showCalcium, cya, calcium, poolGallo
         <div className="w-40">
           <Label htmlFor="dose-gallons" className="text-xs">Pool volume (gal)</Label>
           <Input id="dose-gallons" type="number" inputMode="numeric" value={gallonsText}
-            onChange={e => setGallonsText(e.target.value)} placeholder="Required"
-            className={gallonsValid ? '' : 'border-amber-500'} />
+            onChange={e => { setGallonsText(e.target.value); onGallonsChange?.(num(e.target.value)); }} placeholder="Required"
+            className={gallonsValid ? '' : 'border-destructive'} />
         </div>
         <p className="text-xs text-muted-foreground">
           {gallonsValid ? 'Doses use this volume for this visit only.' : 'No valid volume on file — enter gallons to see amounts.'}
@@ -105,24 +107,24 @@ export function CyaCalciumDosing({ showCya, showCalcium, cya, calcium, poolGallo
       </div>
 
       {hasCya && (
-        <DoseCard title="Stabilizer (CYA)" target={cyaTarget} onTarget={setCyaTarget}
+        <DoseCard title="Stabilizer (CYA)" target={cyaTarget} onTarget={setCyaTarget} lockTargets={lockTargets}
           r={cyaDose({ reading: cya, gallons, target: num(cyaTarget), salt, range: cyaRange })} />
       )}
 
       {hasCh && (
         <div className="space-y-2">
-          <div className="w-64">
+          <div className="w-full max-w-64">
             <Label className="text-xs">Calcium chloride product</Label>
-            <Select value={product} onValueChange={v => setChosen(v as CalciumProduct)}>
+            <Select value={product} onValueChange={v => { setChosen(v as CalciumProduct); onProductChange?.(v as CalciumProduct); }}>
               <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="anhydrous">Anhydrous (94–97%)</SelectItem>
                 <SelectItem value="dihydrate">Dihydrate / flake (77–80%)</SelectItem>
               </SelectContent>
             </Select>
-            {!productKnown && <p className="mt-1 text-xs text-amber-700">Strength not confirmed — pick the type on the bag.</p>}
+            {!productKnown && <p className="mt-1 text-xs text-muted-foreground">Strength not confirmed — pick the type on the bag.</p>}
           </div>
-          <DoseCard title="Calcium Hardness" target={chTarget} onTarget={setChTarget}
+          <DoseCard title="Calcium Hardness" target={chTarget} onTarget={setChTarget} lockTargets={lockTargets}
             r={calciumDose({ reading: calcium, gallons, target: num(chTarget), surface, product, productKnown, range: chRange })} />
         </div>
       )}

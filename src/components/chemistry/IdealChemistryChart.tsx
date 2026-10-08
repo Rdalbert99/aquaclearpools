@@ -42,9 +42,10 @@ interface Props {
   title?: string;
   /** When provided, shows "Edit targets" and saves overrides (never touches readings). */
   onSaveOverrides?: (o: ChemistryOverrides | null) => Promise<void>;
+  currentReadings?: boolean;
 }
 
-export function IdealChemistryChart({ profile, latest = {}, latestDate, title = 'Ideal Pool Chemistry', onSaveOverrides }: Props) {
+export function IdealChemistryChart({ profile, latest = {}, latestDate, title = 'Ideal Pool Chemistry', onSaveOverrides, currentReadings }: Props) {
   const rows = useMemo(() => buildIdealChart(profile, latest), [profile, latest]);
   const [editOpen, setEditOpen] = useState(false);
   const hasLatest = rows.some(r => r.latest != null);
@@ -67,7 +68,7 @@ export function IdealChemistryChart({ profile, latest = {}, latestDate, title = 
         </div>
         <p className="text-xs text-muted-foreground">
           Operational targets for a residential outdoor pool — not legal minimums. Pool volume changes dose amounts, not these ppm targets.
-          {hasLatest ? ` Latest values from ${latestDate ? new Date(latestDate).toLocaleDateString() : 'the last visit'}.` : ' No readings on file yet — status shows Unknown.'}
+          {currentReadings ? ' Current calculator entries; untested values show Unknown.' : hasLatest ? ` Latest values from ${latestDate ? new Date(latestDate).toLocaleDateString() : 'the last visit'}.` : ' No readings on file yet — status shows Unknown.'}
         </p>
         {missing.length > 0 && (
           <p className="rounded-md border border-amber-500/50 p-2 text-xs" role="note">
@@ -85,7 +86,7 @@ export function IdealChemistryChart({ profile, latest = {}, latestDate, title = 
                 <th scope="col" className="py-2 pr-2">Chemical</th>
                 <th scope="col" className="py-2 pr-2">Ideal target</th>
                 <th scope="col" className="py-2 pr-2">Acceptable range</th>
-                <th scope="col" className="py-2 pr-2">Latest</th>
+                <th scope="col" className="py-2 pr-2">{currentReadings ? 'Current' : 'Latest'}</th>
                 <th scope="col" className="py-2 pr-2">Status</th>
               </tr>
             </thead>

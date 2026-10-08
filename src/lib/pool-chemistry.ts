@@ -28,9 +28,9 @@ export function isInRange(chemId: ChemicalId, value: number | null | undefined):
  * Returns a plain-English dosage instruction when a reading is out of range.
  * poolGallons is the pool size in gallons.
  */
-export function getDosageInstruction(chemId: ChemicalId, value: number | null | undefined, poolGallons: number): string | null {
+export function getDosageInstruction(chemId: ChemicalId, value: number | null | undefined, poolGallons: number, poolRange?: { min: number; max: number; target?: number }): string | null {
   if (value == null || isNaN(value)) return null;
-  const range = CHEMICAL_RANGES[chemId];
+  const range = poolRange ?? CHEMICAL_RANGES[chemId];
   if (value >= range.min && value <= range.max) return null;
 
   // Normalize pool size to 10,000-gallon units for dosage math

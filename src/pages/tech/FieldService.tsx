@@ -42,6 +42,8 @@ import { ServiceStickyHeader, type VisitStatus } from '@/components/tech/Service
 import { FollowUpPrompt, type FollowUpValue } from '@/components/tech/FollowUpPrompt';
 import { VoiceEntryDialog, voiceSupport, type VoiceApplyPayload } from '@/components/tech/VoiceEntryDialog';
 import { IssueFollowUpPrompt, type IssueFollowUpValue } from '@/components/tech/IssueFollowUpPrompt';
+import { CyaCalciumDosing } from '@/components/tech/CyaCalciumDosing';
+import { cyaDose, isSaltPool, validGallons } from '@/lib/cya-calcium-dosing';
 
 type Client = {
   id: string;
@@ -403,8 +405,17 @@ export default function FieldService() {
   function dosageInstructions(): string[] {
     const poolGallons = client?.pool_size ?? 10000;
     const readings = selectedReadings();
-    return (Object.keys(readings) as ChemicalId[])
-      .map(chemId => getDosageInstruction(chemId, readings[chemId], poolGallons))
+    // CYA is handled by the dedicated CYA/Calcium dosing panel (volume-aware).
+    const base = (Object.keys(readings) as ChemicalId[])
+      .filter(chemId => chemId !== 'cya')
+      .map(chemId => getDosageInstruction(chemId, readings[chemId], poolGallons));
+    const g = validGallons(client?.pool_size);
+    const extra: (string | null)[] = [];
+    if (readings.cya != null) {
+      const r = cyaDose({ reading: readings.cya, gallons: g, salt: isSaltPool(client?.pool_type) });
+      if (r.status !== 'ok' && r.status !== 'no_reading') extra.push(r.message);
+    }
+    return [...base, ...extra]
       .filter(Boolean) as string[];
   }
 
@@ -1114,6 +1125,16 @@ export default function FieldService() {
                 );
               })}
             </div>
+
+            <CyaCalciumDosing
+              showCya={selectedTests.includes('cya' as any)}
+              showCalcium={selectedTests.includes('calcium' as any)}
+              cya={serviceData.cya_level as number | null | undefined}
+              calcium={serviceData.calcium_hardness_level as number | null | undefined}
+              poolGallons={client.pool_size}
+              poolType={client.pool_type}
+              linerType={(client as any).liner_type}
+            />
 
             {(() => {
               const instructions = dosageInstructions();

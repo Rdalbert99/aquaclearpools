@@ -1,6 +1,8 @@
 import { useState, useEffect, useMemo } from 'react';
+import { ChemistryLab } from '@/components/chemistry/ChemistryLab';
+import { buildLabRows, labAdvice } from '@/lib/chemistry-lab';
 import { IdealChemistryChart } from '@/components/chemistry/IdealChemistryChart';
-import { buildIdealChart, latestFromService, profileFromClient, type PoolProfile, type Sanitizer } from '@/lib/ideal-chemistry';
+import { buildIdealChart, latestFromService, profileFromClient, type PoolProfile, type Sanitizer, type ChemKey, type LatestReadings } from '@/lib/ideal-chemistry';
 import type { PoolSurface } from '@/lib/cya-calcium-dosing';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
@@ -89,6 +91,14 @@ export default function ChemicalCalculator() {
     calciumHardness: 0,
     salt: 0
   });
+  const [entered, setEntered] = useState<Set<keyof TestResults>>(new Set());
+  const labFields: Partial<Record<ChemKey, keyof TestResults>> = { fc: 'chlorine', ph: 'ph', ta: 'alkalinity', cya: 'cyanuricAcid', ch: 'calciumHardness', salt: 'salt' };
+  const labReadings: LatestReadings = Object.fromEntries(Object.entries(labFields).map(([key, field]) => [key, entered.has(field) ? testResults[field] : null]));
+  const editReading = (field: keyof TestResults, value: number | null) => {
+    setTestResults(prev => ({ ...prev, [field]: value ?? 0 }));
+    setEntered(prev => { const next = new Set(prev); if (value == null) next.delete(field); else next.add(field); return next; });
+    setShowResults(false);
+  };
   const [recommendations, setRecommendations] = useState<ChemicalRecommendation[]>([]);
   const [loading, setLoading] = useState(false);
   const [clients, setClients] = useState<any[]>([]);
@@ -151,134 +161,11 @@ export default function ChemicalCalculator() {
   };
 
   const calculateRecommendations = (): ChemicalRecommendation[] => {
-    const recs: ChemicalRecommendation[] = [];
-    const poolVolume = poolInfo.size;
-
-    // pH adjustments
-    if (testResults.ph < settings.ph.min) {
-      const phIncrease = (settings.ph.target - testResults.ph) * poolVolume * settings.ph.sodaAshRatio;
-      recs.push({
-        chemical: 'Sodium Carbonate (Soda Ash)',
-        amount: `${Math.round(phIncrease * 16)} oz`,
-        reason: `pH is too low (${testResults.ph}). Target: ${settings.ph.min}-${settings.ph.max}`,
-        priority: 'high'
-      });
-    } else if (testResults.ph > settings.ph.max) {
-      const phDecrease = (testResults.ph - settings.ph.target) * poolVolume * settings.ph.muriaticAcidRatio;
-      recs.push({
-        chemical: 'Muriatic Acid',
-        amount: `${Math.round(phDecrease * 16)} oz`,
-        reason: `pH is too high (${testResults.ph}). Target: ${settings.ph.min}-${settings.ph.max}`,
-        priority: 'high'
-      });
-    }
-
-    // Chlorine adjustments
-    if (testResults.chlorine < settings.chlorine.min) {
-      const chlorineNeeded = (settings.chlorine.target - testResults.chlorine) * poolVolume * settings.chlorine.calHypoRatio;
-      recs.push({
-        chemical: 'Calcium Hypochlorite (Cal-Hypo)',
-        amount: `${Math.round(chlorineNeeded * 16)} oz`,
-        reason: `Free chlorine is too low (${testResults.chlorine} ppm). Target: ${settings.chlorine.min}-${settings.chlorine.max} ppm`,
-        priority: 'high'
-      });
-    } else if (testResults.chlorine > 5.0) {
-      recs.push({
-        chemical: 'None - Allow natural dissipation',
-        amount: 'Wait 24-48 hours',
-        reason: `Free chlorine is too high (${testResults.chlorine} ppm). Target: ${settings.chlorine.min}-${settings.chlorine.max} ppm`,
-        priority: 'medium'
-      });
-    }
-
-    // Alkalinity adjustments
-    if (testResults.alkalinity < settings.alkalinity.min) {
-      const alkIncrease = (settings.alkalinity.target - testResults.alkalinity) * poolVolume * settings.alkalinity.bakingSodaRatio;
-      recs.push({
-        chemical: 'Sodium Bicarbonate (Baking Soda)',
-        amount: `${Math.round(alkIncrease * 16)} oz`,
-        reason: `Total alkalinity is too low (${testResults.alkalinity} ppm). Target: ${settings.alkalinity.min}-${settings.alkalinity.max} ppm`,
-        priority: 'medium'
-      });
-    } else if (testResults.alkalinity > settings.alkalinity.max) {
-      const alkDecrease = (testResults.alkalinity - settings.alkalinity.target) * poolVolume * settings.alkalinity.muriaticAcidRatio;
-      recs.push({
-        chemical: 'Muriatic Acid',
-        amount: `${Math.round(alkDecrease * 16)} oz`,
-        reason: `Total alkalinity is too high (${testResults.alkalinity} ppm). Target: ${settings.alkalinity.min}-${settings.alkalinity.max} ppm`,
-        priority: 'medium'
-      });
-    }
-
-    // Cyanuric Acid adjustments
-    if (testResults.cyanuricAcid < settings.cyanuricAcid.min) {
-      const cyaNeeded = (settings.cyanuricAcid.target - testResults.cyanuricAcid) * poolVolume * settings.cyanuricAcid.stabilizerRatio;
-      recs.push({
-        chemical: 'Cyanuric Acid (Stabilizer)',
-        amount: `${Math.round(cyaNeeded * 16)} oz`,
-        reason: `Cyanuric acid is too low (${testResults.cyanuricAcid} ppm). Target: ${settings.cyanuricAcid.min}-${settings.cyanuricAcid.max} ppm`,
-        priority: 'low'
-      });
-    } else if (testResults.cyanuricAcid > 100) {
-      recs.push({
-        chemical: 'Partial water replacement recommended',
-        amount: 'Drain and refill 25-50% of pool',
-        reason: `Cyanuric acid is too high (${testResults.cyanuricAcid} ppm). Target: ${settings.cyanuricAcid.min}-${settings.cyanuricAcid.max} ppm`,
-        priority: 'high'
-      });
-    }
-
-    // Calcium Hardness adjustments
-    if (testResults.calciumHardness < settings.calciumHardness.min) {
-      const chIncrease = (settings.calciumHardness.target - testResults.calciumHardness) * poolVolume * settings.calciumHardness.calciumChlorideRatio;
-      recs.push({
-        chemical: 'Calcium Chloride',
-        amount: `${Math.round(chIncrease * 16)} oz`,
-        reason: `Calcium hardness is too low (${testResults.calciumHardness} ppm). Target: ${settings.calciumHardness.min}-${settings.calciumHardness.max} ppm`,
-        priority: 'low'
-      });
-    } else if (testResults.calciumHardness > 400) {
-      recs.push({
-        chemical: 'Partial water replacement recommended',
-        amount: 'Drain and refill 25-50% of pool',
-        reason: `Calcium hardness is too high (${testResults.calciumHardness} ppm). Target: ${settings.calciumHardness.min}-${settings.calciumHardness.max} ppm`,
-        priority: 'medium'
-      });
-    }
-
-    // Salt adjustments
-    if (testResults.salt > 0) {
-      if (testResults.salt < settings.salt.min) {
-        const deficit = settings.salt.target - testResults.salt;
-        const lbs = Math.ceil(deficit * poolVolume * settings.salt.saltRatio);
-        const bags = Math.ceil(lbs / 40);
-        recs.push({
-          chemical: 'Pool-Grade Salt',
-          amount: `${lbs} lbs (${bags} × 40 lb bag${bags > 1 ? 's' : ''})`,
-          reason: `Salt is too low (${testResults.salt} ppm). Target: ${settings.salt.min}-${settings.salt.max} ppm`,
-          priority: 'medium'
-        });
-      } else if (testResults.salt > settings.salt.max) {
-        recs.push({
-          chemical: 'Partial water replacement recommended',
-          amount: 'Drain and refill to dilute salt level',
-          reason: `Salt is too high (${testResults.salt} ppm). Target: ${settings.salt.min}-${settings.salt.max} ppm`,
-          priority: 'medium'
-        });
-      }
-    }
-
-    // If everything is balanced
-    if (recs.length === 0) {
-      recs.push({
-        chemical: 'No chemicals needed',
-        amount: 'Pool chemistry is balanced',
-        reason: 'All levels are within target ranges',
-        priority: 'low'
-      });
-    }
-
-    return recs;
+    return buildLabRows(profile, labReadings)
+      .filter(row => row.status === 'low' || row.status === 'high')
+      .map(row => ({ chemical: row.name, amount: labAdvice(row, profile, poolInfo.size)[0],
+        reason: `Current ${row.latest} ${row.unit} · Target ${row.targetLabel} · Range ${row.rangeLabel}`,
+        priority: 'medium' as const }));
   };
 
   const handleCalculate = () => {
@@ -330,12 +217,12 @@ export default function ChemicalCalculator() {
 
   const handleClientSelect = async (clientId: string) => {
     if (clientId === '__none') {
-      setSelectedClient(null); setLatestSvc(null);
+      setSelectedClient(null); setLatestSvc(null); setEntered(new Set()); setShowResults(false);
       setPoolInfo({ size: 0, type: '' });
       return;
     }
     const client = clients.find(c => c.id === clientId);
-    setSelectedClient(client ?? null);
+    setSelectedClient(client ?? null); setEntered(new Set()); setShowResults(false);
     setLatestSvc(null);
     if (client) {
       supabase.from('services').select('*').eq('client_id', clientId)
@@ -787,7 +674,7 @@ export default function ChemicalCalculator() {
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="poolType">Pool Type</Label>
-                  <Select value={poolInfo.type} onValueChange={(value) => setPoolInfo({ ...poolInfo, type: value })}>
+                  <Select value={poolInfo.type} onValueChange={(value) => { setPoolInfo({ ...poolInfo, type: value }); if (!selectedClient) setManualSanitizer(value === 'Saltwater' ? 'salt' : value === 'Chlorine' ? 'chlorine' : 'unknown'); }}>
                     <SelectTrigger>
                       <SelectValue placeholder="Select type..." />
                     </SelectTrigger>
@@ -809,18 +696,22 @@ export default function ChemicalCalculator() {
               <CardDescription>Enter current water chemistry levels</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
+              <ChemistryLab profile={profile} readings={labReadings} gallons={poolInfo.size}
+                onReadingChange={(key, value) => { const field = labFields[key]; if (field) editReading(field, value); }} />
+              <details>
+              <summary className="cursor-pointer text-sm font-medium">Reading fields</summary>
+              <div className="mt-3 grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="ph">pH Level</Label>
                   <Input
                     id="ph"
-                    type="number"
-                    step="0.1"
-                    value={testResults.ph || ''}
-                    onChange={(e) => setTestResults({ ...testResults, ph: parseFloat(e.target.value) || 0 })}
+                    type="number" inputMode="decimal"
+                    step="any"
+                    value={entered.has('ph') ? testResults.ph : ''}
+                    onChange={(e) => editReading('ph', e.target.value === '' ? null : Number(e.target.value))}
                     placeholder="7.4"
                   />
-                    <p className="text-xs text-muted-foreground">Target: {settings.ph.min}-{settings.ph.max}</p>
+                    <p className="text-xs text-muted-foreground">Target: {buildLabRows(profile, labReadings).find(r => r.key === 'ph')?.rangeLabel ?? 'Target unknown'}</p>
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="chlorine">Free Chlorine (ppm)</Label>
@@ -828,11 +719,11 @@ export default function ChemicalCalculator() {
                       id="chlorine"
                       type="number"
                       step="0.1"
-                      value={testResults.chlorine || ''}
-                      onChange={(e) => setTestResults({ ...testResults, chlorine: parseFloat(e.target.value) || 0 })}
+                      value={entered.has('chlorine') ? testResults.chlorine : ''}
+                      onChange={(e) => editReading('chlorine', e.target.value === '' ? null : Number(e.target.value))}
                       placeholder="2.0"
                     />
-                    <p className="text-xs text-muted-foreground">Target: {settings.chlorine.min}-{settings.chlorine.max} ppm</p>
+                    <p className="text-xs text-muted-foreground">Target: {buildLabRows(profile, labReadings).find(r => r.key === 'fc')?.rangeLabel ?? 'Target unknown'} ppm</p>
                 </div>
               </div>
 
@@ -842,22 +733,22 @@ export default function ChemicalCalculator() {
                   <Input
                     id="alkalinity"
                     type="number"
-                    value={testResults.alkalinity || ''}
-                    onChange={(e) => setTestResults({ ...testResults, alkalinity: parseInt(e.target.value) || 0 })}
+                    value={entered.has('alkalinity') ? testResults.alkalinity : ''}
+                    onChange={(e) => editReading('alkalinity', e.target.value === '' ? null : Number(e.target.value))}
                     placeholder="100"
                   />
-                      <p className="text-xs text-muted-foreground">Target: {settings.alkalinity.min}-{settings.alkalinity.max} ppm</p>
+                      <p className="text-xs text-muted-foreground">Target: {buildLabRows(profile, labReadings).find(r => r.key === 'ta')?.rangeLabel ?? 'Target unknown'} ppm</p>
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="cyanuricAcid">Cyanuric Acid (ppm)</Label>
                       <Input
                         id="cyanuricAcid"
                         type="number"
-                        value={testResults.cyanuricAcid || ''}
-                        onChange={(e) => setTestResults({ ...testResults, cyanuricAcid: parseInt(e.target.value) || 0 })}
+                        value={entered.has('cyanuricAcid') ? testResults.cyanuricAcid : ''}
+                        onChange={(e) => editReading('cyanuricAcid', e.target.value === '' ? null : Number(e.target.value))}
                         placeholder="40"
                       />
-                      <p className="text-xs text-muted-foreground">Target: {settings.cyanuricAcid.min}-{settings.cyanuricAcid.max} ppm</p>
+                      <p className="text-xs text-muted-foreground">Target: {buildLabRows(profile, labReadings).find(r => r.key === 'cya')?.rangeLabel ?? 'Target unknown'} ppm</p>
                 </div>
               </div>
 
@@ -866,11 +757,11 @@ export default function ChemicalCalculator() {
                 <Input
                   id="calciumHardness"
                   type="number"
-                  value={testResults.calciumHardness || ''}
-                  onChange={(e) => setTestResults({ ...testResults, calciumHardness: parseInt(e.target.value) || 0 })}
+                  value={entered.has('calciumHardness') ? testResults.calciumHardness : ''}
+                  onChange={(e) => editReading('calciumHardness', e.target.value === '' ? null : Number(e.target.value))}
                   placeholder="200"
                 />
-                <p className="text-xs text-muted-foreground">Target: {settings.calciumHardness.min}-{settings.calciumHardness.max} ppm</p>
+                <p className="text-xs text-muted-foreground">Target: {buildLabRows(profile, labReadings).find(r => r.key === 'ch')?.rangeLabel ?? 'Target unknown'} ppm</p>
               </div>
 
               {(poolInfo.type === 'Saltwater' || poolInfo.type?.toLowerCase().includes('salt')) && (
@@ -880,14 +771,15 @@ export default function ChemicalCalculator() {
                     id="salt"
                     type="number"
                     step="100"
-                    value={testResults.salt || ''}
-                    onChange={(e) => setTestResults({ ...testResults, salt: parseInt(e.target.value) || 0 })}
+                    value={entered.has('salt') ? testResults.salt : ''}
+                    onChange={(e) => editReading('salt', e.target.value === '' ? null : Number(e.target.value))}
                     placeholder="3200"
                   />
-                  <p className="text-xs text-muted-foreground">Target: {settings.salt.min}-{settings.salt.max} ppm</p>
+                  <p className="text-xs text-muted-foreground">Target: {buildLabRows(profile, labReadings).find(r => r.key === 'salt')?.rangeLabel ?? 'Target unknown'} ppm</p>
                 </div>
               )}
 
+              </details>
               <Button onClick={handleCalculate} className="w-full">
                 <Calculator className="mr-2 h-4 w-4" />
                 Calculate Recommendations
@@ -948,7 +840,7 @@ export default function ChemicalCalculator() {
           <CardContent className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div className="space-y-2">
               <Label htmlFor="manual-san">Pool type</Label>
-              <Select value={manualSanitizer} onValueChange={v => setManualSanitizer(v as Sanitizer)}>
+              <Select value={manualSanitizer} onValueChange={v => { setManualSanitizer(v as Sanitizer); setPoolInfo(prev => ({ ...prev, type: v === 'salt' ? 'Saltwater' : v === 'chlorine' ? 'Chlorine' : '' })); }}>
                 <SelectTrigger id="manual-san"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="unknown">Unknown</SelectItem>
@@ -976,8 +868,8 @@ export default function ChemicalCalculator() {
       <IdealChemistryChart
         title={selectedClient ? `Ideal Pool Chemistry — ${selectedClient.customer}` : 'Ideal Pool Chemistry (generic)'}
         profile={profile}
-        latest={selectedClient ? latestFromService(latestSvc) : {}}
-        latestDate={latestSvc?.service_date}
+        latest={labReadings}
+        
       />
     </div>
   );

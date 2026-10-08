@@ -36,7 +36,7 @@ describe('calciumDose', () => {
   });
   it('unknown product labelled estimate', () => {
     const r = calciumDose({ reading: 150, gallons: 10000, surface: 'plaster', product: 'dihydrate' });
-    expect(r.message).toMatch(/^Estimate \(manual verification required\)/);
+    expect(r.message).toMatch(/^Estimate \(verify bag strength\)/);
     expect(r.lbs).toBe(12); // Aqua Clear default: flake dihydrate 77%, labelled estimate
   });
   it('vinyl at 160 ppm is not raised; plaster at 160 is', () => {

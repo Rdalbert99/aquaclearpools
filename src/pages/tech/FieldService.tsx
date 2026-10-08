@@ -42,6 +42,7 @@ import { ServiceStickyHeader, type VisitStatus } from '@/components/tech/Service
 import { FollowUpPrompt, type FollowUpValue } from '@/components/tech/FollowUpPrompt';
 import { VoiceEntryDialog, voiceSupport, type VoiceApplyPayload } from '@/components/tech/VoiceEntryDialog';
 import { IssueFollowUpPrompt, type IssueFollowUpValue } from '@/components/tech/IssueFollowUpPrompt';
+import { cyaTargetFor, profileFromClient } from '@/lib/ideal-chemistry';
 import { CyaCalciumDosing } from '@/components/tech/CyaCalciumDosing';
 import { cyaDose, isSaltPool as isSaltPoolType, validGallons } from '@/lib/cya-calcium-dosing';
 
@@ -412,7 +413,7 @@ export default function FieldService() {
     const g = validGallons(client?.pool_size);
     const extra: (string | null)[] = [];
     if (readings.cya != null) {
-      const r = cyaDose({ reading: readings.cya, gallons: g, salt: isSaltPoolType(client?.pool_type) });
+      const r = cyaDose({ reading: readings.cya, gallons: g, salt: isSaltPoolType(client?.pool_type), range: cyaTargetFor(profileFromClient(client as any ?? {})).t });
       if (r.status !== 'ok' && r.status !== 'no_reading') extra.push(r.message);
     }
     return [...base, ...extra]
@@ -1134,6 +1135,7 @@ export default function FieldService() {
               poolGallons={client.pool_size}
               poolType={client.pool_type}
               linerType={(client as any).liner_type}
+              chemistryTargets={(client as any).chemistry_targets}
             />
 
             {(() => {

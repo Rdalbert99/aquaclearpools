@@ -7,6 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Eye, EyeOff, Lock, CheckCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { validatePassword } from '@/lib/password';
 
 export default function ResetPassword() {
   const [password, setPassword] = useState('');
@@ -88,7 +89,7 @@ export default function ResetPassword() {
       return;
     }
 
-    const policyError = passwordPolicyError(password);
+    const policyError = validatePassword(password);
     if (policyError) {
       toast({
         title: "Password too weak",
@@ -187,7 +188,7 @@ export default function ResetPassword() {
                 <Input
                   id="password"
                   type={showPassword ? 'text' : 'password'}
-                  placeholder="Enter new password"
+                  placeholder="At least 12 characters, Aa + number"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required

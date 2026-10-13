@@ -72,8 +72,8 @@ Deno.serve(async (req) => {
   const idHash = await sha256(identifier.toLowerCase());
   const since = new Date(Date.now() - WINDOW_MIN * 60_000).toISOString();
   const [{ count: byId }, { count: byIp }] = await Promise.all([
-    admin.from("password_reset_attempts").select("id", { count: "exact", head: true }).eq("identifier_hash", idHash).gte("created_at", since),
-    admin.from("password_reset_attempts").select("id", { count: "exact", head: true }).eq("ip", ip).gte("created_at", since),
+    admin.from("password_reset_attempts").select("*", { count: "exact", head: true }).eq("identifier_hash", idHash).gte("created_at", since),
+    admin.from("password_reset_attempts").select("*", { count: "exact", head: true }).eq("ip", ip).gte("created_at", since),
   ]);
   await admin.from("password_reset_attempts").insert({
     identifier_hash: idHash, ip, user_agent: req.headers.get("user-agent")?.slice(0, 300) ?? "unknown",

@@ -6,3 +6,4 @@
 - Dosing: all amounts come from src/lib/pool-chemistry.ts and src/lib/cya-calcium-dosing.ts with stoichiometry-checked constants; unknown gallons/strength never yield an amount and pH gets no precise dose; why: chemical safety.
 - Phosphates (ppb PO4) and iron/copper (ppm) rules live in `src/lib/phosphate-metals.ts`; remover/sequestrant amounts only from the product label dose + gallons + context, never from a reading alone, and phosphates never feed sanitizer/health status; why: chemical safety.
 - Calcium chloride rates come from PURE_CACL2 / label strength in `cya-calcium-dosing.ts`; unconfirmed bags assume the business's default flake product as a labelled estimate; why: label-dependent strength.
+- Chemical product strength and pool suitability come from `chemical_product_labels` (admin-verified, read via `src/lib/product-labels.ts`); doses never use a per-device tick or guessed strength; why: saved label facts, not guesses.

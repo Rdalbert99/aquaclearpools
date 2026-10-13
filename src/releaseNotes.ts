@@ -6,7 +6,7 @@
  * both read from here.
  */
 
-export const APP_VERSION = "1.1.0";
+export const APP_VERSION = "1.2.0";
 
 export type ReleaseNote = {
   version: string;
@@ -15,6 +15,17 @@ export type ReleaseNote = {
 };
 
 export const RELEASE_NOTES: ReleaseNote[] = [
+  {
+    version: "1.2.0",
+    date: "2026-10-13",
+    highlights: [
+      "Chemistry Lab: a Taylor-style test-kit rack on the visit screen, the customer page and the calculator — tap a well for its ideal band and dosing advice.",
+      "Phosphates, iron and copper are now selectable tests, with staining warnings and surface notes.",
+      "Calcium dosing defaults to OxyChem DOWFLAKE Xtra (83–87%) and shows a starting range instead of a single guess.",
+      "Dose corrections and safety guards: calcium, baking soda and pH advice now say 'manual verification required' when pool volume or product strength is unknown.",
+      "The home-screen icon now shows the AC shield logo.",
+    ],
+  },
   {
     version: "1.1.0",
     date: "2026-10-07",

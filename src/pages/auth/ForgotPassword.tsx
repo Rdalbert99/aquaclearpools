@@ -72,13 +72,17 @@ export default function ForgotPassword() {
             </div>
             <CardTitle className="text-2xl font-bold">Check Your Email</CardTitle>
             <CardDescription>
-              We've sent password reset instructions to your email address.
+              We sent a password reset link to the email on file:
             </CardDescription>
+            {hints.map((h) => (
+              <p key={h} className="font-semibold text-foreground break-all">{h}</p>
+            ))}
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="text-center text-sm text-muted-foreground space-y-2">
-              <p>Click the link in the email to reset your password.</p>
-              <p>Didn't receive the email? Check your spam folder.</p>
+              <p>Tap "Reset My Password" in that email. The link works once and expires in 1 hour.</p>
+              <p>Not there in a few minutes? Check your spam or junk folder.</p>
+              <p>If that email address is wrong, call (601) 447-0399.</p>
             </div>
             
             <div className="pt-4">
@@ -116,24 +120,28 @@ export default function ForgotPassword() {
           </div>
           <CardTitle className="text-2xl font-bold">Forgot Password</CardTitle>
           <CardDescription>
-            Enter the username for the account you want to reset
+            Enter your username or the email address on your account
           </CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="identifier">Username</Label>
+              <Label htmlFor="identifier">Username or email</Label>
               <Input
                 id="identifier"
                 type="text"
-                placeholder="Enter your username"
+                inputMode="email"
+                autoCapitalize="none"
+                autoCorrect="off"
+                autoComplete="username"
+                placeholder="Username or email"
                 value={identifier}
-                onChange={(e) => setIdentifier(e.target.value)}
+                onChange={(e) => { setIdentifier(e.target.value); setProblem(null); }}
                 required
               />
-              <p className="text-xs text-muted-foreground">
-                Staff and customer accounts use separate usernames, even when they share contact details.
-              </p>
+              {problem && (
+                <p role="alert" className="text-sm text-destructive">{problem}</p>
+              )}
             </div>
 
             <Button type="submit" className="w-full" disabled={isLoading}>

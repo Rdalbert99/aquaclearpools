@@ -16,6 +16,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { Droplets, Calculator, AlertTriangle, CheckCircle, Save } from 'lucide-react';
+import { findDowflake, isPoolVerified, useProductLabels } from '@/lib/product-labels';
 
 interface TestResults {
   ph: number;
@@ -45,6 +46,8 @@ interface ChemicalRecommendation {
 export default function ChemicalCalculator() {
   const { user } = useAuth();
   const { toast } = useToast();
+  const { data: productLabels } = useProductLabels('calcium_chloride');
+  const dowflakeVerified = isPoolVerified(findDowflake(productLabels));
   const [poolInfo, setPoolInfo] = useState<PoolInfo>({ size: 0, type: '' });
   const [testResults, setTestResults] = useState<TestResults>({
     ph: 0,
@@ -108,7 +111,7 @@ export default function ChemicalCalculator() {
   const calculateRecommendations = (): ChemicalRecommendation[] => {
     return buildLabRows(profile, labReadings, LAB_KEYS.filter(k => k !== 'cc' && (k !== 'salt' || profile.sanitizer === 'salt')))
       .filter(row => row.status === 'low' || row.status === 'high')
-      .map(row => ({ chemical: row.name, amount: labAdvice(row, profile, poolInfo.size, calciumProduct ?? 'dowflake_xtra', true, getDowflakeSuitability())[0],
+      .map(row => ({ chemical: row.name, amount: labAdvice(row, profile, poolInfo.size, calciumProduct ?? 'dowflake_xtra', true, dowflakeVerified)[0],
         reason: `Current ${row.latest} ${row.unit} · Target ${row.targetLabel} · Range ${row.rangeLabel}`,
         priority: 'medium' as const }));
   };

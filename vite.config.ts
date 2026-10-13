@@ -49,7 +49,7 @@ export default defineConfig(({ mode }) => ({
             urlPattern: ({ url, request, sameOrigin }) =>
               sameOrigin &&
               !url.pathname.startsWith("/~oauth") &&
-              ["style", "script", "image", "font"].includes(request.destination),
+              ["style", "script", "font"].includes(request.destination),
             handler: "CacheFirst",
             options: {
               cacheName: "acp-assets",

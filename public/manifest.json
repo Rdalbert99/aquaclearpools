@@ -11,19 +11,25 @@
   "theme_color": "#0056a6",
   "icons": [
     {
-      "src": "/icon-192x192.png?v=3",
+      "src": "/acp-shield-180.png",
+      "sizes": "180x180",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/acp-shield-192.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "/icon-512x512.png?v=3",
+      "src": "/acp-shield-512.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "/icons/maskable-512.png?v=3",
+      "src": "/acp-shield-maskable-512.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "maskable"

@@ -13,87 +13,48 @@ export default function ForgotPassword() {
   const [identifier, setIdentifier] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
+  const [hints, setHints] = useState<string[]>([]);
+  const [problem, setProblem] = useState<string | null>(null);
   const { toast } = useToast();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setProblem(null);
+    const value = identifier.trim();
+    if (!value) return;
     setIsLoading(true);
 
     try {
-      // Check rate limiting before processing
-      const { data: allowed, error: rateLimitError } = await supabase.rpc(
-        'allow_password_reset_request',
-        { p_identifier: identifier }
-      );
-
-      if (rateLimitError) {
-        console.error('Error checking rate limit:', rateLimitError);
-        toast({
-          title: "Error",
-          description: "Unable to process your request. Please try again later.",
-          variant: "destructive",
-        });
-        return;
-      }
-
-      if (!allowed) {
-        toast({
-          title: "Too many attempts",
-          description: "Too many password reset attempts. Please wait 15 minutes before trying again.",
-          variant: "destructive",
-        });
-        return;
-      }
-
-      // Get the email by username/login
-      const { data: emailData, error: emailError } = await supabase.rpc('get_email_by_login', {
-        login_input: identifier
-      });
-
-      if (emailError) {
-        console.error('Error getting email:', emailError);
-        // Don't reveal specific errors - show generic success to prevent enumeration
-        setIsSubmitted(true);
-        toast({
-          title: "Request processed",
-          description: "If an account exists with that username, you'll receive reset instructions.",
-        });
-        return;
-      }
-
-      const email = emailData;
-      if (!email) {
-        setIsSubmitted(true);
-        return;
-      }
-
-      // Send password reset email
-      const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${window.location.origin}/auth/reset-password`,
+      const { data, error } = await supabase.functions.invoke('request-password-reset', {
+        body: { identifier: value, origin: window.location.origin },
       });
 
       if (error) {
-        console.error('Error sending reset email:', error);
-        // Don't reveal email sending errors - show generic success
-        setIsSubmitted(true);
-        toast({
-          title: "Request processed",
-          description: "If an account exists with that username, you'll receive reset instructions.",
-        });
+        let message = "We couldn't send the reset email. Please try again in a minute.";
+        try {
+          const body = await (error as any).context?.json?.();
+          if (body?.error) message = body.error;
+        } catch { /* keep default */ }
+        setProblem(message);
         return;
       }
 
-      setIsSubmitted(true);
-      toast({
-        title: "Request processed",
-        description: "If an account exists with that username, you'll receive reset instructions.",
-      });
+      if (!data?.found) {
+        setProblem("We couldn't find an account with that username or email. Check the spelling, or call (601) 447-0399.");
+        return;
+      }
+      if (!data.sent) {
+        setProblem("We found your account, but there's no email address on file for it. Please call (601) 447-0399 so we can reset it for you.");
+        return;
+      }
 
-    } catch (error: any) {
-      console.error('Unexpected error:', error);
+      setHints(Array.isArray(data.hints) ? data.hints : []);
+      setIsSubmitted(true);
+    } catch (err) {
+      console.error('Unexpected password reset error:', err);
       toast({
-        title: "Error",
-        description: "An unexpected error occurred. Please try again later.",
+        title: "Something went wrong",
+        description: "Please try again in a minute.",
         variant: "destructive",
       });
     } finally {
@@ -111,13 +72,17 @@ export default function ForgotPassword() {
             </div>
             <CardTitle className="text-2xl font-bold">Check Your Email</CardTitle>
             <CardDescription>
-              We've sent password reset instructions to your email address.
+              We sent a password reset link to the email on file:
             </CardDescription>
+            {hints.map((h) => (
+              <p key={h} className="font-semibold text-foreground break-all">{h}</p>
+            ))}
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="text-center text-sm text-muted-foreground space-y-2">
-              <p>Click the link in the email to reset your password.</p>
-              <p>Didn't receive the email? Check your spam folder.</p>
+              <p>Tap "Reset My Password" in that email. The link works once and expires in 1 hour.</p>
+              <p>Not there in a few minutes? Check your spam or junk folder.</p>
+              <p>If that email address is wrong, call (601) 447-0399.</p>
             </div>
             
             <div className="pt-4">
@@ -155,24 +120,28 @@ export default function ForgotPassword() {
           </div>
           <CardTitle className="text-2xl font-bold">Forgot Password</CardTitle>
           <CardDescription>
-            Enter the username for the account you want to reset
+            Enter your username or the email address on your account
           </CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="identifier">Username</Label>
+              <Label htmlFor="identifier">Username or email</Label>
               <Input
                 id="identifier"
                 type="text"
-                placeholder="Enter your username"
+                inputMode="email"
+                autoCapitalize="none"
+                autoCorrect="off"
+                autoComplete="username"
+                placeholder="Username or email"
                 value={identifier}
-                onChange={(e) => setIdentifier(e.target.value)}
+                onChange={(e) => { setIdentifier(e.target.value); setProblem(null); }}
                 required
               />
-              <p className="text-xs text-muted-foreground">
-                Staff and customer accounts use separate usernames, even when they share contact details.
-              </p>
+              {problem && (
+                <p role="alert" className="text-sm text-destructive">{problem}</p>
+              )}
             </div>
 
             <Button type="submit" className="w-full" disabled={isLoading}>

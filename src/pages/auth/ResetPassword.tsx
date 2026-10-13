@@ -21,51 +21,59 @@ export default function ResetPassword() {
   const [searchParams] = useSearchParams();
 
   useEffect(() => {
-    // Check if we have a valid session for password reset
+    let cancelled = false;
+    const fail = (description: string) => {
+      if (cancelled) return;
+      toast({ title: "Invalid Reset Link", description, variant: "destructive" });
+      navigate('/auth/forgot-password');
+    };
+
     const checkSession = async () => {
-      const { data: { session }, error } = await supabase.auth.getSession();
-      
-      if (session && !error) {
-        setIsValidSession(true);
-      } else {
-        // Check if there are URL parameters that might indicate a reset link
-        const access_token = searchParams.get('access_token');
-        const refresh_token = searchParams.get('refresh_token');
-        
-        if (access_token && refresh_token) {
-          try {
-            const { error: setSessionError } = await supabase.auth.setSession({
-              access_token,
-              refresh_token
-            });
-            
-            if (!setSessionError) {
-              setIsValidSession(true);
-            } else {
-              console.error('Session error:', setSessionError);
-              toast({
-                title: "Invalid Reset Link",
-                description: "This password reset link is invalid or has expired.",
-                variant: "destructive",
-              });
-              navigate('/auth/forgot-password');
-            }
-          } catch (error) {
-            console.error('Error setting session:', error);
-            navigate('/auth/forgot-password');
-          }
-        } else {
-          toast({
-            title: "Invalid Access",
-            description: "Please use the link from your email to reset your password.",
-            variant: "destructive",
-          });
-          navigate('/auth/forgot-password');
+      // New links: ?token_hash=...&type=recovery — exchange the one-time token for a session.
+      const tokenHash = searchParams.get('token_hash');
+      if (tokenHash) {
+        const { error } = await supabase.auth.verifyOtp({ token_hash: tokenHash, type: 'recovery' });
+        if (cancelled) return;
+        if (error) {
+          console.error('Recovery token error:', error.message);
+          fail("This reset link has already been used or has expired. Please request a new one.");
+          return;
         }
+        // Remove the token from the address bar so it can't be reused or shared.
+        window.history.replaceState(null, '', '/auth/reset-password');
+        setIsValidSession(true);
+        return;
       }
+
+      // Older links put the session in the address (hash) — give the client a moment to read it.
+      let { data: { session } } = await supabase.auth.getSession();
+      if (!session && window.location.hash.includes('access_token')) {
+        await new Promise((r) => setTimeout(r, 600));
+        ({ data: { session } } = await supabase.auth.getSession());
+      }
+      if (cancelled) return;
+      if (session) {
+        setIsValidSession(true);
+        return;
+      }
+
+      const access_token = searchParams.get('access_token');
+      const refresh_token = searchParams.get('refresh_token');
+      if (access_token && refresh_token) {
+        const { error: setSessionError } = await supabase.auth.setSession({ access_token, refresh_token });
+        if (!setSessionError) {
+          setIsValidSession(true);
+        } else {
+          fail("This password reset link is invalid or has expired.");
+        }
+        return;
+      }
+
+      fail("Please use the link from your email to reset your password.");
     };
 
     checkSession();
+    return () => { cancelled = true; };
   }, [searchParams, navigate, toast]);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -80,10 +88,11 @@ export default function ResetPassword() {
       return;
     }
 
-    if (password.length < 6) {
+    const policyError = passwordPolicyError(password);
+    if (policyError) {
       toast({
-        title: "Error", 
-        description: "Password must be at least 6 characters long",
+        title: "Password too weak",
+        description: policyError,
         variant: "destructive",
       });
       return;

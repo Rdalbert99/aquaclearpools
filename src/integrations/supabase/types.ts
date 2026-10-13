@@ -372,6 +372,69 @@ export type Database = {
         }
         Relationships: []
       }
+      chemical_product_labels: {
+        Row: {
+          active: boolean
+          active_ingredient: string | null
+          catalog_slug: string
+          container_size: string | null
+          created_at: string
+          form: string | null
+          id: string
+          is_preferred: boolean
+          label_notes: string | null
+          manufacturer: string | null
+          pool_suitability: string
+          product_name: string
+          strength_max_pct: number | null
+          strength_min_pct: number | null
+          suitability_source: string | null
+          updated_at: string
+          verified_at: string | null
+          verified_by: string | null
+        }
+        Insert: {
+          active?: boolean
+          active_ingredient?: string | null
+          catalog_slug: string
+          container_size?: string | null
+          created_at?: string
+          form?: string | null
+          id?: string
+          is_preferred?: boolean
+          label_notes?: string | null
+          manufacturer?: string | null
+          pool_suitability?: string
+          product_name: string
+          strength_max_pct?: number | null
+          strength_min_pct?: number | null
+          suitability_source?: string | null
+          updated_at?: string
+          verified_at?: string | null
+          verified_by?: string | null
+        }
+        Update: {
+          active?: boolean
+          active_ingredient?: string | null
+          catalog_slug?: string
+          container_size?: string | null
+          created_at?: string
+          form?: string | null
+          id?: string
+          is_preferred?: boolean
+          label_notes?: string | null
+          manufacturer?: string | null
+          pool_suitability?: string
+          product_name?: string
+          strength_max_pct?: number | null
+          strength_min_pct?: number | null
+          suitability_source?: string | null
+          updated_at?: string
+          verified_at?: string | null
+          verified_by?: string | null
+        }
+        Relationships: []
+      }
       client_invitations: {
         Row: {
           access_count: number | null

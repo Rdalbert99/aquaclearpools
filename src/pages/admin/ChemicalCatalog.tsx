@@ -11,6 +11,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
 import { useToast } from '@/hooks/use-toast';
 import { ArrowLeft, Plus, Save, Trash2, FlaskConical } from 'lucide-react';
+import { ProductLabelsEditor } from '@/components/admin/ProductLabelsEditor';
 
 interface Row {
   id?: string;
@@ -259,6 +260,7 @@ export default function ChemicalCatalog() {
                     Customer sees: <em>"2 lbs {r.label || 'Chemical'} — {r.purpose || '…'}"</em>
                   </p>
                 </div>
+                {r.id && r.slug && !r.is_other && <ProductLabelsEditor slug={r.slug} />}
               </CardContent>
             </Card>
           ))}

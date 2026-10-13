@@ -5,10 +5,11 @@ import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useChemicalCatalog } from '@/hooks/useChemicalCatalog';
 import {
-  calciumDose, calciumProductFromLabel, getDowflakeSuitability, setDowflakeSuitability, DOWFLAKE_XTRA, cyaDose, detectSurface, isSaltPool, validGallons,
+  calciumDose, calciumProductFromLabel, DOWFLAKE_XTRA, cyaDose, detectSurface, isSaltPool, validGallons,
   type CalciumProduct, type DoseResult,
 } from '@/lib/cya-calcium-dosing';
 import { calciumTargetFor, cyaTargetFor, profileFromClient } from '@/lib/ideal-chemistry';
+import { exactStrength, findDowflake, isPoolVerified, strengthText, useProductLabels } from '@/lib/product-labels';
 
 interface Props {
   showCya: boolean;
@@ -83,7 +84,9 @@ export function CyaCalciumDosing({ showCya, showCalcium, cya, calcium, poolGallo
   const [purity, setPurity] = useState('');
   const product: CalciumProduct = onProductChange ? selectedProduct ?? 'dowflake_xtra' : chosen ?? inventoryProduct ?? 'dowflake_xtra';
   const productKnown = product === 'dowflake_xtra' || (onProductChange ? selectedProduct != null : chosen != null || inventoryProduct != null);
-  const [suitable, setSuitable] = useState(getDowflakeSuitability());
+  const { data: labels } = useProductLabels('calcium_chloride');
+  const dfLabel = findDowflake(labels);
+  const suitable = isPoolVerified(dfLabel);
 
   if (!showCya && !showCalcium) return null;
   const hasCya = showCya && cya != null;
@@ -127,20 +130,25 @@ export function CyaCalciumDosing({ showCya, showCalcium, cya, calcium, poolGallo
             </Select>
             {product === 'dowflake_xtra' && (
               <div className="mt-2 space-y-1 rounded-md border border-dashed p-2 text-xs">
-                <p className="text-muted-foreground">{DOWFLAKE_XTRA.manufacturer} · label {DOWFLAKE_XTRA.purityMin}–{DOWFLAKE_XTRA.purityMax}% pure · {DOWFLAKE_XTRA.bagLb} lb bag. Label says not for food/drug use.</p>
-                <label className="flex items-start gap-2">
-                  <input type="checkbox" className="mt-0.5 h-4 w-4" checked={suitable}
-                    onChange={e => { setSuitable(e.target.checked); setDowflakeSuitability(e.target.checked); }} />
-                  <span>I checked the bag label or the manufacturer: this product is suitable for swimming pool use.</span>
-                </label>
+                <p className="text-muted-foreground">
+                  {dfLabel?.manufacturer ?? DOWFLAKE_XTRA.manufacturer} · label {dfLabel ? strengthText(dfLabel) : `${DOWFLAKE_XTRA.purityMin}–${DOWFLAKE_XTRA.purityMax}%`} pure
+                  {dfLabel?.container_size ? ` · ${dfLabel.container_size}` : ''}. {dfLabel?.label_notes ?? 'Label says not for food/drug use.'}
+                </p>
+                {suitable ? (
+                  <p className="font-medium">Pool use verified by admin{dfLabel?.verified_at ? ` on ${new Date(dfLabel.verified_at).toLocaleDateString()}` : ''}{dfLabel?.suitability_source ? ` (${dfLabel.suitability_source})` : ''}.</p>
+                ) : dfLabel?.pool_suitability === 'not_suitable' ? (
+                  <p className="font-medium text-destructive">Marked NOT suitable for pools in the product labels. Do not use.</p>
+                ) : (
+                  <p className="font-medium text-destructive">Pool suitability not verified — an admin must confirm it in Chemical Catalog → Product labels before amounts show.</p>
+                )}
               </div>
             )}
             <Label htmlFor="cacl2-purity" className="mt-2 block text-xs">% calcium chloride on bag (optional)</Label>
             <Input id="cacl2-purity" className="h-9" type="number" inputMode="decimal" step="any" min="0" max="100"
-              placeholder={product === 'anhydrous' ? '94' : product === 'dowflake_xtra' ? '83–87' : '77'} value={purity} onChange={e => setPurity(e.target.value)} />
+              placeholder={product === 'anhydrous' ? '94' : product === 'dowflake_xtra' ? (dfLabel ? strengthText(dfLabel).replace('%', '') : '83–87') : '77'} value={purity} onChange={e => setPurity(e.target.value)} />
           </div>
           <DoseCard title="Calcium Hardness" target={chTarget} onTarget={setChTarget} lockTargets={lockTargets}
-            r={calciumDose({ reading: calcium, gallons, target: num(chTarget), surface, product, productKnown, range: chRange, suitabilityVerified: suitable, purityPct: purity.trim() ? Number(purity.replace(',', '.')) : null })} />
+            r={calciumDose({ reading: calcium, gallons, target: num(chTarget), surface, product, productKnown, range: chRange, suitabilityVerified: suitable, purityPct: purity.trim() ? Number(purity.replace(',', '.')) : (product === 'dowflake_xtra' ? exactStrength(dfLabel) : null) })} />
         </div>
       )}
       <p className="text-xs text-muted-foreground">Nothing here is logged as added. Record what you actually used under Chemicals Added.</p>

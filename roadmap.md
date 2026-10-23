@@ -24,3 +24,4 @@
 - [x] QuickBooks sandbox/live separation (preview backend)
 - [ ] QuickBooks live connection — waiting on: live keys added in Secrets + switch approval
 - [ ] QuickBooks sandbox end-to-end test — blocked: Intuit sandbox app keys not added
+- [ ] Resend Karen Crago portal invitation — BLOCKED: no email on her customer record

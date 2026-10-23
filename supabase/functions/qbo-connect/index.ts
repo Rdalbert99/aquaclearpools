@@ -6,6 +6,7 @@ import { isAllowedReturnUrl, safeDocNumber, summarizeInvoice } from "../_shared/
 import {
   DISCOVERY_URLS, FALLBACK_ENDPOINTS, OAuthEndpoints, QboError, accessNeedsRefresh, expectJson,
   friendlyMessage, needsReconnect, parseDiscovery, refreshExpired, requestWithRetry, safeJson, sanitize,
+  accountingUrl, assertSameEnv, resolveCredentials, resolveEnv,
 } from "../_shared/qbo-oauth.ts";
 
 const corsHeaders = {
@@ -18,11 +19,12 @@ const json = (b: unknown, s = 200) =>
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const ANON = Deno.env.get("SUPABASE_ANON_KEY") ?? Deno.env.get("SUPABASE_PUBLISHABLE_KEY")!;
-const CLIENT_ID = Deno.env.get("QBO_CLIENT_ID");
-const CLIENT_SECRET = Deno.env.get("QBO_CLIENT_SECRET");
-const ENV = (Deno.env.get("QBO_ENVIRONMENT") ?? "production") === "sandbox" ? "sandbox" : "production";
+// Active environment and its OWN keys; production fails closed without QBO_PRODUCTION_* keys.
+const ENV = resolveEnv(Deno.env.get("QBO_ENVIRONMENT"));
+const CREDS = resolveCredentials(ENV, (n) => Deno.env.get(n));
+const CLIENT_ID = CREDS?.clientId;
+const CLIENT_SECRET = CREDS?.clientSecret;
 const REDIRECT_URI = `${SUPABASE_URL}/functions/v1/qbo-connect`;
-const API_BASE = ENV === "sandbox" ? "https://sandbox-quickbooks.api.intuit.com" : "https://quickbooks.api.intuit.com";
 
 const admin = createClient(SUPABASE_URL, SERVICE);
 
@@ -66,10 +68,12 @@ async function tokenRequest(params: Record<string, string>, retry: boolean) {
 const expiry = (secs: number | undefined) => (secs ? new Date(Date.now() + secs * 1000).toISOString() : null);
 
 async function markNeedsReconnect(id: string) {
-  await admin.from("qbo_connections").update({ needs_reconnect: true }).eq("id", id);
+  await admin.from("qbo_connections").update({ needs_reconnect: true }).eq("id", id).eq("environment", ENV);
 }
 
 async function refresh(conn: any) {
+  assertSameEnv(conn, ENV);
+  if (!CREDS) throw new QboError("not_connected", `QuickBooks ${ENV} keys are not set up.`);
   if (refreshExpired(conn.refresh_expires_at)) {
     await markNeedsReconnect(conn.id);
     throw new QboError("invalid_grant", "Saved QuickBooks refresh token has expired.");
@@ -84,7 +88,7 @@ async function refresh(conn: any) {
       refresh_expires_at: expiry(t.x_refresh_token_expires_in) ?? conn.refresh_expires_at,
       needs_reconnect: false,
     };
-    await admin.from("qbo_connections").update(upd).eq("id", conn.id);
+    await admin.from("qbo_connections").update(upd).eq("id", conn.id).eq("environment", ENV);
     return { ...conn, ...upd };
   } catch (e) {
     if (e instanceof QboError && e.kind === "invalid_grant") await markNeedsReconnect(conn.id);
@@ -93,16 +97,18 @@ async function refresh(conn: any) {
 }
 
 async function connection() {
-  const { data: conn } = await admin.from("qbo_connections").select("*").order("updated_at", { ascending: false }).limit(1).maybeSingle();
+  const { data: conn } = await admin.from("qbo_connections").select("*").eq("environment", ENV).order("updated_at", { ascending: false }).limit(1).maybeSingle();
   if (!conn) throw new QboError("not_connected", "QuickBooks is not connected yet.");
+  assertSameEnv(conn, ENV);
   if (conn.needs_reconnect) throw new QboError("not_connected", "QuickBooks needs to be reconnected.");
   return accessNeedsRefresh(conn.access_expires_at) ? refresh(conn) : conn;
 }
 
 /** Read-only GET. On 401 refreshes the token once and retries once. */
 async function qboGet(conn: any, path: string): Promise<{ conn: any; data: any }> {
-  const go = (c: any) => requestWithRetry(fetch, `${API_BASE}/v3/company/${c.realm_id}${path}`, {
-    headers: { Authorization: `Bearer ${c.access_token}`, Accept: "application/json" },
+  assertSameEnv(conn, ENV);
+  const go = (c: any) => requestWithRetry(fetch, accountingUrl(ENV, c.realm_id, path), {
+    method: "GET", headers: { Authorization: `Bearer ${c.access_token}`, Accept: "application/json" },
   }, { retry: true });
   let r = await go(conn);
   if (r.status === 401) { conn = await refresh(conn); r = await go(conn); }
@@ -153,7 +159,8 @@ async function handleCallback(req: Request) {
       const { data } = await qboGet(row, `/companyinfo/${realmId}?minorversion=75`);
       companyName = data?.CompanyInfo?.CompanyName ?? null;
     } catch (e) { if (e instanceof QboError) await logError("companyinfo", e, st.user_id); }
-    await admin.from("qbo_connections").delete().neq("realm_id", realmId);
+    // Replace only older connections of THIS environment; the other environment is never touched.
+    await admin.from("qbo_connections").delete().eq("environment", ENV).neq("realm_id", realmId);
     const { error } = await admin.from("qbo_connections").upsert({ ...row, company_name: companyName }, { onConflict: "realm_id" });
     if (error) throw error;
     return redirect(back, { qbo: "connected" });
@@ -185,7 +192,7 @@ Deno.serve(async (req) => {
   try {
     if (action === "status") {
       const { data: conn } = await admin.from("qbo_connections")
-        .select("realm_id, company_name, environment, refresh_expires_at, updated_at, needs_reconnect").limit(1).maybeSingle();
+        .select("realm_id, company_name, environment, refresh_expires_at, updated_at, needs_reconnect").eq("environment", ENV).order("updated_at", { ascending: false }).limit(1).maybeSingle();
       const expired = conn ? conn.needs_reconnect || refreshExpired(conn.refresh_expires_at) : false;
       return json({ configured, environment: ENV, redirectUri: REDIRECT_URI, connection: conn ?? null, needsReconnect: expired });
     }
@@ -215,14 +222,14 @@ Deno.serve(async (req) => {
     }
 
     if (action === "disconnect") {
-      const { data: conn } = await admin.from("qbo_connections").select("id, refresh_token").limit(1).maybeSingle();
+      const { data: conn } = await admin.from("qbo_connections").select("id, refresh_token").eq("environment", ENV).order("updated_at", { ascending: false }).limit(1).maybeSingle();
       if (!conn) return json({ disconnected: true, revoked: false });
       let revoked = false;
       if (configured) {
         try { await revoke(conn.refresh_token); revoked = true; }
         catch (e) { if (e instanceof QboError) await logError("revoke", e, u.user.id); }
       }
-      await admin.from("qbo_connections").delete().eq("id", conn.id);
+      await admin.from("qbo_connections").delete().eq("id", conn.id).eq("environment", ENV);
       return json({ disconnected: true, revoked });
     }
 

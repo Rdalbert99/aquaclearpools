@@ -58,6 +58,32 @@ Each customer gets one billing profile:
   - Six months to annual: no overlapping coverage
   - Duplicate draft for the same period: blocked
 
+## Prepaid savings note on regular invoices
+- **Default wording** (an admin can edit it as one shared template, and every change is recorded in the audit log):
+  "Save on Your Pool Service! Aqua Clear offers prepaid maintenance discounts: prepay 6 months and save the equivalent of half a month's service, or prepay 12 months and save one full month's service. Contact Aqua Clear Pools to learn more or switch to a prepaid plan. Thank you for choosing Aqua Clear Pools!"
+- **Where it goes:** the QBO invoice's customer-facing message ("Message displayed on invoice", the API's `CustomerMemo` field). It never goes in the private memo (`PrivateNote`).
+  - It shows in QBO's PDF, QBO emails and the online payment page.
+  - Aqua Clear's own emails include it. A text only says "View your invoice" with the link, so the note appears on the linked page and the text stays short.
+- **Shown only when all of these are true:**
+  - It's a recurring service invoice.
+  - The customer is not on active prepaid billing (six months or annual with the discount on).
+  - It's not a one-off invoice, a test invoice (including test customer 114) or a non-service invoice (repairs only, or chemicals only).
+  - The customer's switch is on.
+- **Per-customer switch:** "Show prepaid savings note". It's on by default for eligible customers, and an admin can turn it off for any customer.
+- **No duplicates:**
+  - The app builds the customer message fresh from the template each time. It never adds to existing text.
+  - Retries reuse the same saved message under the same idempotency key.
+  - Before writing, the app checks whether QBO's message already contains the note.
+  - Any customer message an admin typed is kept, with the note added once below it.
+- **Existing invoices:** unchanged. The note only goes on invoices created after activation.
+- **Preview:** bulk review shows the exact message for each invoice. The matrix shows whether the note will appear, or the reason it's left off.
+- **Tests:**
+  - Note included for an eligible monthly customer.
+  - Note left off for prepaid, one-off, test, non-service and opted-out customers.
+  - A retry doesn't add the note twice.
+  - The note goes in the customer message, never the private memo.
+  - An edited template is used for new drafts.
+
 ## Admin overview matrix
 One page with a row per customer. Columns:
 - customer
@@ -71,6 +97,8 @@ One page with a row per customer. Columns:
 - QBO balance
 - last payment
 - status (paused/active)
+- prepaid discount (on/off/not applicable)
+- promo note (will show / suppressed, with the reason)
 
 Filters, sorting, inline edit and CSV export are included. **Bulk review:** select rows, then preview the exact invoices and messages that would be made. Activation requires confirming "Activate N customers". Nothing goes live in bulk without that preview.
 

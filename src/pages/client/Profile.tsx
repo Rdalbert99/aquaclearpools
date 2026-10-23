@@ -10,6 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { InvoicePreferencesCard } from '@/components/client/InvoicePreferencesCard';
 import { 
   ArrowLeft,
   User,
@@ -291,6 +292,7 @@ export default function ClientProfile() {
               </div>
             </CardContent>
           </Card>
+          <div className="mt-6"><InvoicePreferencesCard clients={clients} /></div>
         </TabsContent>
 
         <TabsContent value="pools">

@@ -85,3 +85,6 @@ verify_jwt = false
 
 [functions.qbo-connect]
 verify_jwt = false
+
+[functions.link-existing-customer]
+verify_jwt = false

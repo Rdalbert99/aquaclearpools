@@ -88,6 +88,19 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     };
   }, []);
 
+  // Server checks the verified email and links a matching existing customer once.
+  const linkExistingCustomer = (authUser: User) => {
+    if (!authUser.email_confirmed_at) return;
+    const key = `customer_link_checked_${authUser.id}`;
+    if (sessionStorage.getItem(key)) return;
+    sessionStorage.setItem(key, '1');
+    supabase.functions.invoke('link-existing-customer', { body: {} })
+      .then(({ data }) => {
+        if (data?.status === 'linked') window.dispatchEvent(new Event('customer-linked'));
+      })
+      .catch(() => sessionStorage.removeItem(key));
+  };
+
   const ensureProfile = async (authUser: User) => {
     try {
       console.log('Ensuring profile for user:', authUser.id, authUser.email);
@@ -102,6 +115,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       if (existingProfile && !profileError) {
         console.log('Profile found by ID:', existingProfile);
         setUser({ ...authUser, ...existingProfile });
+        if (existingProfile.role === 'client') linkExistingCustomer(authUser);
         return;
       }
 
@@ -127,6 +141,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       if (!insertError) {
         console.log('Profile created successfully');
         setUser({ ...authUser, role, name });
+        linkExistingCustomer(authUser);
       } else {
         console.error('Failed to create profile:', insertError);
         // Fallback to setting user with basic info

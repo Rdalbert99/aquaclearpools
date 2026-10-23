@@ -136,6 +136,116 @@ export type Database = {
           },
         ]
       }
+      billing_preference_audit: {
+        Row: {
+          changed_by: string | null
+          changed_role: string
+          client_id: string
+          created_at: string
+          id: string
+          new_channel: string | null
+          old_channel: string | null
+          reason: string | null
+          sms_consent: boolean | null
+        }
+        Insert: {
+          changed_by?: string | null
+          changed_role: string
+          client_id: string
+          created_at?: string
+          id?: string
+          new_channel?: string | null
+          old_channel?: string | null
+          reason?: string | null
+          sms_consent?: boolean | null
+        }
+        Update: {
+          changed_by?: string | null
+          changed_role?: string
+          client_id?: string
+          created_at?: string
+          id?: string
+          new_channel?: string | null
+          old_channel?: string | null
+          reason?: string | null
+          sms_consent?: boolean | null
+        }
+        Relationships: []
+      }
+      billing_run_items: {
+        Row: {
+          amount_cents: number | null
+          approved_at: string | null
+          approved_by: string | null
+          channels: string[]
+          client_id: string
+          created_at: string
+          created_by: string | null
+          exclusion_reason: string | null
+          frequency: string | null
+          id: string
+          idempotency_key: string
+          kind: string
+          note: string | null
+          period_key: string
+          scheduled_for: string | null
+          service_period_end: string | null
+          service_period_start: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          amount_cents?: number | null
+          approved_at?: string | null
+          approved_by?: string | null
+          channels?: string[]
+          client_id: string
+          created_at?: string
+          created_by?: string | null
+          exclusion_reason?: string | null
+          frequency?: string | null
+          id?: string
+          idempotency_key: string
+          kind: string
+          note?: string | null
+          period_key: string
+          scheduled_for?: string | null
+          service_period_end?: string | null
+          service_period_start?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          amount_cents?: number | null
+          approved_at?: string | null
+          approved_by?: string | null
+          channels?: string[]
+          client_id?: string
+          created_at?: string
+          created_by?: string | null
+          exclusion_reason?: string | null
+          frequency?: string | null
+          id?: string
+          idempotency_key?: string
+          kind?: string
+          note?: string | null
+          period_key?: string
+          scheduled_for?: string | null
+          service_period_end?: string | null
+          service_period_start?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "billing_run_items_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       business_members: {
         Row: {
           business_id: string
@@ -434,6 +544,50 @@ export type Database = {
           verified_by?: string | null
         }
         Relationships: []
+      }
+      client_billing_preferences: {
+        Row: {
+          client_id: string
+          created_at: string
+          invoice_channel: string | null
+          override_reason: string | null
+          set_by: string
+          sms_consent_at: string | null
+          sms_consent_source: string | null
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          client_id: string
+          created_at?: string
+          invoice_channel?: string | null
+          override_reason?: string | null
+          set_by?: string
+          sms_consent_at?: string | null
+          sms_consent_source?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          client_id?: string
+          created_at?: string
+          invoice_channel?: string | null
+          override_reason?: string | null
+          set_by?: string
+          sms_consent_at?: string | null
+          sms_consent_source?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_billing_preferences_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: true
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       client_invitations: {
         Row: {
@@ -3119,6 +3273,16 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      _apply_invoice_channel: {
+        Args: {
+          _channel: string
+          _client_id: string
+          _reason: string
+          _role: string
+          _sms_consent: boolean
+        }
+        Returns: undefined
+      }
       admin_access_message: {
         Args: { admin_reason: string; message_id: string }
         Returns: Json
@@ -3197,6 +3361,15 @@ export type Database = {
       admin_search_users: {
         Args: { search_reason: string; search_term: string }
         Returns: Json
+      }
+      admin_set_invoice_channel: {
+        Args: {
+          _channel: string
+          _client_id: string
+          _reason: string
+          _sms_consent_on_file: boolean
+        }
+        Returns: undefined
       }
       admin_view_message: {
         Args: { message_id: string; reason: string }
@@ -3324,6 +3497,7 @@ export type Database = {
       }
       cleanup_expired_invitations: { Args: never; Returns: number }
       cleanup_old_invitations: { Args: never; Returns: number }
+      client_phone_opted_out: { Args: { _client_id: string }; Returns: boolean }
       commercial_can_view_client: {
         Args: { p_client_id: string }
         Returns: boolean
@@ -3367,6 +3541,7 @@ export type Database = {
       }
       hash_invitation_token: { Args: { token_input: string }; Returns: string }
       is_admin_user: { Args: never; Returns: boolean }
+      is_own_client: { Args: { _client_id: string }; Returns: boolean }
       is_staff: { Args: never; Returns: boolean }
       is_username_available: {
         Args: { username_input: string }
@@ -3408,6 +3583,10 @@ export type Database = {
         Returns: Json
       }
       security_health_check: { Args: never; Returns: Json }
+      set_my_invoice_channel: {
+        Args: { _channel: string; _client_id: string; _sms_consent: boolean }
+        Returns: undefined
+      }
       tech_has_serviced_client: {
         Args: { p_client_id: string; p_tech_id: string }
         Returns: boolean

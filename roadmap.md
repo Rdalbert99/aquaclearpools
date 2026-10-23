@@ -21,4 +21,6 @@
 - [x] Voice entry on service visit screen (not published)
 
 - [x] QuickBooks sign-in/error-handling compliance batch
+- [x] QuickBooks sandbox/live separation (preview backend)
+- [ ] QuickBooks live connection — waiting on: live keys added in Secrets + switch approval
 - [ ] QuickBooks sandbox end-to-end test — blocked: Intuit sandbox app keys not added

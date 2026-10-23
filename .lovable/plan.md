@@ -1,20 +1,25 @@
-# Read-only check: live QuickBooks keys saved (Oct 23, 12:22 UTC)
+# Why the LIVE QuickBooks page says "Intuit app keys missing"
 
-## What I could verify
-- **Secret names:** The secrets list I can see shows 13 names, and none of them are QuickBooks settings. That includes QBO_ENVIRONMENT and the sandbox keys, and the sandbox connection works, so this list clearly misses secrets added directly in Supabase. **The live keys are not confirmed, but they aren't shown missing either.**
-- **Sandbox connection:** There is one saved connection: "Sandbox Company US b3cd", realm 9341458549860760, environment sandbox, needs_reconnect false. Refresh access is valid until 2027-02-01. The newest error log is from 06:32 UTC, which is before the renewal at 11:34. No new errors since. The current access token expires at 12:34 UTC, and the next lookup renews it automatically.
-- **No live connection exists**, so nothing has signed in to live QuickBooks.
-- **Key selection code is in place:** production uses only QBO_PRODUCTION_CLIENT_ID/SECRET and refuses to start without them. Sandbox never uses the live keys. Connections are filtered by environment, and the code only reads from QuickBooks. Tests cover all of this.
+## What the code shows
+- The page shows **LIVE**, which means the service read QBO_ENVIRONMENT=production. So the service does receive your Supabase secrets, and the problem isn't the deployment or injection in general.
+- In live mode, the service looks for exactly two names: `QBO_PRODUCTION_CLIENT_ID` and `QBO_PRODUCTION_CLIENT_SECRET`. If either one is missing or empty, the page says "keys missing". Sandbox or old keys are never used as a fallback, by design.
+- The check only tests whether both settings are present. It never contacts Intuit, so wrong key values can't cause this message. They would only fail later, at sign-in.
+- The service restarted at 12:27 UTC, so it is not holding on to old settings from before.
+- The Lovable secrets list doesn't show any QuickBooks names, not even the sandbox ones that clearly work. So that list leaves out secrets added in Supabase, and it can't confirm whether a name is missing.
+- The sandbox connection (realm 9341458549860760) is untouched and stays saved. It just isn't used while the service is in live mode.
 
-## Not verifiable from here
-- Whether QBO_ENVIRONMENT is still "sandbox". The setting can't be read, but the saved connection being sandbox and healthy is consistent with it.
-- Whether the live keys are correct, or whether Intuit has approved live access.
+## Likely causes, most likely first
+1. **The name doesn't match exactly.** For example a typo, a leading or trailing space, lowercase letters, or "PROD" instead of "PRODUCTION".
+2. **One of the two values is empty**, or only one of the two was saved.
+3. The keys were saved in a different Supabase project than tbqqigqkbogibwumjyol.
 
-## Safe next steps
-1. Open the QuickBooks page in the preview. It should still say SANDBOX and connected. Run invoice #1030 once to confirm.
-2. In Supabase → Edge Functions → Secrets, check that the names QBO_PRODUCTION_CLIENT_ID and QBO_PRODUCTION_CLIENT_SECRET appear exactly as written. Don't copy the values anywhere.
-3. **Switching needs your explicit approval.** When ready, you change QBO_ENVIRONMENT to production. The page should show LIVE and "not connected", and the sandbox connection should stay.
-4. Connect, sign in to the real Aqua Clear Pools company, and test invoice #350154860 (expect $5 paid, $0 balance). Read-only.
-5. Switch back to sandbox afterwards if you want, and confirm the sandbox still connects.
+## Safe checks for you (no code changes)
+1. Go to Supabase → project tbqqigqkbogibwumjyol → Edge Functions → Secrets. Compare both names character by character with the names above.
+2. If a name is wrong, delete it and add it again with the exact name and value. Don't paste the values in chat.
+3. Reload the QuickBooks page. It should say "Intuit app keys saved". Don't press Connect until you're ready for the live sign-in.
 
-No changes were made.
+## Optional small fix (needs your approval)
+Add a presence-only line to the status check: "Live client ID found: yes/no" and "Live client secret found: yes/no". It shows no values, lengths or hashes. This pinpoints which name is wrong. It changes no keys, connections or accounting records, and touches nothing in QuickBooks.
+
+## To go back to safe sandbox mode
+Set QBO_ENVIRONMENT to sandbox. The saved sandbox connection works again right away.

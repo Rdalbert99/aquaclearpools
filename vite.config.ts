@@ -10,6 +10,9 @@ export default defineConfig(({ mode }) => ({
     host: "::",
     port: 8080,
   },
+  define: {
+    __BUILD_ID__: JSON.stringify(new Date().toISOString()),
+  },
   plugins: [
     react(),
     mode === 'development' &&
@@ -24,7 +27,8 @@ export default defineConfig(({ mode }) => ({
       workbox: {
         // Precache only the app shell (code + styles). Large images are cached
         // on demand by the CacheFirst asset route below.
-        globPatterns: ["**/*.{js,css,html}", "manifest.json"],
+        // index.html is NOT precached: pages always load fresh online (NetworkFirst below).
+        globPatterns: ["**/*.{js,css}", "manifest.json"],
         maximumFileSizeToCacheInBytes: 12 * 1024 * 1024,
         cleanupOutdatedCaches: true,
         clientsClaim: true,

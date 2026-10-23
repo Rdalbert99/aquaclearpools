@@ -199,6 +199,9 @@ function fmtElapsed(ms: number) {
     : `${m}:${String(s).padStart(2, '0')}`;
 }
 
+import { saveVisitDraft, loadVisitDraft, clearVisitDraft } from '@/lib/visit-draft';
+import { setUnsavedWork } from '@/lib/unsaved-work';
+
 export default function FieldService() {
   const [sendingPoolNeeds, setSendingPoolNeeds] = useState(false);
   const { clientId } = useParams();
@@ -265,6 +268,52 @@ export default function FieldService() {
   const [issuePromptItem, setIssuePromptItem] = useState<{ id: string; label: string } | null>(null);
   const [issueSaving, setIssueSaving] = useState(false);
   const [voiceOpen, setVoiceOpen] = useState(false);
+
+  // ---- Local draft: survives reloads, crashes and app updates ----
+  const draftReadyRef = useRef(false);
+  const baselineRef = useRef<string | null>(null);
+  const draftPayload = useMemo(() => ({
+    serviceData, selectedTests, checklistExtra, equipment, equipmentIssue, repairNotes,
+    repairEstimate, algaecideDosed, reviewMessage,
+    startedAt: startedAt?.toISOString() ?? null, onMyWayAt: onMyWayAt?.toISOString() ?? null,
+  }), [serviceData, selectedTests, checklistExtra, equipment, equipmentIssue, repairNotes,
+    repairEstimate, algaecideDosed, reviewMessage, startedAt, onMyWayAt]);
+
+  useEffect(() => {
+    if (loading || !clientId || draftReadyRef.current) return;
+    draftReadyRef.current = true;
+    const d = loadVisitDraft<any>(clientId);
+    if (d) {
+      const x = d.data;
+      if (x.serviceData) setServiceData(x.serviceData);
+      if (x.selectedTests) setSelectedTests(x.selectedTests);
+      setChecklistExtra(x.checklistExtra ?? {});
+      setEquipment(x.equipment ?? {});
+      setEquipmentIssue(x.equipmentIssue ?? '');
+      setRepairNotes(x.repairNotes ?? '');
+      setRepairEstimate(x.repairEstimate ?? '');
+      setAlgaecideDosed(!!x.algaecideDosed);
+      setReviewMessage(x.reviewMessage ?? '');
+      if (x.startedAt) { setStartedAt(new Date(x.startedAt)); setTechnicianLocked(true); }
+      if (x.onMyWayAt) setOnMyWayAt(new Date(x.onMyWayAt));
+      if (x.visitId) visitIdRef.current = x.visitId;
+      toast({ title: 'Unsaved visit restored', description: 'Your readings from before were brought back.' });
+    } else {
+      baselineRef.current = JSON.stringify(draftPayload);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loading, clientId]);
+
+  const isDirty = draftReadyRef.current && !savedServiceId &&
+    (baselineRef.current === null || JSON.stringify(draftPayload) !== baselineRef.current);
+
+  useEffect(() => {
+    if (!clientId || !draftReadyRef.current || savedServiceId) return;
+    if (isDirty) saveVisitDraft(clientId, { ...draftPayload, visitId: visitIdRef.current });
+    setUnsavedWork('field-service', isDirty);
+  }, [clientId, draftPayload, isDirty, savedServiceId]);
+
+  useEffect(() => () => setUnsavedWork('field-service', false), []);
 
   const isSaltPool = !!client?.pool_type && /salt/i.test(client.pool_type);
   const saltCellDueDays = (() => {
@@ -735,6 +784,8 @@ export default function FieldService() {
         toast({ title: 'Service completed', description: 'Service saved successfully.' });
       }
 
+      if (clientId) clearVisitDraft(clientId);
+      setUnsavedWork('field-service', false);
       setReviewOpen(false);
       setFollowUpOpen(true);
     } catch (e: any) {

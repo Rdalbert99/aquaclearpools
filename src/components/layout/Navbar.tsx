@@ -17,6 +17,7 @@ import {
 import { Home, Calculator, Users, FileText, LogOut, User, Star, Calendar, CalendarDays, BarChart3, Mail, Menu, MessageSquare, MessageSquareReply, Radio, Building2, Receipt, RefreshCw, PlugZap } from 'lucide-react';
 import { NotificationBell } from '@/components/notifications/NotificationBell';
 import { BrandLogo } from "@/components/layout/BrandLogo";
+import { APP_VERSION } from "@/releaseNotes";
 import { RefreshButton, useRefreshApp } from "@/components/pwa/RefreshButton";
 
 export const Navbar = () => {
@@ -284,6 +285,9 @@ export const Navbar = () => {
                   <RefreshCw className={`mr-2 h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
                   <span>{refreshing ? 'Refreshing…' : 'Refresh app'}</span>
                 </DropdownMenuItem>
+                <DropdownMenuLabel className="text-[11px] font-normal text-muted-foreground">
+                  Version {APP_VERSION} · built {new Date(__BUILD_ID__).toLocaleString()}
+                </DropdownMenuLabel>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={handleLogout} className="text-red-600">
                   <LogOut className="mr-2 h-4 w-4" />

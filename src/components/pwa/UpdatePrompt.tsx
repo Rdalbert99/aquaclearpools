@@ -48,7 +48,7 @@ export const UpdatePrompt = () => {
         <div className="pointer-events-auto mx-auto flex max-w-md items-center gap-3 rounded-lg border bg-card p-3 shadow-lg">
           <RefreshCw className={`h-5 w-5 shrink-0 text-primary ${reloading ? 'animate-spin' : ''}`} />
           <p className="flex-1 text-sm text-foreground">
-            A new version of Aqua Clear is available.
+            New version ready; will update after you save.
           </p>
           <Button
             size="sm"

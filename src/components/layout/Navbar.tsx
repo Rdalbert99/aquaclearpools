@@ -14,7 +14,7 @@ import {
   DropdownMenuSeparator, 
   DropdownMenuTrigger 
 } from '@/components/ui/dropdown-menu';
-import { Home, Calculator, Users, FileText, LogOut, User, Star, Calendar, CalendarDays, BarChart3, Mail, Menu, MessageSquare, MessageSquareReply, Radio, Building2, Receipt, RefreshCw } from 'lucide-react';
+import { Home, Calculator, Users, FileText, LogOut, User, Star, Calendar, CalendarDays, BarChart3, Mail, Menu, MessageSquare, MessageSquareReply, Radio, Building2, Receipt, RefreshCw, PlugZap } from 'lucide-react';
 import { NotificationBell } from '@/components/notifications/NotificationBell';
 import { BrandLogo } from "@/components/layout/BrandLogo";
 import { RefreshButton, useRefreshApp } from "@/components/pwa/RefreshButton";
@@ -73,6 +73,7 @@ export const Navbar = () => {
         { label: 'Calculator', icon: Calculator, path: '/admin/calculator' },
         { label: 'Reports', icon: BarChart3, path: '/admin/reports' },
         { label: 'Billing', icon: Receipt, path: '/admin/billing' },
+        { label: 'QuickBooks', icon: PlugZap, path: '/admin/quickbooks' },
         { label: 'Mailjet Test', icon: Mail, path: '/admin/mailjet-test' },
         { label: 'Templates', icon: MessageSquare, path: '/admin/notification-templates' },
         { label: 'Broadcast', icon: MessageSquareReply, path: '/admin/broadcast' },

@@ -19,7 +19,8 @@ import {
   MessageSquare,
   Mail,
   Phone,
-  MapPin
+  MapPin,
+  PlugZap
 } from 'lucide-react';
 import { PoolImageUpload } from '@/components/admin/PoolImageUpload';
 import { TechInviteDialog } from '@/components/admin/TechInviteDialog';
@@ -253,6 +254,12 @@ export default function AdminDashboard() {
                 <Link to="/admin/broadcast">
                   <MessageSquare className="h-5 w-5 mb-1" />
                   <span className="text-sm">Broadcast SMS</span>
+                </Link>
+              </Button>
+              <Button asChild variant="outline" className="h-16 flex-col">
+                <Link to="/admin/quickbooks">
+                  <PlugZap className="h-5 w-5 mb-1" />
+                  <span className="text-sm">QuickBooks Connection</span>
                 </Link>
               </Button>
             </div>

@@ -13,7 +13,8 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from '@/hooks/use-toast';
-import { Plus, Trash2, Receipt, ShieldCheck } from 'lucide-react';
+import { Plus, Trash2, Receipt, ShieldCheck, PlugZap } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import {
   LINE_KINDS, autoAllocate, centsToInput, fromCents, lineAmountCents, monthRange, toCents,
   type LineKind,
@@ -125,7 +126,8 @@ export default function Billing() {
           <h1 className="text-2xl font-bold flex items-center gap-2"><Receipt className="h-6 w-6 text-primary" /> Billing</h1>
           <p className="text-sm text-muted-foreground">{business.name} · invoices, payments and ledger</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
+          <Button asChild variant="outline"><Link to="/admin/quickbooks"><PlugZap className="h-4 w-4 mr-1" /> Test QuickBooks Connection</Link></Button>
           <Button variant="outline" onClick={() => setPayOpen(true)}>Record cash / check</Button>
           <Button onClick={() => { setEditing(null); setEditorOpen(true); }}><Plus className="h-4 w-4 mr-1" /> New draft invoice</Button>
         </div>

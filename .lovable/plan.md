@@ -24,3 +24,20 @@ Because the ID got through Intuit's sign-in screen, the Client Secret is the mos
 - Show "Intuit rejected the app keys (invalid_client)" on the QuickBooks page instead of a generic failure.
 - Keep `?qbo=` in the address through the sign-in redirect so the result still shows after you sign in.
 No other changes to tokens, secrets or accounting.
+
+---
+
+# Karen Crago login: diagnosis (read-only)
+
+## Findings
+- Her customer record exists and is Active, but no login account is linked to it.
+- No Aqua Clear profile and no sign-in account exist for her, matched by name or by her invitation address.
+- One invitation was created on Feb 19, 2026. It expired on Feb 26, was never used, and the link was never opened.
+
+## Cause
+She never finished setting up an account, so she has no username or password to sign in with. This is not a role or permissions problem.
+
+## Minimal safe fix (needs your go-ahead, no code change)
+1. Check her email address on the customer record. The first invite may have bounced or gone to spam.
+2. From her customer page, send a new invitation. It is good for 7 days.
+3. Ask her to open the link, create her username and password, then sign in with that username.

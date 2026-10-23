@@ -52,7 +52,10 @@ const unregisterExisting = async () => {
   }
 };
 
+import { canAutoApplyUpdate, hasUnsavedWork, onUnsavedWorkChange } from "@/lib/unsaved-work";
+
 export type UpdateHandlers = {
+  /** A newer version is waiting but a form is unsaved, so it was not applied. */
   onUpdateAvailable: (applyUpdate: () => void) => void;
   onReady?: () => void;
 };
@@ -76,7 +79,19 @@ export async function registerServiceWorker(handlers: UpdateHandlers) {
   const updateSW = registerSW({
     immediate: true,
     onNeedRefresh() {
-      handlers.onUpdateAvailable(() => updateSW(true));
+      const apply = () => updateSW(true);
+      const tryAuto = () => {
+        if (canAutoApplyUpdate({ hasUnsaved: hasUnsavedWork(), visible: document.visibilityState === "visible" })) {
+          apply();
+          return true;
+        }
+        return false;
+      };
+      if (tryAuto()) return;
+      handlers.onUpdateAvailable(apply);
+      // Apply as soon as the form is saved, or when the app is reopened.
+      onUnsavedWorkChange(() => { tryAuto(); });
+      document.addEventListener("visibilitychange", () => { tryAuto(); });
     },
     onOfflineReady() {
       handlers.onReady?.();
@@ -95,6 +110,9 @@ export async function registerServiceWorker(handlers: UpdateHandlers) {
         if (document.visibilityState === "visible") checkForUpdate();
       });
       window.addEventListener("online", checkForUpdate);
+      // iOS Home Screen apps often resume without a visibilitychange event.
+      window.addEventListener("pageshow", checkForUpdate);
+      window.addEventListener("focus", checkForUpdate);
     },
   });
 

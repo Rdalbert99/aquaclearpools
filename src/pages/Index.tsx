@@ -9,7 +9,9 @@ import { ReviewCarousel } from '@/components/reviews/ReviewCarousel';
 import { PublicServiceRequestForm } from '@/components/service/PublicServiceRequestForm';
 import { BeforeAfterFade } from '@/components/ui/before-after-fade';
 import { BeforeAfterCarousel } from '@/components/ui/before-after-carousel';
-import heroImage from '@/assets/hero-pool-service.jpg';
+import hero828 from '@/assets/hero-pool-service-828.webp';
+import hero1280 from '@/assets/hero-pool-service-1280.webp';
+import hero1920 from '@/assets/hero-pool-service-1920.webp';
 import poolBefore1 from '@/assets/pool-before-1.jpg';
 import poolAfter1 from '@/assets/pool-after-1.jpg';
 import poolBefore2 from '@/assets/pool-before-2.jpg';
@@ -39,10 +41,19 @@ const Index = () => {
       <PublicNavbar onRequestService={() => setShowRequestForm(true)} />
       {/* Hero Section */}
       <section id="hero" className="relative h-screen flex items-center justify-center overflow-hidden">
-        <div 
-          className="absolute inset-0 bg-cover bg-center bg-no-repeat"
-          style={{ backgroundImage: `url(${heroImage})` }}
-        >
+        <div className="absolute inset-0">
+          <img
+            src={hero1280}
+            srcSet={`${hero828} 828w, ${hero1280} 1280w, ${hero1920} 1920w`}
+            sizes="100vw"
+            alt=""
+            aria-hidden="true"
+            width={1920}
+            height={1080}
+            fetchPriority="high"
+            decoding="async"
+            className="absolute inset-0 h-full w-full object-cover"
+          />
           <div className="absolute inset-0 bg-black/50" />
         </div>
         

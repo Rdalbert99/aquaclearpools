@@ -44,3 +44,15 @@ Add a checklist to `docs/qbo-sandbox-test.md` covering: connect, test lookup, fo
 - Changes cover: `supabase/functions/qbo-connect/index.ts`, new `supabase/functions/_shared/qbo-oauth.ts` (discovery, retries, error parsing, log cleaning), `QuickBooksConnection.tsx`, one change to the database (the `qbo_error_logs` table plus a needs-reconnect flag on `qbo_connections`), and tests in `src/lib/__tests__/qbo-oauth.test.ts`.
 - Record the rule in AGENTS.md: all Intuit calls go through the shared helper (retries, `intuit_tid`, clean logging).
 - Kept small to save credits: no recurring billing, matching or messaging work in this batch, and no publishing.
+
+---
+
+## Background: security questionnaire findings (read-only, Oct 23)
+- **Q2 Security team:** this is a fact about the organization and can't be checked from code. Answer it truthfully, for example a small business where the owner handles security.
+- **Q3 Client ID and secret on the server:** Yes by design. They are read only on the server from `QBO_CLIENT_ID` / `QBO_CLIENT_SECRET` (`qbo-connect/index.ts:17-18`). They are not hardcoded anywhere in the app's code, and no log line prints them. The browser only sees the names in a help message (`QuickBooksConnection.tsx:95`). **Not yet set up:** neither secret appears in the project's saved secrets. One caveat: when a token request fails, Intuit's reply text is passed back to the admin (line 38). It shouldn't contain the secret, but the build plan should clean it anyway.
+- **Q4 MFA on app sign-in:** **No.** The code has no MFA sign-up or check, and the only one-time-code component is a stock, unused UI component. The app relies on email/password sign-in with a 12-character minimum. Intuit's own MFA is separate.
+- **Q5 CAPTCHA:** **No.** No captcha, Turnstile or hCaptcha anywhere. Sign-in is protected by rate limits: password reset limits plus `check_rate_limit`.
+- **Q6 WebSockets:** **Yes, the app uses them, but not for QuickBooks.** Live database updates use WebSockets on three admin and staff screens: `ServiceRequestManagement.tsx:80`, `InboundMessages.tsx:161` and `NotificationBell.tsx:48`. QuickBooks access is plain secure web requests only.
+- **Q7 QuickBooks data separation:** only admins can reach it. Database check: `qbo_connections` and `qbo_oauth_states` each have a rule that denies everything to signed-out and signed-in users, and there are no table permissions for those groups. Only the server can read them. QuickBooks invoice data is fetched live for an active admin (`index.ts:121-127`) and not stored or shown on customer or technician screens. The app holds one Aqua Clear company connection at a time, so there are no other tenants. Unverified: whether every admin account belongs to an authorized Aqua Clear person (an organizational fact).
+
+Adds to the acceptance criteria above: answer MFA and CAPTCHA "No" unless they are added and verified. If Intuit asks about WebSockets, describe the live updates truthfully.

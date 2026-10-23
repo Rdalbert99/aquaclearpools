@@ -13,6 +13,7 @@ import { ShieldCheck, PlugZap, Copy } from 'lucide-react';
 
 interface Status {
   configured: boolean; environment: string; redirectUri: string; needsReconnect?: boolean;
+  keyCheck?: { productionClientIdDetected: boolean; productionClientSecretDetected: boolean };
   connection: { realm_id: string; company_name: string | null; refresh_expires_at: string | null; updated_at: string } | null;
 }
 interface TestResult {
@@ -133,6 +134,12 @@ export default function QuickBooksConnection() {
                 <Badge variant={status.connection && !needsReconnect ? 'default' : 'secondary'}>{!status.connection ? 'Not connected' : needsReconnect ? 'Needs reconnect' : 'Connected'}</Badge>
                 <Badge variant={status.environment === 'production' ? 'destructive' : 'outline'} className="text-sm font-bold">{status.environment === 'production' ? 'LIVE QuickBooks' : 'SANDBOX (test)'}</Badge>
               </div>
+              {status.keyCheck && (
+                <div className="text-sm space-y-0.5">
+                  <p>Production Client ID detected: <strong>{status.keyCheck.productionClientIdDetected ? 'Yes' : 'No'}</strong></p>
+                  <p>Production Client Secret detected: <strong>{status.keyCheck.productionClientSecretDetected ? 'Yes' : 'No'}</strong></p>
+                </div>
+              )}
               {status.connection && (
                 <p>Company: <strong>{status.connection.company_name ?? 'Unknown'}</strong> (ID {status.connection.realm_id})</p>
               )}

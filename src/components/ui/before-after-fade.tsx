@@ -7,6 +7,18 @@ interface BeforeAfterPair {
   title: string;
 }
 
+// Optimized WebP copies live in /lovable-uploads/opt/<id>-{480,960}.webp
+const optimized = (src: string) => {
+  const m = src.match(/^\/lovable-uploads\/([0-9a-f-]+)\.png$/);
+  if (!m) return { src };
+  const base = `/lovable-uploads/opt/${m[1]}`;
+  return {
+    src: `${base}-960.webp`,
+    srcSet: `${base}-480.webp 480w, ${base}-960.webp 960w`,
+    sizes: '(max-width: 1024px) 100vw, 1024px',
+  };
+};
+
 interface BeforeAfterFadeProps {
   pair: BeforeAfterPair;
   interval?: number;
@@ -33,7 +45,11 @@ export const BeforeAfterFade = ({ pair, interval = 3000 }: BeforeAfterFadeProps)
           {/* Before Image */}
           <div className={`absolute inset-0 transition-opacity duration-1000 ${showBefore ? 'opacity-100' : 'opacity-0'}`}>
             <img 
-              src={pair.before} 
+              {...optimized(pair.before)}
+              loading="lazy"
+              decoding="async"
+              width={960}
+              height={1280}
               alt="Pool before service" 
               className="w-full h-full object-cover"
             />
@@ -45,7 +61,11 @@ export const BeforeAfterFade = ({ pair, interval = 3000 }: BeforeAfterFadeProps)
           {/* After Image */}
           <div className={`absolute inset-0 transition-opacity duration-1000 ${showBefore ? 'opacity-0' : 'opacity-100'}`}>
             <img 
-              src={pair.after} 
+              {...optimized(pair.after)}
+              loading="lazy"
+              decoding="async"
+              width={960}
+              height={1280}
               alt="Pool after service" 
               className="w-full h-full object-cover"
             />

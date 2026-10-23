@@ -1,3 +1,4 @@
+import { lazy, Suspense } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -10,7 +11,7 @@ import { Navbar } from "./components/layout/Navbar";
 import { MobileBottomNav } from "./components/layout/MobileBottomNav";
 import { UpdatePrompt } from "./components/pwa/UpdatePrompt";
 import { InstallPrompt } from "./components/pwa/InstallPrompt";
-import WhatsNew from "./pages/WhatsNew";
+const WhatsNew = lazy(() => import("./pages/WhatsNew"));
 
 
 
@@ -25,64 +26,64 @@ import TechInvite from "./pages/auth/TechInvite";
 import ChangePassword from "./pages/auth/ChangePassword";
 import ForgotPassword from "./pages/auth/ForgotPassword";
 import ResetPassword from "./pages/auth/ResetPassword";
-import AdminDashboard from "./pages/admin/Dashboard";
-import TechDashboard from "./pages/tech/Dashboard";
-import FieldService from "./pages/tech/FieldService";
-import TechSchedule from "./pages/tech/Schedule";
-import MyClients from "./pages/tech/MyClients";
-import ManageClients from "./pages/admin/ManageClients";
-import ChemicalCalculator from "./pages/admin/ChemicalCalculator";
-import ChemicalCatalog from "./pages/admin/ChemicalCatalog";
-import Inventory from "./pages/admin/Inventory";
-import Billing from "./pages/admin/Billing";
-import InvoiceDelivery from "./pages/admin/InvoiceDelivery";
-import QuickBooksConnection from "./pages/admin/QuickBooksConnection";
-import InventoryBackfill from "./pages/admin/InventoryBackfill";
-import ServiceHistory from "./pages/admin/ServiceHistory";
-import Reports from "./pages/admin/Reports";
-import ClientView from "./pages/admin/ClientView";
-import ClientEdit from "./pages/admin/ClientEdit";
-import AdminClientServices from "./pages/admin/ClientServices";
-import NewClient from "./pages/admin/NewClient";
-import NewService from "./pages/admin/NewService";
-import ReviewManagement from "./pages/admin/ReviewManagement";
-import ServiceRequestManagement from "./pages/admin/ServiceRequestManagement";
-import { ApprovalCenter } from "./pages/admin/ApprovalCenter";
-import ServiceRequestDetails from "./pages/admin/ServiceRequestDetails";
-import PotentialCustomers from "./pages/admin/PotentialCustomers";
-import CreateUser from "./pages/admin/CreateUser";
+const AdminDashboard = lazy(() => import("./pages/admin/Dashboard"));
+const TechDashboard = lazy(() => import("./pages/tech/Dashboard"));
+const FieldService = lazy(() => import("./pages/tech/FieldService"));
+const TechSchedule = lazy(() => import("./pages/tech/Schedule"));
+const MyClients = lazy(() => import("./pages/tech/MyClients"));
+const ManageClients = lazy(() => import("./pages/admin/ManageClients"));
+const ChemicalCalculator = lazy(() => import("./pages/admin/ChemicalCalculator"));
+const ChemicalCatalog = lazy(() => import("./pages/admin/ChemicalCatalog"));
+const Inventory = lazy(() => import("./pages/admin/Inventory"));
+const Billing = lazy(() => import("./pages/admin/Billing"));
+const InvoiceDelivery = lazy(() => import("./pages/admin/InvoiceDelivery"));
+const QuickBooksConnection = lazy(() => import("./pages/admin/QuickBooksConnection"));
+const InventoryBackfill = lazy(() => import("./pages/admin/InventoryBackfill"));
+const ServiceHistory = lazy(() => import("./pages/admin/ServiceHistory"));
+const Reports = lazy(() => import("./pages/admin/Reports"));
+const ClientView = lazy(() => import("./pages/admin/ClientView"));
+const ClientEdit = lazy(() => import("./pages/admin/ClientEdit"));
+const AdminClientServices = lazy(() => import("./pages/admin/ClientServices"));
+const NewClient = lazy(() => import("./pages/admin/NewClient"));
+const NewService = lazy(() => import("./pages/admin/NewService"));
+const ReviewManagement = lazy(() => import("./pages/admin/ReviewManagement"));
+const ServiceRequestManagement = lazy(() => import("./pages/admin/ServiceRequestManagement"));
+const ApprovalCenter = lazy(() => import("./pages/admin/ApprovalCenter").then((m) => ({ default: m.ApprovalCenter })));
+const ServiceRequestDetails = lazy(() => import("./pages/admin/ServiceRequestDetails"));
+const PotentialCustomers = lazy(() => import("./pages/admin/PotentialCustomers"));
+const CreateUser = lazy(() => import("./pages/admin/CreateUser"));
 import PrivacyPolicy from "./pages/PrivacyPolicy";
 import TermsAndConditions from "./pages/TermsAndConditions";
 import Privacy from "./pages/Privacy";
 import Terms from "./pages/Terms";
-import ManageAdmins from "./pages/admin/ManageAdmins";
-import ManageTechs from "./pages/admin/ManageTechs";
+const ManageAdmins = lazy(() => import("./pages/admin/ManageAdmins"));
+const ManageTechs = lazy(() => import("./pages/admin/ManageTechs"));
 import ClientDashboard from "./pages/client/Dashboard";
 import ClientServices from "./pages/client/Services";
 import RequestService from "./pages/client/RequestService";
 import ClientProfile from "./pages/client/Profile";
-import Profile from "./pages/Profile";
+const Profile = lazy(() => import("./pages/Profile"));
 import Contact from "./pages/Contact";
 import Services from './pages/Services';
 import Commercial from './pages/Commercial';
-import CommercialPortal from './pages/commercial/Portal';
-import CommercialPortalLogin from './pages/commercial/PortalLogin';
-import CommercialAccounts from './pages/admin/CommercialAccounts';
-import CommercialExecutive from './pages/admin/CommercialExecutive';
+const CommercialPortal = lazy(() => import("./pages/commercial/Portal"));
+const CommercialPortalLogin = lazy(() => import("./pages/commercial/PortalLogin"));
+const CommercialAccounts = lazy(() => import("./pages/admin/CommercialAccounts"));
+const CommercialExecutive = lazy(() => import("./pages/admin/CommercialExecutive"));
 
 
 
-import OptinProof from "./pages/OptinProof";
-import MailjetTest from "./pages/admin/MailjetTest";
-import SMSTest from "./pages/admin/SMSTest";
-import InboundMessages from "./pages/admin/InboundMessages";
-import MessageLogs from "./pages/admin/MessageLogs";
-import TelnyxStatus from "./pages/admin/TelnyxStatus";
-import FollowUps from "./pages/FollowUps";
-import ServiceDashboard from "./pages/ServiceDashboard";
-import NotificationTemplates from "./pages/admin/NotificationTemplates";
-import BroadcastSMS from "./pages/admin/BroadcastSMS";
-import SMSForwardingSettings from "./pages/admin/SMSForwardingSettings";
+const OptinProof = lazy(() => import("./pages/OptinProof"));
+const MailjetTest = lazy(() => import("./pages/admin/MailjetTest"));
+const SMSTest = lazy(() => import("./pages/admin/SMSTest"));
+const InboundMessages = lazy(() => import("./pages/admin/InboundMessages"));
+const MessageLogs = lazy(() => import("./pages/admin/MessageLogs"));
+const TelnyxStatus = lazy(() => import("./pages/admin/TelnyxStatus"));
+const FollowUps = lazy(() => import("./pages/FollowUps"));
+const ServiceDashboard = lazy(() => import("./pages/ServiceDashboard"));
+const NotificationTemplates = lazy(() => import("./pages/admin/NotificationTemplates"));
+const BroadcastSMS = lazy(() => import("./pages/admin/BroadcastSMS"));
+const SMSForwardingSettings = lazy(() => import("./pages/admin/SMSForwardingSettings"));
 
 const queryClient = new QueryClient();
 
@@ -100,6 +101,7 @@ const AppRoutes = () => {
   return (
     <div className="min-h-screen bg-background">
       {isAuthenticated && <Navbar />}
+      <Suspense fallback={<div className="min-h-[50vh] flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div></div>}>
       <Routes>
         {/* Public routes - Landing page accessible to all users */}
         <Route path="/" element={<Index />} />
@@ -525,6 +527,7 @@ const AppRoutes = () => {
         {/* Fallback */}
         <Route path="*" element={<NotFound />} />
       </Routes>
+      </Suspense>
       <MobileBottomNav />
       <UpdatePrompt />
       <InstallPrompt />

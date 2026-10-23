@@ -50,7 +50,7 @@ const Index = () => {
             aria-hidden="true"
             width={1920}
             height={1080}
-            fetchPriority="high"
+            {...{ fetchpriority: "high" }}
             decoding="async"
             className="absolute inset-0 h-full w-full object-cover"
           />

@@ -164,3 +164,37 @@ export function friendlyMessage(e: QboError): string {
     default: return `QuickBooks refused the request: ${e.message}${ref}`;
   }
 }
+
+// ---- Environment isolation (sandbox vs production never share keys, rows or URLs)
+
+export const API_BASES: Record<QboEnv, string> = {
+  sandbox: 'https://sandbox-quickbooks.api.intuit.com',
+  production: 'https://quickbooks.api.intuit.com',
+};
+
+/** Missing or unknown QBO_ENVIRONMENT means sandbox: production must be chosen explicitly. */
+export function resolveEnv(raw: string | null | undefined): QboEnv {
+  return String(raw ?? '').trim().toLowerCase() === 'production' ? 'production' : 'sandbox';
+}
+
+/**
+ * Production uses ONLY QBO_PRODUCTION_* (fails closed if missing).
+ * Sandbox uses QBO_SANDBOX_*, falling back to legacy QBO_CLIENT_* during migration.
+ */
+export function resolveCredentials(env: QboEnv, get: (n: string) => string | undefined): { clientId: string; clientSecret: string } | null {
+  const pick = (id?: string, secret?: string) => (id && secret ? { clientId: id, clientSecret: secret } : null);
+  if (env === 'production') return pick(get('QBO_PRODUCTION_CLIENT_ID'), get('QBO_PRODUCTION_CLIENT_SECRET'));
+  return pick(get('QBO_SANDBOX_CLIENT_ID'), get('QBO_SANDBOX_CLIENT_SECRET')) ?? pick(get('QBO_CLIENT_ID'), get('QBO_CLIENT_SECRET'));
+}
+
+/** A saved connection may only be used by the environment it was created in. */
+export function assertSameEnv(conn: { environment?: string } | null | undefined, env: QboEnv): void {
+  if (!conn || conn.environment !== env) throw new QboError('not_connected', `No ${env} QuickBooks connection.`);
+}
+
+/** Only GET is allowed against the accounting API; sign-in, renewal and revoke use the OAuth endpoints. */
+export function accountingUrl(env: QboEnv, realmId: string, path: string): string {
+  if (!/^\d+$/.test(realmId)) throw new QboError('bad_request', 'Invalid company ID');
+  if (!path.startsWith('/') || path.includes('..')) throw new QboError('bad_request', 'Invalid path');
+  return `${API_BASES[env]}/v3/company/${realmId}${path}`;
+}

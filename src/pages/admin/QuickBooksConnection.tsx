@@ -125,16 +125,19 @@ export default function QuickBooksConnection() {
         <CardContent className="space-y-3 text-sm">
           {!status ? <p className="text-muted-foreground">Checking…</p> : (
             <>
+              <div role="status" className={`rounded-md border-2 p-3 font-semibold ${status.environment === 'production' ? 'border-destructive bg-destructive/10 text-destructive' : 'border-primary bg-primary/10 text-primary'}`}>
+                {status.environment === 'production' ? 'LIVE — real Aqua Clear Pools QuickBooks company (read-only)' : 'SANDBOX — Intuit test company, not real accounting data'}
+              </div>
               <div className="flex flex-wrap gap-2">
                 <Badge variant={status.configured ? 'default' : 'destructive'}>{status.configured ? 'Intuit app keys saved' : 'Intuit app keys missing'}</Badge>
                 <Badge variant={status.connection && !needsReconnect ? 'default' : 'secondary'}>{!status.connection ? 'Not connected' : needsReconnect ? 'Needs reconnect' : 'Connected'}</Badge>
-                <Badge variant="outline">{status.environment}</Badge>
+                <Badge variant={status.environment === 'production' ? 'destructive' : 'outline'} className="text-sm font-bold">{status.environment === 'production' ? 'LIVE QuickBooks' : 'SANDBOX (test)'}</Badge>
               </div>
               {status.connection && (
                 <p>Company: <strong>{status.connection.company_name ?? 'Unknown'}</strong> (ID {status.connection.realm_id})</p>
               )}
               {!status.configured && (
-                <p className="text-muted-foreground">An admin must create an Intuit developer app, save its keys as QBO_CLIENT_ID and QBO_CLIENT_SECRET, and add this redirect address in the Intuit app: <code className="break-all">{status.redirectUri}</code></p>
+                <p className="text-muted-foreground">An admin must create an Intuit developer app, save its keys as {status.environment === 'production' ? 'QBO_PRODUCTION_CLIENT_ID and QBO_PRODUCTION_CLIENT_SECRET' : 'QBO_SANDBOX_CLIENT_ID and QBO_SANDBOX_CLIENT_SECRET'}, and add this redirect address in the Intuit app: <code className="break-all">{status.redirectUri}</code></p>
               )}
               <div className="flex flex-wrap gap-2">
                 <Button onClick={connect} disabled={busy || !status.configured}>

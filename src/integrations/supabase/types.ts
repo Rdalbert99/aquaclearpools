@@ -658,6 +658,47 @@ export type Database = {
           },
         ]
       }
+      client_qbo_links: {
+        Row: {
+          client_id: string
+          created_at: string
+          environment: string
+          id: string
+          linked_by: string | null
+          qbo_customer_id: string
+          qbo_display_name: string | null
+          updated_at: string
+        }
+        Insert: {
+          client_id: string
+          created_at?: string
+          environment: string
+          id?: string
+          linked_by?: string | null
+          qbo_customer_id: string
+          qbo_display_name?: string | null
+          updated_at?: string
+        }
+        Update: {
+          client_id?: string
+          created_at?: string
+          environment?: string
+          id?: string
+          linked_by?: string | null
+          qbo_customer_id?: string
+          qbo_display_name?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_qbo_links_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       client_status_history: {
         Row: {
           changed_by: string | null

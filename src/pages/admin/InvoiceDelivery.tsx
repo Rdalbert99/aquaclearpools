@@ -11,8 +11,10 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '
 import { toast } from '@/hooks/use-toast';
 import { fromCents, monthRange } from '@/lib/billing';
 import {
-  ANNOUNCEMENT_SMS, chicagoToUtc, finalWeekMonday, idempotencyKey, proposeInvoice, resolveInvoiceChannels, type InvoiceChannel,
+  ANNOUNCEMENT_SMS, chicagoToUtc, finalWeekMonday, idempotencyKey, invoiceMessage, proposeInvoice, resolveInvoiceChannels, type InvoiceChannel,
 } from '@/lib/invoice-delivery';
+import { balanceDraftLines } from '@/lib/account-balance';
+import { AccountBalancePanel, accountSummary, todayIso, useOpenBalances } from '@/components/billing/AccountBalance';
 
 interface C { id: string; customer: string; service_rate: number | null; contact_phone: string | null; contact_email: string | null; notification_method: string | null }
 interface P { client_id: string; invoice_channel: InvoiceChannel | null; sms_consent_at: string | null; set_by: string }
@@ -42,6 +44,9 @@ export default function InvoiceDelivery() {
     setClients((c.data as C[]) ?? []); setPrefs(p.data ?? []); setOptOuts((o.data as any) ?? []); setItems(i.data ?? []);
   };
   useEffect(() => { load(); }, []);
+  const [linkFor, setLinkFor] = useState<C | null>(null);
+  const [linkId, setLinkId] = useState('');
+  const { balances, reload: reloadBalances } = useOpenBalances(clients.map((c) => c.id), 'admin');
 
   const [y, m] = period.split('-').map(Number);
   const sendDay = finalWeekMonday(y, m);
@@ -58,8 +63,18 @@ export default function InvoiceDelivery() {
     const key = idempotencyKey('invoice', c.id, period);
     const item = items.find((i) => i.idempotency_key === key);
     const excluded = prop.excluded ?? (delivery.channels.length === 0 ? 'No usable channel' : null);
-    return { c, pref, optedOut, prop, delivery, announce, key, item, excluded };
-  }), [clients, prefs, optOuts, items, period]);
+    const lookup = balances[c.id];
+    const summary = lookup && prop.amountCents != null ? accountSummary(prop.amountCents, lookup, todayIso()) : null;
+    return { c, pref, optedOut, prop, delivery, announce, key, item, excluded, summary };
+  }), [clients, prefs, optOuts, items, period, balances]);
+
+  const linkCustomer = async () => {
+    if (!linkFor) return;
+    const { data, error } = await supabase.functions.invoke('qbo-connect', { body: { action: 'link_customer', clientId: linkFor.id, qboCustomerId: linkId.trim() } });
+    if (error || data?.error) return toast({ title: 'Not linked', description: data?.error ?? 'QuickBooks could not confirm that customer ID.', variant: 'destructive' });
+    toast({ title: 'Linked', description: `${linkFor.customer} → QuickBooks “${data.displayName}”` });
+    setLinkFor(null); reloadBalances();
+  };
 
   const saveProposals = async () => {
     const payload = rows.map((r) => ({
@@ -124,7 +139,7 @@ export default function InvoiceDelivery() {
             {rows.map((r) => (
               <Card key={r.c.id}>
                 <CardContent className="flex flex-wrap items-center justify-between gap-2 p-3 text-sm">
-                  <div className="min-w-[12rem]">
+                  <div className="min-w-[12rem] flex-1 space-y-1">
                     <p className="font-medium">{r.c.customer}</p>
                     <p className="text-xs text-muted-foreground">
                       {r.prop.frequency === 'annual' ? `Annual from ${sendDay}` : range.label} · {r.prop.amountCents != null ? fromCents(r.prop.amountCents) : '—'}
@@ -134,6 +149,17 @@ export default function InvoiceDelivery() {
                       {chLabel(r.delivery.channels)}{r.delivery.defaulted && !r.prop.channelOverride ? ' (not chosen)' : ''}
                       {r.delivery.skipped.map((s) => ` · no ${s.channel === 'sms' ? 'text' : 'email'}: ${s.reason}`).join('')}
                     </p>
+                    {r.summary && <AccountBalancePanel summary={r.summary} newLabel="New service invoice" />}
+                    {r.summary && !r.excluded && r.delivery.channels.length > 0 && (
+                      <details className="text-xs">
+                        <summary className="cursor-pointer text-muted-foreground">Message draft (not sent)</summary>
+                        {r.delivery.channels.map((ch) => (
+                          <p key={ch} className="mt-1 whitespace-pre-wrap rounded bg-muted p-2">
+                            <span className="font-medium">{ch === 'sms' ? 'Text' : 'Email'}:</span> {invoiceMessage(r.c.customer, r.prop.amountCents!, range.label, ch, balanceDraftLines(r.summary!))}
+                          </p>
+                        ))}
+                      </details>
+                    )}
                   </div>
                   <div className="flex flex-wrap items-center gap-2">
                     {r.optedOut && <Badge variant="destructive">STOP</Badge>}
@@ -142,6 +168,7 @@ export default function InvoiceDelivery() {
                     {r.item && r.item.status !== 'approved' && !r.excluded && <Button size="sm" onClick={() => setStatus(r.item!.id, 'approved')}>Approve</Button>}
                     {r.item && r.item.status === 'approved' && <Button size="sm" variant="outline" onClick={() => setStatus(r.item!.id, 'excluded')}>Exclude</Button>}
                     <Button size="sm" variant="ghost" onClick={() => { setEdit(r.c); setEChoice(r.pref?.invoice_channel ?? 'both'); setEConsent(!!r.pref?.sms_consent_at); }}>Set channel</Button>
+                    <Button size="sm" variant="ghost" onClick={() => { setLinkFor(r.c); setLinkId(''); }}>Link QuickBooks</Button>
                   </div>
                 </CardContent>
               </Card>
@@ -174,6 +201,15 @@ export default function InvoiceDelivery() {
           )}
           <Input placeholder="Reason (required)" value={eReason} onChange={(e) => setEReason(e.target.value)} />
           <DialogFooter><Button onClick={saveOverride} disabled={eReason.trim().length < 3}>Save</Button></DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!linkFor} onOpenChange={(o) => !o && setLinkFor(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader><DialogTitle>Link {linkFor?.customer} to QuickBooks</DialogTitle></DialogHeader>
+          <p className="text-sm text-muted-foreground">Enter the exact QuickBooks customer ID (number). QuickBooks confirms the name before saving. Names alone are never matched.</p>
+          <Input inputMode="numeric" placeholder="e.g. 114" value={linkId} onChange={(e) => setLinkId(e.target.value.replace(/\D/g, ''))} />
+          <DialogFooter><Button onClick={linkCustomer} disabled={!linkId}>Verify and link</Button></DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

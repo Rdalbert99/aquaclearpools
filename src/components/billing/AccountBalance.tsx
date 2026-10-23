@@ -28,7 +28,7 @@ export function useOpenBalances(clientIds: string[], mode: 'admin' | 'customer',
 export function AccountBalancePanel({ summary, newLabel = 'This invoice' }: { summary: AccountSummary; newLabel?: string }) {
   return (
     <div className="space-y-1 rounded-md bg-muted/50 p-2 text-xs">
-      <div className="flex justify-between"><span>{newLabel}</span><span className="font-medium">{usd(summary.newInvoiceCents)}</span></div>
+      {summary.newInvoiceCents > 0 && <div className="flex justify-between"><span>{newLabel}</span><span className="font-medium">{usd(summary.newInvoiceCents)}</span></div>}
       {!summary.available ? (
         <p className="text-muted-foreground">Earlier balance unavailable ({summary.reason}). No account total shown.</p>
       ) : (

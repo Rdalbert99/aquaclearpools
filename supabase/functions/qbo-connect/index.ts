@@ -196,7 +196,12 @@ Deno.serve(async (req) => {
       const { data: conn } = await admin.from("qbo_connections")
         .select("realm_id, company_name, environment, refresh_expires_at, updated_at, needs_reconnect").eq("environment", ENV).order("updated_at", { ascending: false }).limit(1).maybeSingle();
       const expired = conn ? conn.needs_reconnect || refreshExpired(conn.refresh_expires_at) : false;
-      return json({ configured, environment: ENV, redirectUri: REDIRECT_URI, connection: conn ?? null, needsReconnect: expired });
+      // Presence-only booleans (admin-only path); never values, lengths or hashes.
+      const keyCheck = {
+        productionClientIdDetected: Boolean(Deno.env.get("QBO_PRODUCTION_CLIENT_ID")),
+        productionClientSecretDetected: Boolean(Deno.env.get("QBO_PRODUCTION_CLIENT_SECRET")),
+      };
+      return json({ configured, environment: ENV, redirectUri: REDIRECT_URI, connection: conn ?? null, needsReconnect: expired, keyCheck });
     }
 
     if (action === "logs") {

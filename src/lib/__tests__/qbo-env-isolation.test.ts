@@ -52,4 +52,11 @@ describe('qbo-connect stays read-only and environment-scoped', () => {
   it('callback refuses a company already saved under the other environment', () => {
     expect(src).toContain('environment_mismatch');
   });
+  it('key diagnostic is presence-only booleans on the admin-checked status action', () => {
+    const i = src.indexOf('productionClientIdDetected');
+    expect(i).toBeGreaterThan(src.indexOf('Admins only'));
+    expect(src).toContain('productionClientIdDetected: Boolean(Deno.env.get("QBO_PRODUCTION_CLIENT_ID"))');
+    expect(src).toContain('productionClientSecretDetected: Boolean(Deno.env.get("QBO_PRODUCTION_CLIENT_SECRET"))');
+    expect(src).not.toMatch(/QBO_PRODUCTION_CLIENT_(ID|SECRET)"\)\??\.(length|slice|substring)/);
+  });
 });

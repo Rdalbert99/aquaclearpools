@@ -115,8 +115,8 @@ export const ANNOUNCEMENT_SMS =
 
 export const ANNOUNCEMENT_EMAIL_SUBJECT = 'New: your Aqua Clear invoices by text and email';
 
-export function invoiceMessage(name: string, amountCents: number, periodLabel: string, channel: SendChannel) {
+export function invoiceMessage(name: string, amountCents: number, periodLabel: string, channel: SendChannel, balanceLines = '') {
   const amt = (amountCents / 100).toLocaleString('en-US', { style: 'currency', currency: 'USD' });
-  const base = `Aqua Clear Pools: Hi ${name}, your ${periodLabel} invoice is ${amt}. Sign in to view and pay: getaquaclear.com/auth/login. To change how you get invoices: Profile → Billing notifications.`;
+  const base = `Aqua Clear Pools: Hi ${name}, your ${periodLabel} invoice is ${amt}.${balanceLines} Sign in to view and pay: getaquaclear.com/auth/login. To change how you get invoices: Profile → Billing notifications.`;
   return channel === 'sms' ? `${base} Reply STOP to opt out.` : base;
 }

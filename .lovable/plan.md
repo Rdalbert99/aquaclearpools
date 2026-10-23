@@ -1,71 +1,46 @@
-# Intuit questionnaire: generative AI check (read-only findings, no changes)
+# QuickBooks build batch: compliant live access (read-only)
 
-## Recommended answer: YES
-The running app makes live calls to generative AI models. These are features of the app itself, not tools used only while building it.
+Goal: make QuickBooks sign-in, error handling and security meet Intuit's questionnaire so live access can be approved. The app stays read-only. Out of scope until separately approved: automatic invoicing, customer messages, and any writes to QuickBooks or the live database beyond the connection and error-log records.
 
-## Verified code paths
-1. Technician voice entry (staff only)
-   - Screen: `src/components/tech/VoiceEntryDialog.tsx:191` calls `voice-service-entry`.
-   - `supabase/functions/voice-service-entry/index.ts`: sends the recording to the Lovable AI Gateway (`ai.gateway.lovable.dev`) for transcription with `google/gemini-3.5-transcribe` (line 134). It then sends the transcript to `openai/gpt-6-astra` (line 163), which turns it into structured readings, chemicals and tasks. The technician reviews the results, and nothing is saved automatically. The request sets `store: false`.
-2. Receipt and invoice scanning (admin only)
-   - Screen: `src/components/admin/ReceiptImportDialog.tsx:159` calls `parse-receipt`.
-   - `supabase/functions/parse-receipt/index.ts:87-95`: sends a photo or PDF of a vendor receipt to `openai/gpt-6-astra` to pull out the vendor, invoice number and line items. An admin confirms the results before they are saved. These are supply-vendor receipts, not QuickBooks invoices.
+## Background (verified read-only, Oct 23)
+- Generative AI: the questionnaire answer is Yes. Voice entry (`voice-service-entry`: transcription with Gemini, then GPT turns it into form fields) and receipt scanning (`parse-receipt`, GPT) are staff-only. No QuickBooks data reaches AI, and nothing is used for training.
+- Sign-in today: the forged-request (state) check and admin-only access exist. Missing: disconnect/revoke, discovery document, invalid_grant handling, retries.
+- Errors today: errors go only to temporary server logs (`console.error`); `intuit_tid` is not saved; no tests for QuickBooks error replies; the customer app has a /contact page, but the QuickBooks page has no support link.
+- Nothing has been run against Intuit, because the app keys are not set.
 
-## Not AI
-- There is no customer-facing AI anywhere in the app.
-- QuickBooks (`supabase/functions/qbo-connect`, `_shared/qbo-summary.ts`): no AI calls of any kind. It is read-only and only looks up invoices for an admin.
-- No direct OpenAI, Anthropic or Gemini software kits or keys exist. All AI traffic goes through the Lovable AI Gateway, and it all happens on the server.
-- References to "gpt-eng" in `previewAuthStorage.ts` are just preview web addresses, not AI.
+## Priority 1: required for compliant live access
+1. **Disconnect.** Add a "Disconnect QuickBooks" button that calls Intuit's revoke address for the refresh token and then deletes the saved connection. If revoke fails, still delete locally and record the error.
+2. **Expired refresh token and invalid_grant.** On invalid_grant, or when the refresh-token expiry date has passed, mark the connection "needs reconnect", stop using it, and show a clear "Reconnect QuickBooks" prompt.
+3. **Discovery document.** Load the sign-in, token, revoke and user-info addresses from Intuit's discovery document (sandbox or production). Cache it for 24 hours and fall back to the last good copy.
+4. **Bounded retries.** Retry network errors, 429 and 5xx up to 2 times, with a growing wait plus random jitter and respecting Retry-After. Never retry 400, 401 (except one token refresh, then one retry), 403 or invalid_grant.
+5. **Save `intuit_tid`** from every Intuit reply and show it in the logs and error messages.
+6. **Lasting error log.** Create a new admin-only table, `qbo_error_logs`. Each entry stores the time, action, address path without query values, status, Intuit's error code and message (shortened), `intuit_tid`, and the user who triggered it. It never stores tokens, secrets, authorization codes or customer personal details. Show it on the admin page with a copy button, and delete entries after 180 days.
+7. **Malformed responses.** Read replies safely; handle replies that aren't JSON and Intuit's `Fault` error format; show friendly messages and log the details.
+8. **Support link** on the QuickBooks admin page, pointing to the /contact page with the phone number and email.
 
-## QuickBooks data and AI training
-- No QuickBooks data goes to any AI model, and the code contains no AI training or fine-tuning.
-- Suggested answer: QuickBooks data is not used for AI training.
-- Not verified: the AI providers' own data-retention terms. The code cannot prove these, so check the Lovable AI Gateway and provider policies if Intuit asks.
+## Priority 2: tests (automated, deterministic)
+Pull the sign-in and error handling into separate helper code so tests can drive it with fake replies:
+- Error replies 400, 401, 403, 429 (with and without Retry-After), 500 and 503: correct message, retry count, and an error-log entry that includes `intuit_tid`.
+- Malformed replies: non-JSON body, empty body, `Fault` body, and missing QueryResponse.
+- Token handling: access token about to expire leads to one refresh; invalid_grant leads to "needs reconnect" with no retry; expired refresh token leads to "needs reconnect".
+- State check: missing, unknown, expired or reused state is rejected, and the return address only allows approved sites.
+- Clean logs: neither the log helper nor its output ever contains token or secret values.
+- Disconnect: revoke is called and the saved connection is deleted; if revoke fails, the connection is still deleted and the error is logged.
+- Discovery: addresses are read correctly; if the fetch fails, the cached copy is used.
 
-## Suggested questionnaire wording
-"Yes. Two features for internal staff only use generative AI through a server-side gateway: (1) turning a technician's spoken notes into service-form fields, which the technician reviews before saving, and (2) pulling data from photos of vendor supply receipts, which an admin confirms before saving. No QuickBooks data is sent to AI models or used for AI training, and customers do not interact with AI."
+## Priority 3: sandbox end-to-end check (manual, written down)
+Add a checklist to `docs/qbo-sandbox-test.md` covering: connect, test lookup, forced refresh, disconnect (confirm on Intuit's side), reconnect, invalid_grant (revoke in Intuit, then look up), and declining consent. Record the date, who ran it, the result and the `intuit_tid` for each step. Do not claim these steps until they have been run. This needs the sandbox Intuit app keys and QBO_ENVIRONMENT=sandbox.
 
----
+## Security acceptance criteria (each needs proof before claiming)
+- The Intuit client ID and secret exist only as server secrets. A search of the app's code and the built site finds no secret, and no log line prints them.
+- Tokens are stored in tables only the server can reach. Confirm with a database query that admins, technicians, customers and signed-out visitors cannot read them.
+- Every QuickBooks action checks that the caller is an active admin. Tests confirm technicians, customers and signed-out callers are refused (401/403).
+- The forged-request (state) check is single-use with a 10-minute expiry and an approved list of return addresses (covered by the tests above).
+- Data separation: only one connected QuickBooks company, readable only by admins. The new error-log table blocks signed-out visitors and allows admins only. No QuickBooks data reaches customer or technician screens.
+- Sensitive data: an audit confirms no personal details or tokens in logs or error messages, and no QuickBooks data sent to AI.
+- Questionnaire claims about MFA, CAPTCHA or WebSockets are made only if verified. Current status is unverified or not used: the app does not use WebSockets for QuickBooks, and there is no CAPTCHA or required MFA in the code.
 
-# Intuit questionnaire: QuickBooks sign-in and security (read-only findings, no changes)
-
-Overall status: the sign-in code exists, but it has never been run against Intuit. The Intuit app keys (QBO_CLIENT_ID and QBO_CLIENT_SECRET) have not been added yet. The only automated tests cover reading invoice data and checking the return address (`src/lib/__tests__/qbo-summary.test.ts`), not sign-in itself.
-
-| Question | What the code does | Tested? |
-|---|---|---|
-| Q1 Sandbox connect, disconnect, reconnect | Connect exists (`start` action plus the callback). Reconnect reuses the same flow and replaces the saved connection (`index.ts:106-107`). Sandbox can be turned on with the setting QBO_ENVIRONMENT=sandbox (line 19). **There is no disconnect feature and no token revoke call.** | No. Nothing has been tested against sandbox or production. |
-| Q2 Token refresh timing | Refreshes on demand: when an invoice lookup runs and the access token has less than 2 minutes left (`freshConnection`, line 59). There is no scheduled background refresh. | No. |
-| Q3 Retry after a failed sign-in | None. A failed token request throws an error, which shows up as a 502 message (lines 38, 171-173). There is no retry or backoff. | No. |
-| Q4 Prompt to reconnect on sign-in errors | Partly. The admin sees the raw error text, and the button changes to "Reconnect QuickBooks" (`QuickBooksConnection.tsx:98`). There is no specific "your session expired, please reconnect" prompt. | No. |
-| Q5 Intuit discovery document | **No.** The sign-in and token addresses are fixed in the code (lines 21-22). | Not applicable. |
-| Q6a Expired access token | Refreshed before the lookup (line 59). | No. |
-| Q6b Expired refresh token or invalid_grant | Not handled specifically. The refresh request fails with an error that contains Intuit's text, and the saved connection stays in place. The expiry date is stored but never checked. | No. |
-| Q6c Forged-request protection (CSRF/state check) | Yes. Each sign-in gets a random one-time code that is stored, expires after 10 minutes, and is checked and marked used on return (lines 80-84). The return address is limited to an approved list. | Not run against Intuit. |
-| Q7 OAuth Playground or offline tools | **No.** Tokens come only from the live sign-in flow. The code never uses the Playground or offline tokens. | Not applicable. |
-
-Other verified facts: only signed-in active admins can use these actions (lines 121-127). Tokens stay on the server, in tables only the server can access. The connection only requests accounting access, and the app never writes anything to QuickBooks.
-
-Gaps to fix before answering "yes" to Intuit (suggested work, not built):
-1. Add a disconnect feature that calls Intuit's revoke address.
-2. Load the sign-in addresses from Intuit's discovery document.
-3. Detect invalid_grant and expired refresh tokens: clear the saved connection and show a clear "Reconnect QuickBooks" prompt.
-4. Retry short network failures with a limit; never retry invalid_grant.
-5. Run and record a full sandbox test of connect, refresh, disconnect and reconnect.
-
----
-
-# Intuit questionnaire: error handling (read-only findings, no changes)
-
-| Question | Evidence | Suggested answer |
-|---|---|---|
-| 1. Have syntax, validation and API errors been tested? | Tested, as documented in `qbo-summary.test.ts`: invoice-number validation rejects input that could tamper with the query; an empty QuickBooks response returns "not found"; the return address is checked. **Not tested:** error replies from QuickBooks, unreadable or malformed QuickBooks responses (`JSON.parse` at `index.ts:39,53` has no specific handling and falls through to a general 502), and token failures. Nothing has been run against Intuit, because the app keys aren't set. | **No.** Only partly tested. |
-| 2. Is Intuit's `intuit_tid` header saved? | Not in the code: a search finds no `intuit_tid`. `qboGet` and `tokenRequest` keep only the status and response text. | **No** |
-| 3. Are errors stored in lasting logs that can be shared with support? | Only through `console.error` (`index.ts:50,104,111,172`), which goes to the server's temporary log stream. No QuickBooks error is saved to a database table. The admin page shows the raw error text on screen (`QuickBooksConnection.tsx:76`) but does not keep it. | **No.** Only temporary server logs exist. |
-| 4. Can customers contact support from inside the app? | Yes, for the regular app: there is a `/contact` page (`App.tsx:111`) with phone 601-447-0399 and email info@getaquaclear.com (`Contact.tsx:41,56,117`). The customer dashboard links to it (`client/Dashboard.tsx:188,575`), the commercial portal login links to it (`PortalLogin.tsx:123`), and the top bar and footer show the phone number. The QuickBooks admin page has **no** support link. There is no support form; the service-request form is for pool service. | **Yes** for the customer app. Note that the QuickBooks page has no support link. |
-
-Gaps to close before answering more strongly (suggested, not built):
-1. Save the `intuit_tid` header from every QuickBooks reply.
-2. Add an admin-only table that permanently records QuickBooks errors: when, what action, status, Intuit's error code and message, and `intuit_tid`, with no tokens. Show these on the admin page with a copy button.
-3. Handle unreadable QuickBooks responses and Intuit's error format explicitly, and show friendly messages.
-4. Add tests with sample error replies: 400, 401, 403, 429, 500, and malformed responses.
-5. Add a support link on the QuickBooks page.
+## Technical notes
+- Changes cover: `supabase/functions/qbo-connect/index.ts`, new `supabase/functions/_shared/qbo-oauth.ts` (discovery, retries, error parsing, log cleaning), `QuickBooksConnection.tsx`, one change to the database (the `qbo_error_logs` table plus a needs-reconnect flag on `qbo_connections`), and tests in `src/lib/__tests__/qbo-oauth.test.ts`.
+- Record the rule in AGENTS.md: all Intuit calls go through the shared helper (retries, `intuit_tid`, clean logging).
+- Kept small to save credits: no recurring billing, matching or messaging work in this batch, and no publishing.

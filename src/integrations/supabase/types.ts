@@ -2122,6 +2122,75 @@ export type Database = {
           },
         ]
       }
+      qbo_connections: {
+        Row: {
+          access_expires_at: string
+          access_token: string
+          company_name: string | null
+          connected_by: string | null
+          created_at: string
+          environment: string
+          id: string
+          realm_id: string
+          refresh_expires_at: string | null
+          refresh_token: string
+          updated_at: string
+        }
+        Insert: {
+          access_expires_at: string
+          access_token: string
+          company_name?: string | null
+          connected_by?: string | null
+          created_at?: string
+          environment?: string
+          id?: string
+          realm_id: string
+          refresh_expires_at?: string | null
+          refresh_token: string
+          updated_at?: string
+        }
+        Update: {
+          access_expires_at?: string
+          access_token?: string
+          company_name?: string | null
+          connected_by?: string | null
+          created_at?: string
+          environment?: string
+          id?: string
+          realm_id?: string
+          refresh_expires_at?: string | null
+          refresh_token?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      qbo_oauth_states: {
+        Row: {
+          created_at: string
+          expires_at: string
+          return_url: string
+          state: string
+          used_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          expires_at: string
+          return_url: string
+          state: string
+          used_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          expires_at?: string
+          return_url?: string
+          state?: string
+          used_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       reviews: {
         Row: {
           approved_at: string | null

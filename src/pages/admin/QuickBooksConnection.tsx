@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -8,25 +9,28 @@ import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
 import { FunctionsHttpError } from '@supabase/supabase-js';
 import { fromCents } from '@/lib/billing';
-import { ShieldCheck, PlugZap } from 'lucide-react';
+import { ShieldCheck, PlugZap, Copy } from 'lucide-react';
 
 interface Status {
-  configured: boolean; environment: string; redirectUri: string;
+  configured: boolean; environment: string; redirectUri: string; needsReconnect?: boolean;
   connection: { realm_id: string; company_name: string | null; refresh_expires_at: string | null; updated_at: string } | null;
 }
 interface TestResult {
   companyName: string | null; realmId: string; environment: string;
   invoice: { found: boolean; docNumber: string; customerId?: string; customerName?: string; totalCents?: number; balanceCents?: number; paidCents?: number; status?: string; txnDate?: string | null; linkedPaymentIds?: string[] };
 }
+interface ErrorLog { id: string; created_at: string; action: string; endpoint: string | null; http_status: number | null; error_code: string | null; message: string; intuit_tid: string | null; attempts: number }
+
+class CallError extends Error { constructor(msg: string, public needsReconnect = false) { super(msg); } }
 
 async function call<T>(body: Record<string, unknown>): Promise<T> {
   const { data, error } = await supabase.functions.invoke('qbo-connect', { body });
   if (error) {
-    let msg = error.message;
+    let msg = error.message; let reconnect = false;
     if (error instanceof FunctionsHttpError) {
-      try { msg = (await error.context.json()).error ?? msg; } catch { /* keep */ }
+      try { const b = await error.context.json(); msg = b.error ?? msg; reconnect = !!b.needsReconnect; } catch { /* keep */ }
     }
-    throw new Error(msg);
+    throw new CallError(msg, reconnect);
   }
   return data as T;
 }
@@ -37,28 +41,54 @@ export default function QuickBooksConnection() {
   const [busy, setBusy] = useState(false);
   const [docNumber, setDocNumber] = useState('350154860');
   const [result, setResult] = useState<TestResult | null>(null);
+  const [logs, setLogs] = useState<ErrorLog[]>([]);
+  const [note, setNote] = useState<string | null>(null);
   const params = new URLSearchParams(window.location.search);
   const returned = params.get('qbo');
 
-  const load = () => call<Status>({ action: 'status' }).then(setStatus).catch((e) => setErr(e.message));
+  const load = () => {
+    call<Status>({ action: 'status' }).then(setStatus).catch((e) => setErr(e.message));
+    call<{ logs: ErrorLog[] }>({ action: 'logs' }).then((r) => setLogs(r.logs)).catch(() => {});
+  };
   useEffect(() => { load(); }, []);
+
+  const fail = (e: unknown) => {
+    setErr((e as Error).message);
+    if (e instanceof CallError && e.needsReconnect) setStatus((s) => (s ? { ...s, needsReconnect: true } : s));
+    load();
+  };
 
   const connect = async () => {
     setBusy(true); setErr(null);
     try {
       const { url } = await call<{ url: string }>({ action: 'start', returnUrl: `${window.location.origin}/admin/quickbooks` });
       window.location.href = url;
-    } catch (e) { setErr((e as Error).message); setBusy(false); }
+    } catch (e) { fail(e); setBusy(false); }
+  };
+
+  const disconnect = async () => {
+    if (!window.confirm('Disconnect QuickBooks? Aqua Clear will lose access until you reconnect.')) return;
+    setBusy(true); setErr(null); setResult(null);
+    try {
+      const r = await call<{ revoked: boolean }>({ action: 'disconnect' });
+      setNote(r.revoked ? 'Disconnected and access revoked at Intuit.' : 'Disconnected here. Intuit revoke did not confirm — see the error log; you can also remove the app in QuickBooks.');
+      load();
+    } catch (e) { fail(e); } finally { setBusy(false); }
   };
 
   const test = async () => {
     setBusy(true); setErr(null); setResult(null);
     try { setResult(await call<TestResult>({ action: 'test', docNumber })); }
-    catch (e) { setErr((e as Error).message); }
+    catch (e) { fail(e); }
     finally { setBusy(false); }
   };
 
+  const copyLog = (l: ErrorLog) => navigator.clipboard?.writeText(
+    `${l.created_at} ${l.action} ${l.endpoint ?? ''} HTTP ${l.http_status ?? '-'} ${l.error_code ?? ''} intuit_tid=${l.intuit_tid ?? '-'} attempts=${l.attempts} — ${l.message}`,
+  );
+
   const inv = result?.invoice;
+  const needsReconnect = !!status?.needsReconnect;
   return (
     <div className="p-4 md:p-6 space-y-6 max-w-3xl">
       <div className="flex items-center gap-2">
@@ -73,7 +103,9 @@ export default function QuickBooksConnection() {
 
       {returned === 'connected' && <Alert><AlertTitle>QuickBooks connected</AlertTitle><AlertDescription>Now tap "Test connection".</AlertDescription></Alert>}
       {returned === 'error' && <Alert variant="destructive"><AlertTitle>QuickBooks sign-in didn't finish</AlertTitle><AlertDescription>Reason: {params.get('reason')}. Try Connect QuickBooks again.</AlertDescription></Alert>}
+      {needsReconnect && <Alert variant="destructive"><AlertTitle>Reconnect needed</AlertTitle><AlertDescription>QuickBooks access expired or was revoked. Tap "Reconnect QuickBooks".</AlertDescription></Alert>}
       {err && <Alert variant="destructive"><AlertTitle>Problem</AlertTitle><AlertDescription className="break-words">{err}</AlertDescription></Alert>}
+      {note && <Alert><AlertDescription>{note}</AlertDescription></Alert>}
 
       <Card>
         <CardHeader>
@@ -85,7 +117,7 @@ export default function QuickBooksConnection() {
             <>
               <div className="flex flex-wrap gap-2">
                 <Badge variant={status.configured ? 'default' : 'destructive'}>{status.configured ? 'Intuit app keys saved' : 'Intuit app keys missing'}</Badge>
-                <Badge variant={status.connection ? 'default' : 'secondary'}>{status.connection ? 'Connected' : 'Not connected'}</Badge>
+                <Badge variant={status.connection && !needsReconnect ? 'default' : 'secondary'}>{!status.connection ? 'Not connected' : needsReconnect ? 'Needs reconnect' : 'Connected'}</Badge>
                 <Badge variant="outline">{status.environment}</Badge>
               </div>
               {status.connection && (
@@ -94,9 +126,12 @@ export default function QuickBooksConnection() {
               {!status.configured && (
                 <p className="text-muted-foreground">An admin must create an Intuit developer app, save its keys as QBO_CLIENT_ID and QBO_CLIENT_SECRET, and add this redirect address in the Intuit app: <code className="break-all">{status.redirectUri}</code></p>
               )}
-              <Button onClick={connect} disabled={busy || !status.configured}>
-                {status.connection ? 'Reconnect QuickBooks' : 'Connect QuickBooks'}
-              </Button>
+              <div className="flex flex-wrap gap-2">
+                <Button onClick={connect} disabled={busy || !status.configured}>
+                  {status.connection ? 'Reconnect QuickBooks' : 'Connect QuickBooks'}
+                </Button>
+                {status.connection && <Button variant="outline" onClick={disconnect} disabled={busy}>Disconnect QuickBooks</Button>}
+              </div>
             </>
           )}
         </CardContent>
@@ -112,7 +147,7 @@ export default function QuickBooksConnection() {
             <Label htmlFor="doc">Invoice number</Label>
             <Input id="doc" inputMode="numeric" value={docNumber} onChange={(e) => setDocNumber(e.target.value)} className="max-w-xs" />
           </div>
-          <Button onClick={test} disabled={busy || !status?.connection}>{busy ? 'Checking…' : 'Test connection'}</Button>
+          <Button onClick={test} disabled={busy || !status?.connection || needsReconnect}>{busy ? 'Checking…' : 'Test connection'}</Button>
           {result && (
             <div className="rounded-md border p-3 text-sm space-y-1">
               <p>Company: <strong>{result.companyName ?? 'Unknown'}</strong></p>
@@ -128,6 +163,29 @@ export default function QuickBooksConnection() {
           )}
         </CardContent>
       </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>3. Error log</CardTitle>
+          <CardDescription>Last 25 QuickBooks problems. No passwords, tokens or customer details are stored. Copy an entry to share with support or Intuit.</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-2 text-sm">
+          {logs.length === 0 ? <p className="text-muted-foreground">No errors recorded.</p> : logs.map((l) => (
+            <div key={l.id} className="rounded-md border p-2 flex items-start justify-between gap-2">
+              <div className="min-w-0 break-words">
+                <p className="font-medium">{new Date(l.created_at).toLocaleString()} · {l.action} · HTTP {l.http_status ?? '—'} · {l.error_code}</p>
+                <p className="text-muted-foreground">{l.message}</p>
+                {l.intuit_tid && <p className="text-xs">Intuit ref: <code>{l.intuit_tid}</code></p>}
+              </div>
+              <Button size="icon" variant="ghost" aria-label="Copy error entry" onClick={() => copyLog(l)}><Copy className="h-4 w-4" /></Button>
+            </div>
+          ))}
+        </CardContent>
+      </Card>
+
+      <p className="text-sm text-muted-foreground">
+        Need help? <Link to="/contact" className="text-primary underline-offset-2 hover:underline">Contact Aqua Clear support</Link> · 601-447-0399 · info@getaquaclear.com
+      </p>
     </div>
   );
 }

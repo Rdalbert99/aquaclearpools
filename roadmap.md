@@ -19,3 +19,6 @@
 - Service Dashboard at /service-dashboard (admin + tech): month calendar, day detail, next-14-days, per-tech workload; nav links added
 - Typecheck clean; site published — getaquaclear.com live with Aqua Clear title/OG/social image (verified by re-fetch)
 - [x] Voice entry on service visit screen (not published)
+
+- [x] QuickBooks sign-in/error-handling compliance batch
+- [ ] QuickBooks sandbox end-to-end test — blocked: Intuit sandbox app keys not added

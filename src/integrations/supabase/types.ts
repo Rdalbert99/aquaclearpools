@@ -2131,6 +2131,7 @@ export type Database = {
           created_at: string
           environment: string
           id: string
+          needs_reconnect: boolean
           realm_id: string
           refresh_expires_at: string | null
           refresh_token: string
@@ -2144,6 +2145,7 @@ export type Database = {
           created_at?: string
           environment?: string
           id?: string
+          needs_reconnect?: boolean
           realm_id: string
           refresh_expires_at?: string | null
           refresh_token: string
@@ -2157,10 +2159,50 @@ export type Database = {
           created_at?: string
           environment?: string
           id?: string
+          needs_reconnect?: boolean
           realm_id?: string
           refresh_expires_at?: string | null
           refresh_token?: string
           updated_at?: string
+        }
+        Relationships: []
+      }
+      qbo_error_logs: {
+        Row: {
+          action: string
+          attempts: number
+          created_at: string
+          endpoint: string | null
+          error_code: string | null
+          http_status: number | null
+          id: string
+          intuit_tid: string | null
+          message: string
+          user_id: string | null
+        }
+        Insert: {
+          action: string
+          attempts?: number
+          created_at?: string
+          endpoint?: string | null
+          error_code?: string | null
+          http_status?: number | null
+          id?: string
+          intuit_tid?: string | null
+          message: string
+          user_id?: string | null
+        }
+        Update: {
+          action?: string
+          attempts?: number
+          created_at?: string
+          endpoint?: string | null
+          error_code?: string | null
+          http_status?: number | null
+          id?: string
+          intuit_tid?: string | null
+          message?: string
+          user_id?: string | null
         }
         Relationships: []
       }

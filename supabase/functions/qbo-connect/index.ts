@@ -241,6 +241,21 @@ Deno.serve(async (req) => {
       });
     }
 
+    if (action === "list_sandbox") {
+      // Read-only, sandbox only, max 10 rows, only non-sensitive summary fields.
+      if (ENV !== "sandbox") return json({ error: "Only available in sandbox mode." }, 400);
+      if (!configured) return json({ error: "QuickBooks app keys are not set up yet." }, 400);
+      const conn = await connection();
+      const q = encodeURIComponent("select Id, DocNumber, TotalAmt, Balance, TxnDate from Invoice ORDERBY MetaData.CreateTime DESC MAXRESULTS 10");
+      const r = await qboGet(conn, `/query?query=${q}&minorversion=75`);
+      const rows = Array.isArray(r.data?.QueryResponse?.Invoice) ? r.data.QueryResponse.Invoice : [];
+      return json({
+        invoices: rows.filter((i: any) => typeof i?.DocNumber === "string").map((i: any) => ({
+          docNumber: i.DocNumber, total: Number(i.TotalAmt) || 0, balance: Number(i.Balance) || 0, txnDate: i.TxnDate ?? null,
+        })),
+      });
+    }
+
     return json({ error: "Unknown action" }, 400);
   } catch (e) {
     const err = e instanceof QboError ? e : new QboError("server", sanitize((e as Error)?.message ?? "Unknown error"));

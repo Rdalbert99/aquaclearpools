@@ -83,6 +83,16 @@ export default function QuickBooksConnection() {
     finally { setBusy(false); }
   };
 
+  const [sandboxList, setSandboxList] = useState<{ docNumber: string; total: number; balance: number; txnDate: string | null }[] | null>(null);
+  const findSandbox = async () => {
+    setBusy(true); setErr(null);
+    try {
+      const r = await call<{ invoices: { docNumber: string; total: number; balance: number; txnDate: string | null }[] }>({ action: 'list_sandbox' });
+      setSandboxList(r.invoices);
+      if (r.invoices[0]) setDocNumber(r.invoices[0].docNumber);
+    } catch (e) { fail(e); } finally { setBusy(false); }
+  };
+
   const copyLog = (l: ErrorLog) => navigator.clipboard?.writeText(
     `${l.created_at} ${l.action} ${l.endpoint ?? ''} HTTP ${l.http_status ?? '-'} ${l.error_code ?? ''} intuit_tid=${l.intuit_tid ?? '-'} attempts=${l.attempts} — ${l.message}`,
   );
@@ -147,7 +157,24 @@ export default function QuickBooksConnection() {
             <Label htmlFor="doc">Invoice number</Label>
             <Input id="doc" inputMode="numeric" value={docNumber} onChange={(e) => setDocNumber(e.target.value)} className="max-w-xs" />
           </div>
-          <Button onClick={test} disabled={busy || !status?.connection || needsReconnect}>{busy ? 'Checking…' : 'Test connection'}</Button>
+          <div className="flex flex-wrap gap-2">
+            <Button onClick={test} disabled={busy || !status?.connection || needsReconnect}>{busy ? 'Checking…' : 'Test connection'}</Button>
+            {status?.environment === 'sandbox' && (
+              <Button variant="outline" onClick={findSandbox} disabled={busy || !status?.connection || needsReconnect}>Find sandbox test invoice</Button>
+            )}
+          </div>
+          {sandboxList && (
+            sandboxList.length === 0 ? <p className="text-sm text-muted-foreground">No invoices found in this sandbox company.</p> : (
+              <div className="space-y-1 text-sm">
+                <p className="text-muted-foreground">Tap one to fill in the number, then tap Test connection.</p>
+                {sandboxList.map((i) => (
+                  <Button key={i.docNumber} variant="ghost" size="sm" className="w-full justify-between" onClick={() => setDocNumber(i.docNumber)}>
+                    <span>#{i.docNumber} · {i.txnDate}</span><span>${i.total.toFixed(2)} · bal ${i.balance.toFixed(2)}</span>
+                  </Button>
+                ))}
+              </div>
+            )
+          )}
           {result && (
             <div className="rounded-md border p-3 text-sm space-y-1">
               <p>Company: <strong>{result.companyName ?? 'Unknown'}</strong></p>

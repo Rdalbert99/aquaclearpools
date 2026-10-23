@@ -33,3 +33,5 @@
 - [x] Outstanding balances: read-only QuickBooks open invoices by linked customer ID, shown separately from the new invoice + account total in admin review, portal and message drafts (preview only)
 - [ ] Link each customer to their QuickBooks customer ID (Invoice Delivery → Link QuickBooks) — waiting on: working live QuickBooks connection (last live attempt rejected the keys)
 - [x] App auto-update on iPhone: fresh pages online, safe update when nothing unsaved, visit drafts, version label (preview only, not published)
+- [x] Existing-customer recognition on Create Account (verified email → links one matching customer; ambiguous → admin review) — preview only
+- [ ] Customer signup confirmation emails — BLOCKED: Supabase Auth SMTP login rejected (535); fix SMTP credentials in Supabase dashboard

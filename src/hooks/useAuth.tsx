@@ -96,7 +96,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     sessionStorage.setItem(key, '1');
     supabase.functions.invoke('link-existing-customer', { body: {} })
       .then(({ data }) => {
-        if (data?.status === 'linked') window.dispatchEvent(new Event('customer-linked'));
+        if (data?.status === 'linked') window.location.reload();
       })
       .catch(() => sessionStorage.removeItem(key));
   };

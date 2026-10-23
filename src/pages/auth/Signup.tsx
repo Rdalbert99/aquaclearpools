@@ -13,6 +13,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { validatePasswordComplexity } from '@/lib/security';
 import { BrandLogo } from "@/components/layout/BrandLogo";
+import { supabase } from '@/integrations/supabase/client';
 
 export default function Signup() {
   const [formData, setFormData] = useState({
@@ -35,6 +36,23 @@ export default function Signup() {
   const COOLDOWN_KEY = 'signup_cooldown_until';
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [cooldownRemaining, setCooldownRemaining] = useState<number>(0);
+  const [sentTo, setSentTo] = useState<string | null>(null);
+  const [resending, setResending] = useState(false);
+
+  const resendConfirmation = async () => {
+    if (!sentTo) return;
+    setResending(true);
+    const { error } = await supabase.auth.resend({
+      type: 'signup',
+      email: sentTo,
+      options: { emailRedirectTo: `${window.location.origin}/` },
+    });
+    setResending(false);
+    // Same message either way so this can't reveal whether an account exists.
+    toast({
+      title: error && /rate|too many/i.test(error.message) ? 'Please wait a minute' : 'If an account is waiting for confirmation, a new email is on its way.',
+    });
+  };
 
   useEffect(() => {
     const untilStr = localStorage.getItem(COOLDOWN_KEY);
@@ -117,6 +135,9 @@ export default function Signup() {
         const waitSeconds = 60;
         friendly = `Too many signup attempts. Please wait ${waitSeconds} seconds and try again. If you already created an account, check your email for the verification link or try signing in.`;
         startCooldown(waitSeconds * 1000);
+      } else if (/sending confirmation email/i.test(friendly)) {
+        friendly = "Your account may have been started, but we couldn't send the confirmation email right now. Please don't sign up again — try \"Resend confirmation email\" below in a few minutes, or contact Aqua Clear Pools.";
+        setSentTo(formData.email.trim());
       }
       setErrorMessage(friendly);
       toast({
@@ -126,9 +147,10 @@ export default function Signup() {
       });
     } else {
       setErrorMessage(null);
+      setSentTo(formData.email.trim());
       toast({
-        title: "Account created!",
-        description: "Your account has been created successfully.",
+        title: "Check your email",
+        description: "Confirm your email to finish. If you're already an Aqua Clear customer, your pool account connects automatically after you confirm.",
       });
     }
 

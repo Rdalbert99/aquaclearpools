@@ -10,6 +10,7 @@
 - [ ] HCC portal users: link Hattiesburg Country Club management via Admin → Commercial → Portal Users (needs their names/emails / existing Aqua Clear logins); HCC has no service visits yet, so their dashboard will populate after the first logged service
 
 ## Done
+- Website speed pass (preview only, not published): compressed photos/logo/banner, staff pages load on demand, quieter install tip, branded Page not found, reviews month/year. Mobile Lighthouse 88 on test build.
 - Chemistry Lab: controlled test-kit rack in technician visits, admin customer details, customer portal and calculator. Exact numeric input, shared pool targets, expanded advice, read-only history; 49 tests pass and isolated desktop/mobile browser checks pass. Authenticated end-to-end and real iPhone/PWA checks unavailable; no publish or messages.
 - Refresh app button (top bar, account menu, mobile menu, Settings): checks for a newly published version and swaps to it; falls back to a plain reload where no service worker runs. APP_VERSION bumped to 1.1.0 + release notes entry. Typecheck clean, 16 tests pass, build OK, preview loads clean; on-site click-through not verified (external Supabase, no sign-in available to me)
 - Customer Broadcast SMS (/admin/broadcast): built, not yet used for a real send; awaiting admin test-send + publish

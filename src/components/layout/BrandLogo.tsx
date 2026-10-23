@@ -10,8 +10,8 @@ interface BrandLogoProps {
   forceDark?: boolean;
 }
 
-const LIGHT_SRC = "/aqua-clear-logo.png";
-const DARK_SRC = "/aqua-clear-logo-dark.png";
+const LIGHT_SRC = "/aqua-clear-logo-256.webp";
+const DARK_SRC = "/aqua-clear-logo-dark-256.webp";
 
 /**
  * Renders the Aqua Clear Pools logo, automatically swapping to the
@@ -25,7 +25,7 @@ export const BrandLogo = ({
   forceDark = false,
 }: BrandLogoProps) => {
   if (forceDark) {
-    return <img src={DARK_SRC} alt={alt} className={className} style={style} loading={loading} />;
+    return <img src={DARK_SRC} alt={alt} decoding="async" className={className} style={style} loading={loading} />;
   }
 
   return (

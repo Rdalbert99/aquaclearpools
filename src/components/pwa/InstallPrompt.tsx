@@ -8,50 +8,48 @@ import {
   DialogDescription,
 } from '@/components/ui/dialog';
 import { Download, Share, X, RefreshCw, Smartphone, Trash2, Globe, Plus, HelpCircle } from 'lucide-react';
-import { APP_VERSION } from '@/releaseNotes';
+import { useLocation } from 'react-router-dom';
 
 const DISMISS_KEY = 'acp_install_dismissed';
-const REFRESH_VERSION_KEY = (v: string) => `acp_install_refresh_seen_v${v}`;
 
 const SITE_URL = 'https://getaquaclear.com';
 
+// Unobtrusive: never for installed apps, never on sign-in/sign-up screens, and
+// only after a returning visit or 30 seconds of browsing.
+const VISITS_KEY = 'acp_install_visits';
+const DELAY_MS = 30_000;
+const HIDDEN_PREFIXES = ['/auth', '/commercial/login', '/client-invite', '/tech-invite', '/invite'];
+
+export const shouldOfferInstall = (opts: { standalone: boolean; dismissed: boolean; pathname: string }) =>
+  !opts.standalone && !opts.dismissed && !HIDDEN_PREFIXES.some((p) => opts.pathname.startsWith(p));
+
 export const InstallPrompt = () => {
+  const { pathname } = useLocation();
   const [installEvent, setInstallEvent] = useState<BeforeInstallPromptEvent | null>(null);
-  const [showBanner, setShowBanner] = useState(false);
+  const [ready, setReady] = useState(false);
+  const [showBanner, setShowBanner] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<'install' | 'refresh'>('install');
   const [platform, setPlatform] = useState<'ios' | 'android' | 'other'>('other');
 
   useEffect(() => {
-    const standalone = isStandalone();
+    if (isStandalone() || getStorage(DISMISS_KEY) === '1') return;
     const ua = navigator.userAgent;
-    const detectedPlatform = /iphone|ipad|ipod/i.test(ua)
-      ? 'ios'
-      : /android/i.test(ua)
-      ? 'android'
-      : 'other';
-    setPlatform(detectedPlatform);
+    setPlatform(/iphone|ipad|ipod/i.test(ua) ? 'ios' : /android/i.test(ua) ? 'android' : 'other');
 
-    if (standalone) {
-      // Already installed: show refresh hint once per published version.
-      const seen = getStorage(REFRESH_VERSION_KEY(APP_VERSION)) === '1';
-      if (!seen) setShowBanner(true);
-      setActiveTab('refresh');
-      return;
-    }
-
-    // Not installed: show install hint if not previously dismissed.
-    if (getStorage(DISMISS_KEY) === '1') return;
-    setShowBanner(true);
-    setActiveTab('install');
+    const visits = Number(getStorage(VISITS_KEY) || '0') + 1;
+    setStorage(VISITS_KEY, String(visits));
+    const timer = window.setTimeout(() => setReady(true), visits >= 2 ? 5_000 : DELAY_MS);
 
     const onPrompt = (event: Event) => {
       event.preventDefault();
       setInstallEvent(event as BeforeInstallPromptEvent);
     };
     window.addEventListener('beforeinstallprompt', onPrompt);
-
-    return () => window.removeEventListener('beforeinstallprompt', onPrompt);
+    return () => {
+      window.clearTimeout(timer);
+      window.removeEventListener('beforeinstallprompt', onPrompt);
+    };
   }, []);
 
   const dismissBanner = () => {
@@ -63,10 +61,7 @@ export const InstallPrompt = () => {
     dismissBanner();
   };
 
-  const dismissRefresh = () => {
-    setStorage(REFRESH_VERSION_KEY(APP_VERSION), '1');
-    dismissBanner();
-  };
+  const dismissRefresh = neverAskAgain;
 
   const runInstall = async () => {
     if (!installEvent) return;
@@ -77,7 +72,8 @@ export const InstallPrompt = () => {
 
   const isInstalled = isStandalone();
 
-  if (!showBanner) return null;
+  if (!ready || !showBanner) return null;
+  if (!shouldOfferInstall({ standalone: isInstalled, dismissed: getStorage(DISMISS_KEY) === '1', pathname })) return null;
 
   return (
     <>

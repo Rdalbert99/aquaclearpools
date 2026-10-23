@@ -110,7 +110,7 @@ export const ReviewCarousel = () => {
                             {review.customer_name}
                           </cite>
                           <span className="text-xs text-muted-foreground">
-                            {new Date(review.created_at).toLocaleDateString()}
+                            {new Date(review.created_at).toLocaleDateString(undefined, { month: 'long', year: 'numeric' })}
                           </span>
                         </div>
                       </CardContent>

@@ -13,7 +13,8 @@ QuickBooks Online (QBO) stays the official accounting record. Aqua Clear decides
 ## Per-customer billing preferences
 Each customer gets one billing profile:
 - **Amount:** a flat rate in cents, or itemized (service plus chemicals from visits).
-- **Frequency:** weekly, biweekly, monthly, quarterly or one-time. Plus an anchor day, a start date and the next invoice date (calculated and shown).
+- **Frequency:** weekly, biweekly, monthly, quarterly, six months, annual or one-time. Plus an anchor day, a start date and the next invoice date (calculated and shown).
+- **Prepaid Service Discount:** a switch, off by default. It is only offered for six-month and annual billing. See the next section.
 - **Creation:** automatic (made on the schedule, then waits in the review queue) or manual (admin only).
 - **Delivery:** SMS (Telnyx), email (Aqua Clear or QBO's email), both, or manual/none.
 - **Reminders:** days before due, on the due date, and days overdue, each one optional.
@@ -21,6 +22,41 @@ Each customer gets one billing profile:
 - **Status from QBO (read only):** open balance, last payment, payment method type and invoice status.
 - **Consent:** SMS opt-in date and source. Opt-outs are always honored, and email opt-out is stored per customer.
 - **Paused / active switch:** every customer starts paused.
+
+## Prepaid Service Discount (six months / annual)
+- **Rule:** based on the customer's monthly service rate (M).
+  - Six months: regular subtotal 6 × M, discount 0.5 × M, total **5.5 × M**.
+  - Annual: regular subtotal 12 × M, discount 1 × M, total **11 × M**.
+  - Example at $200/month: six months is $1,200 − $100 = **$1,100**. Annual is $2,400 − $200 = **$2,200**.
+- **What the discount covers:** prepaid service only. It never reduces tax, extra services, repairs, chemicals or other fees. Tax is worked out on the amount after the discount, following QBO's tax setup (to confirm with your CPA).
+- **The invoice shows:**
+  - the regular service subtotal
+  - a separate "Prepaid Service Discount" line
+  - extra lines, if any
+  - tax
+  - the final total
+  - the service coverage start and end dates (for example Nov 1, 2026 – Apr 30, 2027)
+  - payment terms (due date, and that the discount is for paying in advance)
+- **No stacking:** only one discount per invoice. If another discount or credit is already on the invoice, the draft is blocked with "Discount conflict — review" until an admin picks one. The discount is applied once per coverage period, and the idempotency key includes that period.
+- **Not available for** weekly, biweekly, monthly, quarterly or one-time billing. The switch is hidden or disabled for those, and turning it on for them is rejected on the server.
+- **Rounding:** all amounts are in whole cents. The discount for six months is M × 0.5 rounded half-up to the cent, so $199.99 gives a $100.00 discount. Total = subtotal − discount, exactly.
+- **Changing between six months and annual:**
+  - A new frequency starts at the end of the current paid coverage. It never overlaps or leaves a gap.
+  - Changing the rate in the middle of a period doesn't change invoices already issued. The new rate applies from the next period.
+  - Turning the discount off applies from the next period too.
+  - Refunds or credits for a cancelled prepaid period are a manual admin decision in QBO. They are never calculated automatically.
+- **In QBO:** the discount goes in as a separate discount line (or a "Prepaid Discount" item, your choice), so the books show gross service and discount separately.
+- **Previews:** the matrix and bulk review show each prepaid customer's subtotal, discount, total and coverage dates before activation.
+- **Tests (fixed examples):**
+  - $200: six months $1,100, annual $2,200
+  - $199.99: six months $1,099.95, annual $2,199.89
+  - $0 rate: blocked
+  - Discount switch on with monthly billing: rejected
+  - Tax and extras are not discounted
+  - Two discounts on one invoice: blocked
+  - Coverage dates across a year end and a leap year (Feb 29)
+  - Six months to annual: no overlapping coverage
+  - Duplicate draft for the same period: blocked
 
 ## Admin overview matrix
 One page with a row per customer. Columns:

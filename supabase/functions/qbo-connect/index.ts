@@ -3,6 +3,7 @@
 // Never creates or changes anything in QuickBooks. All Intuit calls go through _shared/qbo-oauth.ts.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
 import { isAllowedReturnUrl, safeDocNumber, summarizeInvoice } from "../_shared/qbo-summary.ts";
+import { normalizeOpenInvoices, openInvoicesQuery, safeCustomerId } from "../_shared/qbo-balance.ts";
 import {
   DISCOVERY_URLS, FALLBACK_ENDPOINTS, OAuthEndpoints, QboError, accessNeedsRefresh, expectJson,
   friendlyMessage, needsReconnect, parseDiscovery, refreshExpired, requestWithRetry, safeJson, sanitize,
@@ -184,12 +185,72 @@ Deno.serve(async (req) => {
   const { data: u } = await userClient.auth.getUser();
   if (!u?.user) return json({ error: "Unauthorized" }, 401);
   const { data: caller } = await admin.from("users").select("role, status").eq("id", u.user.id).maybeSingle();
-  if (!caller || caller.role !== "admin" || caller.status !== "active") return json({ error: "Admins only" }, 403);
-
   let body: any = {};
   try { body = await req.json(); } catch { /* empty */ }
   const configured = Boolean(CLIENT_ID && CLIENT_SECRET);
   const action = String(body.action ?? "");
+  if (!caller || caller.status !== "active") return json({ error: "Unauthorized" }, 403);
+
+  // Read-only open balances for clients. Customers may only ask about their own client records.
+  const openBalances = async (clientIds: string[]) => {
+    const { data: links } = await admin.from("client_qbo_links").select("client_id, qbo_customer_id")
+      .eq("environment", ENV).in("client_id", clientIds);
+    const out: Record<string, { status: "ok"; invoices: unknown[] } | { status: "unavailable"; reason: string }> = {};
+    let conn: any = null;
+    for (const id of clientIds) {
+      const cust = safeCustomerId(links?.find((l: any) => l.client_id === id)?.qbo_customer_id);
+      if (!cust) { out[id] = { status: "unavailable", reason: "Not linked to a QuickBooks customer" }; continue; }
+      try {
+        if (!configured) throw new QboError("not_connected", "QuickBooks keys are not set up.");
+        conn = conn ?? await connection();
+        const r = await qboGet(conn, `/query?query=${encodeURIComponent(openInvoicesQuery(cust))}&include=invoiceLink&minorversion=75`);
+        conn = r.conn;
+        out[id] = { status: "ok", invoices: normalizeOpenInvoices(r.data, cust) };
+      } catch (e) {
+        const err = e instanceof QboError ? e : new QboError("server", sanitize((e as Error)?.message ?? "Unknown error"));
+        await logError("open_invoices", err, u.user.id);
+        out[id] = { status: "unavailable", reason: "QuickBooks balance could not be read" };
+      }
+    }
+    return out;
+  };
+  const ids = (v: unknown) => (Array.isArray(v) ? v : []).filter((x) => typeof x === "string" && /^[0-9a-f-]{36}$/i.test(x)).slice(0, 100) as string[];
+
+  if (action === "my_open_invoices") {
+    const want = ids(body.clientIds).slice(0, 10);
+    const mine: string[] = [];
+    for (const id of want) {
+      const { data: own } = await userClient.rpc("is_own_client", { _client_id: id });
+      if (own === true) mine.push(id);
+    }
+    return json({ environment: ENV, balances: await openBalances(mine) });
+  }
+
+  if (caller.role !== "admin") return json({ error: "Admins only" }, 403);
+
+  if (action === "open_invoices") return json({ environment: ENV, balances: await openBalances(ids(body.clientIds)) });
+
+  if (action === "link_customer") {
+    // Link by exact QuickBooks customer ID (verified to exist), never by name alone.
+    const [clientId] = ids([body.clientId]);
+    const cust = safeCustomerId(body.qboCustomerId);
+    if (!clientId || !cust) return json({ error: "Enter a numeric QuickBooks customer ID" }, 400);
+    try {
+      if (!configured) return json({ error: "QuickBooks app keys are not set up yet." }, 400);
+      const r = await qboGet(await connection(), `/customer/${cust}?minorversion=75`);
+      const name = r.data?.Customer?.DisplayName;
+      if (typeof name !== "string") return json({ error: "QuickBooks customer not found" }, 404);
+      const { error } = await admin.from("client_qbo_links").upsert(
+        { client_id: clientId, environment: ENV, qbo_customer_id: cust, qbo_display_name: name.slice(0, 120), linked_by: u.user.id },
+        { onConflict: "client_id,environment" });
+      if (error) return json({ error: error.code === "23505" ? "That QuickBooks customer is already linked to another client" : "Could not save link" }, 409);
+      return json({ linked: true, displayName: name, environment: ENV });
+    } catch (e) {
+      const err = e instanceof QboError ? e : new QboError("server", sanitize((e as Error)?.message ?? "Unknown error"));
+      await logError("link_customer", err, u.user.id);
+      return json({ error: friendlyMessage(err) }, 502);
+    }
+  }
 
   try {
     if (action === "status") {

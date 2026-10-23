@@ -8,6 +8,7 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
 import { toast } from '@/hooks/use-toast';
 import { emailUsable, phoneUsable, type InvoiceChannel } from '@/lib/invoice-delivery';
+import { AccountBalancePanel, accountSummary, todayIso, useOpenBalances } from '@/components/billing/AccountBalance';
 
 interface ClientLite { id: string; customer?: string | null; contact_phone?: string | null; contact_email?: string | null }
 interface Pref { client_id: string; invoice_channel: InvoiceChannel | null; sms_consent_at: string | null; set_by: string }
@@ -60,6 +61,7 @@ function Row({ client, pref, onSaved }: { client: ClientLite; pref?: Pref; onSav
 
 export function InvoicePreferencesCard({ clients }: { clients: ClientLite[] }) {
   const [prefs, setPrefs] = useState<Pref[]>([]);
+  const { balances } = useOpenBalances(clients.map((c) => c.id), 'customer');
   const load = async () => {
     if (!clients.length) return;
     const { data } = await (supabase.from as any)('client_billing_preferences').select('*').in('client_id', clients.map((c) => c.id));
@@ -74,7 +76,17 @@ export function InvoicePreferencesCard({ clients }: { clients: ClientLite[] }) {
         <CardDescription>How you get invoices. Your service visit notifications aren't affected.</CardDescription>
       </CardHeader>
       <CardContent className="space-y-3">
-        {clients.map((c) => <Row key={c.id + (prefs.find((p) => p.client_id === c.id)?.invoice_channel ?? '')} client={c} pref={prefs.find((p) => p.client_id === c.id)} onSaved={load} />)}
+        {clients.map((c) => (
+          <div key={c.id} className="space-y-2">
+            {balances[c.id] && (
+              <div>
+                <p className="mb-1 text-sm font-medium">Open invoices</p>
+                <AccountBalancePanel summary={accountSummary(0, balances[c.id], todayIso())} />
+              </div>
+            )}
+            <Row key={c.id + (prefs.find((p) => p.client_id === c.id)?.invoice_channel ?? '')} client={c} pref={prefs.find((p) => p.client_id === c.id)} onSaved={load} />
+          </div>
+        ))}
       </CardContent>
     </Card>
   );

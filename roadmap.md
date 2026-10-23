@@ -30,3 +30,5 @@
 - [x] Invoice Text/Email/Both preferences, admin overrides, audit, approval screen, announcement preview (sending off)
 - [ ] Monday announcement send — blocked: send function not built/enabled; needs user approval of preview + test send
 - [ ] Monday 12:00 PM CDT invoices — blocked: QuickBooks live keys rejected (invalid_client) and QBO writes not approved; Laken Ford Ramey rate pending
+- [x] Outstanding balances: read-only QuickBooks open invoices by linked customer ID, shown separately from the new invoice + account total in admin review, portal and message drafts (preview only)
+- [ ] Link each customer to their QuickBooks customer ID (Invoice Delivery → Link QuickBooks) — waiting on: working live QuickBooks connection (last live attempt rejected the keys)

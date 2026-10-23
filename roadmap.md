@@ -25,3 +25,8 @@
 - [ ] QuickBooks live connection — waiting on: live keys added in Secrets + switch approval
 - [ ] QuickBooks sandbox end-to-end test — blocked: Intuit sandbox app keys not added
 - [ ] Resend Karen Crago portal invitation — BLOCKED: no email on her customer record
+
+## Invoice delivery rollout (Mon Oct 26 2026)
+- [x] Invoice Text/Email/Both preferences, admin overrides, audit, approval screen, announcement preview (sending off)
+- [ ] Monday announcement send — blocked: send function not built/enabled; needs user approval of preview + test send
+- [ ] Monday 12:00 PM CDT invoices — blocked: QuickBooks live keys rejected (invalid_client) and QBO writes not approved; Laken Ford Ramey rate pending

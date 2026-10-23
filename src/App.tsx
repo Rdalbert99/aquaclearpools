@@ -35,6 +35,7 @@ import ChemicalCalculator from "./pages/admin/ChemicalCalculator";
 import ChemicalCatalog from "./pages/admin/ChemicalCatalog";
 import Inventory from "./pages/admin/Inventory";
 import Billing from "./pages/admin/Billing";
+import InvoiceDelivery from "./pages/admin/InvoiceDelivery";
 import QuickBooksConnection from "./pages/admin/QuickBooksConnection";
 import InventoryBackfill from "./pages/admin/InventoryBackfill";
 import ServiceHistory from "./pages/admin/ServiceHistory";
@@ -261,6 +262,14 @@ const AppRoutes = () => {
           element={
             <ProtectedRoute allowedRoles={['admin']}>
               <QuickBooksConnection />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/invoice-delivery"
+          element={
+            <ProtectedRoute allowedRoles={['admin']}>
+              <InvoiceDelivery />
             </ProtectedRoute>
           }
         />

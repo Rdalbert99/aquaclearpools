@@ -331,6 +331,14 @@ export default function Signup() {
             </Button>
           </form>
 
+          {sentTo && (
+            <div className="space-y-2 text-center text-sm text-muted-foreground">
+              <p>We sent a confirmation link to your email. Existing Aqua Clear customers are connected to their pool account automatically after confirming.</p>
+              <Button type="button" variant="outline" className="w-full" onClick={resendConfirmation} disabled={resending}>
+                {resending ? 'Sending…' : 'Resend confirmation email'}
+              </Button>
+            </div>
+          )}
           <div className="text-center text-sm text-muted-foreground">
             Already have an account?{' '}
             <Link to="/auth/login" className="text-primary hover:underline">

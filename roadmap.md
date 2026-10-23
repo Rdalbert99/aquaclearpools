@@ -20,5 +20,5 @@
 - Typecheck clean; site published — getaquaclear.com live with Aqua Clear title/OG/social image (verified by re-fetch)
 - [x] Voice entry on service visit screen (not published)
 
-- [ ] QuickBooks sign-in/error-handling compliance batch (disconnect, discovery, invalid_grant, retries, intuit_tid, error log, tests) — in progress
+- [x] QuickBooks sign-in/error-handling compliance batch
 - [ ] QuickBooks sandbox end-to-end test — blocked: Intuit sandbox app keys not added

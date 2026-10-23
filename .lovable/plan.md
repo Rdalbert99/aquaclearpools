@@ -51,3 +51,21 @@ Gaps to fix before answering "yes" to Intuit (suggested work, not built):
 3. Detect invalid_grant and expired refresh tokens: clear the saved connection and show a clear "Reconnect QuickBooks" prompt.
 4. Retry short network failures with a limit; never retry invalid_grant.
 5. Run and record a full sandbox test of connect, refresh, disconnect and reconnect.
+
+---
+
+# Intuit questionnaire: error handling (read-only findings, no changes)
+
+| Question | Evidence | Suggested answer |
+|---|---|---|
+| 1. Have syntax, validation and API errors been tested? | Tested, as documented in `qbo-summary.test.ts`: invoice-number validation rejects input that could tamper with the query; an empty QuickBooks response returns "not found"; the return address is checked. **Not tested:** error replies from QuickBooks, unreadable or malformed QuickBooks responses (`JSON.parse` at `index.ts:39,53` has no specific handling and falls through to a general 502), and token failures. Nothing has been run against Intuit, because the app keys aren't set. | **No.** Only partly tested. |
+| 2. Is Intuit's `intuit_tid` header saved? | Not in the code: a search finds no `intuit_tid`. `qboGet` and `tokenRequest` keep only the status and response text. | **No** |
+| 3. Are errors stored in lasting logs that can be shared with support? | Only through `console.error` (`index.ts:50,104,111,172`), which goes to the server's temporary log stream. No QuickBooks error is saved to a database table. The admin page shows the raw error text on screen (`QuickBooksConnection.tsx:76`) but does not keep it. | **No.** Only temporary server logs exist. |
+| 4. Can customers contact support from inside the app? | Yes, for the regular app: there is a `/contact` page (`App.tsx:111`) with phone 601-447-0399 and email info@getaquaclear.com (`Contact.tsx:41,56,117`). The customer dashboard links to it (`client/Dashboard.tsx:188,575`), the commercial portal login links to it (`PortalLogin.tsx:123`), and the top bar and footer show the phone number. The QuickBooks admin page has **no** support link. There is no support form; the service-request form is for pool service. | **Yes** for the customer app. Note that the QuickBooks page has no support link. |
+
+Gaps to close before answering more strongly (suggested, not built):
+1. Save the `intuit_tid` header from every QuickBooks reply.
+2. Add an admin-only table that permanently records QuickBooks errors: when, what action, status, Intuit's error code and message, and `intuit_tid`, with no tokens. Show these on the admin page with a copy button.
+3. Handle unreadable QuickBooks responses and Intuit's error format explicitly, and show friendly messages.
+4. Add tests with sample error replies: 400, 401, 403, 429, 500, and malformed responses.
+5. Add a support link on the QuickBooks page.

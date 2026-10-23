@@ -128,7 +128,7 @@ export default function QuickBooksConnection() {
               <div className="flex flex-wrap gap-2">
                 <Badge variant={status.configured ? 'default' : 'destructive'}>{status.configured ? 'Intuit app keys saved' : 'Intuit app keys missing'}</Badge>
                 <Badge variant={status.connection && !needsReconnect ? 'default' : 'secondary'}>{!status.connection ? 'Not connected' : needsReconnect ? 'Needs reconnect' : 'Connected'}</Badge>
-                <Badge variant="outline">{status.environment}</Badge>
+                <Badge variant={status.environment === 'production' ? 'destructive' : 'outline'} className="text-sm font-bold">{status.environment === 'production' ? 'LIVE QuickBooks' : 'SANDBOX (test)'}</Badge>
               </div>
               {status.connection && (
                 <p>Company: <strong>{status.connection.company_name ?? 'Unknown'}</strong> (ID {status.connection.realm_id})</p>

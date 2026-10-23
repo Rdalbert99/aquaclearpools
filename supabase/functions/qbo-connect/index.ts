@@ -154,6 +154,8 @@ async function handleCallback(req: Request) {
       access_expires_at: expiry(t.expires_in)!, refresh_expires_at: expiry(t.x_refresh_token_expires_in),
       connected_by: st.user_id, needs_reconnect: false,
     };
+    const { data: clash } = await admin.from("qbo_connections").select("environment").eq("realm_id", realmId).maybeSingle();
+    if (clash && clash.environment !== ENV) return redirect(back, { qbo: "error", reason: "environment_mismatch" });
     let companyName: string | null = null;
     try {
       const { data } = await qboGet(row, `/companyinfo/${realmId}?minorversion=75`);
@@ -205,7 +207,7 @@ Deno.serve(async (req) => {
     }
 
     if (action === "start") {
-      if (!configured) return json({ error: "QuickBooks app keys are not set up yet (QBO_CLIENT_ID and QBO_CLIENT_SECRET)." }, 400);
+      if (!configured) return json({ error: `QuickBooks ${ENV} app keys are not set up yet (${ENV === "production" ? "QBO_PRODUCTION_CLIENT_ID / QBO_PRODUCTION_CLIENT_SECRET" : "QBO_SANDBOX_CLIENT_ID / QBO_SANDBOX_CLIENT_SECRET"}).` }, 400);
       if (!isAllowedReturnUrl(body.returnUrl)) return json({ error: "Invalid return address" }, 400);
       const state = crypto.randomUUID() + crypto.randomUUID();
       await admin.from("qbo_oauth_states").insert({

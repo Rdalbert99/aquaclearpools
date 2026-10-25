@@ -17,8 +17,8 @@ export function createBillingApplication(options: {
   const {scope,secret}=options;
   const required=(name:string)=>{const value=secret(name);if(!value)throw new Error('backend_setup_pending');return value;};
   const url=required('SUPABASE_URL');
-  const service=createClient(url,required('SUPABASE_SERVICE_ROLE_KEY'),{auth:{persistSession:false,autoRefreshToken:false}});
-  const authClient=createClient(url,secret('SUPABASE_ANON_KEY')??required('SUPABASE_PUBLISHABLE_KEY'),{auth:{persistSession:false,autoRefreshToken:false}});
+  const service=createClient(url,required('SUPABASE_SERVICE_ROLE_KEY'),{auth:{persistSession:false,autoRefreshToken:false},global:{fetch:options.fetch}});
+  const authClient=createClient(url,secret('SUPABASE_ANON_KEY')??required('SUPABASE_PUBLISHABLE_KEY'),{auth:{persistSession:false,autoRefreshToken:false},global:{fetch:options.fetch}});
   const http=boundedHttp(options.fetch);
   async function query<T>(name:string,args:Record<string,unknown>):Promise<T|null>{const {data,error}=await service.rpc(name,args);if(error)throw new Error('persistence_failed');return data as T|null;}
   const scoped={_business:scope.businessId,_environment:scope.environment,_realm:scope.realmId};

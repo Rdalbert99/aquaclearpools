@@ -140,7 +140,7 @@ describe('rendered setup flows (mocked transport)', () => {
     expect(button(t, 'Verify & save').props.disabled).toBe(true); // tax confirmation required
     await act(async () => byLabel(t, 'Confirm non-taxable').props.onClick());
     console.log('DBG', byLabel(t, 'Confirm non-taxable').props.checked, button(t, 'Verify & save').props.disabled, mock.invoke.mock.calls.length);
-    await act(async () => { button(t, 'Verify & save').props.onClick(); }); await flush(); console.log('DBG2', mock.invoke.mock.calls.length, JSON.stringify(t.root.findAll(n=>n.props.role==='status').map(n=>n.props.children)));
+    await act(async () => { button(t, 'Verify & save').props.onClick(); }); await flush(); console.log('DBG2', JSON.stringify(mock.invoke.mock.calls));
     expect(mock.invoke.mock.calls[1][0]).toEqual({ action: 'verify_provider', itemId: '1010000001', fingerprint: 'fp1', taxReview: { confirmed: true, taxMode: 'non_taxable', taxCode: 'NON' } });
     expect(saved).toHaveBeenCalled();
   });

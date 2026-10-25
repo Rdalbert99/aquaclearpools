@@ -6,6 +6,7 @@ import { qboReadAdapter } from './qbo-reads';
 import type { Provider, ProviderInvoice, InvoicePayload } from './workflow';
 import type { RpcGateway } from './supabase-bindings';
 export type Http = (url: string, init?: RequestInit) => Promise<Response>;
+const digestText=async(text:string)=>Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(text)))).map(n=>n.toString(16).padStart(2,'0')).join('');
 export function boundedHttp(fetcher: Http): Http {
   return async (url, init) => {
     const u = new URL(url);
@@ -86,6 +87,10 @@ export function billingProviders(deps: {
       let providerId: string | null = null;
       try {
         const { text } = await notice(s,id); // fresh balances, never missing=$0; no old debt line items
+        const run = await deps.db.rpc<{id:string}>('qbo_billing_find_run',{...scope,_slot:key.replace(/:(monthly|annual):(sms|email)$/,'')});
+        if (!run.data?.id) throw new Error('persistence_failed');
+        const intent=await deps.db.rpc<boolean>('qbo_billing_delivery_intent',{...scope,_id:run.data.id,_channel:channel,_text_hash:await digestText(text),_correlation:key});
+        if(intent.error||intent.data!==true)throw new Error('persistence_failed'); // no send without durable authorization
         if (channel === 'sms') {
           const digits = (s.contactPhone ?? '').replace(/\D/g,'');
           const to = digits.length === 10 ? `+1${digits}` : digits.length===11 && digits.startsWith('1') ? `+${digits}` : null;
@@ -105,8 +110,6 @@ export function billingProviders(deps: {
           if (typeof numericId === 'number' && !Number.isSafeInteger(numericId)) throw new Error('provider_unknown');
           providerId = `${messages[0].To[0].MessageUUID}:${numericId}`;
         }
-        const run = await deps.db.rpc<{id:string}>('qbo_billing_find_run',{...scope,_slot:key.replace(/:(monthly|annual):(sms|email)$/,'')});
-        if (!run.data?.id) throw new Error('persistence_failed');
         const saved = await deps.db.rpc<boolean>('qbo_billing_record_outcome',{...scope,_id:run.data.id,_channel:channel,_provider_id:providerId,_status:'sent'});
         if (saved.error || saved.data!==true) throw new Error('persistence_failed');
         // "sent" here means provider accepted, not inbox/carrier delivery. Evidence reconciles terminal delivery separately.
@@ -143,24 +146,28 @@ export function billingProviders(deps: {
         if(!key||!secret||!uuid||!/^\d+$/.test(numericId??''))throw new Error('email_evidence_setup');
         const headers={Authorization:`Basic ${btoa(`${key}:${secret}`)}`};
         const record=await external(`https://api.mailjet.com/v3/REST/message/${numericId}`,{headers});
-        const rows=record.Data as {UUID?:string;ContactID?:number;Status?:string}[]|undefined;
+        const rows=record.Data as {UUID?:string;ContactID?:number;Status?:string;CustomID?:string}[]|undefined;
         if(rows?.length!==1||rows[0].UUID!==uuid)throw new Error('evidence_mismatch');
+        if(!rows[0].ContactID)throw new Error('recipient_evidence_pending');
+        const contact=await external(`https://api.mailjet.com/v3/REST/contact/${rows[0].ContactID}`,{headers});
+        const contacts=contact.Data as {Email?:string}[]|undefined;
+        if(contacts?.length!==1||contacts[0].Email?.toLowerCase()!==s.contactEmail?.toLowerCase())throw new Error('evidence_mismatch');
         const history=await external(`https://api.mailjet.com/v3/REST/messagehistory/${numericId}`,{headers});
         const events=history.Data as {EventType?:string;Event?:string}[]|undefined;
         if(!Array.isArray(events))throw new Error('delivery_evidence_pending');
         const kinds=events.map(e=>(e.EventType??e.Event??'').toLowerCase());
-        if(kinds.some(k=>['bounce','blocked'].includes(k)))return {status:'failed',channel,providerId:id};
-        if(kinds.includes('sent'))return {status:'sent',channel,providerId:id};
+        if(kinds.some(k=>['bounce','blocked'].includes(k)))return {status:'failed',channel,providerId:id,correlation:rows[0].CustomID};
+        if(kinds.includes('sent'))return {status:'sent',channel,providerId:id,correlation:rows[0].CustomID};
         throw new Error('delivery_evidence_pending');
       }
       const token=deps.secret('TELNYX_API_KEY'); if(!token || !/^[a-zA-Z0-9-]+$/.test(id)) throw new Error('sms_setup');
       const data=await external(`https://api.telnyx.com/v2/messages/${id}`,{headers:{Authorization:`Bearer ${token}`}});
-      const message=data.data as {id?:string;to?:{phone_number?:string;status?:string}[]} | undefined;
+      const message=data.data as {id?:string;text?:string;from?:{phone_number?:string};to?:{phone_number?:string;status?:string}[]} | undefined;
       const digits=(s.contactPhone??'').replace(/\D/g,''); const expected=digits.length===10?`+1${digits}`:`+${digits}`;
-      if(message?.id!==id || message.to?.length!==1 || message.to[0].phone_number!==expected) throw new Error('evidence_mismatch');
+      if(message?.id!==id || message.to?.length!==1 || message.to[0].phone_number!==expected || message.from?.phone_number!=='+16014198527' || !message.text) throw new Error('evidence_mismatch');
       const status=message.to[0].status;
       if(!['delivered','delivery_failed','sending_failed'].includes(status??'')) throw new Error('delivery_evidence_pending');
-      return {status:status==='delivered'?'sent':'failed',channel,providerId:id};
+      return {status:status==='delivered'?'sent':'failed',channel,providerId:id,textHash:await digestText(message.text)};
     },
   };
 }

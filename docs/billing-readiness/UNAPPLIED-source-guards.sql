@@ -33,6 +33,7 @@ ALTER TABLE public.qbo_billing_evidence ENABLE ROW LEVEL SECURITY;
 CREATE TRIGGER immutable_evidence BEFORE UPDATE OR DELETE ON public.qbo_billing_evidence FOR EACH ROW EXECUTE FUNCTION public.qbo_billing_immutable();
 ALTER TABLE public.qbo_billing_runs ADD COLUMN provider_outcomes jsonb NOT NULL DEFAULT '{}';
 ALTER TABLE public.qbo_billing_runs ADD COLUMN create_intent boolean NOT NULL DEFAULT false;
+ALTER TABLE public.qbo_billing_runs ADD COLUMN delivery_intents jsonb NOT NULL DEFAULT '{}';
 ALTER TABLE public.qbo_billing_announcements ADD COLUMN snapshot jsonb;
 ALTER TABLE public.qbo_billing_announcements ADD COLUMN approved_text text;
 ALTER TABLE public.qbo_billing_announcements ADD COLUMN provider_id text;
@@ -178,6 +179,13 @@ RETURNS boolean LANGUAGE plpgsql SECURITY DEFINER SET search_path=public,extensi
  WHERE id=_id AND business_id=_business AND environment=_environment AND realm_id=_realm AND channels->>_channel='sending';
  RETURN FOUND;
 END $$;
+CREATE FUNCTION public.qbo_billing_delivery_intent(_business uuid,_environment text,_realm text,_id uuid,_channel text,_text_hash text,_correlation text)
+RETURNS boolean LANGUAGE plpgsql SECURITY DEFINER SET search_path=public,extensions AS $$ BEGIN
+ PERFORM public.qbo_billing_assert_run(_business,_environment,_realm,_id);
+ IF _channel NOT IN ('sms','email') OR _text_hash !~ '^[a-f0-9]{64}$' THEN RAISE EXCEPTION 'invalid_intent'; END IF;
+ UPDATE public.qbo_billing_runs SET delivery_intents=jsonb_set(delivery_intents,ARRAY[_channel],jsonb_build_object('textHash',_text_hash,'correlation',_correlation))
+ WHERE id=_id AND channels->>_channel='sending' AND NOT (delivery_intents ? _channel); RETURN FOUND;
+END $$;
 CREATE FUNCTION public.qbo_billing_resolve_evidence(_business uuid,_environment text,_realm text,_id uuid,_actor uuid,_kind text,_provider_id text,_proof jsonb)
 RETURNS boolean LANGUAGE plpgsql SECURITY DEFINER SET search_path=public,extensions AS $$
 DECLARE r public.qbo_billing_runs; ch text; status text;
@@ -196,7 +204,11 @@ BEGIN
  ELSIF _kind='delivery' THEN
   ch:=_proof->>'channel'; status:=_proof->>'status';
   IF ch IS NULL OR ch NOT IN ('sms','email') OR status IS NULL OR status NOT IN ('sent','failed') OR
-  r.provider_outcomes->ch->>'id' IS DISTINCT FROM _provider_id OR coalesce(r.channels->>ch,'') NOT IN ('sending','unknown') OR r.state NOT IN ('reconcile','blocked') THEN RAISE EXCEPTION 'evidence_mismatch'; END IF;
+  coalesce(r.channels->>ch,'') NOT IN ('sending','unknown') OR r.state NOT IN ('reconcile','blocked') THEN RAISE EXCEPTION 'evidence_mismatch'; END IF;
+  IF r.provider_outcomes->ch->>'id' IS NOT NULL AND r.provider_outcomes->ch->>'id' IS DISTINCT FROM _provider_id THEN RAISE EXCEPTION 'evidence_mismatch'; END IF;
+  IF r.provider_outcomes->ch->>'id' IS NULL AND (r.delivery_intents->ch IS NULL OR
+  (ch='sms' AND r.delivery_intents->ch->>'textHash' IS DISTINCT FROM _proof->>'textHash') OR
+  (ch='email' AND r.delivery_intents->ch->>'correlation' IS DISTINCT FROM _proof->>'correlation')) THEN RAISE EXCEPTION 'evidence_mismatch'; END IF;
   UPDATE public.qbo_billing_runs SET channels=jsonb_set(channels,ARRAY[ch],to_jsonb(status)),state='created',code='reconciled_delivery' WHERE id=_id;
  ELSE RAISE EXCEPTION 'invalid_evidence'; END IF;
  INSERT INTO public.qbo_billing_evidence(business_id,environment,realm_id,run_id,actor,kind,provider_id,proof) VALUES(_business,_environment,_realm,_id,_actor,_kind,_provider_id,_proof);

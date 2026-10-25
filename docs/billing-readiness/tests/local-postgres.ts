@@ -25,8 +25,8 @@ rejects(`SELECT qbo_billing_approve_current(${scope},'${c}','2026-11',${json(s)}
 rejects(`SELECT qbo_billing_source('${b}','production','9341452568721903','${c}')`,'cross_business');ok('cross-realm scope rejected');
 psql(`UPDATE clients SET service_rate=201 WHERE id='${c}'`);rejects(guard,'stale_source');psql(`UPDATE clients SET service_rate=200 WHERE id='${c}'`);ok('fresh rate invalidates approval');
 psql(`INSERT INTO sms_opt_outs(phone) VALUES('+16015550100')`);rejects(guard,'stale_source');psql('DELETE FROM sms_opt_outs');ok('new-row STOP invalidates approval');
-const child=spawn('psql',[url,'-X','-v','ON_ERROR_STOP=1','-At','-c',`BEGIN; SELECT ${sourceCall}; SELECT pg_sleep(0.4); COMMIT;`],{stdio:['ignore','pipe','pipe']});
-await new Promise<void>((resolve,reject)=>{child.stdout.once('data',()=>resolve());child.once('error',reject);});
+const child=spawn('psql',[url,'-X','-v','ON_ERROR_STOP=1','-At','-c',`BEGIN; SELECT ${sourceCall}; SELECT pg_sleep(1); COMMIT;`],{stdio:['ignore','pipe','pipe']});
+await new Promise<void>((resolve,reject)=>{child.once('error',reject); const poll=setInterval(()=>{if(psql("SELECT count(*) FROM pg_stat_activity WHERE datname='billing_contract' AND wait_event='PgSleep'")==='1'){clearInterval(poll);resolve();}},20);});
 const start=Date.now();psql(`INSERT INTO sms_opt_outs(phone) VALUES('+16015550100')`);if(Date.now()-start<250)throw new Error('STOP insert not serialized');psql('DELETE FROM sms_opt_outs');ok('concurrent first STOP phantom insertion waits for source transaction');
 psql(`SELECT qbo_billing_set_enrollment(${scope},'${c}',false,'2026-11',1,'${actor}')`);rejects(`SELECT qbo_billing_assert_enrollment(${scope},'${c}',${json(s)})`,'stale_source');ok('off invalidates queued authority without deleting provider IDs');
 rejects(`SELECT qbo_billing_set_enrollment(${scope},'${c}',true,'2026-11',1,'${actor}')`,'stale_enrollment');ok('optimistic revision blocks repeated stale toggle');

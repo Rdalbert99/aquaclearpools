@@ -34,13 +34,11 @@ export function createBillingApplication(options: {
   });
   const db:RpcGateway={rpc:async<T>(name,args)=>{try{return {data:await query<T>(name,args),error:null};}catch{return {data:null,error:{message:'persistence_failed'}};}}};
   const source=sourceAuthority(db,scope);
+  async function hostRead<T>(kind:string,period?:string,id?:string){return query<T>('qbo_billing_host_read',{...scoped,_kind:kind,_period:period??null,_id:id??null});}
   async function policy():Promise<Policy>{
-    const [{data:business,error:b},{data:a,error:e}]=await Promise.all([
-      service.from('businesses').select('billing_mode').eq('id',scope.businessId).single(),
-      service.from('qbo_billing_activation').select('*').eq('business_id',scope.businessId).eq('environment',scope.environment).eq('realm_id',scope.realmId).maybeSingle(),
-    ]);
-    if(b||e)throw new Error('backend_setup_pending');
-    return {...scope,billingMode:business.billing_mode,invoiceEnabled:a?.invoice_enabled===true,announcementEnabled:a?.announcement_enabled===true,migrationVerified:a?.migration_verified===true,providerVerified:a?.provider_verified===true,deploymentVerified:a?.deployment_verified===true};
+    const result=await hostRead<{billingMode:string;activation:Record<string,unknown>|null}>('policy');
+    if(!result)throw new Error('backend_setup_pending');const a=result.activation;
+    return {...scope,billingMode:result.billingMode,invoiceEnabled:a?.invoice_enabled===true,announcementEnabled:a?.announcement_enabled===true,migrationVerified:a?.migration_verified===true,providerVerified:a?.provider_verified===true,deploymentVerified:a?.deployment_verified===true};
   }
   // Single-process refresh coalescing; persisted optimistic CAS prevents overwrite by other workers.
   let refreshPromise:Promise<string>|null=null;
@@ -65,10 +63,10 @@ export function createBillingApplication(options: {
   const providers=billingProviders({...scope,fetch:http,authorization,secret,db});
   async function admin(credential:string){const actor=await authenticate(credential);if(!actor||actor.kind!=='admin')throw new Error('unauthorized');return actor;}
   async function roster(sendMonth:string){
-    const {data:members,error}=await service.from('qbo_billing_client_scope').select('client_id').eq('business_id',scope.businessId).eq('environment',scope.environment).eq('realm_id',scope.realmId).limit(1000);
-    if(error)throw new Error('backend_setup_pending');if(members?.length===1000)throw new Error('roster_pagination_review_required');
+    const members=await hostRead<string[]>('roster');
+    if(!members)throw new Error('backend_setup_pending');if(members.length>=1000)throw new Error('roster_pagination_review_required');
     const rows=[];for(const member of members??[]){
-      const row=await source.preview(member.client_id,sendMonth);
+      const row=await source.preview(member,sendMonth);
       let balance: {status:'ok';invoices:unknown[]}|{status:'unavailable';reason:string}={status:'unavailable',reason:'Exact mapping/setup or enrollment blocked'};
       if(row.snapshot){try{const result=await providers.provider.balances(row.snapshot);if(!('invoices' in result)||!Array.isArray(result.invoices))throw new Error('balance_unavailable');balance={status:'ok',invoices:result.invoices};}catch{balance={status:'unavailable',reason:'QuickBooks balance read failed'};}}
       rows.push({...row,balance});
@@ -78,8 +76,7 @@ export function createBillingApplication(options: {
   async function scopedAnnouncements(credential:string) {
     const actor=await authenticate(credential);if(actor?.kind!=='scheduler')throw new Error('unauthorized');
     const p=await policy();
-    const {data:config,error}=await service.from('qbo_billing_activation').select('announcement_enabled,announcement_hour,approved_scope_id').eq('business_id',scope.businessId).eq('environment',scope.environment).eq('realm_id',scope.realmId).single();
-    if(error||p.billingMode!=='qbo'||!p.migrationVerified||!p.deploymentVerified||!p.providerVerified||!config.announcement_enabled||config.announcement_hour==null||!config.approved_scope_id)throw new Error('announcement_setup_pending');
+    if(p.billingMode!=='qbo'||!p.migrationVerified||!p.deploymentVerified||!p.providerVerified||!p.announcementEnabled)throw new Error('announcement_setup_pending');
     // Dedicated approved announcement snapshot/text is required, not invoice content reused.
     // The concrete dispatcher below reads only immutable, reviewed recipient/message records.
     const rows=await query<{id:string;channel:'sms'|'email';snapshot:Snapshot;text:string}[]>('qbo_billing_due_announcements',scoped);
@@ -87,7 +84,7 @@ export function createBillingApplication(options: {
     for(const row of rows??[]) {
       const authorized=await query<boolean>('qbo_billing_claim_announcement',{...scoped,_id:row.id});
       if(!authorized)continue;
-      const outcome=await providers.sendAnnouncement(row.snapshot,row.channel,row.text);
+      const outcome=await providers.sendAnnouncement(row.snapshot,row.channel,row.text,row.id);
       await query('qbo_billing_announcement_outcome',{...scoped,_id:row.id,_outcome:outcome});
       results.push({id:row.id,...outcome});
     }
@@ -100,7 +97,7 @@ export function createBillingApplication(options: {
     const approval=await query<Approval>('qbo_billing_approve_current',{...scoped,_client:clientId,_period:row.snapshot.servicePeriod,_snapshot:row.snapshot,_fingerprint:reviewedFingerprint,_actor:actor.id});
     if(!approval)throw new Error('approval_failed');return approval;
   }
-  async function run(id:string){const {data,error}=await service.from('qbo_billing_runs').select('*').eq('id',id).eq('business_id',scope.businessId).eq('environment',scope.environment).eq('realm_id',scope.realmId).single();if(error||!data)throw new Error('cross_business');return data as {id:string;snapshot:Snapshot;request_id:string;provider_invoice_id:string|null;provider_outcomes:Record<string,{id:string}>;delivery_intents:Record<string,{correlation:string}>;state:string};}
+  async function run(id:string){const data=await hostRead<{id:string;snapshot:Snapshot;request_id:string;provider_invoice_id:string|null;provider_outcomes:Record<string,{id:string}>;delivery_intents:Record<string,{correlation:string}>;state:string}>('run',undefined,id);if(!data)throw new Error('cross_business');return data;}
   const handler=async(request:Request)=>{
     const origin=request.headers.get('origin');const headers:Record<string,string>={'Content-Type':'application/json','Vary':'Origin'};
     if(origin){if(!options.allowedOrigins.includes(origin))return new Response('{}',{status:403});headers['Access-Control-Allow-Origin']=origin;headers['Access-Control-Allow-Headers']='authorization,apikey,content-type';headers['Access-Control-Allow-Methods']='POST,OPTIONS';}
@@ -108,13 +105,12 @@ export function createBillingApplication(options: {
     if(request.method==='OPTIONS')return new Response(null,{status:204,headers});if(request.method!=='POST')return reply({error:'method_not_allowed'},405);
     const credential=request.headers.get('authorization')??'';
     try{
-      const body=z.object({action:z.string(),text:z.string().max(2000).optional(),scopeId:z.string().uuid().optional(),client:z.record(z.unknown()).optional(),clientId:z.string().uuid().optional(),approvalId:z.string().uuid().optional(),runId:z.string().uuid().optional(),sendMonth:z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/).optional(),fingerprint:z.string().optional(),enabled:z.boolean().optional(),firstServicePeriod:z.string().nullable().optional(),expectedRevision:z.number().int().nonnegative().optional(),providerId:z.string().optional(),channel:z.enum(['sms','email']).optional(),customerId:z.string().regex(/^\d{1,20}$/).optional(),itemId:z.string().regex(/^\d{1,20}$/).optional(),incomeAccountId:z.string().regex(/^\d{1,20}$/).optional()}).strict().parse(await request.json());
+      const body=z.object({action:z.string(),text:z.string().max(2000).optional(),scopeId:z.string().uuid().optional(),client:z.record(z.unknown()).optional(),clientId:z.string().uuid().optional(),approvalId:z.string().uuid().optional(),runId:z.string().uuid().optional(),sendMonth:z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/).optional(),fingerprint:z.string().optional(),enabled:z.boolean().optional(),firstServicePeriod:z.string().nullable().optional(),expectedRevision:z.number().int().nonnegative().optional(),providerId:z.string().optional(),channel:z.enum(['sms','email']).optional(),customerId:z.string().regex(/^\d{1,20}$/).optional(),itemId:z.string().regex(/^\d{1,20}$/).optional(),incomeAccountId:z.string().regex(/^\d{1,20}$/).optional(),taxReview:z.object({confirmed:z.literal(true),taxMode:z.literal('non_taxable'),taxCode:z.literal('NON')}).strict().optional()}).strict().parse(await request.json());
       if(body.action==='schedule'){
         const actor=await authenticate(credential);if(actor?.kind!=='scheduler')throw new Error('unauthorized');const p=await policy();
         if(p.billingMode!=='qbo'||!p.invoiceEnabled||!p.migrationVerified||!p.deploymentVerified||!p.providerVerified)throw new Error('disabled');
         const dates=batchDates(initialSendMonth());if(new Date()<new Date(dates.sendAt)||chicagoDate()!==dates.sendDay)throw new Error('send_time_not_due');
-        const {data:approvals,error}=await service.from('qbo_billing_approvals').select('id').eq('business_id',scope.businessId).eq('environment',scope.environment).eq('realm_id',scope.realmId).eq('service_period',dates.servicePeriod).limit(500);
-        if(error)throw new Error('approval_read_failed');if(approvals?.length===500)throw new Error('approval_pagination_review_required');const results=[];for(const a of approvals??[])results.push(await executeInvoice({...bindings,provider:providers.provider},credential,a.id));return reply({results});
+        const approvals=await hostRead<{id:string}[]>('approvals',dates.servicePeriod);if(!approvals)throw new Error('approval_read_failed');if(approvals.length>=500)throw new Error('approval_pagination_review_required');const results=[];for(const a of approvals)results.push(await executeInvoice({...bindings,provider:providers.provider},credential,a.id));return reply({results});
       }
       if(body.action==='schedule_announcements')return reply({results:await scopedAnnouncements(credential)});
       const actor=await admin(credential);
@@ -130,23 +126,27 @@ export function createBillingApplication(options: {
         return reply({verified:await query('qbo_billing_verify_mapping',{...scoped,_client:body.clientId,_customer:body.customerId,_actor:actor.id})});
       }
       if(body.action==='verify_provider'&&body.itemId&&body.incomeAccountId){
+        if(!body.taxReview)throw new Error('tax_review_required');
         const get=async(path:string)=>expectJson(await requestWithRetry(http,accountingUrl(scope.environment,scope.realmId,path),{headers:{Authorization:await authorization(),Accept:'application/json'}},{retry:true}));
         const [item,account,company]=await Promise.all([get(`/item/${body.itemId}`),get(`/account/${body.incomeAccountId}`),get(`/companyinfo/${scope.realmId}`)]);
         if(item.Item?.Id!==body.itemId||item.Item.Active===false||item.Item.IncomeAccountRef?.value!==body.incomeAccountId||account.Account?.AccountType!=='Income'||account.Account.Active===false||company.CompanyInfo?.Country!=='US')throw new Error('provider_setup_review_required');
-        return reply({verified:await query('qbo_billing_verify_provider',{...scoped,_actor:actor.id,_setup:{itemId:body.itemId,incomeAccountId:body.incomeAccountId,taxCode:'NON',taxMode:'non_taxable',verified:true,revision:crypto.randomUUID()}})});
+        const revision=crypto.randomUUID();
+        return reply({verified:await query('qbo_billing_verify_provider',{...scoped,_actor:actor.id,_setup:{itemId:body.itemId,incomeAccountId:body.incomeAccountId,taxCode:body.taxReview.taxCode,taxMode:body.taxReview.taxMode,verified:true,revision,taxReview:{confirmed:true,actor:actor.id,reviewedAt:new Date().toISOString(),revision,itemId:body.itemId,incomeAccountId:body.incomeAccountId}}})});
       }
-      if(body.action==='readiness')return reply({scope,policy:await policy(),rows:await roster(body.sendMonth??initialSendMonth())});
+      if(body.action==='readiness'){const month=body.sendMonth??initialSendMonth();const approvals=await hostRead('approvals',batchDates(month).servicePeriod);return reply({scope,sendMonth:month,policy:await policy(),rows:await roster(month),approvals});}
+      if(body.action==='policy')return reply({policy:await policy()});
       if(body.action==='read_enrollment'&&body.clientId)return reply({scope,enrollment:await enrollment.read(credential,body.clientId)});
       if(body.action==='save_enrollment'&&body.clientId)return reply({enrollment:await enrollment.save(credential,{clientId:body.clientId,enabled:body.enabled,firstServicePeriod:body.firstServicePeriod,expectedRevision:body.expectedRevision})});
       if(body.action==='approve'&&body.clientId&&body.fingerprint)return reply({approval:await approve(credential,body.clientId,body.sendMonth??initialSendMonth(),body.fingerprint)});
       if(body.action==='approve_announcement'&&body.clientId&&body.scopeId&&body.text&&body.fingerprint){
+        if(!body.text.startsWith('Aqua Clear Pools:')||!body.text.endsWith('Reply STOP to opt out.'))throw new Error('announcement_review_required');
         const row=await source.preview(body.clientId,body.sendMonth??initialSendMonth());
         if(!row.snapshot||snapshotCanonical(row.snapshot)!==body.fingerprint)throw new Error('stale_approval');
         return reply({approved:await query('qbo_billing_approve_announcement',{...scoped,_client:body.clientId,_actor:actor.id,_scope_id:body.scopeId,_text:body.text,_snapshot:row.snapshot})});
       }
       if(body.action==='execute'&&body.approvalId)return reply(await executeInvoice({...bindings,provider:providers.provider},credential,body.approvalId));
       if(body.action==='resume'&&body.approvalId)return reply({state:await resumeDelivery({...bindings,provider:providers.provider},credential,body.approvalId)});
-      if(body.action==='runs'){const {data,error}=await service.from('qbo_billing_runs').select('id,state,provider_invoice_id,channels,code,audit_id').eq('business_id',scope.businessId).eq('environment',scope.environment).eq('realm_id',scope.realmId).limit(500);if(error)throw new Error('run_read_failed');return reply({runs:data});}
+      if(body.action==='runs'){const runs=await hostRead<unknown[]>('runs',batchDates(body.sendMonth??initialSendMonth()).servicePeriod);if(!runs)throw new Error('run_read_failed');if(runs.length>=500)throw new Error('run_pagination_review_required');return reply({runs});}
       if(body.runId&&['reconcile_invoice','reconcile_delivery','payment'].includes(body.action)){
         const r=await run(body.runId);
         if(body.action==='payment'){if(!r.provider_invoice_id)throw new Error('invoice_unavailable');return reply({payment:await providers.payment(r.snapshot,r.provider_invoice_id)});}

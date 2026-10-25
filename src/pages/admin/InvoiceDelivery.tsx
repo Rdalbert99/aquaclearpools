@@ -7,7 +7,9 @@ import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { fromCents } from '@/lib/billing';
 import { ANNOUNCEMENT_SMS, invoiceMessage } from '@/lib/invoice-delivery';
-import { batchDates, initialSendMonth, isActiveClient, readinessRow, snapshotCanonical, READINESS_GATES, type BillingClient, type ExactMapping } from '@/lib/billing-readiness';
+import { batchDates, initialSendMonth, isActiveClient, readinessRow, snapshotCanonical, type BillingClient, type ExactMapping, type Enrollment } from '@/lib/billing-readiness';
+import { batchSummary, enrollmentLabel, announcementAudience } from '@/lib/billing-batch';
+import { ProviderSetup, CustomerMapping } from '@/components/billing/BillingSetup';
 import { billingInvoke } from '@/lib/billing-transport';
 import { accountSummary, balanceDraftLines, type BalanceLookup } from '@/lib/account-balance';
 import { AccountBalancePanel } from '@/components/billing/AccountBalance';
@@ -26,14 +28,14 @@ export default function InvoiceDelivery() {
   const [errors, setErrors] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const [sendMonth, setSendMonth] = useState(initialSendMonth);
-  const [authoritativeRows, setAuthoritativeRows] = useState<(ReturnType<typeof readinessRow> & {balance?:BalanceLookup})[] | null>(null);
+  const [authoritativeRows, setAuthoritativeRows] = useState<(ReturnType<typeof readinessRow> & {balance?:BalanceLookup;enrollment?:Enrollment|null})[] | null>(null);
   const [backendReady, setBackendReady] = useState(false);
   const [approvals, setApprovals] = useState<Record<string, string>>({});
   const [runs, setRuns] = useState<{id:string;state:string;provider_invoice_id:string|null;code:string;channels:Record<string,string>}[]>([]);
   const [evidenceIds, setEvidenceIds] = useState<Record<string,string>>({});
   const sequence=useRef(0);
   const activeMonth=useRef(sendMonth); activeMonth.current=sendMonth;
-  const [policy,setPolicy]=useState<{billingMode:string;invoiceEnabled:boolean;announcementEnabled:boolean;migrationVerified:boolean;deploymentVerified:boolean}|null>(null);
+  const [policy,setPolicy]=useState<{billingMode:string;invoiceEnabled:boolean;announcementEnabled:boolean;migrationVerified:boolean;deploymentVerified:boolean;providerVerified?:boolean}|null>(null);
   const [loadedMonth,setLoadedMonth]=useState<string|null>(null);
   const load = useCallback(async () => {
     const request=++sequence.current; const current=()=>sequence.current===request&&activeMonth.current===sendMonth;
@@ -89,7 +91,9 @@ export default function InvoiceDelivery() {
     return readinessRow(client, sendMonth, { businessId: '', environment: 'production', realmId: '', mapping,
       choice: pref?.invoice_channel, smsConsent, smsOptedOut: optedOut, consentRevision: pref?.sms_consent_at ?? client.notification_method ?? 'none' });
   }) : []), [authoritativeRows, clients, dates, prefs, optOuts, errors, sendMonth, loadedMonth]);
-  const proposedTotal = rows.filter(r => !r.proposal.excluded).reduce((s, r) => s + (r.proposal.amountCents ?? 0), 0);
+  const batch = useMemo(() => batchSummary(rows), [rows]);
+  const audience = useMemo(() => new Set(announcementAudience(rows)), [rows]);
+  const flag = (v: boolean | undefined) => policy ? (v ? 'verified' : 'pending') : 'unknown';
   const approvedTotal = rows.filter(r => r.snapshot && approvals[r.client.id] === snapshotCanonical(r.snapshot)).reduce((sum,r) => sum + (r.snapshot?.amountCents ?? 0),0);
   const approveRow = async (row: ReturnType<typeof readinessRow>) => {
     if (!backendReady || !row.snapshot||loadedMonth!==sendMonth||loading) return;
@@ -108,8 +112,12 @@ export default function InvoiceDelivery() {
       <section className="space-y-2 border-y py-4 text-sm">
         <p className="font-semibold text-destructive">Invoice schedule: {policy ? policy.invoiceEnabled ? 'enabled on server' : 'disabled on server' : 'unavailable'} · Announcement: {policy ? policy.announcementEnabled ? 'enabled on server' : 'disabled on server' : 'unavailable'}</p>
         <p>Server policy and saved approvals are read below. This page has no invoice-send, message-send or activation controls.</p>
-        <ul className="list-disc space-y-1 pl-5">{READINESS_GATES.map(gate => <li key={gate}>{gate}</li>)}</ul>
-        <p>Customer Automatic invoicing and First billing month: Clients → customer → Edit. Enrollment is not saved until backend setup is complete. Shadow Billing is practice / reconciliation only.</p>
+        <ul className="list-disc space-y-1 pl-5" aria-label="Installed policy">
+          <li>Billing server: {policy ? 'installed and responding' : 'unavailable'}</li>
+          <li>Migration verification: {flag(policy?.migrationVerified)} · Deployment verification: {flag(policy?.deploymentVerified)} · Provider verification: {flag(policy?.providerVerified)}</li>
+          <li>Next stage: {!policy ? 'reach billing server' : !policy.providerVerified ? 'service item / tax setup and customer links' : 'owner approvals, then separate activation'}</li>
+        </ul>
+        <p>Customer Automatic invoicing and First billing month: Clients → customer → Edit. Shadow Billing is practice / reconciliation only.</p>
       </section>
       <div className="flex flex-wrap items-end gap-3">
         <label className="space-y-1 text-sm">Send month<Input aria-label="Send month" type="month" value={sendMonth} onChange={e => setSendMonth(e.target.value)} className="w-44" /></label>
@@ -122,7 +130,8 @@ export default function InvoiceDelivery() {
         <p><strong>Due:</strong> {dates.dueDate}</p>
       </section> : <p className="text-destructive">Choose a valid send month.</p>}
       {errors.length > 0 && <section role="alert" className="space-y-1 text-sm text-destructive">{errors.map(error => <p key={error}>{error}</p>)}</section>}
-      <p className="text-sm">Scoped roster: {rows.length} · Proposed new charges (not approved): {fromCents(proposedTotal)} · Fresh approved: {fromCents(approvedTotal)}</p>
+      {authoritativeRows && <><ProviderSetup onSaved={() => void load()} /><CustomerMapping clients={rows.map(r => r.client)} onSaved={() => void load()} /></>}
+      <p className="text-sm">Scoped roster: {rows.length} · Eligible batch: {batch.eligible.length} ({fromCents(batch.eligibleCents)}) · Blocked proposals: {batch.blocked.length} ({fromCents(batch.blockedCents)}) · Excluded: {batch.excluded.length} · Fresh approved: {fromCents(approvedTotal)}</p>
       {!loading && !rows.length && <p className="text-sm text-muted-foreground">{errors.length ? 'Roster readiness unavailable; resolve the errors above.' : 'No eligible Active clients found.'}</p>}
       <Tabs defaultValue="invoices">
         <TabsList><TabsTrigger value="invoices">Invoices</TabsTrigger><TabsTrigger value="announcement">Announcement</TabsTrigger></TabsList>
@@ -136,7 +145,7 @@ export default function InvoiceDelivery() {
               return <article key={client.id} className="space-y-2 py-4 text-sm">
                 <div className="flex flex-wrap items-center justify-between gap-2"><h2 className="font-semibold">{client.customer}</h2><Badge variant={proposal.excluded ? 'outline' : 'secondary'}>{proposal.frequency}</Badge></div>
                 <p className="break-all text-xs text-muted-foreground">Client {client.id}</p>
-                <p>Automatic invoicing: {row.snapshot?.enrollment.enabled ? 'saved on' : authoritativeRows ? row.proposal.excluded ?? 'off / blocked' : 'not saved / default off'} · First service month {row.snapshot?.enrollment.firstServicePeriod ?? 'unavailable'} · Server sender {policy ? policy.invoiceEnabled ? 'enabled' : 'disabled' : 'unavailable'}</p>
+                {(() => { const e = enrollmentLabel(row); return <p>Automatic invoicing: {e.state === 'on' ? 'saved ON' : e.state === 'off' ? 'saved OFF' : 'not saved'} · First service month {e.firstMonth ?? 'not set'} · Server sender {policy ? policy.invoiceEnabled ? 'enabled' : 'disabled' : 'unavailable'}</p>; })()}
                 <Link className="text-primary underline" to={`/admin/clients/${client.id}/edit`}>Review customer enrollment</Link>
                 <p>{proposal.amountCents == null ? 'Amount needs review' : fromCents(proposal.amountCents)} · Coverage {proposal.serviceStart} – {proposal.serviceEnd} · Due {proposal.dueDate}</p>
                 {proposal.note && <p className="text-muted-foreground">{proposal.note}</p>}
@@ -152,8 +161,10 @@ export default function InvoiceDelivery() {
           </div>
         </TabsContent>
         <TabsContent value="announcement" className="space-y-3 border-y py-4 text-sm">
-          <h2 className="font-semibold">Announcement disabled</h2>
-          <p>Morning hour and recipient scope require owner approval. Laken remains on hold. Channels and STOP are checked again before each send.</p>
+          <h2 className="font-semibold">Announcement — {policy?.announcementEnabled ? 'enabled on server' : 'disabled'} (8 AM Chicago target, not active)</h2>
+          <p>Audience is only this month's eligible invoice batch ({audience.size}); excluded and blocked customers never get it. Channels and STOP are checked again before any send.</p>
+          <ul className="list-disc pl-5">{rows.filter(r => audience.has(r.client.id)).map(r => <li key={r.client.id}>{r.client.customer} · {channelLabel(r.delivery.channels)}</li>)}</ul>
+          <p className="font-medium">Draft wording — NOT approved; owner must approve final text separately:</p>
           <p className="bg-muted p-3">{ANNOUNCEMENT_SMS}</p>
           <Button disabled>Schedule announcement — not activated</Button>
         </TabsContent>

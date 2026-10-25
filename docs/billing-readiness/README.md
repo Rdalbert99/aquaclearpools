@@ -1,5 +1,8 @@
 # Consolidated billing readiness — prepared October 25, 2026
 
+**Current third-pass assessment:** see [COMPLETION.md](./COMPLETION.md). The sections below
+record earlier source passes and their historical blockers; they are not the current binding inventory.
+
 ## Safety / production state
 
 This change is source-only. No frontend publication, function deployment, remote SQL,

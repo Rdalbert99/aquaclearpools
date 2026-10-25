@@ -37,26 +37,18 @@ describe('schedule', () => {
     expect(idempotencyKey('invoice', 'c1', '2026-10')).toBe(idempotencyKey('invoice', 'c1', '2026-10')));
 });
 
-describe('roster rules', () => {
-  it('Peggy McQuarter: $3000 annual, text only, October', () => {
-    const p = proposeInvoice('Peggy McQuarter', 250, '2026-10');
-    expect(p.amountCents).toBe(300000);
-    expect(p.channelOverride).toBe('sms');
-    expect(p.excluded).toBeNull();
+describe('legacy proposal calls cannot authorize name-only annual charges', () => {
+  it('requires stable identity for annual names', () => {
+    expect(proposeInvoice('Peggy McQuarter', 250, '2026-11').blockers).toContain('Confirm stable annual customer identity');
   });
-  it('Peggy gets no extra monthly invoice in November', () =>
-    expect(proposeInvoice('Peggy McQuarter', 250, '2026-11').excluded).not.toBeNull());
-  it('Shelby Thames and Jennifer Robinson excluded (annual due late Nov)', () => {
-    expect(proposeInvoice('Shelby Thames', 250, '2026-10').excluded).toMatch(/November/);
-    expect(proposeInvoice('Jennifer Robinson', 250, '2026-10').excluded).toMatch(/November/);
+  it('keeps Laken on owner hold despite a valid rate', () => {
+    expect(proposeInvoice('Laken Ford Ramey', 125, '2026-11').excluded).toContain('Owner hold');
+    expect(proposeInvoice('Laken Ford Ramey', 125, '2026-11').amountCents).toBe(12500);
   });
-  it('Laken Ford Ramey excluded pending rate', () =>
-    expect(proposeInvoice('Laken Ford Ramey', 250, '2026-10').excluded).toBe('Rate pending'));
-  it('$0 rate is excluded as uncertain', () => expect(proposeInvoice('Stacy Crosby', 0, '2026-10').excluded).toBe('No confirmed rate'));
-  it('regular rate becomes cents', () => expect(proposeInvoice('Someone', 250, '2026-10').amountCents).toBe(25000));
-  it('text invoice includes portal link and STOP', () => {
-    const m = invoiceMessage('Ann', 25000, 'October 2026', 'sms');
-    expect(m).toContain('getaquaclear.com/auth/login');
-    expect(m).toContain('STOP');
+  it('invalid rates are visible blockers', () => expect(proposeInvoice('Stacy Crosby', 0, '2026-11').blockers).toContain('Confirm monthly rate'));
+  it('regular rate becomes cents', () => expect(proposeInvoice('Someone', 250, '2026-11').amountCents).toBe(25000));
+  it('text draft includes portal link and STOP', () => {
+    const m = invoiceMessage('Ann', 25000, 'November 2026', 'sms');
+    expect(m).toContain('getaquaclear.com/auth/login'); expect(m).toContain('STOP');
   });
 });

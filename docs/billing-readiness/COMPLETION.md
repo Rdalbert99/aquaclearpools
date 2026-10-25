@@ -90,8 +90,9 @@ No secret values were inspected, logged, installed or placed in SQL.
 - Full authenticated SDK/PostgREST happy-path and rendered customer save/read/approval
   integration, every scheduler/announcement state, and real provider contract acceptance
   have not been proven. Do not call this operational or ready to send before release checks.
-- Customer scoped-create currently lacks a persisted create idempotency key coordinated
-  with earlier account creation; response-loss recovery must be reviewed before publication.
+- Customer scoped-create has a persisted request key and rejects changed payloads;
+  coordination with earlier account creation and crash/reload recovery is not fully proven.
+  The form's in-memory request key alone is not durable reload recovery.
 
 ## Checks actually run
 
@@ -114,3 +115,6 @@ Changed groups: `docs/billing-readiness/server/{production,entrypoint,providers,
 existing workflow/bootstrap, SQL proposals/deployment/test docs; frontend enrollment/
 transport/control/NewClient/InvoiceDelivery; production contract tests; AGENTS/roadmap.
 Earlier README first/second-pass blockers are historical; this assessment supersedes them.
+
+Saved source checkpoint observed after checks: `96ab4e99e081840717b5d3ce4655fea78ab7074a`.
+Subsequent documentation edits are saved by Lovable and may advance that checkpoint.

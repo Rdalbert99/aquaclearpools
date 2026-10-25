@@ -1,7 +1,8 @@
 # Roadmap
 
 ## In progress
-- [ ] Second billing source pass: customer enrollment/first service month controls, confirmed Peggy annual, atomic enrollment guards and concrete source adapters, frozen cohort bootstrap and isolated tests. Activation remains blocked and no live effects permitted.
+- [x] Second billing source pass: unsaved customer enrollment/first service month controls, confirmed Peggy annual, atomic enrollment SQL guards and concrete RPC/endpoint source adapters, frozen unapproved cohort contract; 255 mocked tests pass. No live effects.
+- [ ] Enrollment activation — BLOCKED: unapplied SQL/database concurrency verification, complete frozen cohort IDs/as-of, concrete authoritative source-row locking/consent/mapping/provider adapters and verified frontend/server bindings, separate deployment/activation approval. Customer enrollment remains not saved/backend setup pending.
 - [x] Consolidated billing readiness source preparation (Oct 25 2026): roster, next-month dates, annual review, guarded mocked QBO workflow, durable claim SQL and disabled schedule source prepared; 235 tests pass.
 - [ ] Consolidated billing activation — BLOCKED: reviewed unapplied schema, concrete transactional/provider/authorization bindings, confirmed annual and tax/mapping setup, isolated integration verification and separate deployment/activation approvals. See docs/billing-readiness/README.md; no live effects permitted.
 - [ ] QuickBooks read-only test (/admin/quickbooks): built; waiting on Intuit app keys QBO_CLIENT_ID + QBO_CLIENT_SECRET and redirect URI registration, then admin connects and tests invoice #350154860. Full QBO billing plan (preferences, prepaid discount, promo note) drafted, not built

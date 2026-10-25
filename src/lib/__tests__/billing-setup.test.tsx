@@ -134,13 +134,12 @@ describe('rendered setup flows (mocked transport)', () => {
   beforeEach(() => mock.invoke.mockReset());
   it('provider: discover → confirm NON → save with derived account and fingerprint; refresh called', async () => {
     const saved = vi.fn();
-    mock.invoke.mockImplementation(async (b: { action: string }) => b.action === 'discover_provider' ? { provider: evidence } : { verified: true });
+    mock.invoke.mockImplementation(async (b?: { action: string }) => b?.action === 'discover_provider' ? { provider: evidence } : { verified: true });
     let t!: ReactTestRenderer; await act(async () => { t = create(<ProviderSetup onSaved={saved} />); });
     await act(async () => button(t, 'Look up').props.onClick()); await flush();
     expect(button(t, 'Verify & save').props.disabled).toBe(true); // tax confirmation required
     await act(async () => byLabel(t, 'Confirm non-taxable').props.onClick());
-    console.log('DBG', byLabel(t, 'Confirm non-taxable').props.checked, button(t, 'Verify & save').props.disabled, mock.invoke.mock.calls.length);
-    await act(async () => { button(t, 'Verify & save').props.onClick(); }); await flush(); console.log('DBG2', JSON.stringify(mock.invoke.mock.calls));
+    await act(async () => { button(t, 'Verify & save').props.onClick(); }); await flush(); 
     expect(mock.invoke.mock.calls[1][0]).toEqual({ action: 'verify_provider', itemId: '1010000001', fingerprint: 'fp1', taxReview: { confirmed: true, taxMode: 'non_taxable', taxCode: 'NON' } });
     expect(saved).toHaveBeenCalled();
   });
@@ -168,7 +167,7 @@ describe('rendered setup flows (mocked transport)', () => {
     await act(async () => byLabel(t, 'App customer').props.onChange({ target: { value: 'c1' } }));
     await act(async () => byLabel(t, 'QuickBooks customer ID').props.onChange({ target: { value: '58' } })); return t; };
   it('mapping: lookup → confirm → save sends fingerprint; server rejection shows not saved', async () => {
-    mock.invoke.mockImplementation(async (b: { action: string }) => { if (b.action === 'discover_customer') return discovery(); throw new Error('stale_identity_evidence'); });
+    mock.invoke.mockImplementation(async (b?: { action: string }) => { if (b?.action === 'discover_customer') return discovery(); throw new Error('stale_identity_evidence'); });
     const t = await mapping();
     await act(async () => button(t, 'Look up').props.onClick()); await flush();
     await act(async () => byLabel(t, 'Confirm identity match').props.onClick());

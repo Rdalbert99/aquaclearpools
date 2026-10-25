@@ -77,13 +77,13 @@ describe('server handler', () => {
     expect(fetch.mock.calls.every(c => String(c[0]).includes('/auth/v1/user'))).toBe(true);
   });
   it('CORS allows x-client-info only for approved origins; foreign origin rejected', async () => {
-    const h = createBillingApplication({ secret: () => 'k', fetch: vi.fn(), scope: { businessId: 'b1', environment: 'production', realmId: REALM }, allowedOrigins: ['https://getaquaclear.com'] });
+    const h = createBillingApplication({ secret: n => n === 'SUPABASE_URL' ? 'https://synthetic.invalid' : 'k', fetch: vi.fn(), scope: { businessId: 'b1', environment: 'production', realmId: REALM }, allowedOrigins: ['https://getaquaclear.com'] });
     const ok = await h.handler(new Request('https://x', { method: 'OPTIONS', headers: { origin: 'https://getaquaclear.com' } }));
     expect(ok.headers.get('Access-Control-Allow-Headers')).toContain('x-client-info');
     expect((await h.handler(new Request('https://x', { method: 'OPTIONS', headers: { origin: 'https://evil.test' } }))).status).toBe(403);
   });
   it('scope (business/realm) is host-fixed: request body cannot carry realm or business', async () => {
-    const h = createBillingApplication({ secret: () => 'k', fetch: vi.fn(async () => new Response('{}', { status: 401 })), scope: { businessId: 'b1', environment: 'production', realmId: REALM }, allowedOrigins: [] });
+    const h = createBillingApplication({ secret: n => n === 'SUPABASE_URL' ? 'https://synthetic.invalid' : 'k', fetch: vi.fn(async () => new Response('{}', { status: 401 })), scope: { businessId: 'b1', environment: 'production', realmId: REALM }, allowedOrigins: [] });
     const r = await h.handler(new Request('https://x', { method: 'POST', body: JSON.stringify({ action: 'discover_provider', itemId: '1', realmId: '1', businessId: 'evil' }) }));
     expect(r.status).not.toBe(200);
   });
@@ -125,8 +125,8 @@ describe('session rehydration gate', () => {
 });
 
 const flush = () => act(async () => { await new Promise(r => setTimeout(r, 0)); });
-const byLabel = (t: ReactTestRenderer, l: string) => t.root.find(n => n.props['aria-label'] === l);
-const button = (t: ReactTestRenderer, text: string) => t.root.find(n => n.type === 'button' && [n.props.children].flat().join('').includes(text));
+const byLabel = (t: ReactTestRenderer, l: string) => t.root.findAll(n => typeof n.type === 'string' && n.props['aria-label'] === l)[0];
+const button = (t: ReactTestRenderer, text: string) => t.root.find(n => typeof n.type === 'string' && n.type === 'button' && [n.props.children].flat().join('').includes(text));
 const evidence = { realmId: REALM, companyName: 'Aqua Clear Pools', country: 'US', taxSupported: true, blockers: [], fingerprint: 'fp1',
   item: { id: '1010000001', name: 'Pool Maintenance', active: true, type: 'Service', taxable: false, incomeAccountId: '79' }, account: { id: '79', name: 'Services', active: true, type: 'Income' } };
 

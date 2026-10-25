@@ -1,0 +1,10 @@
+-- REVIEW ONLY: NO cron registration until separately approved; both flags stay OFF.
+-- Existing secure scheduler secret reference must be supplied by deployment configuration.
+-- Do not put secrets into SQL or business tables.
+-- Proposed scheduler invocation every minute:
+-- POST /functions/v1/billing-orchestrator {"action":"schedule"}
+-- Authorization: dedicated BILLING_SCHEDULER_SECRET (not service_role caller token)
+-- POST same endpoint {"action":"schedule_announcements"} independently.
+-- Factory guards last Monday / noon Chicago / exact approved service period.
+-- Missing announcement hour/scope/text is a blocker, never invented.
+-- Registration deliberately not executable without secure host secret delivery review.

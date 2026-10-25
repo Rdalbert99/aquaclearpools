@@ -33,6 +33,9 @@ ALTER TABLE public.qbo_billing_evidence ENABLE ROW LEVEL SECURITY;
 CREATE TRIGGER immutable_evidence BEFORE UPDATE OR DELETE ON public.qbo_billing_evidence FOR EACH ROW EXECUTE FUNCTION public.qbo_billing_immutable();
 ALTER TABLE public.qbo_billing_runs ADD COLUMN provider_outcomes jsonb NOT NULL DEFAULT '{}';
 ALTER TABLE public.qbo_billing_runs ADD COLUMN create_intent boolean NOT NULL DEFAULT false;
+ALTER TABLE public.qbo_billing_announcements ADD COLUMN snapshot jsonb;
+ALTER TABLE public.qbo_billing_announcements ADD COLUMN approved_text text;
+ALTER TABLE public.qbo_billing_announcements ADD COLUMN provider_id text;
 
 CREATE FUNCTION public.qbo_billing_admin(_business uuid,_actor uuid) RETURNS void
 LANGUAGE plpgsql SECURITY DEFINER SET search_path=public,extensions AS $$
@@ -196,6 +199,30 @@ BEGIN
  ELSE RAISE EXCEPTION 'invalid_evidence'; END IF;
  INSERT INTO public.qbo_billing_evidence(business_id,environment,realm_id,run_id,actor,kind,provider_id,proof) VALUES(_business,_environment,_realm,_id,_actor,_kind,_provider_id,_proof);
  RETURN true;
+END $$;
+CREATE FUNCTION public.qbo_billing_due_announcements(_business uuid,_environment text,_realm text)
+RETURNS jsonb LANGUAGE sql SECURITY DEFINER SET search_path=public,extensions AS $$
+ SELECT coalesce(jsonb_agg(jsonb_build_object('id',id,'channel',channel,'snapshot',snapshot,'text',approved_text)),'[]'::jsonb)
+ FROM public.qbo_billing_announcements WHERE business_id=_business AND environment=_environment AND realm_id=_realm
+ AND send_day=(now() AT TIME ZONE 'America/Chicago')::date AND state='pending' AND snapshot IS NOT NULL AND approved_text IS NOT NULL
+$$;
+CREATE FUNCTION public.qbo_billing_claim_announcement(_business uuid,_environment text,_realm text,_id uuid)
+RETURNS boolean LANGUAGE plpgsql SECURITY DEFINER SET search_path=public,extensions AS $$ DECLARE a public.qbo_billing_announcements; c public.qbo_billing_activation;
+BEGIN
+ SELECT * INTO a FROM public.qbo_billing_announcements WHERE id=_id AND business_id=_business AND environment=_environment AND realm_id=_realm;
+ IF NOT FOUND THEN RAISE EXCEPTION 'cross_business'; END IF;
+ PERFORM public.qbo_billing_assert_enrollment(_business,_environment,_realm,a.client_id,a.snapshot);
+ SELECT * INTO c FROM public.qbo_billing_activation WHERE business_id=_business AND environment=_environment AND realm_id=_realm FOR SHARE;
+ IF NOT c.announcement_enabled OR NOT c.migration_verified OR NOT c.deployment_verified OR NOT c.provider_verified OR c.approved_scope_id IS DISTINCT FROM a.scope_id OR
+ c.announcement_hour IS NULL OR c.announcement_hour<0 OR c.announcement_hour>=12 OR a.send_day IS DISTINCT FROM (now() AT TIME ZONE 'America/Chicago')::date OR
+ now()<((a.send_day::text||' '||c.announcement_hour||':00')::timestamp AT TIME ZONE 'America/Chicago') THEN RAISE EXCEPTION 'disabled'; END IF;
+ UPDATE public.qbo_billing_announcements SET state='sending' WHERE id=_id AND state='pending'; RETURN FOUND;
+END $$;
+CREATE FUNCTION public.qbo_billing_announcement_outcome(_business uuid,_environment text,_realm text,_id uuid,_outcome jsonb)
+RETURNS boolean LANGUAGE plpgsql SECURITY DEFINER SET search_path=public,extensions AS $$ BEGIN
+ IF _outcome->>'status' IS NULL OR _outcome->>'status' NOT IN ('sent','failed','unknown') THEN RAISE EXCEPTION 'invalid_outcome'; END IF;
+ UPDATE public.qbo_billing_announcements SET state=_outcome->>'status',provider_id=_outcome->>'providerId'
+ WHERE id=_id AND business_id=_business AND environment=_environment AND realm_id=_realm AND state='sending'; RETURN FOUND;
 END $$;
 DO $$ DECLARE f record; BEGIN
  FOR f IN SELECT p.oid::regprocedure signature FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace WHERE n.nspname='public' AND p.proname LIKE 'qbo_billing_%'

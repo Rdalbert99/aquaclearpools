@@ -110,6 +110,36 @@ describe('mocked server-only QBO workflow', () => {
     expect((await executeInvoice(h, 'mock-admin', 'a1')).state).toBe('reconcile');
     expect(h.provider.deliver).not.toHaveBeenCalled(); expect([...h.records.values()][0].providerInvoiceId).toBe('901');
   });
+  it('turning enrollment off blocks queued creation and retry delivery without voiding the invoice', async () => {
+    const h = harness();
+    h.change({ ...h.s, enrollment: { ...h.s.enrollment, enabled: false, revision: 2 } });
+    await expect(executeInvoice(h, 'mock-admin', 'a1')).rejects.toThrow('stale_approval');
+    expect(h.provider.create).not.toHaveBeenCalled();
+    const other = harness(); let fail = true;
+    other.provider.deliver = vi.fn(async () => fail ? 'failed' : 'sent');
+    await executeInvoice(other, 'mock-admin', 'a1');
+    const before = vi.mocked(other.provider.deliver).mock.calls.length;
+    other.change({ ...other.s, enrollment: { ...other.s.enrollment, enabled: false, revision: 2 } }); fail = false;
+    await expect(resumeDelivery({ ...other, claimResume: async () => true }, 'mock-admin', 'a1')).rejects.toThrow('stale_approval');
+    expect(other.provider.deliver).toHaveBeenCalledTimes(before);
+    expect([...other.records.values()][0].providerInvoiceId).toBe('901');
+  });
+  it('disable during atomic channel claim blocks subsequent send', async () => {
+    const h = harness(); const original = h.store.claimChannel;
+    h.store.claimChannel = async (id, channel) => {
+      const claimed = await original(id, channel);
+      h.change({ ...h.s, enrollment: { ...h.s.enrollment, enabled: false, revision: 2 } });
+      return claimed;
+    };
+    expect((await executeInvoice(h, 'mock-admin', 'a1')).state).toBe('reconcile');
+    expect(h.provider.deliver).not.toHaveBeenCalled();
+  });
+  it('off/on revision change invalidates old approval; repeated execution remains duplicate', async () => {
+    const h = harness(); await executeInvoice(h, 'mock-admin', 'a1');
+    h.change({ ...h.s, enrollment: { ...h.s.enrollment, revision: 3 } });
+    await expect(executeInvoice(h, 'mock-admin', 'a1')).rejects.toThrow('stale_approval');
+    expect(h.provider.create).toHaveBeenCalledTimes(1);
+  });
   it('new QBO line remains $200, never old $220 balance', () => {
     const body = invoicePayload(snapshot()); expect(body.Line).toHaveLength(1); expect(body.Line[0].Amount).toBe(200);
     expect(body.Line[0].SalesItemLineDetail).toMatchObject({ ItemRef: { value: '1' }, TaxCodeRef: { value: 'NON' } });

@@ -84,7 +84,7 @@ describe('customer automatic invoicing', () => {
     await expect(app.save('mock', { clientId: OWNER_IDS.peggy, enabled: true, firstServicePeriod: '2026-11', expectedRevision: 0, businessId: 'evil' })).rejects.toThrow();
   });
   it('disabled endpoint never calls persistence/execution; invalid auth and origins fail closed', async () => {
-    const execute = vi.fn(async () => ({ state: 'complete' }));
+    const execute = vi.fn(async () => ({ state: 'complete', auditId: 'mock-audit' }));
     const endpoint = billingEndpoint({ enabled: false, allowedOrigins: ['http://localhost:8080'], enrollment: service(), execute });
     expect((await endpoint(new Request('http://localhost:8080/billing', { method: 'POST' }))).status).toBe(503);
     expect((await endpoint(new Request('http://localhost:8080/billing', { method: 'POST', headers: { Origin: 'https://evil.example' } }))).status).toBe(403);

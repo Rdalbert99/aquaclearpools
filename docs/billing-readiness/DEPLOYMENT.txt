@@ -1,0 +1,18 @@
+SOURCE ONLY — NOT DEPLOYED
+
+Endpoint name: billing-orchestrator
+Factory: server/production.ts:createBillingApplication
+Host entrypoint must call factory with existing server secret getter, fetch, exact
+approved business/environment/realm and allowedOrigins, then serve its handler.
+Bundle this source package (including shared pure helpers) before copying a reviewed
+artifact into any automatic deployment location. No copy/deployment is authorized here.
+
+UNAPPLIED SQL application order:
+1. UNAPPLIED-schema.sql
+2. UNAPPLIED-source-guards.sql
+3. UNAPPLIED-bootstrap.sql (SET LOCAL billing.reviewed_actor to reviewed admin UUID)
+4. UNAPPLIED-schedule.sql only after separate schedule/secret/target review.
+
+All activation flags default false. Existing businesses.billing_mode remains off.
+Invoice execution is gated separately from enrollment read/save and snapshot approval.
+Environment and realm must be host configuration, never request inputs.

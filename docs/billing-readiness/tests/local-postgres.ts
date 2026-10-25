@@ -1,0 +1,64 @@
+// Isolated test runner. Hard-coded loopback synthetic database; no env/production URLs.
+import { execFileSync, spawn } from 'node:child_process';
+import { readinessRow,snapshotCanonical } from '../../../src/lib/billing-readiness';
+const url='postgresql://nobody@127.0.0.1:55439/billing_contract';
+const root='postgresql://nobody@127.0.0.1:55439/postgres';
+const psql=(sql:string)=>execFileSync('psql',[url,'-X','-v','ON_ERROR_STOP=1','-At','-c',sql],{encoding:'utf8',stdio:['ignore','pipe','pipe']}).trim();
+execFileSync('psql',[root,'-X','-v','ON_ERROR_STOP=1','-c','DROP DATABASE IF EXISTS billing_contract WITH (FORCE);','-c','CREATE DATABASE billing_contract;'],{stdio:'pipe'});
+// Roles already exist cluster-wide in prior synthetic postgres. Fixture strips only CREATE ROLE.
+const {readFileSync}=await import('node:fs');
+psql(readFileSync('docs/billing-readiness/tests/fixture.sql','utf8').replace(/CREATE ROLE \w+;/g,''));
+psql(readFileSync('docs/billing-readiness/UNAPPLIED-schema.sql','utf8'));
+psql(readFileSync('docs/billing-readiness/UNAPPLIED-source-guards.sql','utf8'));
+psql(readFileSync('docs/billing-readiness/tests/seed.sql','utf8'));
+const b='a34bd007-c8b1-455c-8063-2ff0236e5181',c='031f318d-5df5-4295-aba2-415089197496',actor='00000000-0000-4000-8000-000000000001';
+const scope=`'${b}','sandbox','123'`,sourceCall=`qbo_billing_source(${scope},'${c}')`;
+const src=JSON.parse(psql(`SELECT ${sourceCall}`));
+const s=readinessRow(src.client,'2026-10',{businessId:b,environment:'sandbox',realmId:'123',...src}).snapshot;if(!s)throw new Error('snapshot fixture blocked');
+const json=(v:unknown)=>`'${JSON.stringify(v).replace(/'/g,"''")}'::jsonb`;
+const guard=`SELECT qbo_billing_assert_source(${scope},'${c}',${json(s)})`;
+let count=0;const ok=(label:string)=>{count++;console.log(`PASS ${label}`);};
+psql(guard);ok('real-schema source snapshot roundtrip');
+const approval=JSON.parse(psql(`SELECT qbo_billing_approve_current(${scope},'${c}','2026-11',${json(s)},'${snapshotCanonical(s)}','${actor}')`));ok('atomic real-source immutable approval');
+const rejects=(sql:string,text:string)=>{try{psql(sql);throw new Error('expected failure');}catch(e){if(!String(e).includes(text)&&!String((e as {stderr?:Buffer}).stderr).includes(text))throw e;}};
+rejects(`SELECT qbo_billing_approve_current(${scope},'${c}','2026-11',${json(s)},'x','00000000-0000-4000-8000-000000000002')`,'unauthorized');ok('SQL protected admin membership');
+rejects(`SELECT qbo_billing_source('${b}','production','9341452568721903','${c}')`,'cross_business');ok('cross-realm scope rejected');
+psql(`UPDATE clients SET service_rate=201 WHERE id='${c}'`);rejects(guard,'stale_source');psql(`UPDATE clients SET service_rate=200 WHERE id='${c}'`);ok('fresh rate invalidates approval');
+psql(`INSERT INTO sms_opt_outs(phone) VALUES('+16015550100')`);rejects(guard,'stale_source');psql('DELETE FROM sms_opt_outs');ok('new-row STOP invalidates approval');
+const child=spawn('psql',[url,'-X','-v','ON_ERROR_STOP=1','-At','-c',`BEGIN; SELECT ${sourceCall}; SELECT pg_sleep(1); COMMIT;`],{stdio:['ignore','pipe','pipe']});
+await new Promise<void>((resolve,reject)=>{child.once('error',reject); const poll=setInterval(()=>{if(psql("SELECT count(*) FROM pg_stat_activity WHERE datname='billing_contract' AND wait_event='PgSleep'")==='1'){clearInterval(poll);resolve();}},20);});
+const start=Date.now();psql(`INSERT INTO sms_opt_outs(phone) VALUES('+16015550100')`);if(Date.now()-start<250)throw new Error('STOP insert not serialized');psql('DELETE FROM sms_opt_outs');ok('concurrent first STOP phantom insertion waits for source transaction');
+psql(`SELECT qbo_billing_set_enrollment(${scope},'${c}',false,'2026-11',1,'${actor}')`);rejects(`SELECT qbo_billing_assert_enrollment(${scope},'${c}',${json(s)})`,'stale_source');ok('off invalidates queued authority without deleting provider IDs');
+rejects(`SELECT qbo_billing_set_enrollment(${scope},'${c}',true,'2026-11',1,'${actor}')`,'stale_enrollment');ok('optimistic revision blocks repeated stale toggle');
+// Restore fixture enrollment for duplicate-claim test, synthetic admin writes only.
+psql(`UPDATE qbo_billing_enrollment SET enabled=true,revision=1,updated_at='${s.enrollment.updatedAt}'`);
+psql(`UPDATE qbo_billing_config SET current_snapshot=${json(s)},canonical_fingerprint='${snapshotCanonical(s)}',revision=1; UPDATE businesses SET billing_mode='qbo'; INSERT INTO qbo_billing_activation VALUES('${b}','sandbox','123',true,false,NULL,NULL,true,true,true);`);
+const claim=`SELECT (qbo_billing_claim('${approval.id}','${b}')).id`;
+const concurrent=()=>new Promise<string>((resolve,reject)=>{const proc=spawn('psql',[url,'-X','-At','-v','ON_ERROR_STOP=1','-c',claim]);let out='';let err='';proc.stdout.on('data',d=>out+=d);proc.stderr.on('data',d=>err+=d);proc.on('exit',code=>code?reject(new Error(err)):resolve(out.trim()));});
+const claims=await Promise.all([concurrent(),concurrent()]);if(claims.filter(Boolean).length!==1)throw new Error('duplicate claims');ok('two simultaneous invoice claims yield exactly one durable run');
+const run=claims.find(Boolean);psql(`UPDATE qbo_billing_runs SET provider_invoice_id='901',state='created' WHERE id='${run}'`);
+if(psql(`SELECT qbo_billing_channel_scoped(${scope},'${run}','sms')`)!=='t')throw new Error('channel not claimed');if(psql(`SELECT qbo_billing_channel_scoped(${scope},'${run}','sms')`)!=='f')throw new Error('channel duplicate');ok('per-channel CAS blocks second sender');
+rejects(`SELECT qbo_billing_update_run(${scope},'${run}','{"channel":"sms"}')`,'invalid_channel_transition');ok('missing delivery outcome rejected');
+psql(`SELECT qbo_billing_update_run(${scope},'${run}','{"channel":"sms","channelState":"unknown","state":"reconcile"}')`);
+if(psql(`SELECT qbo_billing_resume_scoped(${scope},'${run}')`)!=='f')throw new Error('unknown resumed');ok('unknown channel cannot auto-resume');
+psql(`SELECT qbo_billing_record_outcome(${scope},'${run}','sms','synthetic-message-id','unknown')`); // no longer sending must fail closed
+rejects(`SELECT qbo_billing_resolve_evidence(${scope},'${run}','${actor}','delivery','wrong-id','{"verified":true,"runId":"${run}","channel":"sms","status":"sent"}')`,'evidence_mismatch');ok('arbitrary mark-sent proof rejected');
+psql(`SELECT qbo_billing_set_enrollment(${scope},'${c}',false,'2026-11',1,'${actor}')`);
+if(psql(`SELECT provider_invoice_id FROM qbo_billing_runs WHERE id='${run}'`)!=='901')throw new Error('provider id lost');ok('disable preserves created QuickBooks ID');
+psql(`SELECT qbo_billing_set_enrollment(${scope},'${c}',true,'2026-11',2,'${actor}')`);
+const current=JSON.parse(psql(`SELECT ${sourceCall}`));const next=readinessRow(current.client,'2026-10',{businessId:b,environment:'sandbox',realmId:'123',...current}).snapshot;if(!next)throw new Error('toggle fixture');
+const nextA=JSON.parse(psql(`SELECT qbo_billing_approve_current(${scope},'${c}','2026-11',${json(next)},'${snapshotCanonical(next)}','${actor}')`));
+if(psql(`SELECT (qbo_billing_claim('${nextA.id}','${b}')).id`)!=='')throw new Error('toggle duplicate');ok('off-on cannot recreate occupied service period');
+// Annual collision across subsequent service months using another synthetic identity.
+const annualId='00000000-0000-4000-8000-000000000003';
+psql(`INSERT INTO clients(id,customer,status,service_rate,contact_phone,contact_email) SELECT '${annualId}','Synthetic annual','Active',250,'6015550101','annual@example.test';
+INSERT INTO qbo_billing_client_scope VALUES('${b}','sandbox','123','${annualId}',false,now());
+INSERT INTO qbo_billing_enrollment SELECT '${b}','sandbox','123','${annualId}',true,'2026-11',1,'${actor}',now();
+INSERT INTO qbo_billing_annual_config VALUES('${b}','sandbox','123','${annualId}','{"frequency":"annual","renewalMonth":11,"renewalConfirmed":true,"amountCents":300000,"amountConfirmed":true,"revision":"confirmed"}');
+INSERT INTO client_qbo_links(client_id,environment,qbo_customer_id) VALUES('${annualId}','sandbox','115');
+INSERT INTO qbo_billing_verified_mapping(business_id,environment,realm_id,client_id,customer_id,legacy_updated_at,verified_at) SELECT '${b}','sandbox','123',client_id,qbo_customer_id,updated_at,now() FROM client_qbo_links WHERE client_id='${annualId}';`);
+const make=(id:string,month:string)=>{const r=JSON.parse(psql(`SELECT qbo_billing_source(${scope},'${id}')`));const sn=readinessRow(r.client,month,{businessId:b,environment:'sandbox',realmId:'123',...r}).snapshot;if(!sn)throw new Error('annual fixture');return {sn,a:JSON.parse(psql(`SELECT qbo_billing_approve_current(${scope},'${id}','${sn.servicePeriod}',${json(sn)},'${snapshotCanonical(sn)}','${actor}')`))};};
+const yearly=make(annualId,'2026-10');if(yearly.sn.amountCents!==300000||yearly.sn.serviceEnd!=='2027-10-31')throw new Error('annual coverage');psql(`SELECT qbo_billing_claim('${yearly.a.id}','${b}')`);
+psql(`DELETE FROM qbo_billing_annual_config WHERE client_id='${annualId}'`);const monthly=make(annualId,'2026-11');if(psql(`SELECT (qbo_billing_claim('${monthly.a.id}','${b}')).id`)!=='')throw new Error('annual monthly overlap');ok('annual coverage blocks later monthly period despite config change');
+rejects(`SELECT qbo_billing_claim_scoped(${scope},'${nextA.id}')`,'send_day_review_required');ok('scoped creation before send day rejected');
+console.log(`${count} isolated PostgreSQL contracts passed`);

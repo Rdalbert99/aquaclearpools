@@ -121,7 +121,7 @@ export async function executeInvoice(deps: { authority: Authority; store: Store;
     const current = await store.find(invoiceSlot(s));
     const state = current?.state === 'reconcile' || current?.providerInvoiceId ? 'reconcile' : 'blocked';
     const code = error instanceof Error && /^[a-z_]+$/.test(error.message) ? sanitize(error.message) : 'execution_failed';
-    await store.update(run.id, { state, code });
+    await store.update(run.id, { state, ...(current?.state === 'reconcile' && !current.providerInvoiceId ? {} : { code }) });
     return { state, auditId: run.auditId };
   }
 }
@@ -133,8 +133,8 @@ export async function resumeDelivery(deps: { authority: Authority; store: Store;
   const run = await deps.store.find(invoiceSlot(approval.snapshot));
   if (!run || !approvalIsFresh(run.snapshot, approval.snapshot)) throw new Error('stale_approval');
   if (!run.providerInvoiceId || !['created', 'blocked'].includes(run.state) || Object.values(run.channels).some(s => s === 'unknown' || s === 'sending')) throw new Error('reconciliation_required');
-  if (!await deps.claimResume(run.id)) return 'duplicate';
   if (!(await deps.provider.balances(run.snapshot)).available) throw new Error('balance_unavailable');
+  if (!await deps.claimResume(run.id)) return 'duplicate';
   for (const channel of run.snapshot.channels) {
     if (!approvalIsFresh(run.snapshot, (await authorized(deps.authority, credential, approvalId)).approval.snapshot)) throw new Error('stale_approval');
     if (!await deps.store.claimChannel(run.id, channel)) continue;

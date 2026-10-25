@@ -1,0 +1,71 @@
+// Run after local-postgres.ts. Loopback synthetic fixtures only; concrete HTTP is mocked.
+import {execFileSync,spawn} from 'node:child_process';
+import {billingProviders} from '../server/providers';
+import {readinessRow,snapshotCanonical,type Snapshot} from '../../../src/lib/billing-readiness';
+import type {RpcGateway} from '../server/supabase-bindings';
+const url='postgresql://nobody@127.0.0.1:55439/billing_contract';
+const sql=(q:string)=>execFileSync('psql',[url,'-X','-v','ON_ERROR_STOP=1','-At','-c',q],{encoding:'utf8',stdio:['ignore','pipe','pipe']}).trim();
+const lit=(v:unknown)=>`'${String(v).replace(/'/g,"''")}'`;
+const json=(v:unknown)=>`${lit(JSON.stringify(v))}::jsonb`;
+const b='a34bd007-c8b1-455c-8063-2ff0236e5181',c='031f318d-5df5-4295-aba2-415089197496',actor='00000000-0000-4000-8000-000000000001';
+const scope=`'${b}','sandbox','123'`;
+let count=0;const ok=(name:string)=>{count++;console.log('PASS '+name);};
+const assert=(value:boolean,label:string)=>{if(!value)throw new Error(label);};
+const denies=(q:string,code='permission denied')=>{try{sql(q);}catch(e){if(String((e as {stderr?:Buffer}).stderr).includes(code))return;throw e;}throw new Error('expected rejection '+q);};
+const rpc:RpcGateway={rpc:async<T>(name,args)=>{try{const params=Object.entries(args).map(([k,v])=>`${k}=>${v===null?'NULL':typeof v==='object'?json(v):lit(v)}`).join(',');const raw=sql(`SET ROLE service_role;SELECT ${name}(${params})`).replace(/^SET\n/,'');return {data:(raw==='t'?true:raw==='f'?false:raw?JSON.parse(raw):null) as T,error:null};}catch{return {data:null,error:{message:'persistence_failed'}};}}};
+// Role checks execute under actual PostgreSQL roles, not owner shortcuts.
+for(const role of ['anon','authenticated','service_role']){
+ denies(`SET ROLE ${role};SELECT * FROM qbo_billing_enrollment`);
+ denies(`SET ROLE ${role};UPDATE qbo_billing_activation SET invoice_enabled=true`);
+ denies(`SET ROLE ${role};SELECT qbo_billing_claim('00000000-0000-4000-8000-000000000000','${b}')`);
+ denies(`SET ROLE ${role};SELECT qbo_billing_assert_run(${scope},'00000000-0000-4000-8000-000000000000')`);
+ ok(`${role} denied direct tables and internal claim/assert bypass`);
+}
+for(const role of ['anon','authenticated']){denies(`SET ROLE ${role};SELECT qbo_billing_source(${scope},'${c}')`);denies(`SET ROLE ${role};SELECT qbo_billing_host_read(${scope},'policy')`);ok(`${role} denied scoped RPCs`);}
+assert(sql(`SET ROLE service_role; SELECT qbo_billing_client_in_scope(${scope},'${c}')`).endsWith('t'),'service scoped read');ok('service role allowed only scoped gateway');
+denies(`SET ROLE service_role;SELECT qbo_billing_source('${b}','production','999','${c}')`,'cross_business');ok('service cross-realm/client source denied');
+sql(`UPDATE users SET status='revoked' WHERE id='${actor}'`);denies(`SET ROLE service_role;SELECT qbo_billing_set_enrollment(${scope},'${c}',false,NULL,3,'${actor}')`,'unauthorized');sql(`UPDATE users SET status='active' WHERE id='${actor}'`);ok('revoked admin rejected by definer');
+sql(`DELETE FROM business_members WHERE user_id='${actor}'`);denies(`SET ROLE service_role;SELECT qbo_billing_set_enrollment(${scope},'${c}',false,NULL,3,'${actor}')`,'unauthorized');sql(`INSERT INTO business_members(business_id,user_id,role) VALUES('${b}','${actor}','owner')`);ok('revoked membership rejected by definer');
+const get=()=>{const src=JSON.parse(sql(`SELECT qbo_billing_source(${scope},'${c}')`));const s=readinessRow(src.client,'2026-10',{businessId:b,environment:'sandbox',realmId:'123',...src}).snapshot;if(!s)throw new Error('fixture');return s;};
+const s=get();const run=sql(`SELECT id FROM qbo_billing_runs WHERE client_id='${c}'`);
+const raw={Id:'901',CustomerRef:{value:'114'},TotalAmt:200,Balance:200,DueDate:s.dueDate,TxnDate:'2026-10-26',PrivateNote:`Aqua Clear service ${s.serviceStart} through ${s.serviceEnd}; monthly`,InvoiceLink:'https://connect.intuit.com/pay/test',Line:[{Amount:200,DetailType:'SalesItemLineDetail',Description:`Pool service ${s.serviceStart} through ${s.serviceEnd}`,SalesItemLineDetail:{ItemRef:{value:'1'},TaxCodeRef:{value:'NON'}}}]};
+let setup=false;let outcome:'reject'|'success'|'timeout'='reject';let sends=0;
+const fetcher=async(u:string)=>{if(u.includes('telnyx')){sends++;if(outcome==='timeout')throw new Error('timeout');return outcome==='reject'?new Response('{}',{status:422}):new Response(JSON.stringify({data:{id:'synthetic-message',to:[{phone_number:'+16015550100'}]}}));}return new Response(JSON.stringify(u.includes('/query')?{QueryResponse:{Invoice:[raw]}}:{Invoice:raw}));};
+const p=billingProviders({businessId:b,environment:'sandbox',realmId:'123',fetch:fetcher,secret:()=>setup?'synthetic-only':undefined,authorization:async()=>'synthetic-only',db:rpc});
+const key=`${b}:sandbox:123:${c}:2026-11:monthly:sms`;
+const resetFixture=()=>sql(`UPDATE qbo_billing_runs SET state='created',channels='{"sms":"pending"}',snapshot=${json(s)} WHERE id='${run}';UPDATE qbo_billing_config SET current_snapshot=${json(s)} WHERE client_id='${c}' AND service_period='2026-11'`);
+resetFixture();assert(sql(`SET ROLE service_role;SELECT qbo_billing_channel_scoped(${scope},'${run}','sms')`).endsWith('t'),'claim');
+assert(await p.provider.deliver(s,'901','sms',key)==='failed','missing setup outcome');assert(sends===0,'setup sent');assert(sql('SELECT count(*) FROM qbo_billing_delivery_attempts')==='0','setup reserved');ok('actual concrete adapter + SQL missing setup performs no transport or intent');
+sql(`SELECT qbo_billing_update_run(${scope},'${run}','{"channel":"sms","channelState":"failed","state":"blocked"}')`);
+assert(sql(`SELECT qbo_billing_resume_scoped(${scope},'${run}')`)==='t','resume');assert(sql(`SELECT qbo_billing_channel_scoped(${scope},'${run}','sms')`)==='t','reclaim');setup=true;
+assert(await p.provider.deliver(s,'901','sms',key)==='failed','rejection');sql(`SELECT qbo_billing_update_run(${scope},'${run}','{"channel":"sms","channelState":"failed","state":"blocked"}')`);
+assert(sql(`SELECT qbo_billing_resume_scoped(${scope},'${run}')`)==='t','retry resume');assert(sql(`SELECT qbo_billing_channel_scoped(${scope},'${run}','sms')`)==='t','retry claim');outcome='success';
+assert(await p.provider.deliver(s,'901','sms',key)==='sent','successful retry');assert(sends===2,'wrong sends');assert(sql("SELECT string_agg(status,',' ORDER BY created_at) FROM qbo_billing_delivery_attempts")==='failed,sent','history');ok('actual adapter + SQL rejection retries successfully with retained separate attempt history');
+// Uncertain attempt never becomes reusable, even with synthetic owner forcing channel state.
+sql(`UPDATE qbo_billing_runs SET delivery_intents='{}',channels='{"sms":"sending"}' WHERE id='${run}'`);outcome='timeout';assert(await p.provider.deliver(s,'901','sms',key)==='unknown','timeout');sql(`SELECT qbo_billing_update_run(${scope},'${run}','{"channel":"sms","channelState":"unknown","state":"reconcile"}')`);assert(sql(`SELECT qbo_billing_resume_scoped(${scope},'${run}')`)==='f','unknown resume');ok('actual adapter + SQL timeout blocks resume');
+// Concrete concurrency CAS after a proven failed attempt.
+sql(`UPDATE qbo_billing_runs SET delivery_intents='{}',channels='{"sms":"sending"}',state='created' WHERE id='${run}'`);outcome='reject';assert(await p.provider.deliver(s,'901','sms',key)==='failed','rejection');sql(`SELECT qbo_billing_update_run(${scope},'${run}','{"channel":"sms","channelState":"failed","state":"blocked"}')`);
+const parallel=(q:string)=>new Promise<string>((resolve,reject)=>{const child=spawn('psql',[url,'-X','-At','-v','ON_ERROR_STOP=1','-c',q]);let out='';let err='';child.stdout.on('data',d=>out+=d);child.stderr.on('data',d=>err+=d);child.on('exit',n=>n?reject(new Error(err)):resolve(out.trim()));});
+const retries=await Promise.all([parallel(`SET ROLE service_role;SELECT qbo_billing_resume_scoped(${scope},'${run}')`),parallel(`SET ROLE service_role;SELECT qbo_billing_resume_scoped(${scope},'${run}')`)]);assert(retries.filter(x=>x.endsWith('t')).length===1,'double resume');ok('two concurrent real-role retries yield exactly one claim');
+// Atomic profile/client request recovery includes exact UI fields and generated timestamps.
+const payload={customer:'Synthetic created',pool_size:15000,pool_type:'Chlorine',contact_email:'created@example.test',contact_phone:'6015550123',contact_address:'Synthetic address',liner_type:'Liner',status:'Active',in_balance:false,user_id:null,service_rate:200,service_frequency:'weekly',next_service_date:null,included_services:['Chemical Testing'],service_notes:'synthetic',service_days:['Monday'],company_name:null,is_multi_property:false,join_date:'2026-10-25T12:00:00Z',created_at:'2026-10-25T12:00:00Z',updated_at:'2026-10-25T12:00:00Z'};
+const account={email:'created@example.test',name:'Synthetic created',login:'synthetic-created',address_validated:false};const request=crypto.randomUUID();
+const create=`SET ROLE service_role;SELECT qbo_billing_create_scoped_client(${scope},'${actor}',${json(payload)},'${request}',${json(account)})`;
+const created=JSON.parse(sql(create).replace(/^SET\n/,''));const again=JSON.parse(sql(create).replace(/^SET\n/,''));assert(created.id===again.id&&!!created.user_id,'create recovery');assert(sql("SELECT count(*) FROM users WHERE login='synthetic-created'")==='1','duplicate profile');assert(sql("SELECT count(*) FROM clients WHERE customer='Synthetic created'")==='1','duplicate client');ok('real-schema actual insert fields + profile atomic creation and exact-ID repeated/reload recovery');
+denies(`SET ROLE service_role;SELECT qbo_billing_create_scoped_client(${scope},'${actor}',${json({...payload,service_rate:201})},'${request}',${json(account)})`,'create_payload_changed');ok('changed recovery payload rejected without orphan');
+denies(`SET ROLE service_role;SELECT qbo_billing_create_scoped_client(${scope},'${actor}',${json({...payload,id:crypto.randomUUID()})},'${crypto.randomUUID()}',${json({...account,login:'rollback-profile',email:'rollback@example.test'})})`,'invalid_client_field');assert(sql("SELECT count(*) FROM users WHERE login='rollback-profile'")==='0','orphan profile');ok('failed client insert rolls back earlier profile atomically');
+denies(`SET ROLE service_role;SELECT qbo_billing_set_enrollment(${scope},'${created.id}',true,'invalid',0,'${actor}')`,'invalid_first_month');assert(sql(`SELECT count(*) FROM clients WHERE id='${created.id}'`)==='1','client lost');assert(sql(`SELECT count(*) FROM qbo_billing_enrollment WHERE client_id='${created.id}'`)==='0','false enrollment');ok('partial enrollment failure preserves one customer and default OFF');
+// Frozen immutable announcement approval, authoritative channels and NULL activation.
+const text='Aqua Clear Pools: Reviewed synthetic notice. Reply STOP to opt out.';const scopeId=crypto.randomUUID();
+const approve=`SET ROLE service_role;SELECT qbo_billing_approve_announcement(${scope},'${c}','${actor}','${scopeId}',${lit(text)},${json(s)})`;
+assert(sql(approve).endsWith('t'),'announce approval');sql(approve);assert(sql(`SELECT count(*) FROM qbo_billing_announcements WHERE client_id='${c}'`)==='2','duplicate announcement');ok('explicit admin announcement approval frozen per channel without duplicates');
+denies(`SET ROLE service_role;SELECT qbo_billing_approve_announcement(${scope},'${c}','${actor}','${scopeId}','arbitrary text',${json(s)})`,'announcement_review_required');
+denies(`SET ROLE service_role;SELECT qbo_billing_approve_announcement(${scope},'${c}','${actor}','${scopeId}',${lit(text)},${json({...s,channels:['sms']})})`,'channel_changed');
+denies(`SET ROLE service_role;SELECT qbo_billing_approve_announcement(${scope},'${c}','${actor}','${scopeId}',${lit(text)},${json({...s,sendAt:'2026-10-27T17:00:00Z'})})`,'invalid_send_date');ok('announcement cannot authorize absent channel or arbitrary text/day');
+const announcement=sql(`SELECT id FROM qbo_billing_announcements WHERE client_id='${c}' AND channel='sms'`);
+denies(`UPDATE qbo_billing_announcements SET channel='email' WHERE id='${announcement}'`,'immutable_announcement');ok('announcement row snapshot/text/channel/scope immutable');
+sql(`DELETE FROM qbo_billing_activation`);denies(`SET ROLE service_role;SELECT qbo_billing_claim_announcement(${scope},'${announcement}')`,'disabled');ok('missing activation row announcement fails closed');
+sql(`INSERT INTO sms_opt_outs(phone) VALUES('+16015550100')`);denies(`SET ROLE service_role;SELECT qbo_billing_claim_announcement(${scope},'${announcement}')`,'stale_source');sql('DELETE FROM sms_opt_outs');ok('new STOP insertion prevents announcement');
+sql(`UPDATE qbo_billing_enrollment SET enabled=false WHERE client_id='${c}'`);denies(`SET ROLE service_role;SELECT qbo_billing_claim_announcement(${scope},'${announcement}')`,'stale_source');sql(`UPDATE qbo_billing_enrollment SET enabled=true WHERE client_id='${c}'`);ok('disabled enrollment prevents announcement');
+const tax=s.provider;denies(`SET ROLE service_role;SELECT qbo_billing_verify_provider(${scope},${json({...tax,taxReview:undefined})},'${actor}')`,'tax_review_required');denies(`SET ROLE service_role;SELECT qbo_billing_verify_provider(${scope},${json({...tax,taxMode:'tax_inclusive'})},'${actor}')`,'tax_review_required');ok('real-role tax setup requires explicit attestation and rejects unsupported modes');
+console.log(`${count} correction PostgreSQL/concrete-provider contracts passed`);

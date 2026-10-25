@@ -50,7 +50,7 @@ BEGIN
  LOCK TABLE public.clients, public.client_billing_preferences, public.sms_opt_outs,
  public.client_qbo_links, public.qbo_billing_client_scope, public.qbo_billing_enrollment,
  public.qbo_billing_annual_config, public.qbo_billing_provider_setup,
- public.qbo_billing_verified_mapping IN SHARE MODE;
+ public.qbo_billing_verified_mapping IN SHARE ROW EXCLUSIVE MODE;
  IF NOT public.qbo_billing_client_in_scope(_business,_environment,_realm,_client) THEN RAISE EXCEPTION 'cross_business'; END IF;
  SELECT to_jsonb(x) INTO c FROM public.clients x WHERE id=_client;
  IF c IS NULL THEN RAISE EXCEPTION 'client_unavailable'; END IF;
@@ -75,7 +75,7 @@ BEGIN
 END $$;
 CREATE FUNCTION public.qbo_billing_assert_source(_business uuid,_environment text,_realm text,_client uuid,_snapshot jsonb)
 RETURNS void LANGUAGE plpgsql SECURITY DEFINER SET search_path=public,extensions AS $$
-DECLARE src jsonb; amount bigint; start_day date; end_day date; annual jsonb; freq text;
+DECLARE src jsonb; amount bigint; start_day date; end_day date; annual jsonb; freq text; send_day date; channels jsonb; choice text;
 BEGIN
  src:=public.qbo_billing_source(_business,_environment,_realm,_client);
  IF src->>'consentRevision' IS DISTINCT FROM _snapshot->>'consentRevision' THEN RAISE EXCEPTION 'stale_source'; END IF;
@@ -98,17 +98,51 @@ BEGIN
  IF _snapshot->'channels' IS NULL OR jsonb_array_length(_snapshot->'channels')=0 THEN RAISE EXCEPTION 'missing_channel'; END IF;
  IF _snapshot->'channels' ? 'sms' AND (src->>'smsConsent'<>'true' OR src->>'smsOptedOut'='true' OR coalesce(src->'client'->>'contact_phone','')='') THEN RAISE EXCEPTION 'sms_blocked'; END IF;
  IF _snapshot->'channels' ? 'email' AND coalesce(src->'client'->>'contact_email','')='' THEN RAISE EXCEPTION 'email_blocked'; END IF;
+ IF _snapshot->>'contactPhone' IS DISTINCT FROM src->'client'->>'contact_phone' OR _snapshot->>'contactEmail' IS DISTINCT FROM src->'client'->>'contact_email' OR
+ _snapshot->>'mappingRevision' IS DISTINCT FROM src->'mapping'->>'revision' THEN RAISE EXCEPTION 'stale_source'; END IF;
+ send_day:=start_day-1; send_day:=send_day-((extract(isodow FROM send_day)::int+6)%7);
+ IF (_snapshot->>'sendAt')::timestamptz IS DISTINCT FROM ((send_day::text||' 12:00:00')::timestamp AT TIME ZONE 'America/Chicago') THEN RAISE EXCEPTION 'invalid_send_date'; END IF;
+ choice:=coalesce(annual->>'channel',src->>'choice','both'); channels:='[]'::jsonb;
+ IF choice IN ('email','both') AND coalesce(src->'client'->>'contact_email','')<>'' THEN channels:=channels||'"email"'::jsonb; END IF;
+ IF choice IN ('sms','both') AND src->>'smsConsent'='true' AND src->>'smsOptedOut'='false' AND coalesce(src->'client'->>'contact_phone','')<>'' THEN channels:=channels||'"sms"'::jsonb; END IF;
+ IF channels IS DISTINCT FROM _snapshot->'channels' THEN RAISE EXCEPTION 'channel_changed'; END IF;
 END $$;
 CREATE FUNCTION public.qbo_billing_approve_current(_business uuid,_environment text,_realm text,_client uuid,_period text,_snapshot jsonb,_fingerprint text,_actor uuid)
 RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path=public,extensions AS $$
 DECLARE rev bigint; a public.qbo_billing_approvals;
 BEGIN
  PERFORM public.qbo_billing_admin(_business,_actor);
- PERFORM pg_advisory_xact_lock(hashtextextended(_business::text||':'||_environment||':'||_realm||':'||_client::text,0));
  PERFORM public.qbo_billing_assert_source(_business,_environment,_realm,_client,_snapshot);
+ PERFORM pg_advisory_xact_lock(hashtextextended(_business::text||':'||_environment||':'||_realm||':'||_client::text,0));
  rev:=public.qbo_billing_sync_config(_business,_environment,_realm,_client,_period,_snapshot,_fingerprint,(_snapshot->'enrollment'->>'revision')::bigint);
  a:=public.qbo_billing_save_approval(_business,_environment,_realm,_client,_period,rev,_fingerprint,_actor);
  RETURN public.qbo_billing_read_approval(_business,_environment,_realm,a.id);
+END $$;
+CREATE FUNCTION public.qbo_billing_register_new_client(_business uuid,_environment text,_realm text,_client uuid,_actor uuid)
+RETURNS boolean LANGUAGE plpgsql SECURITY DEFINER SET search_path=public,extensions AS $$ BEGIN
+ PERFORM public.qbo_billing_admin(_business,_actor);
+ -- Client rows do not carry business/creator ownership: explicitly reviewed assignment is
+ -- mandatory. Never claim an arbitrary global UUID merely because the caller is an admin.
+ IF NOT public.qbo_billing_client_in_scope(_business,_environment,_realm,_client) THEN RAISE EXCEPTION 'customer_scope_review_required'; END IF;
+ RETURN true;
+END $$;
+CREATE FUNCTION public.qbo_billing_verify_mapping(_business uuid,_environment text,_realm text,_client uuid,_customer text,_actor uuid)
+RETURNS boolean LANGUAGE plpgsql SECURITY DEFINER SET search_path=public,extensions AS $$ DECLARE m public.client_qbo_links;
+BEGIN
+ PERFORM public.qbo_billing_admin(_business,_actor); PERFORM public.qbo_billing_source(_business,_environment,_realm,_client);
+ SELECT * INTO m FROM public.client_qbo_links WHERE client_id=_client AND environment=_environment;
+ IF NOT FOUND OR m.qbo_customer_id IS DISTINCT FROM _customer OR _customer !~ '^\d{1,20}$' THEN RAISE EXCEPTION 'legacy_mapping_review_required'; END IF;
+ INSERT INTO public.qbo_billing_verified_mapping(business_id,environment,realm_id,client_id,customer_id,legacy_updated_at,verified_at)
+ VALUES(_business,_environment,_realm,_client,_customer,m.updated_at,now())
+ ON CONFLICT(business_id,environment,realm_id,client_id) DO UPDATE SET customer_id=excluded.customer_id,legacy_updated_at=excluded.legacy_updated_at,verified_at=now(),revision=gen_random_uuid();
+ RETURN true;
+END $$;
+CREATE FUNCTION public.qbo_billing_verify_provider(_business uuid,_environment text,_realm text,_setup jsonb,_actor uuid)
+RETURNS boolean LANGUAGE plpgsql SECURITY DEFINER SET search_path=public,extensions AS $$ BEGIN
+ PERFORM public.qbo_billing_admin(_business,_actor);
+ IF _setup->>'verified' IS DISTINCT FROM 'true' OR _setup->>'taxMode' IS DISTINCT FROM 'non_taxable' OR _setup->>'taxCode' IS DISTINCT FROM 'NON' THEN RAISE EXCEPTION 'tax_review_required'; END IF;
+ INSERT INTO public.qbo_billing_provider_setup VALUES(_business,_environment,_realm,_setup,now())
+ ON CONFLICT(business_id,environment,realm_id) DO UPDATE SET setup=excluded.setup,verified_at=now(); RETURN true;
 END $$;
 -- Revalidate ALL real sources at every enrollment guard: approval/create/channel/resume.
 -- Rename old internal implementation and replace wrapper, avoiding cached-config-only guards.

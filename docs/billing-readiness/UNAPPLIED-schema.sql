@@ -180,6 +180,8 @@ CREATE FUNCTION public.qbo_billing_set_enrollment(_business uuid,_environment te
 RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path=public,extensions AS $$
 DECLARE e public.qbo_billing_enrollment; prior jsonb; held boolean; first_day date; last_day date; send_day date;
 BEGIN
+ PERFORM public.qbo_billing_admin(_business,_actor);
+ PERFORM public.qbo_billing_source(_business,_environment,_realm,_client);
  PERFORM pg_advisory_xact_lock(hashtextextended(_business::text||':'||_environment||':'||_realm||':'||_client::text,0));
  SELECT owner_hold INTO held FROM public.qbo_billing_client_scope WHERE business_id=_business AND environment=_environment AND realm_id=_realm AND client_id=_client FOR UPDATE;
  IF NOT FOUND OR _actor IS NULL THEN RAISE EXCEPTION 'cross_business'; END IF;
@@ -310,7 +312,7 @@ BEGIN
  IF target='reconcile' AND _patch->>'code'='create_in_flight' THEN PERFORM public.qbo_billing_assert_run(_business,_environment,_realm,_id); END IF;
  IF _patch ? 'providerInvoiceId' AND coalesce(_patch->>'providerInvoiceId','') !~ '^[0-9]+$' THEN RAISE EXCEPTION 'invalid_provider_id'; END IF;
  IF _patch ? 'providerInvoiceId' AND (r.provider_invoice_id IS NOT NULL AND r.provider_invoice_id IS DISTINCT FROM _patch->>'providerInvoiceId') THEN RAISE EXCEPTION 'provider_id_immutable'; END IF;
- IF ch IS NOT NULL AND (ch NOT IN ('sms','email') OR outcome NOT IN ('sent','failed','unknown') OR r.channels->>ch IS DISTINCT FROM 'sending') THEN RAISE EXCEPTION 'invalid_channel_transition'; END IF;
+ IF ch IS NOT NULL AND (ch NOT IN ('sms','email') OR outcome IS NULL OR outcome NOT IN ('sent','failed','unknown') OR r.channels->>ch IS DISTINCT FROM 'sending') THEN RAISE EXCEPTION 'invalid_channel_transition'; END IF;
  IF target='complete' AND (r.provider_invoice_id IS NULL OR r.channels='{}'::jsonb) THEN RAISE EXCEPTION 'incomplete_channels'; END IF;
  IF target='complete' AND EXISTS(SELECT 1 FROM jsonb_each_text(r.channels) c WHERE c.value <> 'sent') THEN RAISE EXCEPTION 'incomplete_channels'; END IF;
  UPDATE public.qbo_billing_runs SET state=target,provider_invoice_id=coalesce(provider_invoice_id,_patch->>'providerInvoiceId'),

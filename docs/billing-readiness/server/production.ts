@@ -127,6 +127,7 @@ export function createBillingApplication(options: {
         return reply({verified:await query('qbo_billing_verify_mapping',{...scoped,_client:body.clientId,_customer:body.customerId,_actor:actor.id})});
       }
       // GET-only setup reads; minimum safe fields; never tokens.
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- untyped provider JSON, validated field-by-field in setup.ts
       const qboGet=async(path:string)=>expectJson(await requestWithRetry(http,accountingUrl(scope.environment,scope.realmId,path),{method:'GET',headers:{Authorization:await authorization(),Accept:'application/json'}},{retry:true})) as Record<string,any>;
       const appCustomer=async(clientId:string):Promise<AppCustomer>=>{
         await enrollment.read(credential,clientId); // explicit reviewed business scope (no IDOR)

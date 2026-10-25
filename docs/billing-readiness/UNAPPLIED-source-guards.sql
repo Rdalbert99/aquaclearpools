@@ -139,15 +139,16 @@ RETURNS boolean LANGUAGE plpgsql SECURITY DEFINER SET search_path=public,extensi
 END $$;
 CREATE FUNCTION public.qbo_billing_create_scoped_client(_business uuid,_environment text,_realm text,_actor uuid,_client jsonb,_request_id uuid,_account jsonb DEFAULT NULL)
 RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path=public,extensions AS $$
-DECLARE cols text; expressions text; row_value jsonb; client_id uuid; profile_id uuid; payload_hash text;
+DECLARE cols text; expressions text; row_value jsonb; client_id uuid; profile_id uuid; request_hash text;
 BEGIN
  PERFORM public.qbo_billing_admin(_business,_actor);
- payload_hash:=md5(jsonb_build_object('client',_client,'account',_account)::text);
+ request_hash:=md5(jsonb_build_object('client',_client,'account',_account)::text);
  IF _request_id IS NULL THEN RAISE EXCEPTION 'create_request_id_required'; END IF;
  PERFORM pg_advisory_xact_lock(hashtextextended('client-create:'||_business||':'||_actor||':'||_request_id,0));
  SELECT x.client_id INTO client_id FROM public.qbo_billing_customer_creations x WHERE x.business_id=_business AND x.actor=_actor AND x.request_id=_request_id;
  IF FOUND THEN
-  IF NOT EXISTS(SELECT 1 FROM public.qbo_billing_customer_creations WHERE business_id=_business AND actor=_actor AND request_id=_request_id AND payload_hash=qbo_billing_create_scoped_client.payload_hash) THEN RAISE EXCEPTION 'create_payload_changed'; END IF;
+  IF NOT EXISTS(SELECT 1 FROM public.qbo_billing_customer_creations WHERE business_id=_business AND actor=_actor AND request_id=_request_id AND payload_hash=request_hash) THEN RAISE EXCEPTION 'create_payload_changed'; END IF;
+  IF NOT public.qbo_billing_client_in_scope(_business,_environment,_realm,client_id) THEN RAISE EXCEPTION 'cross_business'; END IF;
   SELECT to_jsonb(c) INTO row_value FROM public.clients c WHERE id=client_id; RETURN row_value;
  END IF;
  IF _environment IS NULL OR _environment NOT IN ('sandbox','production') OR _realm IS NULL OR _realm !~ '^\d+$' OR NOT EXISTS(SELECT 1 FROM public.businesses WHERE id=_business) THEN RAISE EXCEPTION 'invalid_scope'; END IF;
@@ -165,7 +166,7 @@ BEGIN
  EXECUTE format('INSERT INTO public.clients (%s) SELECT %s RETURNING to_jsonb(clients)',cols,expressions) INTO row_value USING _client;
  client_id:=(row_value->>'id')::uuid;
  INSERT INTO public.qbo_billing_client_scope(business_id,environment,realm_id,client_id) VALUES(_business,_environment,_realm,client_id);
- INSERT INTO public.qbo_billing_customer_creations VALUES(_business,_actor,_request_id,payload_hash,client_id);
+ INSERT INTO public.qbo_billing_customer_creations VALUES(_business,_actor,_request_id,request_hash,client_id);
  -- No runtime auto-on; actual-ID separate enrollment save is mandatory.
  RETURN row_value;
 END $$;

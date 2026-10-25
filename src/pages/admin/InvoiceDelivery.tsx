@@ -77,7 +77,7 @@ export default function InvoiceDelivery() {
       failures.push(error instanceof Error ? error.message : 'Roster could not be read');
     } finally { if(current()){setErrors(failures);setLoading(false);} }
   }, [sendMonth]);
-  useEffect(() => { void load();return()=>{sequence.current++;}; }, [load]);
+  useEffect(() => { const counter=sequence;void load();return()=>{counter.current++;}; }, [load]);
   const dates = useMemo(() => { try { return batchDates(sendMonth); } catch { return null; } }, [sendMonth]);
   const rows = useMemo(() => loadedMonth!==sendMonth ? [] : authoritativeRows ?? (dates ? clients.map(client => {
     const pref = prefs.find(p => p.client_id === client.id);

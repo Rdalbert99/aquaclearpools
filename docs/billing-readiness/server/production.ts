@@ -67,7 +67,7 @@ export function createBillingApplication(options: {
   async function roster(sendMonth:string){
     const {data:members,error}=await service.from('qbo_billing_client_scope').select('client_id').eq('business_id',scope.businessId).eq('environment',scope.environment).eq('realm_id',scope.realmId).limit(1000);
     if(error)throw new Error('backend_setup_pending');if(members?.length===1000)throw new Error('roster_pagination_review_required');
-    const rows=await Promise.all((members??[]).map(m=>source.preview(m.client_id,sendMonth)));
+    const rows=[];for(const member of members??[])rows.push(await source.preview(member.client_id,sendMonth)); // bounded source lock queue
     return rows;
   }
   async function scopedAnnouncements(credential:string) {
@@ -95,7 +95,7 @@ export function createBillingApplication(options: {
     const approval=await query<Approval>('qbo_billing_approve_current',{...scoped,_client:clientId,_period:row.snapshot.servicePeriod,_snapshot:row.snapshot,_fingerprint:reviewedFingerprint,_actor:actor.id});
     if(!approval)throw new Error('approval_failed');return approval;
   }
-  async function run(id:string){const {data,error}=await service.from('qbo_billing_runs').select('*').eq('id',id).eq('business_id',scope.businessId).eq('environment',scope.environment).eq('realm_id',scope.realmId).single();if(error||!data)throw new Error('cross_business');return data as {id:string;snapshot:Snapshot;request_id:string;provider_invoice_id:string|null;provider_outcomes:Record<string,{id:string}>;state:string};}
+  async function run(id:string){const {data,error}=await service.from('qbo_billing_runs').select('*').eq('id',id).eq('business_id',scope.businessId).eq('environment',scope.environment).eq('realm_id',scope.realmId).single();if(error||!data)throw new Error('cross_business');return data as {id:string;snapshot:Snapshot;request_id:string;provider_invoice_id:string|null;provider_outcomes:Record<string,{id:string}>;delivery_intents:Record<string,{correlation:string}>;state:string};}
   const handler=async(request:Request)=>{
     const origin=request.headers.get('origin');const headers:Record<string,string>={'Content-Type':'application/json','Vary':'Origin'};
     if(origin){if(!options.allowedOrigins.includes(origin))return new Response('{}',{status:403});headers['Access-Control-Allow-Origin']=origin;headers['Access-Control-Allow-Headers']='authorization,apikey,content-type';headers['Access-Control-Allow-Methods']='POST,OPTIONS';}
@@ -109,7 +109,7 @@ export function createBillingApplication(options: {
         if(p.billingMode!=='qbo'||!p.invoiceEnabled||!p.migrationVerified||!p.deploymentVerified||!p.providerVerified)throw new Error('disabled');
         const dates=batchDates(initialSendMonth());if(new Date()<new Date(dates.sendAt)||chicagoDate()!==dates.sendDay)throw new Error('send_time_not_due');
         const {data:approvals,error}=await service.from('qbo_billing_approvals').select('id').eq('business_id',scope.businessId).eq('environment',scope.environment).eq('realm_id',scope.realmId).eq('service_period',dates.servicePeriod).limit(500);
-        if(error)throw new Error('approval_read_failed');const results=[];for(const a of approvals??[])results.push(await executeInvoice({...bindings,provider:providers.provider},credential,a.id));return reply({results});
+        if(error)throw new Error('approval_read_failed');if(approvals?.length===500)throw new Error('approval_pagination_review_required');const results=[];for(const a of approvals??[])results.push(await executeInvoice({...bindings,provider:providers.provider},credential,a.id));return reply({results});
       }
       if(body.action==='schedule_announcements')return reply({results:await scopedAnnouncements(credential)});
       const actor=await admin(credential);
@@ -141,7 +141,7 @@ export function createBillingApplication(options: {
         const r=await run(body.runId);
         if(body.action==='payment'){if(!r.provider_invoice_id)throw new Error('invoice_unavailable');return reply({payment:await providers.payment(r.snapshot,r.provider_invoice_id)});}
         if(!body.providerId)throw new Error('provider_evidence_required');
-        const proof=body.action==='reconcile_invoice'?await providers.reconcileInvoice(r.snapshot,body.providerId,r.request_id):await providers.deliveryEvidence(r.snapshot,body.channel??'sms',body.providerId);
+        const proof=body.action==='reconcile_invoice'?await providers.reconcileInvoice(r.snapshot,body.providerId,r.request_id):await providers.deliveryEvidence(r.snapshot,body.channel??'sms',body.providerId,r.delivery_intents[body.channel??'sms']?.correlation);
         const saved=await query<boolean>('qbo_billing_resolve_evidence',{...scoped,_id:r.id,_actor:actor.id,_kind:body.action==='reconcile_invoice'?'invoice':'delivery',_provider_id:body.providerId,_proof:{...proof,verified:true,runId:r.id}});if(saved!==true)throw new Error('reconciliation_failed');return reply({reconciled:true});
       }
       throw new Error('invalid_request');

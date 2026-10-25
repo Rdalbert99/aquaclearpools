@@ -65,13 +65,14 @@ export interface Provider {
 const matches = (i: ProviderInvoice, s: Snapshot) => i.customerId === s.customerId && i.amountCents === s.amountCents && i.dueDate === s.dueDate && i.serviceStart === s.serviceStart && i.serviceEnd === s.serviceEnd && i.frequency === s.frequency;
 async function authorized(auth: Authority, credential: string, approvalId: string) {
   const actor = await auth.authenticate(credential);
-  if (!actor) throw new Error('unauthorized');
+  if (!actor || !['admin', 'scheduler'].includes(actor.kind)) throw new Error('unauthorized');
   const approval = await auth.approval(approvalId);
   if (!approval || approval.snapshot.businessId !== actor.businessId) throw new Error('unauthorized');
   const policy = await auth.policy(actor.businessId);
   const s = approval.snapshot;
   if (policy.billingMode !== 'qbo' || !policy.invoiceEnabled || !policy.migrationVerified || !policy.providerVerified || !policy.deploymentVerified) throw new Error('disabled');
   if (policy.environment !== s.environment || policy.realmId !== s.realmId || policy.businessId !== s.businessId) throw new Error('cross_realm');
+  if (!s.channels.length || !Number.isSafeInteger(s.amountCents) || s.amountCents <= 0) throw new Error('invalid_approval');
   if (!approval.approvedBy || !approval.approvedAt || approval.fingerprint !== snapshotCanonical(s)) throw new Error('invalid_approval');
   if (!approvalIsFresh(s, await auth.current(s))) throw new Error('stale_approval');
   return { actor, approval };
@@ -100,7 +101,7 @@ export async function executeInvoice(deps: { authority: Authority; store: Store;
     }
     await store.update(run.id, { state: 'created', providerInvoiceId: invoice.id, code: 'invoice_recorded' });
     for (const channel of s.channels) {
-      await authorized(auth, credential, approvalId); // STOP, contact and consent changes invalidate approval.
+      if (!approvalIsFresh(s, (await authorized(auth, credential, approvalId)).approval.snapshot)) throw new Error('stale_approval'); // STOP, contact and consent changes invalidate approval.
       if (!await store.claimChannel(run.id, channel)) continue;
       let outcome: 'sent' | 'failed' | 'unknown' = 'unknown';
       try { outcome = await provider.deliver(s, invoice.id, channel, `${executionKey(s)}:${channel}`); }
@@ -128,11 +129,12 @@ export async function executeInvoice(deps: { authority: Authority; store: Store;
 export async function resumeDelivery(deps: { authority: Authority; store: Store; provider: Provider; claimResume(id: string): Promise<boolean> }, credential: string, approvalId: string) {
   const { approval } = await authorized(deps.authority, credential, approvalId);
   const run = await deps.store.find(invoiceSlot(approval.snapshot));
-  if (!run?.providerInvoiceId || !['created', 'blocked'].includes(run.state) || Object.values(run.channels).some(s => s === 'unknown' || s === 'sending')) throw new Error('reconciliation_required');
+  if (!run || !approvalIsFresh(run.snapshot, approval.snapshot)) throw new Error('stale_approval');
+  if (!run.providerInvoiceId || !['created', 'blocked'].includes(run.state) || Object.values(run.channels).some(s => s === 'unknown' || s === 'sending')) throw new Error('reconciliation_required');
   if (!await deps.claimResume(run.id)) return 'duplicate';
   if (!(await deps.provider.balances(run.snapshot)).available) throw new Error('balance_unavailable');
   for (const channel of run.snapshot.channels) {
-    await authorized(deps.authority, credential, approvalId);
+    if (!approvalIsFresh(run.snapshot, (await authorized(deps.authority, credential, approvalId)).approval.snapshot)) throw new Error('stale_approval');
     if (!await deps.store.claimChannel(run.id, channel)) continue;
     let outcome: 'sent' | 'failed' | 'unknown' = 'unknown';
     try { outcome = await deps.provider.deliver(run.snapshot, run.providerInvoiceId, channel, `${executionKey(run.snapshot)}:${channel}`); } catch { /* uncertain */ }

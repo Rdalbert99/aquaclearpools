@@ -70,7 +70,7 @@ export function createBillingApplication(options: {
     const rows=[];for(const member of members??[]){
       const row=await source.preview(member.client_id,sendMonth);
       let balance: {status:'ok';invoices:unknown[]}|{status:'unavailable';reason:string}={status:'unavailable',reason:'Exact mapping/setup or enrollment blocked'};
-      if(row.snapshot){try{const result=await providers.provider.balances(row.snapshot);balance={status:'ok',invoices:'invoices' in result ? result.invoices as unknown[] : []};}catch{balance={status:'unavailable',reason:'QuickBooks balance read failed'};}}
+      if(row.snapshot){try{const result=await providers.provider.balances(row.snapshot);if(!('invoices' in result)||!Array.isArray(result.invoices))throw new Error('balance_unavailable');balance={status:'ok',invoices:result.invoices};}catch{balance={status:'unavailable',reason:'QuickBooks balance read failed'};}}
       rows.push({...row,balance});
     } // bounded source lock queue
     return rows;

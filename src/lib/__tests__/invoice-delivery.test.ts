@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { resolveInvoiceChannels, finalWeekMonday, chicagoToUtc, idempotencyKey, proposeInvoice, invoiceMessage } from '../invoice-delivery';
+import { resolveInvoiceChannels, finalWeekMonday, chicagoToUtc, idempotencyKey, proposeInvoice, invoiceMessage, announcementText, ANNOUNCEMENT_SMS, ANNOUNCEMENT_EMAIL_BODY } from '../invoice-delivery';
 
 const ok = { phone: '601-555-1234', email: 'a@b.com', smsOptedOut: false, smsConsent: true };
 
@@ -50,5 +50,18 @@ describe('legacy proposal calls cannot authorize name-only annual charges', () =
   it('text draft includes portal link and STOP', () => {
     const m = invoiceMessage('Ann', 25000, 'November 2026', 'sms');
     expect(m).toContain('getaquaclear.com/auth/login'); expect(m).toContain('STOP');
+  });
+  it('invoice draft never claims login is required to pay', () => {
+    const m = invoiceMessage('Ann', 25000, 'November 2026', 'email');
+    expect(m).toContain('no account needed');
+    expect(m).not.toContain('Sign in to view and pay');
+  });
+  it('announcement text is channel-exact: SMS wrapper, email verbatim', () => {
+    expect(ANNOUNCEMENT_SMS.startsWith('Aqua Clear Pools:')).toBe(true);
+    expect(ANNOUNCEMENT_SMS.endsWith('Reply STOP to opt out.')).toBe(true);
+    expect(ANNOUNCEMENT_SMS).toContain(ANNOUNCEMENT_EMAIL_BODY);
+    expect(ANNOUNCEMENT_EMAIL_BODY).not.toContain('Reply STOP');
+    expect(announcementText('sms')).toBe(ANNOUNCEMENT_SMS);
+    expect(announcementText('email')).toBe(ANNOUNCEMENT_EMAIL_BODY);
   });
 });

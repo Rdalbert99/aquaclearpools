@@ -23,7 +23,7 @@ service-only grants in the SQL are review proposals, not applied permission chan
 - Laken's stable client ID and exact-name restrictive fallback impose OWNER HOLD, not
   a rate-pending diagnosis; her existing $125 metadata is untouched.
 - Peggy's stable ID carries November annual renewal, Nov 1 2026–Oct 31 2027 coverage,
-  existing $3,000 text-only proposal. Amount remains a review gate, never monthly ×12.
+  owner-confirmed $3,000 text-only annual amount (Oct 25, 12:09 UTC), superseding historical $2,750; never monthly ×12.
   Shelby/Jennifer remain prepaid exclusions with unknown renewal/amount review gates.
   Unknown/ambiguous annual identity cannot become a monthly bill.
 - Missing mapping, amount, tax/item/account or consented channel remains in the roster
@@ -67,8 +67,7 @@ These are not hidden behind success messages. This is NOT operational invoicing 
 4. `serverAuthenticator` needs existing protected role/membership resolver and validated
    JWT getUser; scheduler needs a separately stored dedicated secret. No new role storage
    or permissions are provisioned. Concrete bindings are deliberately not deployed.
-5. Confirm each annual client's month and annual amount. Peggy's month is confirmed;
-   her amount is existing reviewable source, not saved confirmed annual configuration.
+5. Peggy's $3,000 annual amount and November renewal are now owner-confirmed in SOURCE only. Confirm each other annual client's month and amount; no live annual configuration was written.
    Laken hold release needs separate owner instruction.
 6. Confirm exact QBO customer mapping, ItemRef / active income account and company-specific
    tax behavior. `qboReadAdapter` requires a real tax verifier; no default pass. Inclusive /
@@ -93,7 +92,7 @@ These are not hidden behind success messages. This is NOT operational invoicing 
 
 ## Checks
 
-- `bun run test`: 235 tests passed across 20 files (mocked/local only).
+- `bun run test`: 255 tests passed across 23 files (mocked/local only).
 - `bun run lint`: FAILED, 476 errors / 61 warnings across repository (537 total);
   existing broad `any` and require/style issues. No whole-repository lint cleanup was
   attempted because it is outside the approved scope.
@@ -110,3 +109,86 @@ Changed paths: `src/lib/billing-readiness.ts`, `src/lib/invoice-delivery.ts`,
 `docs/billing-readiness/{README.md,UNAPPLIED-schema.sql,server/*.ts}`, `AGENTS.md`,
 `roadmap.md`, and project invoice-rollout memory. Baseline source commit:
 `68dd7f93b8fd2ed5f172e2519187447be4584e87`; source commits are managed by Lovable.
+
+
+## Second consolidated pass — customer enrollment
+
+Baseline: `051d0f4e2062abc7559d28ce0cf1565a616e56f4`.
+
+**Customer routes:** `/admin/clients/new` (draft/default OFF),
+`/admin/clients/:id/edit` (Automatic invoicing + First billing month),
+`/admin/clients/:id` (read-only summary and edit link). Readiness links these controls
+at `/admin/invoice-delivery`. Controls have real draft interactions and fail-closed save
+handling, but the deployed-backend adapter is NOT bound: they state **not saved / backend
+setup pending**, never claim production enrollment. Nothing is stored in localStorage
+or inserted into the existing client create/edit payload. Enrollment is a separate
+server-owned configuration, independent of service Active/season/channel/autopay.
+
+First billing month means service month. November 2026 sends Oct 26 noon Chicago, due
+Nov 1. New customers default OFF. Existing eligible Active customers are intended ON from
+November except Laken OFF, via `server/bootstrap.ts` frozen cohort manifest only. The
+full stable-ID cohort/as-of capture was unavailable without prohibited live access;
+manifest remains empty/unapproved with known owner ID overrides, not runtime blanket-on.
+No bootstrap SQL is executed. Later enrollment choices must not be overwritten.
+
+### Concrete source prepared (NOT deployed or SQL-tested)
+
+- Shared `Enrollment` enabled/first period/revision/actor/time participates in proposal
+  eligibility and immutable snapshots, so all approval/execution/retry checks invalidate
+  when changed. Missing enrollment fails closed. Disabling never voids existing QBO IDs.
+- `enrollmentService` validates inputs, admin authorization, server-resolved realm/business,
+  membership, hold and missed-send-day rules; persistence errors propagate.
+- `supabase-bindings.ts` concretely maps scoped enrollment read/save, approval/run read,
+  claim/channel/update/resume/config synchronization to parameterized RPC contracts.
+- `endpoint.ts` validates Request/Response actions, allowed origins, auth, disabled setup,
+  enrollment read/save and invoice execution; resume has a separate optional binding and
+  fails closed if unavailable. No entrypoint or default network dependencies exist.
+- SQL draft now includes separate enrollment, frozen membership/hold, enrollment audit,
+  read/save/sync functions, scoped run/channel/resume/update wrappers. Enrollment save and
+  invoice/channel/resume checks share per-client advisory lock, compare exact authoritative
+  enrollment JSON/revision, invalidate queued config atomically, retain provider IDs.
+  Channel guards revalidate saved config; workflow rechecks current consent/STOP immediately
+  after channel claim before send. Creation is permitted only on due send day after noon.
+- Strict state transitions disallow unknown/in-flight resets; separate resume claim cannot
+  reclaim sending/unknown. Outcomes can still be recorded after disable without authorizing
+  a new effect. Reconciliation remains a restricted audited operator implementation blocker.
+- `enrolled-queue.ts` recomputes saved approval eligibility and rejects an entirely missed
+  send day; scheduler enqueue does not enroll anybody or backfill past months.
+
+### Exact pending activation binding / remaining gaps
+
+1. Review and test the entire unapplied SQL in a disposable database. No SQL was executed;
+   mock tests do NOT prove actual Postgres serialization. Review JSON timestamp roundtrips,
+   transition/lock ordering, role authorization and every RPC contract before applying.
+2. Bind `AutomaticInvoicing` to `endpointEnrollmentAdapter` only after verified deployment,
+   passing stable server-established business/environment/realm/client scope. Create a
+   client first; then save separate enrollment with actual ID. Customer save does not save
+   draft enrollment until this binding exists. Readiness must load that same saved enrollment.
+3. Bind `RpcGateway` to server-only Supabase SDK and protected auth/membership resolver.
+   Concrete `source()` and transactional source-data/config recomputation are still missing:
+   current rates/status, verified realm mapping, provider settings and auditable consent/STOP
+   must be read from the actual schema and synchronized without preflight-only races.
+   SQL enrollment is guarded atomically; other mutable source records still require actual
+   source-row locking/revalidation adapter and isolated database tests. Do not mark ready.
+4. Frozen cohort needs full reviewed IDs/as-of and scope rows; future customer scope records
+   must default enrollment OFF. No blanket Active query/auto-enrollment is permitted.
+5. Owner hold remains enforced by stable identity and restrictive fallback. No release
+   endpoint is supplied; a deliberate separately approved audited release is required.
+6. SMS/payment-link/provider tax and connection bindings, secure scheduler secret,
+   resume/reconciliation operator review, isolated integration proof and all activation /
+   publication/deployment approvals remain pending as in first pass. All flags remain OFF.
+
+### Second pass checks
+
+`bun run test`: 255 tests / 23 files passed, all local/mocked.
+Focused command:
+`bunx eslint src/lib/billing-readiness.ts src/lib/billing-enrollment.ts src/components/billing/AutomaticInvoicing.tsx src/pages/admin/InvoiceDelivery.tsx src/lib/__tests__/billing-*.test.ts docs/billing-readiness/server/*.ts`
+passed. Existing customer page files retain pre-existing lint issues; entire
+`bun run lint` remains 476 errors / 61 warnings (537 total). Automatic platform
+build/typecheck was checked after edits; no manual build/typecheck command or live test.
+
+Second-pass paths: `src/lib/billing-{readiness,enrollment}.ts`,
+`src/components/billing/AutomaticInvoicing.tsx`, `src/pages/admin/{NewClient,ClientEdit,ClientView,InvoiceDelivery}.tsx`,
+billing test files, `docs/billing-readiness/server/{enrollment,bootstrap,endpoint,supabase-bindings,enrolled-queue,transitions,workflow}.ts`,
+`docs/billing-readiness/{README.md,UNAPPLIED-schema.sql}`, `AGENTS.md`, `roadmap.md` and invoice memory.
+Production remains unchanged, not operational enrollment/invoicing.

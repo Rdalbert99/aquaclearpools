@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -72,7 +73,7 @@ export default function InvoiceDelivery() {
         <p className="font-semibold text-destructive">Not activated — invoice and announcement schedules disabled</p>
         <p>Schema, server deployment, provider verification and activation approval are pending. No live invoice, message or approval can be submitted here.</p>
         <ul className="list-disc space-y-1 pl-5">{READINESS_GATES.map(gate => <li key={gate}>{gate}</li>)}</ul>
-        <p>Shadow Billing is practice / reconciliation only, not the official invoice source.</p>
+        <p>Customer Automatic invoicing and First billing month: Clients → customer → Edit. Enrollment is not saved until backend setup is complete. Shadow Billing is practice / reconciliation only.</p>
       </section>
       <div className="flex flex-wrap items-end gap-3">
         <label className="space-y-1 text-sm">Send month<Input aria-label="Send month" type="month" value={sendMonth} onChange={e => setSendMonth(e.target.value)} className="w-44" /></label>
@@ -98,6 +99,8 @@ export default function InvoiceDelivery() {
               return <article key={client.id} className="space-y-2 py-4 text-sm">
                 <div className="flex flex-wrap items-center justify-between gap-2"><h2 className="font-semibold">{client.customer}</h2><Badge variant={proposal.excluded ? 'outline' : 'secondary'}>{proposal.frequency}</Badge></div>
                 <p className="break-all text-xs text-muted-foreground">Client {client.id}</p>
+                <p>Automatic invoicing: not saved / default off · First service month unavailable · Global sender disabled</p>
+                <Link className="text-primary underline" to={`/admin/clients/${client.id}/edit`}>Review customer enrollment</Link>
                 <p>{proposal.amountCents == null ? 'Amount needs review' : fromCents(proposal.amountCents)} · Coverage {proposal.serviceStart} – {proposal.serviceEnd} · Due {proposal.dueDate}</p>
                 {proposal.note && <p className="text-muted-foreground">{proposal.note}</p>}
                 <p>{channelLabel(delivery.channels)}{delivery.defaulted && !proposal.channelOverride ? ' · default both, consent required' : ''}{delivery.skipped.map(s => ` · ${s.channel}: ${s.reason}`).join('')}</p>

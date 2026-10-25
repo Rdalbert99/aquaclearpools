@@ -5,13 +5,13 @@ import { serverAuthenticator } from '../../../docs/billing-readiness/server/auth
 import { saveReviewedApproval } from '../../../docs/billing-readiness/server/approval';
 function fixture(): Snapshot {
   const snapshot = readinessRow({ id: 'c1', customer: 'Monthly', status: 'Active', service_rate: 200 }, '2026-10', {
-    businessId: 'b1', environment: 'sandbox', realmId: '123', choice: 'email', smsConsent: false, smsOptedOut: false, consentRevision: '1',
+    enrollment: { enabled: true, firstServicePeriod: '2026-11', revision: 1, updatedBy: 'owner', updatedAt: '2026-10-25T12:09:00Z' }, businessId: 'b1', environment: 'sandbox', realmId: '123', choice: 'email', smsConsent: false, smsOptedOut: false, consentRevision: '1',
     mapping: { businessId: 'b1', environment: 'sandbox', realmId: '123', clientId: 'c1', customerId: '114', verified: true, revision: '1' },
     provider: { itemId: '1', incomeAccountId: '2', taxCode: 'NON', taxMode: 'non_taxable', verified: true, revision: '1' },
   });
   // Fixture with real email eligibility; no provider or live effect.
   const s = readinessRow({ ...snapshot.client, contact_email: 'a@b.com' }, '2026-10', {
-    businessId: 'b1', environment: 'sandbox', realmId: '123', choice: 'email', smsConsent: false, smsOptedOut: false, consentRevision: '1',
+    enrollment: { enabled: true, firstServicePeriod: '2026-11', revision: 1, updatedBy: 'owner', updatedAt: '2026-10-25T12:09:00Z' }, businessId: 'b1', environment: 'sandbox', realmId: '123', choice: 'email', smsConsent: false, smsOptedOut: false, consentRevision: '1',
     mapping: { businessId: 'b1', environment: 'sandbox', realmId: '123', clientId: 'c1', customerId: '114', verified: true, revision: '1' },
     provider: { itemId: '1', incomeAccountId: '2', taxCode: 'NON', taxMode: 'non_taxable', verified: true, revision: '1' },
   }).snapshot;

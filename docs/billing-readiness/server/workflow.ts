@@ -1,6 +1,6 @@
 // PREPARED ONLY. Not an Edge Function entrypoint; never imported by the browser.
 // No network, environment access, global credentials, or default provider/store adapter.
-import { approvalIsFresh, executionKey, invoiceSlot, snapshotCanonical, type Snapshot, type SendChannel } from '../../../src/lib/billing-readiness';
+import { approvalIsFresh, executionKey, invoiceSlot, snapshotCanonical, enrollmentBlocker, type Snapshot, type SendChannel } from '../../../src/lib/billing-readiness';
 import { sanitize } from '../../../supabase/functions/_shared/qbo-oauth';
 
 export type SyncState = 'claimed' | 'created' | 'complete' | 'blocked' | 'reconcile';
@@ -72,6 +72,7 @@ async function authorized(auth: Authority, credential: string, approvalId: strin
   const s = approval.snapshot;
   if (policy.billingMode !== 'qbo' || !policy.invoiceEnabled || !policy.migrationVerified || !policy.providerVerified || !policy.deploymentVerified) throw new Error('disabled');
   if (policy.environment !== s.environment || policy.realmId !== s.realmId || policy.businessId !== s.businessId) throw new Error('cross_realm');
+  if (enrollmentBlocker(s.enrollment, s.servicePeriod)) throw new Error('enrollment_disabled');
   if (!s.channels.length || !Number.isSafeInteger(s.amountCents) || s.amountCents <= 0) throw new Error('invalid_approval');
   if (!approval.approvedBy || !approval.approvedAt || approval.fingerprint !== snapshotCanonical(s)) throw new Error('invalid_approval');
   if (!approvalIsFresh(s, await auth.current(s))) throw new Error('stale_approval');
@@ -103,6 +104,7 @@ export async function executeInvoice(deps: { authority: Authority; store: Store;
     for (const channel of s.channels) {
       if (!approvalIsFresh(s, (await authorized(auth, credential, approvalId)).approval.snapshot)) throw new Error('stale_approval'); // STOP, contact and consent changes invalidate approval.
       if (!await store.claimChannel(run.id, channel)) continue;
+      await authorized(auth, credential, approvalId); // re-check after atomic channel claim, immediately before send
       let outcome: 'sent' | 'failed' | 'unknown' = 'unknown';
       try { outcome = await provider.deliver(s, invoice.id, channel, `${executionKey(s)}:${channel}`); }
       catch { outcome = 'unknown'; }
@@ -136,6 +138,7 @@ export async function resumeDelivery(deps: { authority: Authority; store: Store;
   for (const channel of run.snapshot.channels) {
     if (!approvalIsFresh(run.snapshot, (await authorized(deps.authority, credential, approvalId)).approval.snapshot)) throw new Error('stale_approval');
     if (!await deps.store.claimChannel(run.id, channel)) continue;
+    await authorized(deps.authority, credential, approvalId);
     let outcome: 'sent' | 'failed' | 'unknown' = 'unknown';
     try { outcome = await deps.provider.deliver(run.snapshot, run.providerInvoiceId, channel, `${executionKey(run.snapshot)}:${channel}`); } catch { /* uncertain */ }
     await deps.store.update(run.id, { channel, channelState: outcome, state: outcome === 'sent' ? 'created' : outcome === 'unknown' ? 'reconcile' : 'blocked' });

@@ -1,4 +1,4 @@
-import { snapshotCanonical, readinessRow, type Enrollment, type Snapshot, type BillingClient, type AnnualConfig, type ExactMapping, type ProviderSetup } from '../../../src/lib/billing-readiness';
+import { snapshotCanonical, readinessRow, approvalIsFresh, type Enrollment, type Snapshot, type BillingClient, type AnnualConfig, type ExactMapping, type ProviderSetup } from '../../../src/lib/billing-readiness';
 import type { EnrollmentScope } from '../../../src/lib/billing-enrollment';
 import type { Authority, Store, Run, Approval, Policy, Actor } from './workflow';
 import type { EnrollmentRepository } from './enrollment';
@@ -50,7 +50,7 @@ export function concreteBillingBindings(deps: {
       return rpc<Run>('qbo_billing_claim_scoped', { _approval: approval.id });
     },
     find: slot => rpc<Run>('qbo_billing_find_run', { _slot: slot }),
-    update: async (id, patch) => { await rpc('qbo_billing_update_run', { _id: id, _patch: patch }); },
+    update: async (id, patch) => { if (await rpc<boolean>('qbo_billing_update_run', { _id: id, _patch: patch }) !== true) throw new Error('persistence_failed'); },
     claimChannel: async (id, channel) => (await rpc<boolean>('qbo_billing_channel_scoped', { _id: id, _channel: channel })) === true,
   };
   return { repository, authority, store,
@@ -58,7 +58,7 @@ export function concreteBillingBindings(deps: {
     // Fresh source -> atomic SQL enrollment comparison and update of canonical config.
     synchronize: async (snapshot: Snapshot) => {
       checkScope(snapshot);
-      if (!await authority.current(snapshot)) throw new Error('stale_approval');
+      if (!approvalIsFresh(snapshot, await authority.current(snapshot))) throw new Error('stale_approval');
       return rpc('qbo_billing_sync_config', { _client: snapshot.clientId, _period: snapshot.servicePeriod, _snapshot: snapshot, _fingerprint: snapshotCanonical(snapshot), _enrollment_revision: snapshot.enrollment.revision });
     },
   };

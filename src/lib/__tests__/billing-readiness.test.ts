@@ -18,8 +18,8 @@ describe('owner billing rules', () => {
     expect(p.excluded).toContain('Owner hold'); expect(p.amountCents).toBe(12500); expect(c.service_rate).toBe(125);
   });
   it('Laken exact name fallback holds without matching unrelated names', () => {
-    expect(proposeForClient({ ...client, customer: ' Laken Ford Ramey ' }, '2026-11').excluded).toContain('Owner hold');
-    expect(proposeForClient({ ...client, customer: 'Not Laken Ford Ramey' }, '2026-11').excluded).toBeNull();
+    expect(proposeForClient({ ...client, customer: ' Laken Ford Ramey ' }, '2026-11', undefined, enrolled).excluded).toContain('Owner hold');
+    expect(proposeForClient({ ...client, customer: 'Not Laken Ford Ramey' }, '2026-11', undefined, enrolled).excluded).toBeNull();
   });
   it('Oct 26 noon sends November due first', () => expect(batchDates('2026-10')).toMatchObject({ sendDay: '2026-10-26', sendAt: '2026-10-26T17:00:00.000Z', servicePeriod: '2026-11', dueDate: '2026-11-01' }));
   it('Nov 30 noon sends December due first', () => expect(batchDates('2026-11')).toMatchObject({ sendDay: '2026-11-30', sendAt: '2026-11-30T18:00:00.000Z', servicePeriod: '2026-12', dueDate: '2026-12-01' }));
@@ -29,7 +29,7 @@ describe('owner billing rules', () => {
     expect(batchDates('2027-03').sendAt).toBe('2027-03-29T17:00:00.000Z');
     expect(initialSendMonth(new Date('2027-01-01T02:00:00Z'))).toBe('2026-12');
   });
-  it('Peggy one annual November renewal preserving reviewable $3000', () => {
+  it('Peggy one annual November renewal with owner-confirmed $3000', () => {
     const p = proposeForClient({ ...client, id: OWNER_IDS.peggy, customer: 'Peggy McQuarter', service_rate: 250 }, '2026-11', undefined, enrolled);
     expect(p).toMatchObject({ frequency: 'annual', amountCents: 300000, channelOverride: 'sms', serviceStart: '2026-11-01', serviceEnd: '2027-10-31', dueDate: '2026-11-01', excluded: null });
     expect(p.blockers).toEqual([]);

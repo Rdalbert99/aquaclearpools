@@ -24,3 +24,19 @@ export function firstMonthLabel(period: string) {
   return `${label} service — sent ${d.sendDay} at noon Chicago; due ${d.dueDate}`;
 }
 export { defaultEnrollment };
+/** Prepared transport binding: caller injects a VERIFIED deployed endpoint; none is active. */
+export function endpointEnrollmentAdapter(invoke: (body: Record<string, unknown>) => Promise<{ enrollment?: Enrollment | null; error?: string }>): EnrollmentAdapter {
+  return {
+    ready: true,
+    load: async scope => {
+      const result = await invoke({ action: 'read_enrollment', clientId: scope.clientId });
+      if (result.error || !('enrollment' in result)) throw new Error(result.error ?? 'Enrollment unavailable');
+      return result.enrollment ?? null;
+    },
+    save: async (scope, input) => {
+      const result = await invoke({ action: 'save_enrollment', clientId: scope.clientId, ...input });
+      if (result.error || !result.enrollment) throw new Error(result.error ?? 'Not saved');
+      return result.enrollment;
+    },
+  };
+}

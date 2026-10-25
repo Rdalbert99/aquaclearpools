@@ -89,11 +89,27 @@ export function createBillingApplication(options: {
       if(body.action==='schedule'){
         const actor=await authenticate(credential);if(actor?.kind!=='scheduler')throw new Error('unauthorized');const p=await policy();
         if(p.billingMode!=='qbo'||!p.invoiceEnabled||!p.migrationVerified||!p.deploymentVerified||!p.providerVerified)throw new Error('disabled');
-        const dates=batchDates(initialSendMonth());if(new Date()<new Date(dates.sendAt)||initialSendMonth()!==dates.sendMonth)throw new Error('send_time_not_due');
+        const dates=batchDates(initialSendMonth());if(new Date()<new Date(dates.sendAt)||chicagoDate()!==dates.sendDay)throw new Error('send_time_not_due');
         const {data:approvals,error}=await service.from('qbo_billing_approvals').select('id').eq('business_id',scope.businessId).eq('environment',scope.environment).eq('realm_id',scope.realmId).eq('service_period',dates.servicePeriod).limit(500);
         if(error)throw new Error('approval_read_failed');const results=[];for(const a of approvals??[])results.push(await executeInvoice({...bindings,provider:providers.provider},credential,a.id));return reply({results});
       }
       const actor=await admin(credential);
+      if(body.action==='register_new_client'&&body.clientId){
+        await query('qbo_billing_register_new_client',{...scoped,_client:body.clientId,_actor:actor.id});
+        return reply({enrollment:await enrollment.save(credential,{clientId:body.clientId,enabled:body.enabled,firstServicePeriod:body.firstServicePeriod,expectedRevision:body.expectedRevision})});
+      }
+      if(body.action==='verify_mapping'&&body.clientId&&body.customerId){
+        await enrollment.read(credential,body.clientId); // checks explicit reviewed scope first
+        const data=expectJson(await requestWithRetry(http,accountingUrl(scope.environment,scope.realmId,`/customer/${body.customerId}`),{headers:{Authorization:await authorization(),Accept:'application/json'}},{retry:true})) as {Customer?:{Id?:string;Active?:boolean}};
+        if(data.Customer?.Id!==body.customerId||data.Customer.Active===false)throw new Error('mapping_verification_failed');
+        return reply({verified:await query('qbo_billing_verify_mapping',{...scoped,_client:body.clientId,_customer:body.customerId,_actor:actor.id})});
+      }
+      if(body.action==='verify_provider'&&body.itemId&&body.incomeAccountId){
+        const get=async(path:string)=>expectJson(await requestWithRetry(http,accountingUrl(scope.environment,scope.realmId,path),{headers:{Authorization:await authorization(),Accept:'application/json'}},{retry:true}));
+        const [item,account,company]=await Promise.all([get(`/item/${body.itemId}`),get(`/account/${body.incomeAccountId}`),get(`/companyinfo/${scope.realmId}`)]);
+        if(item.Item?.Id!==body.itemId||item.Item.Active===false||item.Item.IncomeAccountRef?.value!==body.incomeAccountId||account.Account?.AccountType!=='Income'||account.Account.Active===false||company.CompanyInfo?.Country!=='US')throw new Error('provider_setup_review_required');
+        return reply({verified:await query('qbo_billing_verify_provider',{...scoped,_actor:actor.id,_setup:{itemId:body.itemId,incomeAccountId:body.incomeAccountId,taxCode:'NON',taxMode:'non_taxable',verified:true,revision:crypto.randomUUID()}})});
+      }
       if(body.action==='readiness')return reply({scope,policy:await policy(),rows:await roster(body.sendMonth??initialSendMonth())});
       if(body.action==='read_enrollment'&&body.clientId)return reply({scope,enrollment:await enrollment.read(credential,body.clientId)});
       if(body.action==='save_enrollment'&&body.clientId)return reply({enrollment:await enrollment.save(credential,{clientId:body.clientId,enabled:body.enabled,firstServicePeriod:body.firstServicePeriod,expectedRevision:body.expectedRevision})});

@@ -14,7 +14,7 @@ import { ProviderSetup, CustomerMapping } from '@/components/billing/BillingSetu
 
 const REALM = '9341452568721903';
 const item = { Id: '1010000001', Name: 'Pool Maintenance', Active: true, Type: 'Service', Taxable: false, IncomeAccountRef: { value: '79' }, SyncToken: '3' };
-const qbo = (over: Record<string, any> = {}) => {
+const qbo = (over: Record<string, unknown> = {}) => {
   const calls: string[] = [];
   const get = async (path: string) => { calls.push(path);
     if (path.startsWith('/item/')) return { Item: over.item ?? item };

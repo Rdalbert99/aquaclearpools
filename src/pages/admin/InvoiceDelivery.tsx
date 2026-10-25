@@ -9,7 +9,7 @@ import { fromCents } from '@/lib/billing';
 import { ANNOUNCEMENT_SMS, invoiceMessage } from '@/lib/invoice-delivery';
 import { batchDates, initialSendMonth, isActiveClient, readinessRow, snapshotCanonical, READINESS_GATES, type BillingClient, type ExactMapping } from '@/lib/billing-readiness';
 import { billingInvoke } from '@/lib/billing-transport';
-import { accountSummary, balanceDraftLines } from '@/lib/account-balance';
+import { accountSummary, balanceDraftLines, type BalanceLookup } from '@/lib/account-balance';
 import { AccountBalancePanel } from '@/components/billing/AccountBalance';
 
 interface Preference { client_id: string; invoice_channel: 'sms' | 'email' | 'both' | null; sms_consent_at: string | null }
@@ -26,7 +26,7 @@ export default function InvoiceDelivery() {
   const [errors, setErrors] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const [sendMonth, setSendMonth] = useState(initialSendMonth);
-  const [authoritativeRows, setAuthoritativeRows] = useState<ReturnType<typeof readinessRow>[] | null>(null);
+  const [authoritativeRows, setAuthoritativeRows] = useState<(ReturnType<typeof readinessRow> & {balance?:BalanceLookup})[] | null>(null);
   const [backendReady, setBackendReady] = useState(false);
   const [approvals, setApprovals] = useState<Record<string, string>>({});
   const [runs, setRuns] = useState<{id:string;state:string;provider_invoice_id:string|null;code:string;channels:Record<string,string>}[]>([]);
@@ -118,7 +118,8 @@ export default function InvoiceDelivery() {
             {rows.map(row => {
               const { client, proposal, delivery } = row;
               const candidateLinks = links.filter(l => l.client_id === client.id);
-              const summary = proposal.amountCents == null ? null : accountSummary(proposal.amountCents, { status: 'unavailable', reason: 'Live QuickBooks lookup not performed; exact realm mapping and verification pending' }, dates?.sendDay ?? '');
+              const savedBalance = 'balance' in row ? row.balance as BalanceLookup : undefined;
+              const summary = proposal.amountCents == null ? null : accountSummary(proposal.amountCents, savedBalance ?? { status: 'unavailable', reason: 'Live QuickBooks lookup not performed; exact realm mapping and verification pending' }, dates?.sendDay ?? '');
               return <article key={client.id} className="space-y-2 py-4 text-sm">
                 <div className="flex flex-wrap items-center justify-between gap-2"><h2 className="font-semibold">{client.customer}</h2><Badge variant={proposal.excluded ? 'outline' : 'secondary'}>{proposal.frequency}</Badge></div>
                 <p className="break-all text-xs text-muted-foreground">Client {client.id}</p>

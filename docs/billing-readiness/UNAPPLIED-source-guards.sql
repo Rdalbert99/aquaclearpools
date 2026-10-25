@@ -220,6 +220,15 @@ RETURNS jsonb LANGUAGE sql SECURITY DEFINER SET search_path=public,extensions AS
  FROM public.qbo_billing_announcements WHERE business_id=_business AND environment=_environment AND realm_id=_realm
  AND send_day=(now() AT TIME ZONE 'America/Chicago')::date AND state='pending' AND snapshot IS NOT NULL AND approved_text IS NOT NULL
 $$;
+CREATE FUNCTION public.qbo_billing_approve_announcement(_business uuid,_environment text,_realm text,_client uuid,_actor uuid,_scope_id uuid,_text text,_snapshot jsonb)
+RETURNS boolean LANGUAGE plpgsql SECURITY DEFINER SET search_path=public,extensions AS $$ BEGIN
+ PERFORM public.qbo_billing_admin(_business,_actor); PERFORM public.qbo_billing_assert_enrollment(_business,_environment,_realm,_client,_snapshot);
+ IF _scope_id IS NULL OR _text IS NULL OR length(_text)<1 OR length(_text)>2000 THEN RAISE EXCEPTION 'announcement_review_required'; END IF;
+ INSERT INTO public.qbo_billing_announcements(business_id,environment,realm_id,client_id,send_day,channel,scope_id,snapshot,approved_text)
+ SELECT _business,_environment,_realm,_client,((_snapshot->>'sendAt')::timestamptz AT TIME ZONE 'America/Chicago')::date,ch,_scope_id,_snapshot,_text
+ FROM jsonb_array_elements_text(_snapshot->'channels') ch ON CONFLICT DO NOTHING;
+ RETURN true;
+END $$;
 CREATE FUNCTION public.qbo_billing_claim_announcement(_business uuid,_environment text,_realm text,_id uuid)
 RETURNS boolean LANGUAGE plpgsql SECURITY DEFINER SET search_path=public,extensions AS $$ DECLARE a public.qbo_billing_announcements; c public.qbo_billing_activation;
 BEGIN

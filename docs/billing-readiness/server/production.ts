@@ -67,7 +67,12 @@ export function createBillingApplication(options: {
   async function roster(sendMonth:string){
     const {data:members,error}=await service.from('qbo_billing_client_scope').select('client_id').eq('business_id',scope.businessId).eq('environment',scope.environment).eq('realm_id',scope.realmId).limit(1000);
     if(error)throw new Error('backend_setup_pending');if(members?.length===1000)throw new Error('roster_pagination_review_required');
-    const rows=[];for(const member of members??[])rows.push(await source.preview(member.client_id,sendMonth)); // bounded source lock queue
+    const rows=[];for(const member of members??[]){
+      const row=await source.preview(member.client_id,sendMonth);
+      let balance: {status:'ok';invoices:unknown[]}|{status:'unavailable';reason:string}={status:'unavailable',reason:'Exact mapping/setup or enrollment blocked'};
+      if(row.snapshot){try{const result=await providers.provider.balances(row.snapshot);balance={status:'ok',invoices:'invoices' in result ? result.invoices as unknown[] : []};}catch{balance={status:'unavailable',reason:'QuickBooks balance read failed'};}}
+      rows.push({...row,balance});
+    } // bounded source lock queue
     return rows;
   }
   async function scopedAnnouncements(credential:string) {
@@ -103,7 +108,7 @@ export function createBillingApplication(options: {
     if(request.method==='OPTIONS')return new Response(null,{status:204,headers});if(request.method!=='POST')return reply({error:'method_not_allowed'},405);
     const credential=request.headers.get('authorization')??'';
     try{
-      const body=z.object({action:z.string(),client:z.record(z.unknown()).optional(),clientId:z.string().uuid().optional(),approvalId:z.string().uuid().optional(),runId:z.string().uuid().optional(),sendMonth:z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/).optional(),fingerprint:z.string().optional(),enabled:z.boolean().optional(),firstServicePeriod:z.string().nullable().optional(),expectedRevision:z.number().int().nonnegative().optional(),providerId:z.string().optional(),channel:z.enum(['sms','email']).optional(),customerId:z.string().regex(/^\d{1,20}$/).optional(),itemId:z.string().regex(/^\d{1,20}$/).optional(),incomeAccountId:z.string().regex(/^\d{1,20}$/).optional()}).strict().parse(await request.json());
+      const body=z.object({action:z.string(),text:z.string().max(2000).optional(),scopeId:z.string().uuid().optional(),client:z.record(z.unknown()).optional(),clientId:z.string().uuid().optional(),approvalId:z.string().uuid().optional(),runId:z.string().uuid().optional(),sendMonth:z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/).optional(),fingerprint:z.string().optional(),enabled:z.boolean().optional(),firstServicePeriod:z.string().nullable().optional(),expectedRevision:z.number().int().nonnegative().optional(),providerId:z.string().optional(),channel:z.enum(['sms','email']).optional(),customerId:z.string().regex(/^\d{1,20}$/).optional(),itemId:z.string().regex(/^\d{1,20}$/).optional(),incomeAccountId:z.string().regex(/^\d{1,20}$/).optional()}).strict().parse(await request.json());
       if(body.action==='schedule'){
         const actor=await authenticate(credential);if(actor?.kind!=='scheduler')throw new Error('unauthorized');const p=await policy();
         if(p.billingMode!=='qbo'||!p.invoiceEnabled||!p.migrationVerified||!p.deploymentVerified||!p.providerVerified)throw new Error('disabled');
@@ -134,6 +139,11 @@ export function createBillingApplication(options: {
       if(body.action==='read_enrollment'&&body.clientId)return reply({scope,enrollment:await enrollment.read(credential,body.clientId)});
       if(body.action==='save_enrollment'&&body.clientId)return reply({enrollment:await enrollment.save(credential,{clientId:body.clientId,enabled:body.enabled,firstServicePeriod:body.firstServicePeriod,expectedRevision:body.expectedRevision})});
       if(body.action==='approve'&&body.clientId&&body.fingerprint)return reply({approval:await approve(credential,body.clientId,body.sendMonth??initialSendMonth(),body.fingerprint)});
+      if(body.action==='approve_announcement'&&body.clientId&&body.scopeId&&body.text&&body.fingerprint){
+        const row=await source.preview(body.clientId,body.sendMonth??initialSendMonth());
+        if(!row.snapshot||snapshotCanonical(row.snapshot)!==body.fingerprint)throw new Error('stale_approval');
+        return reply({approved:await query('qbo_billing_approve_announcement',{...scoped,_client:body.clientId,_actor:actor.id,_scope_id:body.scopeId,_text:body.text,_snapshot:row.snapshot})});
+      }
       if(body.action==='execute'&&body.approvalId)return reply(await executeInvoice({...bindings,provider:providers.provider},credential,body.approvalId));
       if(body.action==='resume'&&body.approvalId)return reply({state:await resumeDelivery({...bindings,provider:providers.provider},credential,body.approvalId)});
       if(body.action==='runs'){const {data,error}=await service.from('qbo_billing_runs').select('id,state,provider_invoice_id,channels,code,audit_id').eq('business_id',scope.businessId).eq('environment',scope.environment).eq('realm_id',scope.realmId).limit(500);if(error)throw new Error('run_read_failed');return reply({runs:data});}

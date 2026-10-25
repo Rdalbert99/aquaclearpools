@@ -15,6 +15,7 @@ export function sourceAuthority(db: RpcGateway, scope: Omit<EnrollmentScope, 'cl
   }
   return { source, preview: async (clientId: string, sendMonth: string) => {
     const record = await source(clientId);
-    return readinessRow(record.client, sendMonth, { ...scope, ...record });
+    // Saved enrollment is returned independently of snapshot/provider readiness.
+    return { ...readinessRow(record.client, sendMonth, { ...scope, ...record }), enrollment: record.enrollment };
   } };
 }

@@ -2317,6 +2317,593 @@ export type Database = {
           },
         ]
       }
+      qbo_billing_activation: {
+        Row: {
+          announcement_enabled: boolean
+          announcement_hour: number | null
+          approved_scope_id: string | null
+          business_id: string
+          deployment_verified: boolean
+          environment: string
+          invoice_enabled: boolean
+          migration_verified: boolean
+          provider_verified: boolean
+          realm_id: string
+        }
+        Insert: {
+          announcement_enabled?: boolean
+          announcement_hour?: number | null
+          approved_scope_id?: string | null
+          business_id: string
+          deployment_verified?: boolean
+          environment: string
+          invoice_enabled?: boolean
+          migration_verified?: boolean
+          provider_verified?: boolean
+          realm_id: string
+        }
+        Update: {
+          announcement_enabled?: boolean
+          announcement_hour?: number | null
+          approved_scope_id?: string | null
+          business_id?: string
+          deployment_verified?: boolean
+          environment?: string
+          invoice_enabled?: boolean
+          migration_verified?: boolean
+          provider_verified?: boolean
+          realm_id?: string
+        }
+        Relationships: []
+      }
+      qbo_billing_announcements: {
+        Row: {
+          approved_at: string
+          approved_by: string
+          approved_text: string | null
+          audit_id: string
+          business_id: string
+          channel: string
+          client_id: string
+          environment: string
+          id: string
+          provider_id: string | null
+          realm_id: string
+          scope_id: string
+          send_day: string
+          snapshot: Json | null
+          state: string
+        }
+        Insert: {
+          approved_at?: string
+          approved_by: string
+          approved_text?: string | null
+          audit_id?: string
+          business_id: string
+          channel: string
+          client_id: string
+          environment: string
+          id?: string
+          provider_id?: string | null
+          realm_id: string
+          scope_id: string
+          send_day: string
+          snapshot?: Json | null
+          state?: string
+        }
+        Update: {
+          approved_at?: string
+          approved_by?: string
+          approved_text?: string | null
+          audit_id?: string
+          business_id?: string
+          channel?: string
+          client_id?: string
+          environment?: string
+          id?: string
+          provider_id?: string | null
+          realm_id?: string
+          scope_id?: string
+          send_day?: string
+          snapshot?: Json | null
+          state?: string
+        }
+        Relationships: []
+      }
+      qbo_billing_annual_config: {
+        Row: {
+          business_id: string
+          client_id: string
+          config: Json
+          environment: string
+          realm_id: string
+        }
+        Insert: {
+          business_id: string
+          client_id: string
+          config: Json
+          environment: string
+          realm_id: string
+        }
+        Update: {
+          business_id?: string
+          client_id?: string
+          config?: Json
+          environment?: string
+          realm_id?: string
+        }
+        Relationships: []
+      }
+      qbo_billing_approvals: {
+        Row: {
+          approved_at: string
+          approved_by: string
+          business_id: string
+          client_id: string
+          config_revision: number
+          environment: string
+          fingerprint: string
+          id: string
+          invoice_type: string
+          realm_id: string
+          service_period: string
+          snapshot: Json
+        }
+        Insert: {
+          approved_at?: string
+          approved_by: string
+          business_id: string
+          client_id: string
+          config_revision: number
+          environment: string
+          fingerprint: string
+          id?: string
+          invoice_type: string
+          realm_id: string
+          service_period: string
+          snapshot: Json
+        }
+        Update: {
+          approved_at?: string
+          approved_by?: string
+          business_id?: string
+          client_id?: string
+          config_revision?: number
+          environment?: string
+          fingerprint?: string
+          id?: string
+          invoice_type?: string
+          realm_id?: string
+          service_period?: string
+          snapshot?: Json
+        }
+        Relationships: []
+      }
+      qbo_billing_client_scope: {
+        Row: {
+          business_id: string
+          client_id: string
+          cohort_as_of: string | null
+          environment: string
+          owner_hold: boolean
+          realm_id: string
+        }
+        Insert: {
+          business_id: string
+          client_id: string
+          cohort_as_of?: string | null
+          environment: string
+          owner_hold?: boolean
+          realm_id: string
+        }
+        Update: {
+          business_id?: string
+          client_id?: string
+          cohort_as_of?: string | null
+          environment?: string
+          owner_hold?: boolean
+          realm_id?: string
+        }
+        Relationships: []
+      }
+      qbo_billing_config: {
+        Row: {
+          business_id: string
+          canonical_fingerprint: string | null
+          client_id: string
+          current_snapshot: Json | null
+          environment: string
+          realm_id: string
+          revision: number
+          service_period: string
+        }
+        Insert: {
+          business_id: string
+          canonical_fingerprint?: string | null
+          client_id: string
+          current_snapshot?: Json | null
+          environment: string
+          realm_id: string
+          revision?: number
+          service_period: string
+        }
+        Update: {
+          business_id?: string
+          canonical_fingerprint?: string | null
+          client_id?: string
+          current_snapshot?: Json | null
+          environment?: string
+          realm_id?: string
+          revision?: number
+          service_period?: string
+        }
+        Relationships: []
+      }
+      qbo_billing_customer_creations: {
+        Row: {
+          actor: string
+          business_id: string
+          client_id: string
+          payload_hash: string
+          request_id: string
+        }
+        Insert: {
+          actor: string
+          business_id: string
+          client_id: string
+          payload_hash: string
+          request_id: string
+        }
+        Update: {
+          actor?: string
+          business_id?: string
+          client_id?: string
+          payload_hash?: string
+          request_id?: string
+        }
+        Relationships: []
+      }
+      qbo_billing_delivery_attempts: {
+        Row: {
+          business_id: string
+          channel: string
+          completed_at: string | null
+          correlation: string
+          created_at: string
+          environment: string
+          id: string
+          proof: string | null
+          provider_id: string | null
+          realm_id: string
+          run_id: string
+          status: string
+          text_hash: string
+        }
+        Insert: {
+          business_id: string
+          channel: string
+          completed_at?: string | null
+          correlation: string
+          created_at?: string
+          environment: string
+          id: string
+          proof?: string | null
+          provider_id?: string | null
+          realm_id: string
+          run_id: string
+          status: string
+          text_hash: string
+        }
+        Update: {
+          business_id?: string
+          channel?: string
+          completed_at?: string | null
+          correlation?: string
+          created_at?: string
+          environment?: string
+          id?: string
+          proof?: string | null
+          provider_id?: string | null
+          realm_id?: string
+          run_id?: string
+          status?: string
+          text_hash?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "qbo_billing_delivery_attempts_run_id_fkey"
+            columns: ["run_id"]
+            isOneToOne: false
+            referencedRelation: "qbo_billing_runs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      qbo_billing_enrollment: {
+        Row: {
+          business_id: string
+          client_id: string
+          enabled: boolean
+          environment: string
+          first_service_period: string | null
+          realm_id: string
+          revision: number
+          updated_at: string
+          updated_by: string
+        }
+        Insert: {
+          business_id: string
+          client_id: string
+          enabled?: boolean
+          environment: string
+          first_service_period?: string | null
+          realm_id: string
+          revision?: number
+          updated_at?: string
+          updated_by: string
+        }
+        Update: {
+          business_id?: string
+          client_id?: string
+          enabled?: boolean
+          environment?: string
+          first_service_period?: string | null
+          realm_id?: string
+          revision?: number
+          updated_at?: string
+          updated_by?: string
+        }
+        Relationships: []
+      }
+      qbo_billing_enrollment_audit: {
+        Row: {
+          actor: string
+          business_id: string
+          client_id: string
+          environment: string
+          id: string
+          new_value: Json
+          occurred_at: string
+          old_value: Json | null
+          realm_id: string
+        }
+        Insert: {
+          actor: string
+          business_id: string
+          client_id: string
+          environment: string
+          id?: string
+          new_value: Json
+          occurred_at?: string
+          old_value?: Json | null
+          realm_id: string
+        }
+        Update: {
+          actor?: string
+          business_id?: string
+          client_id?: string
+          environment?: string
+          id?: string
+          new_value?: Json
+          occurred_at?: string
+          old_value?: Json | null
+          realm_id?: string
+        }
+        Relationships: []
+      }
+      qbo_billing_events: {
+        Row: {
+          audit_id: string
+          business_id: string
+          code: string
+          created_at: string
+          id: string
+          run_id: string
+        }
+        Insert: {
+          audit_id: string
+          business_id: string
+          code: string
+          created_at?: string
+          id?: string
+          run_id: string
+        }
+        Update: {
+          audit_id?: string
+          business_id?: string
+          code?: string
+          created_at?: string
+          id?: string
+          run_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "qbo_billing_events_run_id_fkey"
+            columns: ["run_id"]
+            isOneToOne: false
+            referencedRelation: "qbo_billing_runs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      qbo_billing_evidence: {
+        Row: {
+          actor: string
+          business_id: string
+          created_at: string
+          environment: string
+          id: string
+          kind: string
+          proof: Json
+          provider_id: string
+          realm_id: string
+          run_id: string
+        }
+        Insert: {
+          actor: string
+          business_id: string
+          created_at?: string
+          environment: string
+          id?: string
+          kind: string
+          proof: Json
+          provider_id: string
+          realm_id: string
+          run_id: string
+        }
+        Update: {
+          actor?: string
+          business_id?: string
+          created_at?: string
+          environment?: string
+          id?: string
+          kind?: string
+          proof?: Json
+          provider_id?: string
+          realm_id?: string
+          run_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "qbo_billing_evidence_run_id_fkey"
+            columns: ["run_id"]
+            isOneToOne: false
+            referencedRelation: "qbo_billing_runs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      qbo_billing_provider_setup: {
+        Row: {
+          business_id: string
+          environment: string
+          realm_id: string
+          setup: Json
+          verified_at: string | null
+        }
+        Insert: {
+          business_id: string
+          environment: string
+          realm_id: string
+          setup: Json
+          verified_at?: string | null
+        }
+        Update: {
+          business_id?: string
+          environment?: string
+          realm_id?: string
+          setup?: Json
+          verified_at?: string | null
+        }
+        Relationships: []
+      }
+      qbo_billing_runs: {
+        Row: {
+          approval_id: string
+          audit_id: string
+          business_id: string
+          channels: Json
+          client_id: string
+          code: string | null
+          create_intent: boolean
+          delivery_intents: Json
+          environment: string
+          id: string
+          invoice_type: string
+          provider_invoice_id: string | null
+          provider_outcomes: Json
+          realm_id: string
+          request_id: string
+          service_period: string
+          snapshot: Json
+          state: string
+          updated_at: string
+        }
+        Insert: {
+          approval_id: string
+          audit_id?: string
+          business_id: string
+          channels?: Json
+          client_id: string
+          code?: string | null
+          create_intent?: boolean
+          delivery_intents?: Json
+          environment: string
+          id?: string
+          invoice_type: string
+          provider_invoice_id?: string | null
+          provider_outcomes?: Json
+          realm_id: string
+          request_id?: string
+          service_period: string
+          snapshot: Json
+          state?: string
+          updated_at?: string
+        }
+        Update: {
+          approval_id?: string
+          audit_id?: string
+          business_id?: string
+          channels?: Json
+          client_id?: string
+          code?: string | null
+          create_intent?: boolean
+          delivery_intents?: Json
+          environment?: string
+          id?: string
+          invoice_type?: string
+          provider_invoice_id?: string | null
+          provider_outcomes?: Json
+          realm_id?: string
+          request_id?: string
+          service_period?: string
+          snapshot?: Json
+          state?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "qbo_billing_runs_approval_id_fkey"
+            columns: ["approval_id"]
+            isOneToOne: false
+            referencedRelation: "qbo_billing_approvals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      qbo_billing_verified_mapping: {
+        Row: {
+          business_id: string
+          client_id: string
+          customer_id: string
+          environment: string
+          legacy_updated_at: string
+          realm_id: string
+          revision: string
+          verified_at: string
+        }
+        Insert: {
+          business_id: string
+          client_id: string
+          customer_id: string
+          environment: string
+          legacy_updated_at: string
+          realm_id: string
+          revision?: string
+          verified_at: string
+        }
+        Update: {
+          business_id?: string
+          client_id?: string
+          customer_id?: string
+          environment?: string
+          legacy_updated_at?: string
+          realm_id?: string
+          revision?: string
+          verified_at?: string
+        }
+        Relationships: []
+      }
       qbo_connections: {
         Row: {
           access_expires_at: string
@@ -3619,6 +4206,421 @@ export type Database = {
       }
       mask_email: { Args: { email_input: string }; Returns: string }
       mask_phone: { Args: { phone_input: string }; Returns: string }
+      qbo_billing_admin: {
+        Args: { _actor: string; _business: string }
+        Returns: undefined
+      }
+      qbo_billing_announcement_dispatch: {
+        Args: {
+          _business: string
+          _channel: string
+          _environment: string
+          _id: string
+          _realm: string
+          _snapshot: Json
+          _text: string
+        }
+        Returns: boolean
+      }
+      qbo_billing_announcement_outcome: {
+        Args: {
+          _business: string
+          _environment: string
+          _id: string
+          _outcome: Json
+          _realm: string
+        }
+        Returns: boolean
+      }
+      qbo_billing_approve_announcement: {
+        Args: {
+          _actor: string
+          _business: string
+          _client: string
+          _environment: string
+          _realm: string
+          _scope_id: string
+          _snapshot: Json
+          _text: string
+        }
+        Returns: boolean
+      }
+      qbo_billing_approve_current: {
+        Args: {
+          _actor: string
+          _business: string
+          _client: string
+          _environment: string
+          _fingerprint: string
+          _period: string
+          _realm: string
+          _snapshot: Json
+        }
+        Returns: Json
+      }
+      qbo_billing_assert_enrollment: {
+        Args: {
+          _business: string
+          _client: string
+          _environment: string
+          _realm: string
+          _snapshot: Json
+        }
+        Returns: undefined
+      }
+      qbo_billing_assert_enrollment_base: {
+        Args: {
+          _business: string
+          _client: string
+          _environment: string
+          _realm: string
+          _snapshot: Json
+        }
+        Returns: undefined
+      }
+      qbo_billing_assert_run: {
+        Args: {
+          _business: string
+          _environment: string
+          _id: string
+          _realm: string
+        }
+        Returns: {
+          approval_id: string
+          audit_id: string
+          business_id: string
+          channels: Json
+          client_id: string
+          code: string | null
+          create_intent: boolean
+          delivery_intents: Json
+          environment: string
+          id: string
+          invoice_type: string
+          provider_invoice_id: string | null
+          provider_outcomes: Json
+          realm_id: string
+          request_id: string
+          service_period: string
+          snapshot: Json
+          state: string
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "qbo_billing_runs"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      qbo_billing_assert_source: {
+        Args: {
+          _business: string
+          _client: string
+          _environment: string
+          _realm: string
+          _snapshot: Json
+        }
+        Returns: undefined
+      }
+      qbo_billing_attempt_outcome: {
+        Args: {
+          _attempt: string
+          _business: string
+          _channel: string
+          _environment: string
+          _id: string
+          _proof: string
+          _provider_id: string
+          _realm: string
+          _status: string
+        }
+        Returns: boolean
+      }
+      qbo_billing_channel_scoped: {
+        Args: {
+          _business: string
+          _channel: string
+          _environment: string
+          _id: string
+          _realm: string
+        }
+        Returns: boolean
+      }
+      qbo_billing_claim: {
+        Args: { _approval: string; _business: string }
+        Returns: {
+          approval_id: string
+          audit_id: string
+          business_id: string
+          channels: Json
+          client_id: string
+          code: string | null
+          create_intent: boolean
+          delivery_intents: Json
+          environment: string
+          id: string
+          invoice_type: string
+          provider_invoice_id: string | null
+          provider_outcomes: Json
+          realm_id: string
+          request_id: string
+          service_period: string
+          snapshot: Json
+          state: string
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "qbo_billing_runs"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      qbo_billing_claim_announcement: {
+        Args: {
+          _business: string
+          _environment: string
+          _id: string
+          _realm: string
+        }
+        Returns: boolean
+      }
+      qbo_billing_claim_channel: {
+        Args: { _channel: string; _run: string }
+        Returns: boolean
+      }
+      qbo_billing_claim_scoped: {
+        Args: {
+          _approval: string
+          _business: string
+          _environment: string
+          _realm: string
+        }
+        Returns: Json
+      }
+      qbo_billing_client_in_scope: {
+        Args: {
+          _business: string
+          _client: string
+          _environment: string
+          _realm: string
+        }
+        Returns: boolean
+      }
+      qbo_billing_create_scoped_client: {
+        Args: {
+          _account?: Json
+          _actor: string
+          _business: string
+          _client: Json
+          _environment: string
+          _realm: string
+          _request_id: string
+        }
+        Returns: Json
+      }
+      qbo_billing_delivery_intent: {
+        Args: {
+          _attempt: string
+          _business: string
+          _channel: string
+          _correlation: string
+          _environment: string
+          _id: string
+          _realm: string
+          _text_hash: string
+        }
+        Returns: boolean
+      }
+      qbo_billing_due_announcements: {
+        Args: { _business: string; _environment: string; _realm: string }
+        Returns: Json
+      }
+      qbo_billing_find_run: {
+        Args: {
+          _business: string
+          _environment: string
+          _realm: string
+          _slot: string
+        }
+        Returns: Json
+      }
+      qbo_billing_host_read: {
+        Args: {
+          _business: string
+          _environment: string
+          _id?: string
+          _kind: string
+          _period?: string
+          _realm: string
+        }
+        Returns: Json
+      }
+      qbo_billing_read_approval: {
+        Args: {
+          _business: string
+          _environment: string
+          _id: string
+          _realm: string
+        }
+        Returns: Json
+      }
+      qbo_billing_read_enrollment: {
+        Args: {
+          _business: string
+          _client: string
+          _environment: string
+          _realm: string
+        }
+        Returns: Json
+      }
+      qbo_billing_record_outcome: {
+        Args: {
+          _business: string
+          _channel: string
+          _environment: string
+          _id: string
+          _provider_id: string
+          _realm: string
+          _status: string
+        }
+        Returns: boolean
+      }
+      qbo_billing_register_new_client: {
+        Args: {
+          _actor: string
+          _business: string
+          _client: string
+          _environment: string
+          _realm: string
+        }
+        Returns: boolean
+      }
+      qbo_billing_resolve_evidence: {
+        Args: {
+          _actor: string
+          _business: string
+          _environment: string
+          _id: string
+          _kind: string
+          _proof: Json
+          _provider_id: string
+          _realm: string
+        }
+        Returns: boolean
+      }
+      qbo_billing_resume_scoped: {
+        Args: {
+          _business: string
+          _environment: string
+          _id: string
+          _realm: string
+        }
+        Returns: boolean
+      }
+      qbo_billing_run_json: {
+        Args: { _row: Database["public"]["Tables"]["qbo_billing_runs"]["Row"] }
+        Returns: Json
+      }
+      qbo_billing_save_approval: {
+        Args: {
+          _actor: string
+          _business: string
+          _client: string
+          _environment: string
+          _expected_revision: number
+          _fingerprint: string
+          _period: string
+          _realm: string
+        }
+        Returns: {
+          approved_at: string
+          approved_by: string
+          business_id: string
+          client_id: string
+          config_revision: number
+          environment: string
+          fingerprint: string
+          id: string
+          invoice_type: string
+          realm_id: string
+          service_period: string
+          snapshot: Json
+        }
+        SetofOptions: {
+          from: "*"
+          to: "qbo_billing_approvals"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      qbo_billing_set_enrollment: {
+        Args: {
+          _actor: string
+          _business: string
+          _client: string
+          _enabled: boolean
+          _environment: string
+          _expected: number
+          _first: string
+          _realm: string
+        }
+        Returns: Json
+      }
+      qbo_billing_source: {
+        Args: {
+          _business: string
+          _client: string
+          _environment: string
+          _realm: string
+        }
+        Returns: Json
+      }
+      qbo_billing_sync_config: {
+        Args: {
+          _business: string
+          _client: string
+          _enrollment_revision: number
+          _environment: string
+          _fingerprint: string
+          _period: string
+          _realm: string
+          _snapshot: Json
+        }
+        Returns: number
+      }
+      qbo_billing_update_run: {
+        Args: {
+          _business: string
+          _environment: string
+          _id: string
+          _patch: Json
+          _realm: string
+        }
+        Returns: boolean
+      }
+      qbo_billing_verify_mapping: {
+        Args: {
+          _actor: string
+          _business: string
+          _client: string
+          _customer: string
+          _environment: string
+          _realm: string
+        }
+        Returns: boolean
+      }
+      qbo_billing_verify_provider: {
+        Args: {
+          _actor: string
+          _business: string
+          _environment: string
+          _realm: string
+          _setup: Json
+        }
+        Returns: boolean
+      }
       secure_admin_user_lookup: {
         Args: { admin_reason: string; lookup_email: string }
         Returns: Json

@@ -56,15 +56,16 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         if (session?.user) {
           console.log('User found, ensuring profile exists (deferred)...');
           // Defer Supabase calls to avoid deadlocks in the callback
+          // Stay "loading" until the profile/role resolves; otherwise a fresh
+          // full-page load briefly has a session but no user and redirects to login.
           setTimeout(() => {
-            ensureProfile(session.user!);
+            void ensureProfile(session.user!).finally(() => setLoading(false));
           }, 0);
         } else {
           console.log('No user, clearing state');
           setUser(null);
+          setLoading(false);
         }
-        
-        setLoading(false);
       }
     );
 

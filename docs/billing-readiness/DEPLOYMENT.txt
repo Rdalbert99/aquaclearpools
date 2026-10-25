@@ -24,3 +24,9 @@ New profile/client create is atomic; invitation auth setup stays separate, no au
 Tax needs explicit reviewed non-taxable attestation; US company alone is insufficient.
 Schedule template needs explicit psql approval/endpoint/Vault NAME parameters and creates
 both registrations INACTIVE. No application/registration/activation is authorized here.
+OCT25 SETUP DELTA (UNAPPLIED): UNAPPLIED-delta-2026-10-25-setup.sql adds qbo_billing_mapping_audit +
+qbo_billing_confirm_mapping (service_role only). New actions: discover_provider, discover_customer,
+confirm_mapping; verify_provider now requires live-evidence fingerprint and derives income account.
+Next artifact MUST keep the external fixed-scope wrapper: startBillingHost fixed business/env/realm,
+existing env secrets, Supabase SDK, CORS allow-headers incl. x-client-info for approved origins only,
+pinned lock versions. Frontend setup panels fail closed until this artifact + delta are installed.

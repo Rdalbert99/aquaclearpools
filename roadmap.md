@@ -42,3 +42,4 @@
 - [x] App auto-update on iPhone: fresh pages online, safe update when nothing unsaved, visit drafts, version label (preview only, not published)
 - [x] Existing-customer recognition on Create Account (verified email → links one matching customer; ambiguous → admin review) — preview only
 - [ ] Customer signup confirmation emails — BLOCKED: Supabase Auth SMTP login rejected (535); fix SMTP credentials in Supabase dashboard
+- [ ] Publish decision (Oct 25): hold until delta SQL is installed and billing server artifact redeployed with setup actions.

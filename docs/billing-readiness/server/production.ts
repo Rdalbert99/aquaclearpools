@@ -10,6 +10,7 @@ import { enrollmentService } from './enrollment';
 import { executeInvoice, resumeDelivery, type Policy, type Approval, type Run } from './workflow';
 import { billingProviders, boundedHttp, type Http } from './providers';
 import type { EnrollmentScope } from '../../../src/lib/billing-enrollment';
+import { discoverProvider, readCustomer, searchCustomers, compareIdentity, customerFingerprint, type AppCustomer } from './setup';
 export function createBillingApplication(options: {
   secret(name:string):string|undefined; fetch:Http;
   scope:Omit<EnrollmentScope,'clientId'>; allowedOrigins:string[];
@@ -100,12 +101,12 @@ export function createBillingApplication(options: {
   async function run(id:string){const data=await hostRead<{id:string;snapshot:Snapshot;request_id:string;provider_invoice_id:string|null;provider_outcomes:Record<string,{id:string}>;delivery_intents:Record<string,{correlation:string}>;state:string}>('run',undefined,id);if(!data)throw new Error('cross_business');return data;}
   const handler=async(request:Request)=>{
     const origin=request.headers.get('origin');const headers:Record<string,string>={'Content-Type':'application/json','Vary':'Origin'};
-    if(origin){if(!options.allowedOrigins.includes(origin))return new Response('{}',{status:403});headers['Access-Control-Allow-Origin']=origin;headers['Access-Control-Allow-Headers']='authorization,apikey,content-type';headers['Access-Control-Allow-Methods']='POST,OPTIONS';}
+    if(origin){if(!options.allowedOrigins.includes(origin))return new Response('{}',{status:403});headers['Access-Control-Allow-Origin']=origin;headers['Access-Control-Allow-Headers']='authorization,apikey,content-type,x-client-info';headers['Access-Control-Allow-Methods']='POST,OPTIONS';}
     const reply=(body:unknown,status=200)=>new Response(JSON.stringify(body),{status,headers});
     if(request.method==='OPTIONS')return new Response(null,{status:204,headers});if(request.method!=='POST')return reply({error:'method_not_allowed'},405);
     const credential=request.headers.get('authorization')??'';
     try{
-      const body=z.object({action:z.string(),text:z.string().max(2000).optional(),scopeId:z.string().uuid().optional(),account:z.record(z.unknown()).optional(),client:z.record(z.unknown()).optional(),clientId:z.string().uuid().optional(),approvalId:z.string().uuid().optional(),runId:z.string().uuid().optional(),sendMonth:z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/).optional(),fingerprint:z.string().optional(),enabled:z.boolean().optional(),firstServicePeriod:z.string().nullable().optional(),expectedRevision:z.number().int().nonnegative().optional(),providerId:z.string().optional(),channel:z.enum(['sms','email']).optional(),customerId:z.string().regex(/^\d{1,20}$/).optional(),itemId:z.string().regex(/^\d{1,20}$/).optional(),incomeAccountId:z.string().regex(/^\d{1,20}$/).optional(),taxReview:z.object({confirmed:z.literal(true),taxMode:z.literal('non_taxable'),taxCode:z.literal('NON')}).strict().optional()}).strict().parse(await request.json());
+      const body=z.object({action:z.string(),text:z.string().max(2000).optional(),scopeId:z.string().uuid().optional(),account:z.record(z.unknown()).optional(),client:z.record(z.unknown()).optional(),clientId:z.string().uuid().optional(),approvalId:z.string().uuid().optional(),runId:z.string().uuid().optional(),sendMonth:z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/).optional(),fingerprint:z.string().max(4000).optional(),search:z.string().max(60).optional(),confirmed:z.literal(true).optional(),enabled:z.boolean().optional(),firstServicePeriod:z.string().nullable().optional(),expectedRevision:z.number().int().nonnegative().optional(),providerId:z.string().optional(),channel:z.enum(['sms','email']).optional(),customerId:z.string().regex(/^\d{1,20}$/).optional(),itemId:z.string().regex(/^\d{1,20}$/).optional(),incomeAccountId:z.string().regex(/^\d{1,20}$/).optional(),taxReview:z.object({confirmed:z.literal(true),taxMode:z.literal('non_taxable'),taxCode:z.literal('NON')}).strict().optional()}).strict().parse(await request.json());
       if(body.action==='schedule'){
         const actor=await authenticate(credential);if(actor?.kind!=='scheduler')throw new Error('unauthorized');const p=await policy();
         if(p.billingMode!=='qbo'||!p.invoiceEnabled||!p.migrationVerified||!p.deploymentVerified||!p.providerVerified)throw new Error('disabled');
@@ -125,13 +126,36 @@ export function createBillingApplication(options: {
         if(data.Customer?.Id!==body.customerId||data.Customer.Active===false)throw new Error('mapping_verification_failed');
         return reply({verified:await query('qbo_billing_verify_mapping',{...scoped,_client:body.clientId,_customer:body.customerId,_actor:actor.id})});
       }
-      if(body.action==='verify_provider'&&body.itemId&&body.incomeAccountId){
+      // GET-only setup reads; minimum safe fields; never tokens.
+      const qboGet=async(path:string)=>expectJson(await requestWithRetry(http,accountingUrl(scope.environment,scope.realmId,path),{method:'GET',headers:{Authorization:await authorization(),Accept:'application/json'}},{retry:true})) as Record<string,any>;
+      const appCustomer=async(clientId:string):Promise<AppCustomer>=>{
+        await enrollment.read(credential,clientId); // explicit reviewed business scope (no IDOR)
+        const {data,error}=await service.from('clients').select('id,customer,status,contact_email,contact_phone,contact_address').eq('id',clientId).maybeSingle();
+        if(error||!data)throw new Error('cross_business');return {...data,address:data.contact_address} as AppCustomer;
+      };
+      if(body.action==='discover_provider'&&body.itemId)return reply({scope,provider:await discoverProvider(qboGet,scope.realmId,body.itemId)});
+      if(body.action==='verify_provider'&&body.itemId){
         if(!body.taxReview)throw new Error('tax_review_required');
-        const get=async(path:string)=>expectJson(await requestWithRetry(http,accountingUrl(scope.environment,scope.realmId,path),{headers:{Authorization:await authorization(),Accept:'application/json'}},{retry:true}));
-        const [item,account,company]=await Promise.all([get(`/item/${body.itemId}`),get(`/account/${body.incomeAccountId}`),get(`/companyinfo/${scope.realmId}`)]);
-        if(item.Item?.Id!==body.itemId||item.Item.Active===false||item.Item.IncomeAccountRef?.value!==body.incomeAccountId||account.Account?.AccountType!=='Income'||account.Account.Active===false||company.CompanyInfo?.Country!=='US')throw new Error('provider_setup_review_required');
-        const revision=crypto.randomUUID();
-        return reply({verified:await query('qbo_billing_verify_provider',{...scoped,_actor:actor.id,_setup:{itemId:body.itemId,incomeAccountId:body.incomeAccountId,taxCode:body.taxReview.taxCode,taxMode:body.taxReview.taxMode,verified:true,revision,taxReview:{confirmed:true,actor:actor.id,reviewedAt:new Date().toISOString(),revision,itemId:body.itemId,incomeAccountId:body.incomeAccountId}}})});
+        if(!body.fingerprint)throw new Error('provider_evidence_required');
+        const live=await discoverProvider(qboGet,scope.realmId,body.itemId); // re-read on save
+        if(live.fingerprint!==body.fingerprint)throw new Error('stale_provider_evidence');
+        if(!live.taxSupported)throw new Error('provider_setup_review_required');
+        if(body.incomeAccountId&&body.incomeAccountId!==live.item.incomeAccountId)throw new Error('stale_provider_evidence');
+        const incomeAccountId=live.item.incomeAccountId;const revision=crypto.randomUUID();
+        return reply({verified:await query('qbo_billing_verify_provider',{...scoped,_actor:actor.id,_setup:{itemId:body.itemId,incomeAccountId,taxCode:body.taxReview.taxCode,taxMode:body.taxReview.taxMode,verified:true,revision,taxReview:{confirmed:true,actor:actor.id,reviewedAt:new Date().toISOString(),revision,itemId:body.itemId,incomeAccountId}}})});
+      }
+      if(body.action==='discover_customer'&&body.clientId&&(body.customerId||body.search)){
+        const app=await appCustomer(body.clientId);
+        if(body.search)return reply({scope,app,leads:await searchCustomers(qboGet,body.search)}); // leads only, never linked
+        const qb=await readCustomer(qboGet,body.customerId as string);
+        return reply({scope,app,customer:qb,comparison:compareIdentity(app,qb),fingerprint:customerFingerprint(scope.realmId,app,qb)});
+      }
+      if(body.action==='confirm_mapping'&&body.clientId&&body.customerId&&body.fingerprint&&body.confirmed){
+        const app=await appCustomer(body.clientId);const qb=await readCustomer(qboGet,body.customerId); // live re-read
+        const comparison=compareIdentity(app,qb);
+        if(customerFingerprint(scope.realmId,app,qb)!==body.fingerprint)throw new Error('stale_identity_evidence');
+        if(!comparison.supported)throw new Error('identity_review_required');
+        return reply({verified:await query('qbo_billing_confirm_mapping',{...scoped,_client:body.clientId,_customer:body.customerId,_actor:actor.id,_evidence:{supported:true,active:qb.active,evidence:comparison.evidence,displayName:qb.displayName},_fingerprint:body.fingerprint})});
       }
       if(body.action==='readiness'){const month=body.sendMonth??initialSendMonth();const approvals=await hostRead('approvals',batchDates(month).servicePeriod);return reply({scope,sendMonth:month,policy:await policy(),rows:await roster(month),approvals});}
       if(body.action==='policy')return reply({policy:await policy()});

@@ -40,3 +40,9 @@ export function endpointEnrollmentAdapter(invoke: (body: Record<string, unknown>
     },
   };
 }
+export async function saveNewClientEnrollment(invoke: (body: Record<string, unknown>) => Promise<{ enrollment?: Enrollment | null; error?: string }>, clientId: string, draft: Enrollment): Promise<Enrollment> {
+  if (!clientId) throw new Error('Customer ID unavailable — enrollment not saved');
+  const result = await invoke({ action: 'register_new_client', clientId, enabled: draft.enabled, firstServicePeriod: draft.firstServicePeriod, expectedRevision: 0 });
+  if (result.error || !result.enrollment) throw new Error(result.error ?? 'Customer created; enrollment not saved');
+  return result.enrollment;
+}

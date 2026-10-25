@@ -1,4 +1,6 @@
 import { AutomaticInvoicing } from '@/components/billing/AutomaticInvoicing';
+import { defaultEnrollment, saveNewClientEnrollment } from '@/lib/billing-enrollment';
+import { billingInvoke } from '@/lib/billing-transport';
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
@@ -67,6 +69,7 @@ export default function NewClient() {
   const { user, isAdmin, isTech } = useAuth();
   const { toast } = useToast();
   const [saving, setSaving] = useState(false);
+  const [enrollmentDraft, setEnrollmentDraft] = useState(defaultEnrollment);
   const [users, setUsers] = useState<any[]>([]);
   const [showInviteDialog, setShowInviteDialog] = useState(false);
   const [createdClient, setCreatedClient] = useState<any>(null);
@@ -420,6 +423,14 @@ export default function NewClient() {
       if (error) throw error;
 
       setCreatedClient(data);
+      if (isAdmin) {
+        try { await saveNewClientEnrollment(billingInvoke, data.id, enrollmentDraft); }
+        catch (enrollmentError) {
+          toast({ title: 'Customer created — invoicing not saved', description: enrollmentError instanceof Error ? enrollmentError.message : 'Backend setup pending; automatic invoicing remains off', variant: 'destructive' });
+          navigate(`/admin/clients/${data.id}/edit`);
+          return; // Do not show a false combined success or repeat client creation.
+        }
+      }
 
       let commercialCreated: { organizationId: string; organizationName: string; facilityId: string; facilityName: string } | null = null;
 
@@ -932,7 +943,7 @@ export default function NewClient() {
           </CardContent>
         </Card>
 
-        <AutomaticInvoicing customerName={client.customer} />
+        {isAdmin && <AutomaticInvoicing customerName={client.customer} onDraftChange={setEnrollmentDraft} />}
 
         {/* Service Configuration */}
         <Card className="lg:col-span-2">

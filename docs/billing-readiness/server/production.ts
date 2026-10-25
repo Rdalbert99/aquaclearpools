@@ -70,6 +70,24 @@ export function createBillingApplication(options: {
     const rows=await Promise.all((members??[]).map(m=>source.preview(m.client_id,sendMonth)));
     return rows;
   }
+  async function scopedAnnouncements(credential:string) {
+    const actor=await authenticate(credential);if(actor?.kind!=='scheduler')throw new Error('unauthorized');
+    const p=await policy();
+    const {data:config,error}=await service.from('qbo_billing_activation').select('announcement_enabled,announcement_hour,approved_scope_id').eq('business_id',scope.businessId).eq('environment',scope.environment).eq('realm_id',scope.realmId).single();
+    if(error||p.billingMode!=='qbo'||!p.migrationVerified||!p.deploymentVerified||!p.providerVerified||!config.announcement_enabled||config.announcement_hour==null||!config.approved_scope_id)throw new Error('announcement_setup_pending');
+    // Dedicated approved announcement snapshot/text is required, not invoice content reused.
+    // The concrete dispatcher below reads only immutable, reviewed recipient/message records.
+    const rows=await query<{id:string;channel:'sms'|'email';snapshot:Snapshot;text:string}[]>('qbo_billing_due_announcements',scoped);
+    const results=[];
+    for(const row of rows??[]) {
+      const authorized=await query<boolean>('qbo_billing_claim_announcement',{...scoped,_id:row.id});
+      if(!authorized)continue;
+      const outcome=await providers.sendAnnouncement(row.snapshot,row.channel,row.text);
+      await query('qbo_billing_announcement_outcome',{...scoped,_id:row.id,_outcome:outcome});
+      results.push({id:row.id,...outcome});
+    }
+    return results;
+  }
   async function approve(credential:string,clientId:string,sendMonth:string,reviewedFingerprint:string){
     const actor=await admin(credential);const row=await source.preview(clientId,sendMonth);
     if(!row.snapshot||snapshotCanonical(row.snapshot)!==reviewedFingerprint)throw new Error('stale_approval');
@@ -93,6 +111,7 @@ export function createBillingApplication(options: {
         const {data:approvals,error}=await service.from('qbo_billing_approvals').select('id').eq('business_id',scope.businessId).eq('environment',scope.environment).eq('realm_id',scope.realmId).eq('service_period',dates.servicePeriod).limit(500);
         if(error)throw new Error('approval_read_failed');const results=[];for(const a of approvals??[])results.push(await executeInvoice({...bindings,provider:providers.provider},credential,a.id));return reply({results});
       }
+      if(body.action==='schedule_announcements')return reply({results:await scopedAnnouncements(credential)});
       const actor=await admin(credential);
       if(body.action==='create_client'&&body.client)return reply({client:await query('qbo_billing_create_scoped_client',{...scoped,_actor:actor.id,_client:body.client})});
       if(body.action==='register_new_client'&&body.clientId){

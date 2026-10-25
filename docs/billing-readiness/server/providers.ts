@@ -115,6 +115,22 @@ export function billingProviders(deps: {
     },
   };
   return { provider, invoice, notice,
+    sendAnnouncement: async (s:Snapshot,channel:SendChannel,text:string):Promise<{status:'sent'|'failed'|'unknown';providerId:string|null}> => {
+      try {
+        if(!text||text.length>2000)throw new Error('invalid_announcement');
+        if(channel==='sms'){
+          const digits=(s.contactPhone??'').replace(/\D/g,'');const to=digits.length===10?`+1${digits}`:digits.length===11&&digits.startsWith('1')?`+${digits}`:null;
+          const key=deps.secret('TELNYX_API_KEY');if(!to||!key)throw new Error('sms_setup');
+          const result=await external('https://api.telnyx.com/v2/messages',{method:'POST',headers:{Authorization:`Bearer ${key}`,'Content-Type':'application/json'},body:JSON.stringify({from:'+16014198527',to,text})});
+          const data=result.data as {id?:string;to?:{phone_number?:string}[]}|undefined;
+          if(!data?.id||data.to?.length!==1||data.to[0].phone_number!==to)throw new Error('provider_unknown');return {status:'sent',providerId:data.id};
+        }
+        const key=deps.secret('MAILJET_API_KEY'),secret=deps.secret('MAILJET_API_SECRET');if(!key||!secret||!s.contactEmail)throw new Error('email_setup');
+        const response=await external('https://api.mailjet.com/v3.1/send',{method:'POST',headers:{Authorization:`Basic ${btoa(`${key}:${secret}`)}`,'Content-Type':'application/json'},body:JSON.stringify({Messages:[{From:{Email:'randy@getaquaclear.com',Name:'Aqua Clear Pools'},To:[{Email:s.contactEmail}],Subject:'Aqua Clear Pools billing notice',TextPart:text}]})});
+        const rows=response.Messages as {Status?:string;To?:{MessageUUID?:string}[]}[]|undefined;
+        if(rows?.length!==1||rows[0].Status!=='success'||rows[0].To?.length!==1||!rows[0].To[0].MessageUUID)throw new Error('provider_unknown');return {status:'sent',providerId:rows[0].To[0].MessageUUID};
+      }catch(error){return {status:error instanceof Error&&['sms_setup','email_setup','invalid_announcement','provider_rejected'].includes(error.message)?'failed':'unknown',providerId:null};}
+    },
     reconcileInvoice: async (s: Snapshot,id: string,requestId:string) => verifiedInvoice(await invoice(s,id),s,requestId),
     payment: async (s: Snapshot,id:string) => { const raw=await invoice(s,id); return {invoiceId:id,customerId:s.customerId,balanceCents:Math.round(Number(raw.Balance)*100),totalCents:Math.round(Number(raw.TotalAmt)*100),readAt:new Date().toISOString()}; },
     deliveryEvidence: async (s:Snapshot,channel:SendChannel,id:string) => {

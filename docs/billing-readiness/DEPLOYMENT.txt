@@ -16,3 +16,11 @@ UNAPPLIED SQL application order:
 All activation flags default false. Existing businesses.billing_mode remains off.
 Invoice execution is gated separately from enrollment read/save and snapshot approval.
 Environment and realm must be host configuration, never request inputs.
+GROUPED CORRECTION RELEASE REQUIREMENTS:
+Read COMPLETION.md and PRIVILEGES.md; these supersede older pass notes.
+Runtime has no direct qbo_billing table privileges; scoped service RPC allowlist only.
+Do not deploy frontend before scoped endpoint/schema verification.
+New profile/client create is atomic; invitation auth setup stays separate, no auto-email.
+Tax needs explicit reviewed non-taxable attestation; US company alone is insufficient.
+Schedule template needs explicit psql approval/endpoint/Vault NAME parameters and creates
+both registrations INACTIVE. No application/registration/activation is authorized here.

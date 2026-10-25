@@ -1,120 +1,128 @@
-# Billing completion assessment — October 25, 2026
+# Grouped billing correction assessment — October 25, 2026
 
-## Production unchanged
+## Safety and baseline
 
-Source/test work only. No publication, function deployment, remote SQL, customer writes,
-invoices, messages, charges, refunds, credentials or live permissions changed. Existing
-production mode and flags were not queried or changed. All tests used synthetic local
-PostgreSQL or mocked HTTP. Baseline: `7a7b642997624e2d96a371111acf8236154b4101`.
-Lovable manages saved source commits; no commit was manually created.
+Started from FINAL `b5d887a8c6fa42e2b55cad9035ca705ad9565e7f`, not an earlier checkpoint.
+Only source edits, offline HTTP/UI mocks and disposable loopback PostgreSQL 17.9 were used.
+No live requests, remote SQL, deployment/publication, customer mutations, invoices, messages,
+payments, credential installation or live grant/flag/schedule changes occurred.
+No spend/credit gate was presented during this pass; no gate was bypassed.
+Live operational readiness is NOT established by these tests.
 
-## Concrete implementation, not pending callbacks
+## Independent review corrections implemented
 
-- `server/production.ts` and `entrypoint.ts`: runnable Supabase SDK factory/host with JWT
-  `getUser`, protected active admin + owner/admin membership, fixed host scope, real RPC
-  gateway, real-schema source authority, enrollment read/save, scoped customer creation,
-  authoritative preview, immutable approval, execution/resume, mapping/setup verification,
-  run history, invoice/delivery reconciliation and exact-ID payment readback.
-- Browser uses authenticated SDK transport `billing-orchestrator`, not a permanently
-  pending adapter. Missing unpublished endpoint remains a visible failure; no local save.
-- Customer routes `/admin/clients/new`, `/admin/clients/:id/edit`, `/admin/clients/:id`.
-  Admin create uses scoped server creation before a separate actual-ID enrollment save.
-  **Do not publish this frontend ahead of that endpoint**: ordinary admin create now
-  depends on verified scoped creation. Technician creation is unchanged and never enrolls.
-- `/admin/invoice-delivery` loads saved authority/balances, approves the same fingerprint,
-  displays fresh approved totals and provider reconciliation; no enabled send button.
-- SQL proposals revalidate current real rate/status/contact/consent provenance/STOP,
-  mapping, annual/provider config and enrollment on approval/create/channel/resume.
-  Missing-row STOP is protected by short deterministic table locks. These locks serialize
-  source transactions globally; bounded roster reads avoid a large concurrent lock queue.
-  A database transaction cannot prevent STOP arriving after commit but before provider
-  acceptance: durable dispatch authorization plus immediate final guard is the boundary.
-- QBO reads check customer/item/income account and conservative US non-taxable setup;
-  writes use one persisted request ID, exact coverage/item/tax/charge validation and no
-  blind retries. Manual/paid relevant invoices are blocked for review, not duplicated.
-- Telnyx single validated recipient and Mailjet exact recipient with no BCC; messages
-  separate new invoice, previous open balances and verified official payment URL.
-  Durable dispatch intent precedes sending; provider IDs/outcomes persist separately.
-  `sent` means provider acceptance, not guaranteed inbox/carrier delivery.
-- Reconciliation requires independently fetched invoice/run marker or recipient/provider
-  message evidence, including content hash or correlation when outcome persistence failed.
-  Unknown/no proof is never automatically resent. Mailjet IDs are parsed losslessly.
-- Separate invoice/announcement scheduler actions and durable announcement claims exist;
-  morning hour, approved scope/text, flags and registration remain unapproved/off.
-- Exact 33-ID cohort at `2026-10-25T12:32:45Z` is frozen in source and unapplied SQL.
-  Laken stays off/held; Peggy's confirmed $3,000 November annual is seeded only in the
-  unapplied proposal; Shelby/Jennifer remain unknown and blocked. No live seed occurred.
+1. **Definitive delivery failure retries:** unique UUID attempt/correlation, row-locked reserve
+   and attempt/outcome CAS. Setup is validated before reserving or HTTP. Each attempt retains
+   its text hash, provider ID, proof, timestamps and audit events. Only a prior non-accepted
+   explicit rejection permits another attempt. Sending/unknown/accepted attempts cannot reset.
+   Persistence failure remains uncertain. Tests exercise the ACTUAL provider adapter + SQL,
+   including missing setup/no HTTP, rejection then success, timeout refusal and concurrent retry.
+2. **Announcements:** exact stored channel must be in immutable approved snapshot; fresh
+   enrollment/consent/STOP and activation guards apply at claim and again inside final dispatch
+   CAS immediately before HTTP. Missing/NULL activation fails closed. Stored text/scope/day/
+   channel/snapshot/actor/time are immutable; approval cannot silently replace conflicting rows.
+   Provider independently rejects channel/scope mismatches and missing STOP language. Invoice
+   SMS and announcement SMS retain `Reply STOP to opt out.` Announcements remain off and the
+   morning hour is unconfirmed. Post-commit STOP cannot retroactively cancel a provider request;
+   final dispatch transaction is the explicit authorization linearization boundary.
+3. **Tax:** US company is only a compatibility condition, never a tax attestation. Host requires
+   explicit admin confirmation of `non_taxable`/`NON`; authoritative config stores actor,
+   reviewedAt, revision, exact item/account. Fingerprints include the review. Missing/unconfirmed
+   setup blocks readiness/payload/SQL. Taxable/inclusive/exclusive are unsupported and rejected;
+   this does not determine legal tax applicability or change any live customer tax treatment.
+4. **Privileges:** actual SET ROLE anon/authenticated/service_role contracts prove table denial,
+   scoped API denial for public roles and internal-helper denial even for service_role. Runtime
+   orchestration table privileges are removed after installation; scoped host reads replace
+   direct access. Protected admin/membership checks, revoked actors and realm/client checks
+   remain. Host JWT/role failures occur before scoped SQL/provider effects.
+5. **Customer creation:** profile + scoped client + request record are one transaction, with
+   exact frozen payload/account hash. Earlier profile no longer commits ahead of client.
+   Actor-scoped on-device recovery drafts keep request/payload (NO passwords/tokens), expire
+   after seven days, and recover actual ID after reload/crash. Repeat clicks are locked;
+   backend missing fails before create; enrollment remains separate actual-ID save with clear
+   partial failure/default OFF. Auth provisioning uses the existing separately confirmed
+   invitation flow, not a password field or automatic email. Existing-user attachment requires
+   reviewed same-scope ownership, never an arbitrary global user UUID. Tech create remains
+   its existing path and never enrolls. Do not release this frontend before the scoped endpoint.
+6. **Readiness:** fresh stored approvals load after reload and compare current fingerprint;
+   server policy controls displayed mode/schedule status. Month changes/errors clear old runs/
+   approvals; request sequence and scope guards reject late load/save/reconciliation results.
+   No send/activation control is added. Unsaved enrollment/customer forms defer app reload.
+7. **Schedule template:** real parameterized psql registration template uses only reviewed
+   endpoint/Vault secret NAME references; no secret values or extension installation. Both
+   jobs are registered INACTIVE in the same transaction. Missing approvals registers nothing.
+   Isolated synthetic cron/net fixture verifies template executes, never invokes HTTP.
 
-## Needs customer/company configuration
+## Verification actually run
 
-- Exact existing QBO links verified in business/environment/realm; no customer auto-create.
-- Reviewed service item/income account and US non-taxable treatment. Other tax modes are
-  intentionally blocked, not treated as implemented/verified company behavior.
-- Auditable SMS consent provenance, valid single phone/email and STOP handling.
-- Official InvoiceLink capability and reviewed hostname policy; missing link blocks delivery.
-- Shelby/Jennifer renewal/amount confirmations; no guessed dates or monthly ×12.
-- Announcement morning hour, scope ID/text and recipient snapshot approvals.
+- `bun run test`: **283 tests / 26 files passed**, including **7 rendered mocked UI flows**.
+- `bun docs/billing-readiness/tests/local-postgres.ts`: **18 PostgreSQL contracts passed**.
+- `bun docs/billing-readiness/tests/correction-postgres.ts`: **29 additional real-role SQL,
+  concurrent concrete adapter, atomic profile/client and mocked SDK/PostgREST-to-real-SQL
+  contracts passed**. No live Supabase or provider acceptance was exercised.
+- `bun docs/billing-readiness/tests/schedule-template.ts`: **2 executable inactive template
+  contracts passed**. Total standalone isolated contracts: **49**.
+- Focused ESLint command (clean):
+  `bunx eslint docs/billing-readiness/server/*.ts docs/billing-readiness/tests/*.ts
+  src/lib/billing-{readiness,transport,enrollment}.ts src/lib/client-create-draft.ts
+  src/pages/admin/{NewClient,InvoiceDelivery}.tsx src/components/billing/AutomaticInvoicing.tsx
+  src/lib/__tests__/billing*.test.{ts,tsx}`
+- `bun run lint`: repository-wide **472 errors / 61 warnings** (533); unrelated pre-existing
+  debt remains. Focused edited scope clean; this pass removed four customer-form any errors.
+- Automatic platform build/typecheck: latest observed `build OK`; no prohibited manual
+  build/typecheck was run. Exact final saved checkpoint is reported in chat after final checks.
 
-## Needs deployment / privilege approval
+## Needs configuration / owner confirmation (not missing code)
 
-Apply only after separate approval, in order: `UNAPPLIED-schema.sql`,
-`UNAPPLIED-source-guards.sql`, then `UNAPPLIED-bootstrap.sql` with reviewed actor.
-`DEPLOYMENT.txt` describes the host and named endpoint. No automatic deployment artifacts
-were placed under `supabase/functions` or `supabase/migrations`.
+- Reviewed exact scoped QBO customer links, service item/income account, explicit non-taxable
+  attestation (if legally appropriate), official invoice/payment-link acceptance/hostname policy.
+- Auditable SMS consent and verified exact phone/email/senders; STOP always wins.
+- Shelby/Jennifer annual month/amount remain blocked; Peggy confirmed $3,000 November SMS
+  annual with no monthly duplicate; Laken held. Frozen exact 33-ID bootstrap remains unapplied.
+- Separate announcement approved text/scope/day/recipient snapshots and morning hour.
+- Reviewed scheduler secret reference, matching host secret, fixed business/environment/realm.
 
-Proposed privileges: `service_role ALL` on new `qbo_billing_*` orchestration/config/evidence
-tables; RLS enabled with **no anon/authenticated policies or grants**. Scoped RPCs are
-service-only; revoke PUBLIC/anon/authenticated execution. Internal unscoped claim/channel/
-approval helpers have service execution revoked. Existing roles/auth/grants are untouched.
-Service key stays inside host; caller JWT or scheduler secret is never the service key.
-The service-only gateway is a trusted boundary: privileged RPC inputs cannot be exposed as
-arbitrary browser RPC calls. Administrative functions additionally recheck protected membership.
+## Needs deployment / privileges / downstream proof
 
-Existing secret references: SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, publishable/anon key,
-environment-specific existing QBO keys, TELNYX_API_KEY, MAILJET_API_KEY/SECRET.
-Scheduler needs separately reviewed BILLING_SCHEDULER_SECRET and host business/realm config.
-No secret values were inspected, logged, installed or placed in SQL.
+Order, only after separate owner approval:
+1. Review schema and permission inventory; apply `UNAPPLIED-schema.sql` then
+   `UNAPPLIED-source-guards.sql` together before exposing the endpoint.
+2. Apply frozen `UNAPPLIED-bootstrap.sql` with reviewed actor and exact cohort; never runtime
+   all-active enrollment. Live billing_mode stays off, all activation flags stay false.
+3. Bundle/deploy reviewed `server/entrypoint.ts` + dependencies as `billing-orchestrator`;
+   verify JWT, scope, read/save/approval and providers downstream in approved test context.
+4. Release coordinated frontend ONLY after scoped endpoint works. Never frontend alone.
+5. Apply `UNAPPLIED-schedule.sql` with explicit registration/endpoint/privilege approvals and
+   reviewed endpoint/Vault NAME, ONLY if existing cron/net/Vault capability is accepted.
+   Template creates two INACTIVE registrations; no job enabling is authorized here.
+6. Separate operational activation/customer send approval AFTER downstream proof.
 
-## Still unimplemented / not fully proven
+**Proposed final privileges (unapplied, exact inventory in PRIVILEGES.md):** no new direct
+qbo_billing table privileges for anon/authenticated/service_role. All tables have RLS and no
+public policies. Temporary installation grants are revoked before source-guards commit.
+Only listed scoped functions have service_role EXECUTE; PUBLIC/anon/authenticated and
+internal helpers have none. Functions remain migration-owner SECURITY DEFINER; host must
+validate JWT/protected role before service gateway, never expose arbitrary RPC forwarding.
+Existing users/business_members/QBO permission grants are not widened. Existing service
+SDK needs its already-present users/business membership SELECT and realm-scoped connection
+SELECT/UPDATE; profile/client inserts happen only inside reviewed scoped definer.
+Scheduler registration is separately privileged migration-owner cron administration with
+existing net.http_post and Vault read at job runtime, NOT frontend or public-role grants.
 
-- Executable cron registration with secure secret delivery is not supplied: the scheduler
-  invocation proposal is deliberately non-executable until host/secret registration review.
-- Source changes do not provide a billing-specific signed webhook ingestion service;
-  terminal delivery evidence is operator readback. Telnyx readback is limited to 10 days;
-  older missing proof remains reconciliation-required, not failure or permission to resend.
-- There is no automatic provider search/replay for a create timeout without an invoice ID;
-  operator supplies a candidate ID and exact persisted run marker must verify it. Safe
-  request-ID replay and manual-invoice adoption are not enabled.
-- Cross-worker QBO refresh uses optimistic persisted CAS plus in-process coalescing, not
-  a database lease held over Intuit refresh; simultaneous refresh conflict fails closed.
-- Full authenticated SDK/PostgREST happy-path and rendered customer save/read/approval
-  integration, every scheduler/announcement state, and real provider contract acceptance
-  have not been proven. Do not call this operational or ready to send before release checks.
-- Customer scoped-create has a persisted request key and rejects changed payloads;
-  coordination with earlier account creation and crash/reload recovery is not fully proven.
-  The form's in-memory request key alone is not durable reload recovery.
+## Still unimplemented / unproven, explicitly not “ready to send”
 
-## Checks actually run
+- Billing-specific signed webhook ingestion and announcement operator evidence reconciliation
+  are not supplied; uncertain announcements remain blocked without automatic retry.
+- Automated provider search/replay after create timeout without an invoice ID is not supplied;
+  existing operator candidate-ID evidence verifies exact run marker. No blind replay.
+- Distributed QBO refresh lease is not supplied; optimistic CAS/in-process coalescing fails
+  closed on cross-worker refresh conflict.
+- Real Intuit/Telnyx/Mailjet contract acceptance, real PostgREST grants/cache behavior, hosted
+  cron/Vault execution and production-shaped existing triggers/auth profile constraints are
+  unverified. Synthetic schema/SDK mocks cannot prove these hosted behaviors.
+- Full browser-to-host-to-provider end-to-end acceptance and commercial ancillary-record
+  crash recovery are unproven; seven rendered local flows plus SQL/SDK contracts are not
+  claimed as live acceptance. No external testing was authorized.
 
-- `bun run test`: 264 tests / 24 files passed, isolated/mocked.
-- `bun docs/billing-readiness/tests/local-postgres.ts`: 18 actual PostgreSQL contracts passed:
-  real source/JSON roundtrip, approval, unauthorized/cross-realm, stale rate/new STOP,
-  concurrent first STOP insertion, enrollment off/stale toggle, two simultaneous claims,
-  channel CAS, null outcome, unknown resume rejection, invalid evidence, retained provider
-  ID, off-on duplicate lock, annual/later-month overlap and send-day rejection.
-- Initial `/usr/bin/initdb` failed: `$libdir/dict_snowball` missing. Supported PostgreSQL
-  17.9 Nix package initialized successfully under `/tmp/billing-pg`, loopback port 55439.
-  No production URL, secrets or remote database used. Fixture/seed/runner stay in source.
-- Focused ESLint over server/test source, billing transport/enrollment, AutomaticInvoicing,
-  InvoiceDelivery and production tests passed.
-- `bun run lint`: existing repository-wide failure, 476 errors and 61 warnings (537).
-- Automatic platform build/typecheck: latest checked entry `build OK`; no manual builds
-  or typechecks run because platform instructions delegate them to automatic checks.
-
-Changed groups: `docs/billing-readiness/server/{production,entrypoint,providers,source}.ts`,
-existing workflow/bootstrap, SQL proposals/deployment/test docs; frontend enrollment/
-transport/control/NewClient/InvoiceDelivery; production contract tests; AGENTS/roadmap.
-Earlier README first/second-pass blockers are historical; this assessment supersedes them.
-
-Saved source checkpoint observed after checks: `96ab4e99e081840717b5d3ce4655fea78ab7074a`.
-Subsequent documentation edits are saved by Lovable and may advance that checkpoint.
+All seven reviewed release defects have source corrections and focused local evidence;
+these residual operational/configuration/proof limits remain explicit release gates.

@@ -131,6 +131,7 @@ BEGIN
   PERFORM public.qbo_billing_assert_run(r.business_id,r.environment,r.realm_id,_run);
   SELECT * INTO r FROM public.qbo_billing_runs WHERE id=_run FOR UPDATE;
   IF r.id IS NULL OR r.provider_invoice_id IS NULL OR _channel NOT IN ('sms','email')
+    OR r.state NOT IN ('created','claimed')
     OR coalesce(r.channels->>_channel,'') NOT IN ('pending','failed') THEN RETURN false; END IF;
   UPDATE public.qbo_billing_runs SET channels=jsonb_set(channels,ARRAY[_channel],'"sending"'),updated_at=now() WHERE id=_run;
   INSERT INTO public.qbo_billing_events(business_id,run_id,audit_id,code) VALUES(r.business_id,r.id,r.audit_id,'channel_claimed_'||_channel);
@@ -256,6 +257,7 @@ DECLARE a public.qbo_billing_approvals; r public.qbo_billing_runs;
 BEGIN
  SELECT * INTO a FROM public.qbo_billing_approvals WHERE id=_approval AND business_id=_business AND environment=_environment AND realm_id=_realm;
  IF NOT FOUND THEN RAISE EXCEPTION 'cross_business'; END IF;
+ IF NOT EXISTS(SELECT 1 FROM public.businesses WHERE id=_business AND billing_mode='qbo') THEN RAISE EXCEPTION 'disabled'; END IF;
  PERFORM public.qbo_billing_assert_enrollment(_business,_environment,_realm,a.client_id,a.snapshot);
  IF a.snapshot->>'sendAt' IS NULL OR ((a.snapshot->>'sendAt')::timestamptz AT TIME ZONE 'America/Chicago')::date IS DISTINCT FROM (now() AT TIME ZONE 'America/Chicago')::date THEN RAISE EXCEPTION 'send_day_review_required'; END IF;
  IF (a.snapshot->>'sendAt')::timestamptz > now() THEN RAISE EXCEPTION 'send_time_not_due'; END IF;
@@ -268,6 +270,7 @@ DECLARE r public.qbo_billing_runs; c public.qbo_billing_config; active boolean;
 BEGIN
  SELECT * INTO r FROM public.qbo_billing_runs WHERE id=_id AND business_id=_business AND environment=_environment AND realm_id=_realm;
  IF NOT FOUND THEN RAISE EXCEPTION 'cross_business'; END IF;
+ IF NOT EXISTS(SELECT 1 FROM public.businesses WHERE id=_business AND billing_mode='qbo') THEN RAISE EXCEPTION 'disabled'; END IF;
  PERFORM public.qbo_billing_assert_enrollment(_business,_environment,_realm,r.client_id,r.snapshot);
  SELECT invoice_enabled AND migration_verified AND deployment_verified AND provider_verified INTO active FROM public.qbo_billing_activation
  WHERE business_id=_business AND environment=_environment AND realm_id=_realm FOR SHARE;
@@ -300,6 +303,7 @@ DECLARE r public.qbo_billing_runs; target text; ch text; outcome text;
 BEGIN
  SELECT * INTO r FROM public.qbo_billing_runs WHERE id=_id AND business_id=_business AND environment=_environment AND realm_id=_realm;
  IF NOT FOUND THEN RAISE EXCEPTION 'cross_business'; END IF;
+ IF _patch->>'code'='create_in_flight' THEN PERFORM public.qbo_billing_source(_business,_environment,_realm,r.client_id); END IF;
  PERFORM pg_advisory_xact_lock(hashtextextended(_business::text||':'||_environment||':'||_realm||':'||r.client_id::text,0));
  SELECT * INTO r FROM public.qbo_billing_runs WHERE id=_id FOR UPDATE;
  target:=coalesce(_patch->>'state',r.state); ch:=_patch->>'channel'; outcome:=_patch->>'channelState';

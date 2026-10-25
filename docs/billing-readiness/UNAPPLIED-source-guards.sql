@@ -43,7 +43,7 @@ BEGIN
 END $$;
 CREATE FUNCTION public.qbo_billing_source(_business uuid,_environment text,_realm text,_client uuid) RETURNS jsonb
 LANGUAGE plpgsql SECURITY DEFINER SET search_path=public,extensions AS $$
-DECLARE c jsonb; p jsonb; o jsonb; m jsonb; v jsonb; a jsonb; s jsonb; e jsonb; raw jsonb; phone text; held boolean;
+DECLARE c jsonb; p jsonb; o jsonb; m jsonb; v jsonb; a jsonb; s jsonb; e jsonb; raw jsonb; normalized_phone text; held boolean;
 BEGIN
  -- Global deterministic lock order. SHARE conflicts with every INSERT/UPDATE/DELETE,
  -- including a first STOP row. Locks end at commit, NOT at external provider completion.
@@ -56,10 +56,10 @@ BEGIN
  IF c IS NULL THEN RAISE EXCEPTION 'client_unavailable'; END IF;
  SELECT owner_hold INTO held FROM public.qbo_billing_client_scope WHERE business_id=_business AND environment=_environment AND realm_id=_realm AND client_id=_client;
  SELECT to_jsonb(x) INTO p FROM public.client_billing_preferences x WHERE client_id=_client;
- phone:=regexp_replace(coalesce(c->>'contact_phone',''),'[^0-9]','','g');
- IF length(phone)=10 THEN phone:='1'||phone; END IF;
+ normalized_phone:=regexp_replace(coalesce(c->>'contact_phone',''),'[^0-9]','','g');
+ IF length(normalized_phone)=10 THEN normalized_phone:='1'||normalized_phone; END IF;
  SELECT coalesce(jsonb_agg(to_jsonb(x) ORDER BY x.phone),'[]'::jsonb) INTO o FROM public.sms_opt_outs x
- WHERE client_id=_client OR regexp_replace(x.phone,'[^0-9]','','g')=phone;
+ WHERE client_id=_client OR regexp_replace(x.phone,'[^0-9]','','g')=normalized_phone;
  SELECT to_jsonb(x) INTO m FROM public.client_qbo_links x WHERE client_id=_client AND environment=_environment;
  SELECT to_jsonb(x) INTO v FROM public.qbo_billing_verified_mapping x WHERE business_id=_business AND environment=_environment AND realm_id=_realm AND client_id=_client;
  SELECT config INTO a FROM public.qbo_billing_annual_config WHERE business_id=_business AND environment=_environment AND realm_id=_realm AND client_id=_client;

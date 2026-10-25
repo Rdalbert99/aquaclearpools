@@ -412,11 +412,11 @@ export default function NewClient() {
 
       console.log('📝 Inserting client data:', insertData);
 
-      const { data, error } = await supabase
-        .from('clients')
-        .insert(insertData)
-        .select()
-        .single();
+      // Admin creation establishes business scope in the same server transaction. Tech
+      // creation retains its existing path and does not enroll/provision billing.
+      const { data, error } = isAdmin
+        ? { data: (await billingInvoke<{client: typeof createdClient}>({action:'create_client',client:insertData})).client, error: null }
+        : await supabase.from('clients').insert(insertData).select().single();
 
       console.log('✅ Client creation result:', { data, error });
 

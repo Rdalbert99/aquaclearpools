@@ -63,7 +63,9 @@ export function billingProviders(deps: {
   async function external(url: string, init: RequestInit) {
     const response = await http(url,init);
     if (!response.ok) throw new Error(response.status >= 500 || response.status === 429 ? 'provider_unknown' : 'provider_rejected');
-    return await response.json() as Record<string, unknown>;
+    const text = await response.text();
+    // Mailjet numeric IDs may exceed JS precision. Preserve identifiers before parsing.
+    return JSON.parse(text.replace(/("(?:MessageID|ID|Message)"\s*:\s*)(\d{16,})(?=\s*[,}])/g, '$1"$2"')) as Record<string, unknown>;
   }
   const provider: Provider = {
     verifySetup: reads.verifySetup, balances: reads.balances,
@@ -94,9 +96,11 @@ export function billingProviders(deps: {
           const apiKey = deps.secret('MAILJET_API_KEY'), apiSecret = deps.secret('MAILJET_API_SECRET');
           if (!apiKey || !apiSecret || !s.contactEmail || !s.channels.includes('email')) throw new Error('email_setup');
           const response = await external('https://api.mailjet.com/v3.1/send', {method:'POST',headers:{Authorization:`Basic ${btoa(`${apiKey}:${apiSecret}`)}`,'Content-Type':'application/json'},body:JSON.stringify({Messages:[{From:{Email:'randy@getaquaclear.com',Name:'Aqua Clear Pools'},To:[{Email:s.contactEmail}],Subject:`Aqua Clear Pools invoice due ${s.dueDate}`,TextPart:text,CustomID:key}]})});
-          const messages = response.Messages as {Status?:string;To?:{MessageUUID?:string}[]}[] | undefined;
+          const messages = response.Messages as {Status?:string;To?:{MessageUUID?:string;MessageID?:string|number}[]}[] | undefined;
           if (messages?.length!==1 || messages[0].Status!=='success' || messages[0].To?.length!==1 || !messages[0].To[0].MessageUUID) throw new Error('provider_unknown');
-          providerId = messages[0].To[0].MessageUUID;
+          const numericId = messages[0].To[0].MessageID;
+          if (typeof numericId === 'number' && !Number.isSafeInteger(numericId)) throw new Error('provider_unknown');
+          providerId = `${messages[0].To[0].MessageUUID}:${numericId}`;
         }
         const run = await deps.db.rpc<{id:string}>('qbo_billing_find_run',{...scope,_slot:key.replace(/:(monthly|annual):(sms|email)$/,'')});
         if (!run.data?.id) throw new Error('persistence_failed');
@@ -114,7 +118,22 @@ export function billingProviders(deps: {
     reconcileInvoice: async (s: Snapshot,id: string,requestId:string) => verifiedInvoice(await invoice(s,id),s,requestId),
     payment: async (s: Snapshot,id:string) => { const raw=await invoice(s,id); return {invoiceId:id,customerId:s.customerId,balanceCents:Math.round(Number(raw.Balance)*100),totalCents:Math.round(Number(raw.TotalAmt)*100),readAt:new Date().toISOString()}; },
     deliveryEvidence: async (s:Snapshot,channel:SendChannel,id:string) => {
-      if (channel==='email') throw new Error('mailjet_message_id_review_required'); // UUID is safe; history lookup needs lossless numeric ID/provider lookup
+      if (channel==='email') {
+        const [uuid,numericId]=id.split(':');
+        const key=deps.secret('MAILJET_API_KEY'),secret=deps.secret('MAILJET_API_SECRET');
+        if(!key||!secret||!uuid||!/^\d+$/.test(numericId??''))throw new Error('email_evidence_setup');
+        const headers={Authorization:`Basic ${btoa(`${key}:${secret}`)}`};
+        const record=await external(`https://api.mailjet.com/v3/REST/message/${numericId}`,{headers});
+        const rows=record.Data as {UUID?:string;ContactID?:number;Status?:string}[]|undefined;
+        if(rows?.length!==1||rows[0].UUID!==uuid)throw new Error('evidence_mismatch');
+        const history=await external(`https://api.mailjet.com/v3/REST/messagehistory/${numericId}`,{headers});
+        const events=history.Data as {EventType?:string;Event?:string}[]|undefined;
+        if(!Array.isArray(events))throw new Error('delivery_evidence_pending');
+        const kinds=events.map(e=>(e.EventType??e.Event??'').toLowerCase());
+        if(kinds.some(k=>['bounce','blocked'].includes(k)))return {status:'failed',channel,providerId:id};
+        if(kinds.includes('sent'))return {status:'sent',channel,providerId:id};
+        throw new Error('delivery_evidence_pending');
+      }
       const token=deps.secret('TELNYX_API_KEY'); if(!token || !/^[a-zA-Z0-9-]+$/.test(id)) throw new Error('sms_setup');
       const data=await external(`https://api.telnyx.com/v2/messages/${id}`,{headers:{Authorization:`Bearer ${token}`}});
       const message=data.data as {id?:string;to?:{phone_number?:string;status?:string}[]} | undefined;

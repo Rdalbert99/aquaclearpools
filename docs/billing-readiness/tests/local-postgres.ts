@@ -1,0 +1,42 @@
+// Isolated test runner. Hard-coded loopback synthetic database; no env/production URLs.
+import { execFileSync, spawn } from 'node:child_process';
+import { readinessRow,snapshotCanonical } from '../../../src/lib/billing-readiness';
+const url='postgresql://nobody@127.0.0.1:55439/billing_contract';
+const root='postgresql://nobody@127.0.0.1:55439/postgres';
+const psql=(sql:string)=>execFileSync('psql',[url,'-X','-v','ON_ERROR_STOP=1','-At','-c',sql],{encoding:'utf8',stdio:['ignore','pipe','pipe']}).trim();
+execFileSync('psql',[root,'-X','-v','ON_ERROR_STOP=1','-c','DROP DATABASE IF EXISTS billing_contract WITH (FORCE);','-c','CREATE DATABASE billing_contract;'],{stdio:'pipe'});
+// Roles already exist cluster-wide in prior synthetic postgres. Fixture strips only CREATE ROLE.
+const {readFileSync}=await import('node:fs');
+psql(readFileSync('docs/billing-readiness/tests/fixture.sql','utf8').replace(/CREATE ROLE \w+;/g,''));
+psql(readFileSync('docs/billing-readiness/UNAPPLIED-schema.sql','utf8'));
+psql(readFileSync('docs/billing-readiness/UNAPPLIED-source-guards.sql','utf8'));
+psql(readFileSync('/tmp/billing-pg/seed.sql','utf8'));
+const b='a34bd007-c8b1-455c-8063-2ff0236e5181',c='031f318d-5df5-4295-aba2-415089197496',actor='00000000-0000-4000-8000-000000000001';
+const scope=`'${b}','sandbox','123'`,sourceCall=`qbo_billing_source(${scope},'${c}')`;
+const src=JSON.parse(psql(`SELECT ${sourceCall}`));
+const s=readinessRow(src.client,'2026-10',{businessId:b,environment:'sandbox',realmId:'123',...src}).snapshot;if(!s)throw new Error('snapshot fixture blocked');
+const json=(v:unknown)=>`'${JSON.stringify(v).replace(/'/g,"''")}'::jsonb`;
+const guard=`SELECT qbo_billing_assert_source(${scope},'${c}',${json(s)})`;
+let count=0;const ok=(label:string)=>{count++;console.log(`PASS ${label}`);};
+psql(guard);ok('real-schema source snapshot roundtrip');
+const approval=JSON.parse(psql(`SELECT qbo_billing_approve_current(${scope},'${c}','2026-11',${json(s)},'${snapshotCanonical(s)}','${actor}')`));ok('atomic real-source immutable approval');
+const rejects=(sql:string,text:string)=>{try{psql(sql);throw new Error('expected failure');}catch(e){if(!String(e).includes(text)&&!String((e as {stderr?:Buffer}).stderr).includes(text))throw e;}};
+rejects(`SELECT qbo_billing_approve_current(${scope},'${c}','2026-11',${json(s)},'x','00000000-0000-4000-8000-000000000002')`,'unauthorized');ok('SQL protected admin membership');
+rejects(`SELECT qbo_billing_source('${b}','production','9341452568721903','${c}')`,'cross_business');ok('cross-realm scope rejected');
+psql(`UPDATE clients SET service_rate=201 WHERE id='${c}'`);rejects(guard,'stale_source');psql(`UPDATE clients SET service_rate=200 WHERE id='${c}'`);ok('fresh rate invalidates approval');
+psql(`INSERT INTO sms_opt_outs(phone) VALUES('+16015550100')`);rejects(guard,'stale_source');psql('DELETE FROM sms_opt_outs');ok('new-row STOP invalidates approval');
+const child=spawn('psql',[url,'-X','-v','ON_ERROR_STOP=1','-At','-c',`BEGIN; SELECT ${sourceCall}; SELECT pg_sleep(0.4); COMMIT;`],{stdio:['ignore','pipe','pipe']});
+await new Promise<void>((resolve,reject)=>{child.stdout.once('data',()=>resolve());child.once('error',reject);});
+const start=Date.now();psql(`INSERT INTO sms_opt_outs(phone) VALUES('+16015550100')`);if(Date.now()-start<250)throw new Error('STOP insert not serialized');psql('DELETE FROM sms_opt_outs');ok('concurrent first STOP phantom insertion waits for source transaction');
+psql(`SELECT qbo_billing_set_enrollment(${scope},'${c}',false,'2026-11',1,'${actor}')`);rejects(`SELECT qbo_billing_assert_enrollment(${scope},'${c}',${json(s)})`,'stale_source');ok('off invalidates queued authority without deleting provider IDs');
+rejects(`SELECT qbo_billing_set_enrollment(${scope},'${c}',true,'2026-11',1,'${actor}')`,'stale_enrollment');ok('optimistic revision blocks repeated stale toggle');
+// Restore fixture enrollment for duplicate-claim test, synthetic admin writes only.
+psql(`UPDATE qbo_billing_enrollment SET enabled=true,revision=1,updated_at='${s.enrollment.updatedAt}'`);
+psql(`UPDATE qbo_billing_config SET current_snapshot=${json(s)},canonical_fingerprint='${snapshotCanonical(s)}',revision=1; UPDATE businesses SET billing_mode='qbo'; INSERT INTO qbo_billing_activation VALUES('${b}','sandbox','123',true,false,NULL,NULL,true,true,true);`);
+const claim=`SELECT (qbo_billing_claim('${approval.id}','${b}')).id`;
+const concurrent=()=>new Promise<string>((resolve,reject)=>{const proc=spawn('psql',[url,'-X','-At','-v','ON_ERROR_STOP=1','-c',claim]);let out='';let err='';proc.stdout.on('data',d=>out+=d);proc.stderr.on('data',d=>err+=d);proc.on('exit',code=>code?reject(new Error(err)):resolve(out.trim()));});
+const claims=await Promise.all([concurrent(),concurrent()]);if(claims.filter(Boolean).length!==1)throw new Error('duplicate claims');ok('two simultaneous invoice claims yield exactly one durable run');
+const run=claims.find(Boolean);psql(`UPDATE qbo_billing_runs SET provider_invoice_id='901',state='created' WHERE id='${run}'`);
+if(psql(`SELECT qbo_billing_channel_scoped(${scope},'${run}','sms')`)!=='t')throw new Error('channel not claimed');if(psql(`SELECT qbo_billing_channel_scoped(${scope},'${run}','sms')`)!=='f')throw new Error('channel duplicate');ok('per-channel CAS blocks second sender');
+rejects(`SELECT qbo_billing_update_run(${scope},'${run}','{"channel":"sms"}')`,'invalid_channel_transition');ok('missing delivery outcome rejected');
+console.log(`${count} isolated PostgreSQL contracts passed`);

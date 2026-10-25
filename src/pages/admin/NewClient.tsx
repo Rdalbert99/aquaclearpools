@@ -29,7 +29,6 @@ import {
   User,
   Droplets,
   DollarSign,
-  Shuffle,
   Send
 } from 'lucide-react';
 
@@ -61,8 +60,6 @@ interface ClientFormData {
   account_type: 'existing' | 'new' | 'none';
   new_user_username: string;
   new_user_email: string;
-  new_user_password: string;
-  send_login_email: boolean;
 }
 
 export default function NewClient() {
@@ -110,8 +107,7 @@ export default function NewClient() {
     account_type: 'none',
     new_user_username: '',
     new_user_email: '',
-    new_user_password: 'password',
-    send_login_email: true
+
   });
 
   useEffect(() => {
@@ -143,16 +139,6 @@ export default function NewClient() {
     } catch (error) {
       console.error('Error loading users:', error);
     }
-  };
-
-  const generateRandomPassword = () => {
-    const length = 12;
-    const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*";
-    let password = "";
-    for (let i = 0; i < length; i++) {
-      password += charset.charAt(Math.floor(Math.random() * charset.length));
-    }
-    setClient({ ...client, new_user_password: password });
   };
 
   const isCommercial = isAdmin && clientType === 'commercial';
@@ -299,14 +285,7 @@ export default function NewClient() {
         });
         return;
       }
-      if (!client.new_user_password.trim()) {
-        toast({
-          title: "Error",
-          description: "Password is required for new user account",
-          variant: "destructive"
-        });
-        return;
-      }
+
     }
 
     saveLock.current=true;setSaving(true);
@@ -380,13 +359,13 @@ export default function NewClient() {
         }
       }
 
-      if(isAdmin)creationStore?.clear();
       let commercialCreated: { organizationId: string; organizationName: string; facilityId: string; facilityName: string } | null = null;
 
       if (isCommercial) {
         commercialCreated = await createCommercialRecords(data.id);
       }
 
+      if(isAdmin)creationStore?.clear();setRecovery(false);
       toast({
         title: "Success",
         description: isCommercial
@@ -707,8 +686,7 @@ export default function NewClient() {
                     account_type: value,
                     user_id: value === 'existing' ? client.user_id : '',
                     new_user_username: value === 'new' ? client.new_user_username : '',
-                    new_user_email: value === 'new' ? client.new_user_email : '',
-                    new_user_password: value === 'new' ? client.new_user_password : ''
+                    new_user_email: value === 'new' ? client.new_user_email : ''
                   });
                 }}>
                   <SelectTrigger>
@@ -717,7 +695,7 @@ export default function NewClient() {
                   <SelectContent>
                     <SelectItem value="none">No associated user</SelectItem>
                     <SelectItem value="existing">Select existing user</SelectItem>
-                    <SelectItem value="new">Create new user account</SelectItem>
+                    <SelectItem value="new">Create customer profile for invitation</SelectItem>
                   </SelectContent>
                 </Select>
 
@@ -759,38 +737,7 @@ export default function NewClient() {
                       />
                     </div>
                     
-                    <div className="space-y-2">
-                      <Label htmlFor="newUserPassword">Password *</Label>
-                      <div className="flex space-x-2">
-                        <Input
-                          id="newUserPassword"
-                          type="password"
-                          value={client.new_user_password}
-                          onChange={(e) => handleInputChange('new_user_password', e.target.value)}
-                          placeholder="Enter password"
-                        />
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          onClick={generateRandomPassword}
-                        >
-                          <Shuffle className="h-4 w-4 mr-1" />
-                          Generate
-                        </Button>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center space-x-2">
-                      <Checkbox
-                        id="sendLoginEmail"
-                        checked={client.send_login_email}
-                        onCheckedChange={(checked) => handleInputChange('send_login_email', checked)}
-                      />
-                      <Label htmlFor="sendLoginEmail" className="text-sm">
-                        Automatically send customer email to change password and login
-                      </Label>
-                    </div>
+                    <p className="text-sm text-muted-foreground">Customer profile saved with the pool. Login access requires a separately confirmed invitation; no password or email is sent by saving.</p>
                   </div>
                 )}
               </div>

@@ -1,0 +1,34 @@
+import {describe,it,expect,vi} from 'vitest';
+import {fixtureSnapshot} from './billing-readiness.test';
+import {billingProviders} from '../../../docs/billing-readiness/server/providers';
+import {createBillingApplication} from '../../../docs/billing-readiness/server/production';
+import {reviewedNonTaxable,readinessRow,snapshotCanonical} from '../billing-readiness';
+import {invoicePayload} from '../../../docs/billing-readiness/server/workflow';
+import {createDraftStore} from '../client-create-draft';
+const actor='00000000-0000-4000-8000-000000000001';
+describe('release correction provider and transport contracts (offline)',()=>{
+ it('unreviewed US configuration never yields an invoice payload or ready snapshot',()=>{
+  const s=fixtureSnapshot();expect(reviewedNonTaxable(s.provider)).toBe(true);
+  const invalid={...s.provider,taxReview:undefined};expect(reviewedNonTaxable(invalid)).toBe(false);expect(()=>invoicePayload({...s,provider:invalid})).toThrow('tax_review_required');
+  for(const change of [{confirmed:false},{actor:'not-admin'},{revision:'changed'},{itemId:'999'},{reviewedAt:'bad'}])expect(reviewedNonTaxable({...s.provider,taxReview:{...s.provider.taxReview,...change} as NonNullable<typeof s.provider.taxReview>})).toBe(false);
+  expect(reviewedNonTaxable({...s.provider,taxMode:'tax_exclusive'})).toBe(false);
+ });
+ it('tax attestation revision changes invalidate approval fingerprint',()=>{const s=fixtureSnapshot();expect(snapshotCanonical({...s,provider:{...s.provider,taxReview:{...s.provider.taxReview,reviewedAt:'2026-10-25T12:01:00Z'} as NonNullable<typeof s.provider.taxReview>}})).not.toBe(snapshotCanonical(s));});
+ it.each(['sms','email'] as const)('announcement adapter rejects unapproved %s without any transport or dispatch',async channel=>{
+  const s=fixtureSnapshot();s.channels=channel==='sms'?['email']:['sms'];const fetch=vi.fn();const rpc=vi.fn();const p=billingProviders({businessId:s.businessId,environment:s.environment,realmId:s.realmId,fetch,authorization:async()=>'synthetic',secret:()=> 'synthetic',db:{rpc}});
+  expect(await p.sendAnnouncement(s,channel,'Aqua Clear Pools: reviewed. Reply STOP to opt out.','id')).toEqual({status:'failed',providerId:null});expect(fetch).not.toHaveBeenCalled();expect(rpc).not.toHaveBeenCalled();
+ });
+ it('announcement fresh STOP/activation guard refuses dispatch and provider includes STOP on approved SMS',async()=>{
+  const s=fixtureSnapshot();const fetch=vi.fn(async()=>new Response(JSON.stringify({data:{id:'id',to:[{phone_number:'+16015551234'}]}})));let enabled=false;const rpc=vi.fn(async<T>()=>({data:enabled as T,error:null}));const p=billingProviders({businessId:s.businessId,environment:s.environment,realmId:s.realmId,fetch,authorization:async()=>'synthetic',secret:()=> 'synthetic',db:{rpc}});
+  const text='Aqua Clear Pools: reviewed. Reply STOP to opt out.';expect((await p.sendAnnouncement(s,'sms',text,'id')).status).toBe('failed');expect(fetch).not.toHaveBeenCalled();enabled=true;expect((await p.sendAnnouncement(s,'sms',text,'id')).status).toBe('sent');expect(JSON.parse(String(fetch.mock.calls[0]?.[1]?.body)).text).toBe(text);expect(rpc).toHaveBeenCalledWith('qbo_billing_announcement_dispatch',expect.objectContaining({_channel:'sms',_snapshot:s,_text:text}));
+ });
+ it('missing SMS setup performs neither HTTP nor intent reservation',async()=>{const s=fixtureSnapshot();const fetch=vi.fn();const rpc=vi.fn();const p=billingProviders({businessId:s.businessId,environment:s.environment,realmId:s.realmId,fetch,authorization:async()=>'synthetic',secret:()=>undefined,db:{rpc}});expect(await p.provider.deliver(s,'901','sms','key')).toBe('failed');expect(fetch).not.toHaveBeenCalled();expect(rpc).not.toHaveBeenCalled();});
+ it('durable request draft survives remount, stays actor-scoped and clears only after known result',()=>{const values=new Map<string,string>();const storage={getItem:(k:string)=>values.get(k)??null,setItem:(k:string,v:string)=>{values.set(k,v);},removeItem:(k:string)=>{values.delete(k);}};const draft={requestId:'00000000-0000-4000-8000-000000000004',payload:{customer:'Synthetic'},clientId:null};createDraftStore(storage,actor).write(draft);expect(createDraftStore(storage,actor).read()).toEqual(draft);expect(createDraftStore(storage,'other').read()).toBeNull();createDraftStore(storage,actor).clear();expect(createDraftStore(storage,actor).read()).toBeNull();});
+ it.each([{role:'tech',status:'active',member:'admin'},{role:'admin',status:'revoked',member:'owner'},{role:'admin',status:'active',member:null},{role:'admin',status:'active',member:'tech'}])('production factory rejects unauthorized current roles %j',async current=>{
+  const fetch=vi.fn(async(u:string|URL|Request)=>{const url=String(u);const data=url.includes('/auth/v1/user')?{id:actor}:url.includes('/users?')?{id:actor,role:current.role,status:current.status}:url.includes('/business_members?')?current.member?{role:current.member}:null:{error:'unexpected'};return new Response(JSON.stringify(data),{headers:{'Content-Type':'application/json'}});});
+  const app=createBillingApplication({secret:n=>n==='SUPABASE_URL'?'https://synthetic.invalid':'synthetic',fetch,scope:{businessId:'b1',environment:'sandbox',realmId:'123'},allowedOrigins:[]});const result=await app.handler(new Request('https://synthetic.invalid',{method:'POST',headers:{Authorization:'Bearer synthetic'},body:JSON.stringify({action:'readiness'})}));expect(result.status).toBe(401);expect(fetch.mock.calls.some(([u])=>String(u).includes('/rpc/'))).toBe(false);
+ });
+ it('verify_provider refuses missing tax attestation before any Intuit call',async()=>{
+  const fetch=vi.fn(async(u:string|URL|Request)=>new Response(JSON.stringify(String(u).includes('/auth/v1/user')?{id:actor}:String(u).includes('/users?')?{role:'admin',status:'active'}:{role:'owner'}),{headers:{'Content-Type':'application/json'}}));const app=createBillingApplication({secret:n=>n==='SUPABASE_URL'?'https://synthetic.invalid':'synthetic',fetch,scope:{businessId:'b1',environment:'sandbox',realmId:'123'},allowedOrigins:[]});const r=await app.handler(new Request('https://synthetic.invalid',{method:'POST',headers:{Authorization:'Bearer synthetic'},body:JSON.stringify({action:'verify_provider',itemId:'1',incomeAccountId:'2'})}));expect(await r.json()).toEqual({error:'tax_review_required'});expect(fetch.mock.calls.some(([u])=>String(u).includes('intuit.com'))).toBe(false);
+ });
+});

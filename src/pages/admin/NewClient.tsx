@@ -277,10 +277,10 @@ export default function NewClient() {
         });
         return;
       }
-      if (client.new_user_email && !client.new_user_email.trim()) {
+      if (!client.new_user_email.trim()) {
         toast({
           title: "Error",
-          description: "Email cannot be empty if provided",
+          description: "Email is required for a customer invitation profile",
           variant: "destructive"
         });
         return;
@@ -296,7 +296,7 @@ export default function NewClient() {
 
       // A new customer profile is created atomically with the scoped client, never before it.
       // No password or auth account is created here; existing verified invitation flow follows.
-      const account=isAdmin&&client.account_type==='new'?{email:client.new_user_email||null,name:client.customer,login:client.new_user_username,street_address:client.street_address||null,city:client.city||null,state:client.state||null,zip_code:client.zip_code||null,address_validated:client.address_validated,phone:client.phone||null}:null;
+      const account=isAdmin&&client.account_type==='new'?{email:client.new_user_email,name:client.customer,login:client.new_user_username,street_address:client.street_address||null,city:client.city||null,state:client.state||null,zip_code:client.zip_code||null,address_validated:client.address_validated,phone:client.phone||null}:null;
       if (!account && client.account_type === 'existing' && client.user_id) finalUserId = client.user_id;
 
 
@@ -733,7 +733,7 @@ export default function NewClient() {
                         type="email"
                         value={client.new_user_email}
                         onChange={(e) => handleInputChange('new_user_email', e.target.value)}
-                        placeholder="Enter client's email (optional)"
+                        placeholder="Enter client's email"
                       />
                     </div>
                     

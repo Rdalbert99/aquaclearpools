@@ -153,13 +153,14 @@ BEGIN
  END IF;
  IF _environment IS NULL OR _environment NOT IN ('sandbox','production') OR _realm IS NULL OR _realm !~ '^\d+$' OR NOT EXISTS(SELECT 1 FROM public.businesses WHERE id=_business) THEN RAISE EXCEPTION 'invalid_scope'; END IF;
  IF _account IS NOT NULL THEN
-  IF jsonb_typeof(_account) IS DISTINCT FROM 'object' OR EXISTS(SELECT 1 FROM jsonb_object_keys(_account) k WHERE k NOT IN ('email','name','login','street_address','city','state','zip_code','address_validated','phone')) OR coalesce(trim(_account->>'login'),'')='' OR coalesce(trim(_account->>'name'),'')='' OR _client->>'user_id' IS NOT NULL THEN RAISE EXCEPTION 'invalid_account'; END IF;
+  LOCK TABLE public.users IN SHARE ROW EXCLUSIVE MODE;
+  IF jsonb_typeof(_account) IS DISTINCT FROM 'object' OR EXISTS(SELECT 1 FROM jsonb_object_keys(_account) k WHERE k NOT IN ('email','name','login','street_address','city','state','zip_code','address_validated','phone')) OR coalesce(trim(_account->>'login'),'')='' OR coalesce(trim(_account->>'name'),'')='' OR coalesce(trim(_account->>'email'),'')='' OR _client->>'user_id' IS NOT NULL THEN RAISE EXCEPTION 'invalid_account'; END IF;
   IF EXISTS(SELECT 1 FROM public.users WHERE (coalesce(_account->>'email','')<>'' AND lower(trim(email))=lower(trim(_account->>'email'))) OR lower(trim(login))=lower(trim(_account->>'login'))) THEN RAISE EXCEPTION 'account_already_exists'; END IF;
   INSERT INTO public.users(email,name,role,status,login,street_address,city,state,zip_code,address_validated,phone,must_change_password) VALUES(_account->>'email',_account->>'name','client','active',_account->>'login',_account->>'street_address',_account->>'city',_account->>'state',_account->>'zip_code',coalesce((_account->>'address_validated')::boolean,false),_account->>'phone',true) RETURNING id INTO profile_id;
   _client:=jsonb_set(_client,'{user_id}',to_jsonb(profile_id));
  END IF;
  IF _account IS NULL AND _client->>'user_id' IS NOT NULL AND NOT EXISTS(SELECT 1 FROM public.qbo_billing_client_scope sc JOIN public.clients c ON c.id=sc.client_id WHERE sc.business_id=_business AND sc.environment=_environment AND sc.realm_id=_realm AND c.user_id=(_client->>'user_id')::uuid) THEN RAISE EXCEPTION 'account_scope_review_required'; END IF;
- IF jsonb_typeof(_client)<>'object' OR coalesce(trim(_client->>'customer'),'')='' THEN RAISE EXCEPTION 'invalid_client'; END IF;
+ IF jsonb_typeof(_client) IS DISTINCT FROM 'object' OR coalesce(trim(_client->>'customer'),'')='' OR _client->>'pool_size' IS NULL OR (_client->>'pool_size')::numeric<0 OR coalesce(trim(_client->>'pool_type'),'')='' THEN RAISE EXCEPTION 'invalid_client'; END IF;
  IF EXISTS(SELECT 1 FROM jsonb_object_keys(_client) k WHERE k NOT IN ('customer','contact_email','contact_phone','contact_address','pool_size','pool_type','liner_type','status','in_balance','last_service_date','user_id','service_rate','service_frequency','next_service_date','included_services','service_notes','service_days','company_name','is_multi_property','join_date','created_at','updated_at')) THEN RAISE EXCEPTION 'invalid_client_field'; END IF;
  SELECT string_agg(format('%I',k),',' ORDER BY k),string_agg(format('(jsonb_populate_record(NULL::public.clients,$1)).%I',k),',' ORDER BY k)
  INTO cols,expressions FROM jsonb_object_keys(_client) k;
@@ -292,7 +293,7 @@ RETURNS boolean LANGUAGE plpgsql SECURITY DEFINER SET search_path=public,extensi
 BEGIN
  SELECT * INTO a FROM public.qbo_billing_announcements WHERE id=_id AND business_id=_business AND environment=_environment AND realm_id=_realm FOR UPDATE;
  IF NOT FOUND THEN RAISE EXCEPTION 'cross_business'; END IF;
- IF a.snapshot IS NULL OR a.channel NOT IN ('sms','email') OR NOT (a.snapshot->'channels' ? a.channel) OR a.approved_text IS NULL OR a.scope_id IS NULL OR a.send_day IS DISTINCT FROM ((a.snapshot->>'sendAt')::timestamptz AT TIME ZONE 'America/Chicago')::date THEN RAISE EXCEPTION 'announcement_review_required'; END IF;
+ IF a.snapshot IS NULL OR a.channel IS NULL OR a.channel NOT IN ('sms','email') OR NOT (a.snapshot->'channels' ? a.channel) OR a.approved_text IS NULL OR a.scope_id IS NULL OR a.send_day IS DISTINCT FROM ((a.snapshot->>'sendAt')::timestamptz AT TIME ZONE 'America/Chicago')::date THEN RAISE EXCEPTION 'announcement_review_required'; END IF;
  IF NOT EXISTS(SELECT 1 FROM public.businesses WHERE id=_business AND billing_mode='qbo') THEN RAISE EXCEPTION 'disabled'; END IF;
  PERFORM public.qbo_billing_assert_enrollment(_business,_environment,_realm,a.client_id,a.snapshot);
  SELECT * INTO c FROM public.qbo_billing_activation WHERE business_id=_business AND environment=_environment AND realm_id=_realm FOR SHARE;
@@ -309,7 +310,7 @@ BEGIN
  IF NOT FOUND OR a.state IS DISTINCT FROM 'sending' OR a.channel IS DISTINCT FROM _channel OR a.approved_text IS DISTINCT FROM _text OR a.snapshot IS DISTINCT FROM _snapshot OR NOT (a.snapshot->'channels' ? _channel) THEN RETURN false; END IF;
  PERFORM public.qbo_billing_assert_enrollment(_business,_environment,_realm,a.client_id,a.snapshot);
  SELECT * INTO c FROM public.qbo_billing_activation WHERE business_id=_business AND environment=_environment AND realm_id=_realm FOR SHARE;
- IF NOT FOUND OR c.announcement_enabled IS DISTINCT FROM true OR c.migration_verified IS DISTINCT FROM true OR c.deployment_verified IS DISTINCT FROM true OR c.provider_verified IS DISTINCT FROM true OR c.approved_scope_id IS DISTINCT FROM a.scope_id OR c.announcement_hour IS NULL OR a.send_day IS DISTINCT FROM (now() AT TIME ZONE 'America/Chicago')::date OR NOT EXISTS(SELECT 1 FROM public.businesses WHERE id=_business AND billing_mode='qbo') THEN RETURN false; END IF;
+ IF NOT FOUND OR c.announcement_enabled IS DISTINCT FROM true OR c.migration_verified IS DISTINCT FROM true OR c.deployment_verified IS DISTINCT FROM true OR c.provider_verified IS DISTINCT FROM true OR c.approved_scope_id IS DISTINCT FROM a.scope_id OR c.announcement_hour IS NULL OR c.announcement_hour<0 OR c.announcement_hour>=12 OR now()<((a.send_day::text||' '||c.announcement_hour||':00')::timestamp AT TIME ZONE 'America/Chicago') OR a.send_day IS DISTINCT FROM (now() AT TIME ZONE 'America/Chicago')::date OR NOT EXISTS(SELECT 1 FROM public.businesses WHERE id=_business AND billing_mode='qbo') THEN RETURN false; END IF;
  UPDATE public.qbo_billing_announcements SET state='dispatching' WHERE id=_id AND state='sending'; RETURN FOUND;
 END $$;
 CREATE FUNCTION public.qbo_billing_announcement_immutable() RETURNS trigger

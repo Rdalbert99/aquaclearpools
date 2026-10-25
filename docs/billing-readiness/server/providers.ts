@@ -18,12 +18,15 @@ export function validatedPaymentLink(raw: unknown): string | null {
   if (typeof raw !== 'string') return null;
   try { const u = new URL(raw); return u.protocol === 'https:' && !u.username && !u.password && ['connect.intuit.com','payment.quickbooks.intuit.com','pay.quickbooks.intuit.com'].includes(u.hostname) ? u.href : null; } catch { return null; }
 }
-interface QInvoice { Id?: string; CustomerRef?: { value?: string }; TotalAmt?: number; Balance?: number; DueDate?: string; TxnDate?: string; PrivateNote?: string; InvoiceLink?: string; Line?: { Amount?: number; Description?: string; SalesItemLineDetail?: { ItemRef?: { value?: string }; TaxCodeRef?: { value?: string } } }[] }
+interface QInvoice { Id?: string; CustomerRef?: { value?: string }; TotalAmt?: number; Balance?: number; DueDate?: string; TxnDate?: string; PrivateNote?: string; InvoiceLink?: string; Line?: { Amount?: number; DetailType?:string; Description?: string; SalesItemLineDetail?: { ItemRef?: { value?: string }; TaxCodeRef?: { value?: string } } }[] }
 export function verifiedInvoice(raw: QInvoice | undefined, s: Snapshot, requestId?: string): ProviderInvoice {
   const marker = `Aqua Clear service ${s.serviceStart} through ${s.serviceEnd}; ${s.frequency}`;
   if (!raw?.Id || !/^\d+$/.test(raw.Id) || raw.CustomerRef?.value !== s.customerId || raw.DueDate !== s.dueDate || raw.TxnDate !== s.sendAt.slice(0,10) ||
     Math.round(Number(raw.TotalAmt)*100) !== s.amountCents || !raw.PrivateNote?.startsWith(marker) ||
-    (requestId && !raw.PrivateNote.includes(`billing-run:${requestId}`)) || !raw.Line?.some(l => l.Description === `Pool service ${s.serviceStart} through ${s.serviceEnd}` && l.SalesItemLineDetail?.ItemRef?.value === s.provider.itemId)) throw new Error('provider_result_mismatch');
+    (requestId && raw.PrivateNote !== `${marker}; billing-run:${requestId}`)) throw new Error('provider_result_mismatch');
+  const chargeLines=raw.Line?.filter(l=>l.DetailType!=='SubTotalLineDetail');
+  const charge=chargeLines?.[0];
+  if(chargeLines?.length!==1||charge?.DetailType!=='SalesItemLineDetail'||!Number.isFinite(charge.Amount)||Math.round(Number(charge.Amount)*100)!==s.amountCents||charge.Description!==`Pool service ${s.serviceStart} through ${s.serviceEnd}`||charge.SalesItemLineDetail?.ItemRef?.value!==s.provider.itemId||charge.SalesItemLineDetail?.TaxCodeRef?.value!==s.provider.taxCode)throw new Error('provider_result_mismatch');
   return { id: raw.Id, customerId: s.customerId, amountCents: s.amountCents, dueDate: raw.DueDate, serviceStart: s.serviceStart, serviceEnd: s.serviceEnd, frequency: s.frequency };
 }
 export function billingProviders(deps: {

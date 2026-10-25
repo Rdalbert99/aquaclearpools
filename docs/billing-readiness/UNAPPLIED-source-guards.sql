@@ -86,8 +86,8 @@ BEGIN
  IF lower(trim(src->'client'->>'customer')) IN ('laken ford ramey','laken ramey') THEN RAISE EXCEPTION 'owner_hold'; END IF;
  start_day:=(_snapshot->>'servicePeriod'||'-01')::date; freq:=_snapshot->>'frequency'; annual:=src->'annual';
  IF annual IS NOT NULL AND annual <> 'null'::jsonb THEN
-  IF freq<>'annual' OR annual->>'renewalConfirmed'<>'true' OR annual->>'amountConfirmed'<>'true' OR
-  (annual->>'renewalMonth')::int<>extract(month FROM start_day) THEN RAISE EXCEPTION 'annual_review_required'; END IF;
+  IF freq IS DISTINCT FROM 'annual' OR annual->>'renewalConfirmed' IS DISTINCT FROM 'true' OR annual->>'amountConfirmed' IS DISTINCT FROM 'true' OR
+  (annual->>'renewalMonth')::int IS DISTINCT FROM extract(month FROM start_day)::int THEN RAISE EXCEPTION 'annual_review_required'; END IF;
   amount:=(annual->>'amountCents')::bigint; end_day:=(start_day+interval '1 year'-interval '1 day')::date;
  ELSE
   IF _client IN ('208cdcbc-375c-495f-8838-0e1f2003038c','9a8f6dce-bd90-4995-aa91-50664e45d81b','6d228b42-7306-467f-9a9d-89f31ad4f599') THEN RAISE EXCEPTION 'annual_review_required'; END IF;
@@ -134,7 +134,7 @@ RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path=public,extension
 DECLARE cols text; expressions text; row_value jsonb; client_id uuid;
 BEGIN
  PERFORM public.qbo_billing_admin(_business,_actor);
- IF _environment NOT IN ('sandbox','production') OR _realm !~ '^\d+$' OR NOT EXISTS(SELECT 1 FROM public.businesses WHERE id=_business) THEN RAISE EXCEPTION 'invalid_scope'; END IF;
+ IF _environment IS NULL OR _environment NOT IN ('sandbox','production') OR _realm IS NULL OR _realm !~ '^\d+$' OR NOT EXISTS(SELECT 1 FROM public.businesses WHERE id=_business) THEN RAISE EXCEPTION 'invalid_scope'; END IF;
  IF jsonb_typeof(_client)<>'object' OR coalesce(trim(_client->>'customer'),'')='' THEN RAISE EXCEPTION 'invalid_client'; END IF;
  IF EXISTS(SELECT 1 FROM jsonb_object_keys(_client) k WHERE k NOT IN ('customer','contact_email','contact_phone','contact_address','street_address','city','state','zip_code','address_validated','pool_size','pool_type','liner_type','status','in_balance','last_service_date','user_id','service_rate','service_frequency','next_service_date','included_services','service_notes','service_days','company_name','is_multi_property','join_date','created_at','updated_at')) THEN RAISE EXCEPTION 'invalid_client_field'; END IF;
  SELECT string_agg(format('%I',k),',' ORDER BY k),string_agg(format('(jsonb_populate_record(NULL::public.clients,$1)).%I',k),',' ORDER BY k)
@@ -186,6 +186,8 @@ BEGIN
  SELECT * INTO r FROM public.qbo_billing_runs WHERE id=_id AND business_id=_business AND environment=_environment AND realm_id=_realm FOR UPDATE;
  IF NOT FOUND OR _proof->>'verified' IS DISTINCT FROM 'true' OR _proof->>'runId' IS DISTINCT FROM _id::text THEN RAISE EXCEPTION 'invalid_evidence'; END IF;
  IF _kind='invoice' THEN
+  IF r.provider_invoice_id=_provider_id AND r.state IN ('created','complete') THEN RETURN true; END IF;
+  IF r.state IS DISTINCT FROM 'reconcile' OR r.provider_invoice_id IS NOT NULL OR r.code IS DISTINCT FROM 'create_in_flight' THEN RAISE EXCEPTION 'reconciliation_not_eligible'; END IF;
   IF _provider_id !~ '^\d+$' OR _proof->>'customerId' IS DISTINCT FROM r.snapshot->>'customerId' OR
   (_proof->>'amountCents')::bigint IS DISTINCT FROM (r.snapshot->>'amountCents')::bigint OR
   _proof->>'serviceStart' IS DISTINCT FROM r.snapshot->>'serviceStart' OR _proof->>'serviceEnd' IS DISTINCT FROM r.snapshot->>'serviceEnd' OR
@@ -194,7 +196,7 @@ BEGIN
  ELSIF _kind='delivery' THEN
   ch:=_proof->>'channel'; status:=_proof->>'status';
   IF ch IS NULL OR ch NOT IN ('sms','email') OR status IS NULL OR status NOT IN ('sent','failed') OR
-  r.provider_outcomes->ch->>'id' IS DISTINCT FROM _provider_id OR r.channels->>ch NOT IN ('sending','unknown') THEN RAISE EXCEPTION 'evidence_mismatch'; END IF;
+  r.provider_outcomes->ch->>'id' IS DISTINCT FROM _provider_id OR coalesce(r.channels->>ch,'') NOT IN ('sending','unknown') OR r.state NOT IN ('reconcile','blocked') THEN RAISE EXCEPTION 'evidence_mismatch'; END IF;
   UPDATE public.qbo_billing_runs SET channels=jsonb_set(channels,ARRAY[ch],to_jsonb(status)),state='created',code='reconciled_delivery' WHERE id=_id;
  ELSE RAISE EXCEPTION 'invalid_evidence'; END IF;
  INSERT INTO public.qbo_billing_evidence(business_id,environment,realm_id,run_id,actor,kind,provider_id,proof) VALUES(_business,_environment,_realm,_id,_actor,_kind,_provider_id,_proof);

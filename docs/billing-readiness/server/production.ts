@@ -127,6 +127,7 @@ export function createBillingApplication(options: {
         return reply({verified:await query('qbo_billing_verify_mapping',{...scoped,_client:body.clientId,_customer:body.customerId,_actor:actor.id})});
       }
       // GET-only setup reads; minimum safe fields; never tokens.
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- untyped provider JSON, validated field-by-field in setup.ts
       const qboGet=async(path:string)=>expectJson(await requestWithRetry(http,accountingUrl(scope.environment,scope.realmId,path),{method:'GET',headers:{Authorization:await authorization(),Accept:'application/json'}},{retry:true})) as Record<string,any>;
       const appCustomer=async(clientId:string):Promise<AppCustomer>=>{
         await enrollment.read(credential,clientId); // explicit reviewed business scope (no IDOR)
@@ -155,18 +156,21 @@ export function createBillingApplication(options: {
         const comparison=compareIdentity(app,qb);
         if(customerFingerprint(scope.realmId,app,qb)!==body.fingerprint)throw new Error('stale_identity_evidence');
         if(!comparison.supported)throw new Error('identity_review_required');
-        return reply({verified:await query('qbo_billing_confirm_mapping',{...scoped,_client:body.clientId,_customer:body.customerId,_actor:actor.id,_evidence:{supported:true,active:qb.active,evidence:comparison.evidence,displayName:qb.displayName},_fingerprint:body.fingerprint})});
+        return reply({verified:await query('qbo_billing_confirm_mapping',{...scoped,_client:body.clientId,_customer:body.customerId,_actor:actor.id,_evidence:{supported:true,active:qb.active,evidence:comparison.evidence,displayName:qb.displayName,app:{id:app.id,customer:app.customer,status:app.status,contact_email:app.contact_email??null,contact_phone:app.contact_phone??null,address:app.address??null},customer:qb},_fingerprint:body.fingerprint})});
       }
       if(body.action==='readiness'){const month=body.sendMonth??initialSendMonth();const approvals=await hostRead('approvals',batchDates(month).servicePeriod);return reply({scope,sendMonth:month,policy:await policy(),rows:await roster(month),approvals});}
       if(body.action==='policy')return reply({policy:await policy()});
       if(body.action==='read_enrollment'&&body.clientId)return reply({scope,enrollment:await enrollment.read(credential,body.clientId)});
       if(body.action==='save_enrollment'&&body.clientId)return reply({enrollment:await enrollment.save(credential,{clientId:body.clientId,enabled:body.enabled,firstServicePeriod:body.firstServicePeriod,expectedRevision:body.expectedRevision})});
       if(body.action==='approve'&&body.clientId&&body.fingerprint)return reply({approval:await approve(credential,body.clientId,body.sendMonth??initialSendMonth(),body.fingerprint)});
-      if(body.action==='approve_announcement'&&body.clientId&&body.scopeId&&body.text&&body.fingerprint){
-        if(!body.text.startsWith('Aqua Clear Pools:')||!body.text.endsWith('Reply STOP to opt out.'))throw new Error('announcement_review_required');
+      if(body.action==='approve_announcement'&&body.clientId&&body.scopeId&&body.channel&&body.text&&body.fingerprint){
+        if(body.channel!=='sms'&&body.channel!=='email')throw new Error('announcement_review_required');
+        if(body.channel==='sms'&&(!body.text.startsWith('Aqua Clear Pools:')||!body.text.endsWith('Reply STOP to opt out.')))throw new Error('announcement_review_required');
+        if(body.channel==='email'&&body.text.includes('Reply STOP to opt out.'))throw new Error('announcement_review_required'); // SMS wrapper never stored on email
         const row=await source.preview(body.clientId,body.sendMonth??initialSendMonth());
         if(!row.snapshot||snapshotCanonical(row.snapshot)!==body.fingerprint)throw new Error('stale_approval');
-        return reply({approved:await query('qbo_billing_approve_announcement',{...scoped,_client:body.clientId,_actor:actor.id,_scope_id:body.scopeId,_text:body.text,_snapshot:row.snapshot})});
+        if(!row.snapshot.channels.includes(body.channel))throw new Error('announcement_review_required');
+        return reply({approved:await query('qbo_billing_approve_announcement',{...scoped,_client:body.clientId,_actor:actor.id,_scope_id:body.scopeId,_channel:body.channel,_text:body.text,_snapshot:row.snapshot})});
       }
       if(body.action==='execute'&&body.approvalId)return reply(await executeInvoice({...bindings,provider:providers.provider},credential,body.approvalId));
       if(body.action==='resume'&&body.approvalId)return reply({state:await resumeDelivery({...bindings,provider:providers.provider},credential,body.approvalId)});

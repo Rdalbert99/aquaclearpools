@@ -30,3 +30,9 @@ confirm_mapping; verify_provider now requires live-evidence fingerprint and deri
 Next artifact MUST keep the external fixed-scope wrapper: startBillingHost fixed business/env/realm,
 existing env secrets, Supabase SDK, CORS allow-headers incl. x-client-info for approved origins only,
 pinned lock versions. Frontend setup panels fail closed until this artifact + delta are installed.
+OCT25 ANNOUNCEMENT CHANNEL DELTA (UNAPPLIED): UNAPPLIED-delta-2026-10-25-announcement-channels.sql
+replaces qbo_billing_approve_announcement with the channel-aware signature
+(uuid,text,text,uuid,uuid,uuid,text,_channel text,jsonb) — one exact reviewed text per channel;
+SMS keeps prefix + STOP footer, email never carries the SMS wrapper. Apply AFTER
+UNAPPLIED-source-guards.sql. Old signature revoked/dropped; new signature service_role EXECUTE only.
+approve_announcement now requires body.channel and per-channel text; no seeding, queue or sends.

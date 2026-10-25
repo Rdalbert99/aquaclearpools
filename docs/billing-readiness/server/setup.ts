@@ -23,17 +23,18 @@ export async function discoverProvider(get: Get, realmId: string, itemId: string
   if (!account || s(account.Id) !== incomeAccountId) throw new Error('account_not_found');
   if (!company || s(company.Id) !== realmId) throw new Error('company_mismatch');
   const blockers: string[] = [];
-  if (item.Active === false) blockers.push('Item inactive');
-  if (account.Active === false) blockers.push('Income account inactive');
+  if (item.Active !== true) blockers.push('Item inactive');
+  if (account.Active !== true) blockers.push('Income account inactive');
   if (account.AccountType !== 'Income') blockers.push('Account is not an Income account');
   const country = s(company.Country);
   if (country !== 'US') blockers.push('Only US non-taxable (NON) treatment is supported');
   const taxable = typeof item.Taxable === 'boolean' ? item.Taxable : null;
-  if (taxable === true) blockers.push('Item is marked taxable in QuickBooks; NON treatment not supported');
+  // Item.Taxable is the catalog default, not the reviewed invoice-line treatment.
+  // Saving still requires an explicit NON attestation; catalog data is never changed.
   const e = {
     realmId, companyName: s(company.CompanyName), country,
-    item: { id: itemId, name: s(item.Name), active: item.Active !== false, type: s(item.Type), taxable, incomeAccountId },
-    account: { id: incomeAccountId, name: s(account.Name), active: account.Active !== false, type: s(account.AccountType) },
+    item: { id: itemId, name: s(item.Name), active: item.Active === true, type: s(item.Type), taxable, incomeAccountId },
+    account: { id: incomeAccountId, name: s(account.Name), active: account.Active === true, type: s(account.AccountType) },
   };
   return { ...e, taxSupported: blockers.length === 0, blockers,
     fingerprint: fp([realmId, itemId, e.item.name, e.item.active, e.item.type, taxable, incomeAccountId, e.account.name, e.account.active, e.account.type, country, s(item.SyncToken), s(account.SyncToken)]) };
@@ -42,14 +43,14 @@ export async function discoverProvider(get: Get, realmId: string, itemId: string
 export interface AppCustomer { id: string; customer: string; status: string | null; contact_email?: string | null; contact_phone?: string | null; address?: string | null }
 export interface QbCustomer { id: string; displayName: string; active: boolean; email: string; phone: string; address: string; syncToken: string }
 export const normEmail = (e?: string | null) => (e ?? '').trim().toLowerCase();
-export const normPhone = (p?: string | null) => (p ?? '').replace(/\D/g, '').slice(-10);
+export const normPhone = (p?: string | null) => { const digits = (p ?? '').replace(/\D/g, ''); return /^[2-9]\d{2}[2-9]\d{6}$/.test(digits) ? digits : /^1[2-9]\d{2}[2-9]\d{6}$/.test(digits) ? digits.slice(1) : ''; };
 export const normText = (t?: string | null) => (t ?? '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
 // eslint-disable-next-line @typescript-eslint/no-explicit-any -- untyped provider JSON
 function qbCustomer(c: Record<string, any>): QbCustomer {
   const a = c.BillAddr ?? {};
-  return { id: s(c.Id), displayName: s(c.DisplayName), active: c.Active !== false, email: s(c.PrimaryEmailAddr?.Address),
+  return { id: s(c.Id), displayName: s(c.DisplayName), active: c.Active === true, email: s(c.PrimaryEmailAddr?.Address),
     phone: s(c.PrimaryPhone?.FreeFormNumber || c.Mobile?.FreeFormNumber),
-    address: [a.Line1, a.City, a.CountrySubDivisionCode, a.PostalCode].filter(Boolean).join(', '), syncToken: s(c.SyncToken) };
+    address: [a.Line1, a.Line2, a.Line3, a.Line4, a.Line5, a.City, a.CountrySubDivisionCode, a.PostalCode, a.Country].filter(Boolean).join(', '), syncToken: s(c.SyncToken) };
 }
 export async function readCustomer(get: Get, id: string): Promise<QbCustomer> {
   if (!validProviderId(id)) throw new Error('invalid_customer');
@@ -73,7 +74,7 @@ export function compareIdentity(app: AppCustomer, qb: QbCustomer) {
   const evidence: Evidence[] = [
     { field: 'email', result: cmp(normEmail(app.contact_email), normEmail(qb.email)) },
     { field: 'phone', result: cmp(normPhone(app.contact_phone), normPhone(qb.phone)) },
-    { field: 'address', result: cmp(normText(app.address).split(' ').slice(0, 3).join(' '), normText(qb.address).split(' ').slice(0, 3).join(' ')) },
+    { field: 'address', result: cmp(normText(app.address), normText(qb.address)) },
     { field: 'name', result: cmp(normText(app.customer), normText(qb.displayName)) },
   ];
   // Name alone never supports a link; at least one contact/address match and no conflicts.

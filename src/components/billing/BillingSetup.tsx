@@ -17,7 +17,7 @@ export function ProviderSetup({ onSaved }: { onSaved?: () => void }) {
   const [status, setStatus] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const seq = useRef(0);
-  const reset = () => { seq.current++; setEvidence(null); setConfirmed(false); setStatus(null); };
+  const reset = () => { seq.current++; setBusy(false); setEvidence(null); setConfirmed(false); setStatus(null); };
   const discover = async () => {
     const req = ++seq.current; const asked = itemId; setBusy(true); setEvidence(null); setConfirmed(false); setStatus(null);
     try { const r = await billingInvoke<{ provider: ProviderEvidence }>({ action: 'discover_provider', itemId: asked });
@@ -28,7 +28,8 @@ export function ProviderSetup({ onSaved }: { onSaved?: () => void }) {
   const save = async () => {
     if (!evidence || !confirmed || !evidence.taxSupported) return;
     const req = ++seq.current; setBusy(true);
-    try { await billingInvoke({ action: 'verify_provider', itemId: evidence.item.id, fingerprint: evidence.fingerprint, taxReview: { confirmed: true, taxMode: 'non_taxable', taxCode: 'NON' } });
+    try { const result = await billingInvoke<{ verified: boolean }>({ action: 'verify_provider', itemId: evidence.item.id, fingerprint: evidence.fingerprint, taxReview: { confirmed: true, taxMode: 'non_taxable', taxCode: 'NON' } });
+      if (result.verified !== true) throw new Error('Provider verification was not saved');
       if (seq.current === req) { setStatus('Saved — re-read live from QuickBooks and verified'); onSaved?.(); } }
     catch (e) { if (seq.current === req) setStatus(`Not saved: ${msg(e, 'verification failed')}`); }
     finally { if (seq.current === req) setBusy(false); }
@@ -44,7 +45,7 @@ export function ProviderSetup({ onSaved }: { onSaved?: () => void }) {
       <p>Item {evidence.item.id}: {evidence.item.name} · {evidence.item.type} · {evidence.item.active ? 'active' : 'inactive'} · taxable {evidence.item.taxable == null ? 'not stated' : evidence.item.taxable ? 'yes' : 'no'}</p>
       <p>Income account {evidence.account.id} (from item): {evidence.account.name} · {evidence.account.type} · {evidence.account.active ? 'active' : 'inactive'}</p>
       {evidence.blockers.map(b => <p key={b} className="text-destructive">Blocked: {b}</p>)}
-      <label className="flex items-center gap-2"><Checkbox aria-label="Confirm non-taxable" checked={confirmed} disabled={!evidence.taxSupported} onCheckedChange={v => setConfirmed(v === true)} />I confirm this service is non-taxable (NON) for this batch</label>
+      <label className="flex items-center gap-2"><Checkbox aria-label="Confirm non-taxable" checked={confirmed} disabled={!evidence.taxSupported} onCheckedChange={v => setConfirmed(v === true)} />I explicitly confirm non-taxable (NON) invoice treatment for this batch, regardless of the displayed catalog tax default. The QuickBooks item will not be changed.</label>
       <Button disabled={busy || !confirmed || !evidence.taxSupported} onClick={() => void save()}>Verify & save setup</Button>
       <Button variant="ghost" onClick={reset}>Cancel</Button>
     </div>}
@@ -68,7 +69,7 @@ export function CustomerMapping({ clients, onSaved }: { clients: { id: string; c
   const [status, setStatus] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const seq = useRef(0);
-  const reset = () => { seq.current++; setFound(null); setConfirmed(false); setStatus(null); setLeads([]); };
+  const reset = () => { seq.current++; setBusy(false); setFound(null); setConfirmed(false); setStatus(null); setLeads([]); };
   const run = async <T,>(body: Record<string, unknown>, apply: (r: T) => void) => {
     const req = ++seq.current; setBusy(true); setStatus(null);
     try { const r = await billingInvoke<T>(body); if (seq.current === req) apply(r); }
@@ -79,13 +80,13 @@ export function CustomerMapping({ clients, onSaved }: { clients: { id: string; c
     return run<Discovery>({ action: 'discover_customer', clientId: c, customerId: id }, r => { if (r.app.id === c && r.customer.id === id) setFound(r); }); };
   const save = () => found && confirmed && found.comparison.supported && run<{ verified: boolean }>(
     { action: 'confirm_mapping', clientId: found.app.id, customerId: found.customer.id, fingerprint: found.fingerprint, confirmed: true },
-    () => { setStatus('Saved — live customer re-read and mapping verified'); setFound(null); setConfirmed(false); onSaved?.(); });
+    result => { if (result.verified !== true) throw new Error('Customer mapping was not saved'); setStatus('Saved — live customer re-read and mapping verified'); setFound(null); setConfirmed(false); onSaved?.(); });
   return <section className="space-y-2 border-b pb-4 text-sm">
     <h2 className="text-lg font-semibold">Link customer to QuickBooks</h2>
     <div className="flex flex-wrap items-end gap-2">
       <label className="space-y-1">Customer<select aria-label="App customer" className="block h-10 rounded-md border bg-background px-2" value={clientId} onChange={e => { setClientId(e.target.value); reset(); }}>
         <option value="">Choose…</option>{clients.map(c => <option key={c.id} value={c.id}>{c.customer}</option>)}</select></label>
-      <label className="space-y-1">QuickBooks customer ID<Input aria-label="QuickBooks customer ID" value={customerId} onChange={e => { setCustomerId(e.target.value.replace(/\D/g, '')); setFound(null); setConfirmed(false); }} className="w-40" /></label>
+      <label className="space-y-1">QuickBooks customer ID<Input aria-label="QuickBooks customer ID" value={customerId} onChange={e => { setCustomerId(e.target.value.replace(/\D/g, '')); reset(); }} className="w-40" /></label>
       <Button variant="outline" disabled={busy || !clientId || !customerId} onClick={() => void lookup()}>Look up</Button>
       <label className="space-y-1">or search name<Input aria-label="Search QuickBooks customers" value={search} onChange={e => setSearch(e.target.value)} className="w-44" /></label>
       <Button variant="outline" disabled={busy || !clientId || search.trim().length < 2} onClick={() => void run<{ leads: QbCustomer[] }>({ action: 'discover_customer', clientId, search }, r => setLeads(r.leads))}>Search</Button>

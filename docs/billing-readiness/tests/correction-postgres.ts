@@ -56,12 +56,16 @@ denies(`SET ROLE service_role;SELECT qbo_billing_create_scoped_client(${scope},'
 denies(`SET ROLE service_role;SELECT qbo_billing_create_scoped_client(${scope},'${actor}',${json({...payload,id:crypto.randomUUID()})},'${crypto.randomUUID()}',${json({...account,login:'rollback-profile',email:'rollback@example.test'})})`,'invalid_client_field');assert(sql("SELECT count(*) FROM users WHERE login='rollback-profile'")==='0','orphan profile');ok('failed client insert rolls back earlier profile atomically');
 denies(`SET ROLE service_role;SELECT qbo_billing_set_enrollment(${scope},'${created.id}',true,'invalid',0,'${actor}')`,'invalid_first_month');assert(sql(`SELECT count(*) FROM clients WHERE id='${created.id}'`)==='1','client lost');assert(sql(`SELECT count(*) FROM qbo_billing_enrollment WHERE client_id='${created.id}'`)==='0','false enrollment');ok('partial enrollment failure preserves one customer and default OFF');
 // Frozen immutable announcement approval, authoritative channels and NULL activation.
-const text='Aqua Clear Pools: Reviewed synthetic notice. Reply STOP to opt out.';const scopeId=crypto.randomUUID();
-const approve=`SET ROLE service_role;SELECT qbo_billing_approve_announcement(${scope},'${c}','${actor}','${scopeId}',${lit(text)},${json(s)})`;
-assert(sql(approve).endsWith('t'),'announce approval');sql(approve);assert(sql(`SELECT count(*) FROM qbo_billing_announcements WHERE client_id='${c}'`)==='2','duplicate announcement');ok('explicit admin announcement approval frozen per channel without duplicates');
-denies(`SET ROLE service_role;SELECT qbo_billing_approve_announcement(${scope},'${c}','${actor}','${scopeId}','arbitrary text',${json(s)})`,'announcement_review_required');
-denies(`SET ROLE service_role;SELECT qbo_billing_approve_announcement(${scope},'${c}','${actor}','${scopeId}',${lit(text)},${json({...s,channels:['sms']})})`,'channel_changed');
-denies(`SET ROLE service_role;SELECT qbo_billing_approve_announcement(${scope},'${c}','${actor}','${scopeId}',${lit(text)},${json({...s,sendAt:'2026-10-27T17:00:00Z'})})`,'invalid_send_date');ok('announcement cannot authorize absent channel or arbitrary text/day');
+const text='Aqua Clear Pools: Reviewed synthetic notice. Reply STOP to opt out.';const emailText='Reviewed synthetic notice.';const scopeId=crypto.randomUUID();
+const approve=(channel:string,text:string,snap:unknown=s)=>`SET ROLE service_role;SELECT qbo_billing_approve_announcement(${scope},'${c}','${actor}','${scopeId}','${channel}',${lit(text)},${json(snap)})`;
+assert(sql(approve('sms',text)).endsWith('t'),'sms approval');assert(sql(approve('email',emailText)).endsWith('t'),'email approval');sql(approve('sms',text));sql(approve('email',emailText));
+assert(sql(`SELECT count(*) FROM qbo_billing_announcements WHERE client_id='${c}'`)==='2','duplicate announcement');
+assert(sql(`SELECT approved_text FROM qbo_billing_announcements WHERE client_id='${c}' AND channel='email'`)===emailText,'email text modified');ok('channel-aware approval stores exact per-channel text once; email never carries the SMS wrapper');
+denies(approve('sms','arbitrary text'),'announcement_review_required');
+denies(approve('email','Reviewed notice. Reply STOP to opt out.'),'announcement_review_required');
+denies(approve('sms',text,{...s,channels:['email']}),'announcement_review_required');
+denies(approve('email',emailText,{...s,sendAt:'2026-10-27T17:00:00Z'}),'invalid_send_date');
+denies(approve('sms','Aqua Clear Pools: Different wording. Reply STOP to opt out.'),'immutable_announcement');ok('announcement cannot authorize absent channel, arbitrary text/day, or rewrite an approved channel');
 const announcement=sql(`SELECT id FROM qbo_billing_announcements WHERE client_id='${c}' AND channel='sms'`);
 denies(`UPDATE qbo_billing_announcements SET channel='email' WHERE id='${announcement}'`,'immutable_announcement');ok('announcement row snapshot/text/channel/scope immutable');
 sql(`DELETE FROM qbo_billing_activation`);denies(`SET ROLE service_role;SELECT qbo_billing_claim_announcement(${scope},'${announcement}')`,'disabled');ok('missing activation row announcement fails closed');
@@ -77,6 +81,40 @@ sql(`ALTER TABLE qbo_billing_announcements DISABLE TRIGGER immutable_announcemen
 denies(`SET ROLE service_role;SELECT qbo_billing_announcement_dispatch(${scope},'${announcement}','sms',${lit(text)},${json(s)})`,'stale_source');sql('DELETE FROM sms_opt_outs');ok('final announcement dispatch rechecks STOP after earlier claim');
 // Actual concurrent adapter invocation: one new attempt, one provider POST.
 sql(`INSERT INTO qbo_billing_activation VALUES('${b}','sandbox','123',true,false,NULL,NULL,true,true,true);UPDATE qbo_billing_runs SET state='created',channels='{"sms":"sending"}',delivery_intents='{}' WHERE id='${run}';UPDATE qbo_billing_config SET current_snapshot=${json(s)} WHERE client_id='${c}'`);outcome='reject';assert(await p.provider.deliver(s,'901','sms',key)==='failed','fixture rejection');const before=sends;outcome='success';const results=await Promise.all([p.provider.deliver(s,'901','sms',key),p.provider.deliver(s,'901','sms',key)]);assert(results.filter(x=>x==='sent').length===1&&sends===before+1,'duplicate concrete retry sent');ok('concurrent concrete adapter retries plus SQL reserve exactly one provider POST');
+// Mapping delta: audited atomic legacy+verified link with locked reviewed-identity comparison.
+for(const role of ['anon','authenticated','service_role']){
+ denies(`SET ROLE ${role};SELECT * FROM qbo_billing_mapping_audit`);
+ denies(`SET ROLE ${role};TRUNCATE qbo_billing_mapping_audit`);
+}
+ok('mapping audit table has no direct runtime access for any role');
+const mapClient='00000000-0000-4000-8000-000000000004';
+sql(`INSERT INTO clients(id,customer,status,service_rate,contact_phone,contact_email,contact_address) VALUES('${mapClient}','Synthetic mapping','Active',200,'6015550102','mapping@example.test','1 Synthetic Way, Purvis MS 39475');
+INSERT INTO qbo_billing_client_scope VALUES('${b}','sandbox','123','${mapClient}',false,now())`);
+const mapSrc=JSON.parse(sql(`SELECT qbo_billing_source(${scope},'${mapClient}')`));
+const mapApp={id:mapSrc.client.id,customer:mapSrc.client.customer,status:mapSrc.client.status,contact_email:mapSrc.client.contact_email??null,contact_phone:mapSrc.client.contact_phone??null,address:mapSrc.client.contact_address??null};
+const mapEvidence={supported:true,active:true,evidence:[{field:'email',result:'match'}],displayName:'Synthetic mapping',app:mapApp,customer:{id:'116'}};
+const confirm=(ev:unknown,cust='116',cli=mapClient,sc=scope,act=actor)=>`SET ROLE service_role;SELECT qbo_billing_confirm_mapping(${sc},'${cli}','${cust}','${act}',${json(ev)},'fp-synthetic')`;
+denies(confirm(mapEvidence,'116',mapClient,scope,'00000000-0000-4000-8000-000000000002'),'unauthorized');ok('non-admin cannot confirm mapping');
+denies(confirm(mapEvidence,'116',mapClient,`'${b}','production','999'`),'cross_business');ok('cross-scope mapping confirm rejected');
+sql(`UPDATE clients SET contact_email='stale@example.test' WHERE id='${mapClient}'`);
+denies(confirm(mapEvidence),'stale_identity_evidence');
+assert(sql(`SELECT count(*) FROM client_qbo_links WHERE client_id='${mapClient}'`)==='0','half legacy write');
+assert(sql(`SELECT count(*) FROM qbo_billing_verified_mapping WHERE client_id='${mapClient}'`)==='0','half verified write');
+assert(sql(`SELECT count(*) FROM qbo_billing_mapping_audit WHERE client_id='${mapClient}'`)==='0','half audit write');
+sql(`UPDATE clients SET contact_email='mapping@example.test' WHERE id='${mapClient}'`);
+ok('stale app identity edit before confirm rejects with no half write');
+assert(sql(confirm(mapEvidence)).endsWith('t'),'confirm mapping');
+assert(sql(`SELECT count(*) FROM client_qbo_links WHERE client_id='${mapClient}' AND qbo_customer_id='116' AND linked_by='${actor}'`)==='1','legacy link');
+assert(sql(`SELECT count(*) FROM qbo_billing_verified_mapping WHERE client_id='${mapClient}' AND customer_id='116'`)==='1','verified mapping');
+assert(sql(`SELECT count(*) FROM qbo_billing_mapping_audit WHERE client_id='${mapClient}' AND actor='${actor}'`)==='1','audit row');
+assert(sql(confirm(mapEvidence)).endsWith('t'),'idempotent confirm');
+assert(sql(`SELECT count(*) FROM qbo_billing_mapping_audit WHERE client_id='${mapClient}'`)==='2','audit retained per confirmation');
+ok('atomic legacy link + verified mapping + immutable audit in one transaction');
+const mapClient2='00000000-0000-4000-8000-000000000005';
+sql(`INSERT INTO clients(id,customer,status,service_rate) VALUES('${mapClient2}','Synthetic mapping two','Active',200);INSERT INTO qbo_billing_client_scope VALUES('${b}','sandbox','123','${mapClient2}',false,now())`);
+const mapSrc2=JSON.parse(sql(`SELECT qbo_billing_source(${scope},'${mapClient2}')`));
+const mapEvidence2={...mapEvidence,app:{id:mapSrc2.client.id,customer:mapSrc2.client.customer,status:mapSrc2.client.status,contact_email:mapSrc2.client.contact_email??null,contact_phone:mapSrc2.client.contact_phone??null,address:mapSrc2.client.contact_address??null}};
+denies(confirm(mapEvidence2,'116',mapClient2),'mapping_conflict');ok('same QuickBooks customer cannot link to a second app customer');
 console.log(`FINAL ${count} correction PostgreSQL/concrete-provider contracts passed`);
 // Real SDK -> mocked PostgREST -> real disposable SQL: no production URLs or API acceptance.
 const {createBillingApplication}=await import('../server/production');

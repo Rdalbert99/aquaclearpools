@@ -1,6 +1,7 @@
 import { useAuth } from '@/hooks/useAuth';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
 import { Navigate } from 'react-router-dom';
+import { routeGate } from '@/lib/route-gate';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -8,13 +9,14 @@ interface ProtectedRouteProps {
 }
 
 export const ProtectedRoute = ({ children, allowedRoles }: ProtectedRouteProps) => {
-  const { user, loading, isAuthenticated } = useAuth();
+  const { user, loading, session } = useAuth();
+  const gate = routeGate({ loading, hasSession: !!session?.user, hasUser: !!user });
 
-  if (loading) {
+  if (gate === 'loading') {
     return <LoadingSpinner />;
   }
 
-  if (!isAuthenticated) {
+  if (gate === 'login') {
     return <Navigate to="/auth/login" replace />;
   }
 

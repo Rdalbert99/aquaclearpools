@@ -1,6 +1,6 @@
 // PREPARED ONLY. Not an Edge Function entrypoint; never imported by the browser.
 // No network, environment access, global credentials, or default provider/store adapter.
-import { approvalIsFresh, executionKey, invoiceSlot, snapshotCanonical, enrollmentBlocker, type Snapshot, type SendChannel } from '../../../src/lib/billing-readiness';
+import { approvalIsFresh, executionKey, invoiceSlot, snapshotCanonical, enrollmentBlocker, reviewedNonTaxable, type Snapshot, type SendChannel } from '../../../src/lib/billing-readiness';
 import { sanitize } from '../../../supabase/functions/_shared/qbo-oauth';
 
 export type SyncState = 'claimed' | 'created' | 'complete' | 'blocked' | 'reconcile';
@@ -43,6 +43,7 @@ export interface InvoicePayload {
   Line: { Amount: number; Description: string; DetailType: 'SalesItemLineDetail'; SalesItemLineDetail: { ItemRef: { value: string }; Qty: number; UnitPrice: number; TaxCodeRef: { value: string } } }[];
 }
 export function invoicePayload(s: Snapshot): InvoicePayload {
+  if (!reviewedNonTaxable(s.provider)) throw new Error('tax_review_required');
   if (!Number.isSafeInteger(s.amountCents) || s.amountCents <= 0) throw new Error('invalid_amount');
   return { CustomerRef: { value: s.customerId }, TxnDate: s.sendAt.slice(0, 10), DueDate: s.dueDate,
     PrivateNote: `Aqua Clear service ${s.serviceStart} through ${s.serviceEnd}; ${s.frequency}`,

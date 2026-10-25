@@ -131,6 +131,11 @@ export interface ExactMapping {
 export interface ProviderSetup {
   itemId: string; incomeAccountId: string; taxCode: string; taxMode: 'non_taxable' | 'tax_inclusive' | 'tax_exclusive';
   verified: boolean; revision: string;
+  taxReview?: { confirmed: boolean; actor: string; reviewedAt: string; revision: string; itemId: string; incomeAccountId: string };
+}
+export function reviewedNonTaxable(p: ProviderSetup | null | undefined): boolean {
+  const r=p?.taxReview;
+  return !!p && p.verified && p.taxMode==='non_taxable' && p.taxCode==='NON' && !!r && r.confirmed===true && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(r.actor) && Number.isFinite(Date.parse(r.reviewedAt)) && !!p.revision && r.revision===p.revision && r.itemId===p.itemId && r.incomeAccountId===p.incomeAccountId;
 }
 export interface Snapshot {
   businessId: string; environment: 'sandbox' | 'production'; realmId: string; clientId: string; customerId: string;
@@ -155,7 +160,7 @@ export function readinessRow(client: BillingClient, sendMonth: string, context: 
   if (!mapping?.verified || !validProviderId(mapping.customerId) || !validProviderId(mapping.realmId) || mapping.clientId !== client.id || mapping.businessId !== context.businessId || mapping.environment !== context.environment || mapping.realmId !== context.realmId)
     blockers.push('Verify exact QuickBooks customer ID in this business / environment / realm');
   const provider = context.provider;
-  if (!provider?.verified || !validProviderId(provider.itemId) || !validProviderId(provider.incomeAccountId) || !provider.taxCode.trim() || !['non_taxable', 'tax_inclusive', 'tax_exclusive'].includes(provider.taxMode))
+  if (!provider || !reviewedNonTaxable(provider) || !validProviderId(provider.itemId) || !validProviderId(provider.incomeAccountId))
     blockers.push('Verify QuickBooks ItemRef, income account and tax setup');
   if (!delivery.channels.length) blockers.push('Confirm an available, consented invoice channel');
   const snapshot: Snapshot | null = blockers.length || proposal.excluded || proposal.amountCents == null || !mapping || !provider || !context.enrollment ? null : {
@@ -178,7 +183,7 @@ export function snapshotCanonical(s: Snapshot): string {
   // Explicit ordering; every approval-relevant value is included, independent of object insertion order.
   return JSON.stringify([s.businessId, s.environment, s.realmId, s.clientId, s.customerId, s.amountCents, s.frequency,
     s.servicePeriod, s.serviceStart, s.serviceEnd, s.dueDate, s.sendAt, [...s.channels].sort(), s.configRevision, s.mappingRevision,
-    s.provider.itemId, s.provider.incomeAccountId, s.provider.taxCode, s.provider.taxMode, s.provider.verified, s.provider.revision,
+    s.provider.itemId, s.provider.incomeAccountId, s.provider.taxCode, s.provider.taxMode, s.provider.verified, s.provider.revision, s.provider.taxReview?.confirmed, s.provider.taxReview?.actor, s.provider.taxReview?.reviewedAt, s.provider.taxReview?.revision, s.provider.taxReview?.itemId, s.provider.taxReview?.incomeAccountId,
     s.contactPhone, s.contactEmail, s.consentRevision, s.enrollment.enabled, s.enrollment.firstServicePeriod, s.enrollment.revision, s.enrollment.updatedBy, s.enrollment.updatedAt]);
 }
 export const approvalIsFresh = (approved: Snapshot | null, current: Snapshot | null) =>

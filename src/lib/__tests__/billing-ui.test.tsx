@@ -11,6 +11,7 @@ vi.mock('@/hooks/useAuth',()=>({useAuth:()=>({user:{id:'admin'},isAdmin:true,isT
 vi.mock('@/hooks/use-toast',()=>({useToast:()=>({toast:mock.toast})}));
 vi.mock('react-router-dom',async()=>({...await vi.importActual('react-router-dom'),useNavigate:()=>mock.navigate}));
 vi.mock('@/components/ui/tabs',()=>({Tabs:({children}:React.PropsWithChildren)=> <div>{children}</div>,TabsContent:({children}:React.PropsWithChildren)=><div>{children}</div>,TabsList:({children}:React.PropsWithChildren)=><div>{children}</div>,TabsTrigger:({children}:React.PropsWithChildren)=><span>{children}</span>}));
+vi.mock('@/components/ui/checkbox',()=>({Checkbox:(props:Record<string,unknown>)=><input {...props}/> }));
 vi.mock('@/components/ui/switch',()=>({Switch:(props:Record<string,unknown>)=><input {...props}/> }));
 vi.mock('@/components/ui/select',()=>({Select:(props:Record<string,unknown>)=><select {...props}/>,SelectTrigger:({children}:React.PropsWithChildren)=><div>{children}</div>,SelectValue:()=>null,SelectContent:({children}:React.PropsWithChildren)=><div>{children}</div>,SelectItem:({children}:React.PropsWithChildren)=><span>{children}</span>}));
 vi.mock('@/components/admin/ClientInviteDialog',()=>({ClientInviteDialog:()=>null}));

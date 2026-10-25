@@ -1,0 +1,10 @@
+INSERT INTO businesses VALUES ('a34bd007-c8b1-455c-8063-2ff0236e5181','off');
+INSERT INTO users VALUES ('00000000-0000-4000-8000-000000000001','admin','active');
+INSERT INTO business_members(business_id,user_id,role) VALUES ('a34bd007-c8b1-455c-8063-2ff0236e5181','00000000-0000-4000-8000-000000000001','owner');
+INSERT INTO clients(id,customer,status,service_rate,contact_phone,contact_email) VALUES ('031f318d-5df5-4295-aba2-415089197496','Synthetic monthly',' Active ',200,'6015550100','synthetic@example.test');
+INSERT INTO qbo_billing_client_scope VALUES ('a34bd007-c8b1-455c-8063-2ff0236e5181','sandbox','123','031f318d-5df5-4295-aba2-415089197496',false,now());
+INSERT INTO qbo_billing_enrollment VALUES ('a34bd007-c8b1-455c-8063-2ff0236e5181','sandbox','123','031f318d-5df5-4295-aba2-415089197496',true,'2026-11',1,'00000000-0000-4000-8000-000000000001',now());
+INSERT INTO client_billing_preferences(client_id,invoice_channel,sms_consent_at,sms_consent_source) VALUES ('031f318d-5df5-4295-aba2-415089197496','both',now(),'synthetic signed consent');
+INSERT INTO client_qbo_links(client_id,environment,qbo_customer_id) VALUES ('031f318d-5df5-4295-aba2-415089197496','sandbox','114');
+INSERT INTO qbo_billing_verified_mapping(business_id,environment,realm_id,client_id,customer_id,legacy_updated_at,verified_at) SELECT 'a34bd007-c8b1-455c-8063-2ff0236e5181','sandbox','123',client_id,qbo_customer_id,updated_at,now() FROM client_qbo_links;
+INSERT INTO qbo_billing_provider_setup VALUES ('a34bd007-c8b1-455c-8063-2ff0236e5181','sandbox','123','{"itemId":"1","incomeAccountId":"2","taxCode":"NON","taxMode":"non_taxable","verified":true,"revision":"synthetic-1"}',now());

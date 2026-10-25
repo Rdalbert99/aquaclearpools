@@ -1,7 +1,8 @@
 # Roadmap
 
 ## In progress
-- [ ] Consolidated billing readiness (Oct 25 2026): prepare source-only roster, next-month scheduling, annual review, guarded QBO workflow, durable claims, disabled schedules and mocked checks. Activation blocked on unapplied schema, deployment approval, confirmed annual/provider setup and isolated integration verification; no live effects permitted.
+- [x] Consolidated billing readiness source preparation (Oct 25 2026): roster, next-month dates, annual review, guarded mocked QBO workflow, durable claim SQL and disabled schedule source prepared; 235 tests pass.
+- [ ] Consolidated billing activation — BLOCKED: reviewed unapplied schema, concrete transactional/provider/authorization bindings, confirmed annual and tax/mapping setup, isolated integration verification and separate deployment/activation approvals. See docs/billing-readiness/README.md; no live effects permitted.
 - [ ] QuickBooks read-only test (/admin/quickbooks): built; waiting on Intuit app keys QBO_CLIENT_ID + QBO_CLIENT_SECRET and redirect URI registration, then admin connects and tests invoice #350154860. Full QBO billing plan (preferences, prepaid discount, promo note) drafted, not built
 - [ ] getaquaclear.app: checked available ($9.99 first year, renews $14.80/yr) — user deferred the purchase to later; when bought, connect it and set primary so getaquaclear.com redirects
 - [ ] Billing & accounting system: plan approved (plan only). Waiting on: processor choice, invoice style, tech cash/check, QuickBooks exports + subscription cost. Phase 1 foundation BUILT in preview (billing off, admin-only /admin/billing). Next: Phase 2 QuickBooks import (needs exports + subscription cost); payment provider = check Lovable built-in (must be enabled from Lovable editor chat)

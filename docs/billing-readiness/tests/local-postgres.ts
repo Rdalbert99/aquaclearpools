@@ -41,7 +41,7 @@ if(psql(`SELECT qbo_billing_channel_scoped(${scope},'${run}','sms')`)!=='t')thro
 rejects(`SELECT qbo_billing_update_run(${scope},'${run}','{"channel":"sms"}')`,'invalid_channel_transition');ok('missing delivery outcome rejected');
 psql(`SELECT qbo_billing_update_run(${scope},'${run}','{"channel":"sms","channelState":"unknown","state":"reconcile"}')`);
 if(psql(`SELECT qbo_billing_resume_scoped(${scope},'${run}')`)!=='f')throw new Error('unknown resumed');ok('unknown channel cannot auto-resume');
-psql(`SELECT qbo_billing_record_outcome(${scope},'${run}','sms','synthetic-message-id','unknown')`); // no longer sending must fail closed
+rejects(`SELECT qbo_billing_record_outcome(${scope},'${run}','sms','synthetic-message-id','unknown')`,'attempt_outcome_required'); // no longer sending must fail closed
 rejects(`SELECT qbo_billing_resolve_evidence(${scope},'${run}','${actor}','delivery','wrong-id','{"verified":true,"runId":"${run}","channel":"sms","status":"sent"}')`,'evidence_mismatch');ok('arbitrary mark-sent proof rejected');
 psql(`SELECT qbo_billing_set_enrollment(${scope},'${c}',false,'2026-11',1,'${actor}')`);
 if(psql(`SELECT provider_invoice_id FROM qbo_billing_runs WHERE id='${run}'`)!=='901')throw new Error('provider id lost');ok('disable preserves created QuickBooks ID');

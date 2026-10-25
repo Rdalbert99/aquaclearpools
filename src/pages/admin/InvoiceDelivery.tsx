@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -31,17 +31,25 @@ export default function InvoiceDelivery() {
   const [approvals, setApprovals] = useState<Record<string, string>>({});
   const [runs, setRuns] = useState<{id:string;state:string;provider_invoice_id:string|null;code:string;channels:Record<string,string>}[]>([]);
   const [evidenceIds, setEvidenceIds] = useState<Record<string,string>>({});
+  const sequence=useRef(0);
+  const activeMonth=useRef(sendMonth); activeMonth.current=sendMonth;
+  const [policy,setPolicy]=useState<{billingMode:string;invoiceEnabled:boolean;announcementEnabled:boolean;migrationVerified:boolean;deploymentVerified:boolean}|null>(null);
+  const [loadedMonth,setLoadedMonth]=useState<string|null>(null);
   const load = useCallback(async () => {
-    setLoading(true);
+    const request=++sequence.current; const current=()=>sequence.current===request&&activeMonth.current===sendMonth;
+    setLoading(true);setLoadedMonth(null);setPolicy(null);setRuns([]);setEvidenceIds({});setErrors([]);setClients([]);setPrefs([]);setLinks([]);setOptOuts([]);
     setBackendReady(false); setAuthoritativeRows(null); setApprovals({});
     const failures: string[] = [];
     try {
       try {
-        const result = await billingInvoke<{rows:ReturnType<typeof readinessRow>[];policy:{migrationVerified:boolean;deploymentVerified:boolean}}>({action:'readiness',sendMonth});
-        setAuthoritativeRows(result.rows); setBackendReady(result.policy.migrationVerified && result.policy.deploymentVerified);
-        const history = await billingInvoke<{runs:typeof runs}>({action:'runs'}); setRuns(history.runs);
-        return;
-      } catch { failures.push('Saved billing readiness unavailable — server deployment or setup pending. Below is an unapproved fallback only.'); }
+        const result = await billingInvoke<{sendMonth:string;rows:ReturnType<typeof readinessRow>[];policy:{billingMode:string;invoiceEnabled:boolean;announcementEnabled:boolean;migrationVerified:boolean;deploymentVerified:boolean};approvals:{clientId:string;fingerprint:string}[]}>({action:'readiness',sendMonth});
+        if(!current()||result.sendMonth!==sendMonth)return;
+        const history=await billingInvoke<{runs:typeof runs}>({action:'runs',sendMonth}).catch(()=>{failures.push('Provider history unavailable for this month.');return {runs:[]};});
+        if(!current())return;
+        setAuthoritativeRows(result.rows);setPolicy(result.policy);setLoadedMonth(sendMonth);setBackendReady(result.policy.migrationVerified&&result.policy.deploymentVerified);
+        setApprovals(Object.fromEntries(result.rows.filter(r=>r.snapshot&&result.approvals.some(a=>a.clientId===r.client.id&&a.fingerprint===snapshotCanonical(r.snapshot as NonNullable<typeof r.snapshot>))).map(r=>[r.client.id,snapshotCanonical(r.snapshot as NonNullable<typeof r.snapshot>)])));
+        setRuns(history.runs);return;
+      } catch { if(!current())return;failures.push('Saved billing readiness unavailable — server deployment or setup pending. Below is an unapproved fallback only.'); }
       // Fetch ALL statuses and all pages: Active is case/whitespace normalized in one helper.
       const all: BillingClient[] = [];
       for (let offset = 0; ; offset += 500) {
@@ -51,24 +59,27 @@ export default function InvoiceDelivery() {
         all.push(...page);
         if (page.length < 500) break;
       }
+      if(!current())return;
       setClients(all.filter(c => isActiveClient(c.status)).sort((a, b) => a.customer.localeCompare(b.customer)));
       const [p, o, l] = await Promise.all([
         supabase.from('client_billing_preferences').select('client_id, invoice_channel, sms_consent_at'),
         supabase.from('sms_opt_outs').select('phone, client_id'),
         supabase.from('client_qbo_links').select('client_id, environment, qbo_customer_id'),
       ]);
+      if(!current())return;setLoadedMonth(sendMonth);
       if (p.error) failures.push(`Billing preferences unavailable: ${p.error.message}`);
       if (o.error) failures.push(`STOP list unavailable: ${o.error.message}. Text eligibility cannot be verified.`);
       if (l.error) failures.push(`Exact QuickBooks mappings unavailable: ${l.error.message}`);
       setPrefs((p.data ?? []) as Preference[]); setOptOuts(o.data ?? []); setLinks(l.data ?? []);
     } catch (error) {
+      if(!current())return;
       setClients([]);
       failures.push(error instanceof Error ? error.message : 'Roster could not be read');
-    } finally { setErrors(failures); setLoading(false); }
+    } finally { if(current()){setErrors(failures);setLoading(false);} }
   }, [sendMonth]);
-  useEffect(() => { void load(); }, [load]);
+  useEffect(() => { const counter=sequence;void load();return()=>{counter.current++;}; }, [load]);
   const dates = useMemo(() => { try { return batchDates(sendMonth); } catch { return null; } }, [sendMonth]);
-  const rows = useMemo(() => authoritativeRows ?? (dates ? clients.map(client => {
+  const rows = useMemo(() => loadedMonth!==sendMonth ? [] : authoritativeRows ?? (dates ? clients.map(client => {
     const pref = prefs.find(p => p.client_id === client.id);
     const optedOut = optOuts.some(o => o.client_id === client.id || (last10(client.contact_phone).length === 10 && last10(o.phone) === last10(client.contact_phone)));
     // Only existing recorded service opt-in OR saved invoice consent counts; no guessed consent.
@@ -77,24 +88,26 @@ export default function InvoiceDelivery() {
     const mapping: ExactMapping | undefined = undefined;
     return readinessRow(client, sendMonth, { businessId: '', environment: 'production', realmId: '', mapping,
       choice: pref?.invoice_channel, smsConsent, smsOptedOut: optedOut, consentRevision: pref?.sms_consent_at ?? client.notification_method ?? 'none' });
-  }) : []), [authoritativeRows, clients, dates, prefs, optOuts, errors, sendMonth]);
+  }) : []), [authoritativeRows, clients, dates, prefs, optOuts, errors, sendMonth, loadedMonth]);
   const proposedTotal = rows.filter(r => !r.proposal.excluded).reduce((s, r) => s + (r.proposal.amountCents ?? 0), 0);
   const approvedTotal = rows.filter(r => r.snapshot && approvals[r.client.id] === snapshotCanonical(r.snapshot)).reduce((sum,r) => sum + (r.snapshot?.amountCents ?? 0),0);
   const approveRow = async (row: ReturnType<typeof readinessRow>) => {
-    if (!backendReady || !row.snapshot) return;
-    try { await billingInvoke({action:'approve',clientId:row.client.id,sendMonth,fingerprint:snapshotCanonical(row.snapshot)}); setApprovals(a=>({...a,[row.client.id]:snapshotCanonical(row.snapshot)})); }
-    catch(error) { setErrors(e=>[...e,error instanceof Error?error.message:'Approval not saved']); }
+    if (!backendReady || !row.snapshot||loadedMonth!==sendMonth||loading) return;
+    const request=sequence.current;const month=sendMonth;
+    try { await billingInvoke({action:'approve',clientId:row.client.id,sendMonth,fingerprint:snapshotCanonical(row.snapshot)}); if(sequence.current===request&&activeMonth.current===month)await load(); }
+    catch(error) { if(sequence.current===request&&activeMonth.current===month)setErrors(e=>[...e,error instanceof Error?error.message:'Approval not saved']); }
   };
   const reconcile = async (runId:string,channel?:'sms'|'email') => {
-    try { await billingInvoke({action:channel?'reconcile_delivery':'reconcile_invoice',runId,providerId:evidenceIds[runId],...(channel?{channel}:{})}); await load(); }
-    catch(error) { setErrors(e=>[...e,error instanceof Error?error.message:'Provider evidence could not be verified']); }
+    const request=sequence.current;const month=sendMonth;
+    try { await billingInvoke({action:channel?'reconcile_delivery':'reconcile_invoice',runId,providerId:evidenceIds[runId],...(channel?{channel}:{})}); if(sequence.current===request&&activeMonth.current===month)await load(); }
+    catch(error) { if(sequence.current===request&&activeMonth.current===month)setErrors(e=>[...e,error instanceof Error?error.message:'Provider evidence could not be verified']); }
   };
   return (
     <div className="space-y-5 p-4 md:p-6">
-      <div><h1 className="text-2xl font-bold">Invoice delivery readiness</h1><p className="text-sm text-muted-foreground">QuickBooks official invoices · billing mode off</p></div>
+      <div><h1 className="text-2xl font-bold">Invoice delivery readiness</h1><p className="text-sm text-muted-foreground">QuickBooks official invoices · billing mode {policy?.billingMode ?? 'unavailable'}</p></div>
       <section className="space-y-2 border-y py-4 text-sm">
-        <p className="font-semibold text-destructive">Not activated — invoice and announcement schedules disabled</p>
-        <p>Schema, server deployment, provider verification and activation approval are pending. No live invoice, message or approval can be submitted here.</p>
+        <p className="font-semibold text-destructive">Invoice schedule: {policy ? policy.invoiceEnabled ? 'enabled on server' : 'disabled on server' : 'unavailable'} · Announcement: {policy ? policy.announcementEnabled ? 'enabled on server' : 'disabled on server' : 'unavailable'}</p>
+        <p>Server policy and saved approvals are read below. This page has no invoice-send, message-send or activation controls.</p>
         <ul className="list-disc space-y-1 pl-5">{READINESS_GATES.map(gate => <li key={gate}>{gate}</li>)}</ul>
         <p>Customer Automatic invoicing and First billing month: Clients → customer → Edit. Enrollment is not saved until backend setup is complete. Shadow Billing is practice / reconciliation only.</p>
       </section>
@@ -123,7 +136,7 @@ export default function InvoiceDelivery() {
               return <article key={client.id} className="space-y-2 py-4 text-sm">
                 <div className="flex flex-wrap items-center justify-between gap-2"><h2 className="font-semibold">{client.customer}</h2><Badge variant={proposal.excluded ? 'outline' : 'secondary'}>{proposal.frequency}</Badge></div>
                 <p className="break-all text-xs text-muted-foreground">Client {client.id}</p>
-                <p>Automatic invoicing: {row.snapshot?.enrollment.enabled ? 'saved on' : authoritativeRows ? row.proposal.excluded ?? 'off / blocked' : 'not saved / default off'} · First service month {row.snapshot?.enrollment.firstServicePeriod ?? 'unavailable'} · Global sender disabled</p>
+                <p>Automatic invoicing: {row.snapshot?.enrollment.enabled ? 'saved on' : authoritativeRows ? row.proposal.excluded ?? 'off / blocked' : 'not saved / default off'} · First service month {row.snapshot?.enrollment.firstServicePeriod ?? 'unavailable'} · Server sender {policy ? policy.invoiceEnabled ? 'enabled' : 'disabled' : 'unavailable'}</p>
                 <Link className="text-primary underline" to={`/admin/clients/${client.id}/edit`}>Review customer enrollment</Link>
                 <p>{proposal.amountCents == null ? 'Amount needs review' : fromCents(proposal.amountCents)} · Coverage {proposal.serviceStart} – {proposal.serviceEnd} · Due {proposal.dueDate}</p>
                 {proposal.note && <p className="text-muted-foreground">{proposal.note}</p>}
@@ -132,8 +145,8 @@ export default function InvoiceDelivery() {
                 {proposal.excluded && <p className="font-medium">Excluded: {proposal.excluded}</p>}
                 {row.blockers.map(blocker => <p key={blocker} className="text-destructive">Needs review: {blocker}</p>)}
                 {summary && <AccountBalancePanel summary={summary} newLabel="Proposed new service invoice" />}
-                {summary && !proposal.excluded && proposal.amountCents != null && <details><summary className="cursor-pointer">Unsent invoice notice draft</summary>{delivery.channels.map(ch => <p key={ch} className="mt-2 whitespace-pre-wrap bg-muted p-2">{invoiceMessage(client.customer, proposal.amountCents ?? 0, dates?.servicePeriod ?? '', ch, balanceDraftLines(summary))} Due {proposal.dueDate}. Earlier balance unavailable; no combined total.</p>)}</details>}
-                <Button size="sm" variant="outline" disabled={!backendReady || !row.snapshot} onClick={()=>void approveRow(row)} title="Approval stores a reviewed snapshot; it does not send">{approvals[client.id] ? 'Approval saved' : backendReady ? 'Approve snapshot — no send' : 'Approve — unavailable'}</Button>
+                {summary && !proposal.excluded && proposal.amountCents != null && <details><summary className="cursor-pointer">Unsent invoice notice draft</summary>{delivery.channels.map(ch => <p key={ch} className="mt-2 whitespace-pre-wrap bg-muted p-2">{invoiceMessage(client.customer, proposal.amountCents ?? 0, dates?.servicePeriod ?? '', ch, balanceDraftLines(summary))} Due {proposal.dueDate}. </p>)}</details>}
+                <Button size="sm" variant="outline" disabled={loading||loadedMonth!==sendMonth||!backendReady || !row.snapshot} onClick={()=>void approveRow(row)} title="Approval stores a reviewed snapshot; it does not send">{approvals[client.id] ? 'Approval saved' : backendReady ? 'Approve snapshot — no send' : 'Approve — unavailable'}</Button>
               </article>;
             })}
           </div>

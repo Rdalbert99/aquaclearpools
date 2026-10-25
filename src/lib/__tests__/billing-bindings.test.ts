@@ -5,7 +5,7 @@ const scope = { businessId: 'b1', environment: 'sandbox' as const, realmId: '123
 const enrollment = { enabled: true, firstServicePeriod: '2026-11', revision: 1, updatedBy: 'owner', updatedAt: '2026-10-25T12:09:00Z' };
 const source = { client: { id: 'c1', customer: 'Monthly', status: 'Active', service_rate: 200, contact_email: 'a@b.com' },
   mapping: { ...scope, clientId: 'c1', customerId: '114', verified: true, revision: '1' },
-  provider: { itemId: '1', incomeAccountId: '2', taxCode: 'NON', taxMode: 'non_taxable' as const, verified: true, revision: '1' },
+  provider: { itemId: '1', incomeAccountId: '2', taxCode: 'NON', taxMode: 'non_taxable' as const, verified: true, revision: '1' , taxReview:{confirmed:true,actor:'00000000-0000-4000-8000-000000000001',reviewedAt:'2026-10-25T12:00:00Z',revision:'1',itemId:'1',incomeAccountId:'2'} },
   smsConsent: false, smsOptedOut: false, consentRevision: '1' };
 function bindings(response: unknown, failure = false) {
   const calls: { name: string; args: Record<string, unknown> }[] = [];
@@ -35,7 +35,7 @@ describe('concrete source-only RPC bindings', () => {
     expect(await bindings(enrollment).b.authority.current(snapshot)).toMatchObject({ amountCents: 20000, enrollment });
     expect(await bindings({ ...enrollment, enabled: false, revision: 2 }).b.authority.current(snapshot)).toBeNull();
     const b = bindings(enrollment); b.sourceReader.mockResolvedValue({ ...source, client: { ...source.client, service_rate: 210 } });
-    await expect(b.b.synchronize(snapshot)).rejects.toThrow('stale_approval');
+    expect((await b.b.authority.current(snapshot))?.amountCents).toBe(21000);
   });
   it('channel and resume are scoped atomic RPC contracts', async () => {
     const { b, calls } = bindings(true);

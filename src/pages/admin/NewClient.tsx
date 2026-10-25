@@ -1,7 +1,10 @@
 import { AutomaticInvoicing } from '@/components/billing/AutomaticInvoicing';
 import { defaultEnrollment, saveNewClientEnrollment } from '@/lib/billing-enrollment';
+import { setUnsavedWork } from '@/lib/unsaved-work';
+import type { Tables, TablesInsert } from '@/integrations/supabase/types';
 import { billingInvoke } from '@/lib/billing-transport';
-import { useState, useEffect } from 'react';
+import { createDraftStore } from '@/lib/client-create-draft';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
@@ -28,7 +31,6 @@ import {
   User,
   Droplets,
   DollarSign,
-  Shuffle,
   Send
 } from 'lucide-react';
 
@@ -60,8 +62,6 @@ interface ClientFormData {
   account_type: 'existing' | 'new' | 'none';
   new_user_username: string;
   new_user_email: string;
-  new_user_password: string;
-  send_login_email: boolean;
 }
 
 export default function NewClient() {
@@ -70,10 +70,13 @@ export default function NewClient() {
   const { toast } = useToast();
   const [saving, setSaving] = useState(false);
   const [enrollmentDraft, setEnrollmentDraft] = useState(defaultEnrollment);
-  const [creationRequestId] = useState(() => crypto.randomUUID());
-  const [users, setUsers] = useState<any[]>([]);
+  const creationStore=useMemo(()=>user?.id?createDraftStore(localStorage,user.id):null,[user?.id]);
+  const saveLock=useRef(false);
+  const [recovery,setRecovery]=useState(false);
+  useEffect(()=>{setRecovery(!!creationStore?.read());},[creationStore]);
+  const [users, setUsers] = useState<Pick<Tables<'users'>,'id'|'name'|'email'>[]>([]);
   const [showInviteDialog, setShowInviteDialog] = useState(false);
-  const [createdClient, setCreatedClient] = useState<any>(null);
+  const [createdClient, setCreatedClient] = useState<Tables<'clients'>|null>(null);
   const [clientType, setClientType] = useState<'residential' | 'commercial'>('residential');
   const [commercial, setCommercial] = useState<CommercialFormData>(emptyCommercial);
   const [organizations, setOrganizations] = useState<{ id: string; name: string }[]>([]);
@@ -106,9 +109,10 @@ export default function NewClient() {
     account_type: 'none',
     new_user_username: '',
     new_user_email: '',
-    new_user_password: 'password',
-    send_login_email: true
+
   });
+
+  useEffect(()=>{const id='admin-new-client';setUnsavedWork(id,isAdmin&&(saving||recovery||!!client.customer.trim()));return()=>setUnsavedWork(id,false);},[isAdmin,saving,recovery,client.customer]);
 
   useEffect(() => {
     if (isAdmin) {
@@ -139,16 +143,6 @@ export default function NewClient() {
     } catch (error) {
       console.error('Error loading users:', error);
     }
-  };
-
-  const generateRandomPassword = () => {
-    const length = 12;
-    const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*";
-    let password = "";
-    for (let i = 0; i < length; i++) {
-      password += charset.charAt(Math.floor(Math.random() * charset.length));
-    }
-    setClient({ ...client, new_user_password: password });
   };
 
   const isCommercial = isAdmin && clientType === 'commercial';
@@ -226,7 +220,17 @@ export default function NewClient() {
 
 
   const handleSave = async () => {
-    console.log('🚀 Starting handleSave, client data:', client);
+    if(saveLock.current)return;
+    const recovered=isAdmin?creationStore?.read():null;
+    if(recovered?.payload){
+      saveLock.current=true;setSaving(true);
+      try{const result=await billingInvoke<{client:{id:string}}>({action:'create_client',scopeId:recovered.requestId,client:recovered.payload,account:recovered.account??undefined});
+        if(!result.client?.id)throw new Error('Customer save not confirmed');
+        creationStore?.clear();navigate(`/admin/clients/${result.client.id}/edit`);
+        toast({title:'Customer save recovered',description:'Review and save automatic invoicing separately.'});
+      }catch(error){toast({title:'Customer save unconfirmed',description:error instanceof Error?error.message:'Retry the pending save; no new customer request was started.',variant:'destructive'});}
+      finally{saveLock.current=false;setSaving(false);}return;
+    }
     
     if (!client.customer.trim()) {
       toast({
@@ -269,7 +273,6 @@ export default function NewClient() {
 
     // Validate new user creation fields
     if (isAdmin && client.account_type === 'new') {
-      console.log('🔍 Validating new user creation fields...');
       if (!client.new_user_username.trim()) {
         toast({
           title: "Error",
@@ -278,106 +281,30 @@ export default function NewClient() {
         });
         return;
       }
-      if (client.new_user_email && !client.new_user_email.trim()) {
+      if (!client.new_user_email.trim()) {
         toast({
           title: "Error",
-          description: "Email cannot be empty if provided",
+          description: "Email is required for a customer invitation profile",
           variant: "destructive"
         });
         return;
       }
-      if (!client.new_user_password.trim()) {
-        toast({
-          title: "Error",
-          description: "Password is required for new user account",
-          variant: "destructive"
-        });
-        return;
-      }
+
     }
 
-    setSaving(true);
+    saveLock.current=true;setSaving(true);
     try {
+      // Verify the scoped endpoint BEFORE any customer/account mutation.
+      if(isAdmin){if(!creationStore)throw new Error('Sign in before saving');await billingInvoke({action:'policy'});}
       let finalUserId = null;
 
-      // Create new user if requested
-      if (isAdmin && client.account_type === 'new') {
-        console.log('👤 Creating new user account...');
-        console.log('📧 User email:', client.new_user_email);
-        
-        // First check if email already exists
-        const { data: existingUser, error: checkError } = await supabase
-          .from('users')
-          .select('id, email')
-          .eq('email', client.new_user_email)
-          .maybeSingle();
-          
-        console.log('🔍 Email check result:', { existingUser, checkError });
-        
-        if (checkError) {
-          console.error('❌ Error checking existing email:', checkError);
-          throw checkError;
-        }
-        
-        if (existingUser) {
-          console.log('⚠️ Email already exists for user:', existingUser);
-          toast({
-            title: "Error",
-            description: `Email ${client.new_user_email} is already in use. Please use a different email or select the existing user.`,
-            variant: "destructive"
-          });
-          return;
-        }
-        
-        console.log('👤 User name:', client.customer);
-        console.log('🔐 User password length:', client.new_user_password.length);
-        
-        const userInsertData = {
-          email: client.new_user_email,
-          name: client.customer,
-          role: 'client',
-          login: client.new_user_username,
-          street_address: client.street_address || null,
-          city: client.city || null,
-          state: client.state || null,
-          zip_code: client.zip_code || null,
-          address_validated: client.address_validated,
-          phone: client.phone || null,
-          must_change_password: true
-        };
-        
-        console.log('📝 Inserting user data:', userInsertData);
-        
-        const { data: userData, error: userError } = await supabase
-          .from('users')
-          .insert(userInsertData)
-          .select()
-          .single();
+      // A new customer profile is created atomically with the scoped client, never before it.
+      // No password or auth account is created here; existing verified invitation flow follows.
+      const account=isAdmin&&client.account_type==='new'?{email:client.new_user_email,name:client.customer,login:client.new_user_username,street_address:client.street_address||null,city:client.city||null,state:client.state||null,zip_code:client.zip_code||null,address_validated:client.address_validated,phone:client.phone||null}:null;
+      if (!account && client.account_type === 'existing' && client.user_id) finalUserId = client.user_id;
 
-        console.log('✅ User creation result:', { userData, userError });
 
-        if (userError) {
-          console.error('❌ User creation failed:', userError);
-          throw userError;
-        }
-        
-        finalUserId = userData.id;
-        console.log('✅ User created successfully with ID:', finalUserId);
-
-        // TODO: Send login email if requested (requires edge function)
-        if (client.send_login_email) {
-          console.log('📧 Email sending not implemented yet');
-        }
-      } else if (client.account_type === 'existing' && client.user_id) {
-        console.log('👤 Using existing user ID:', client.user_id);
-        finalUserId = client.user_id;
-      } else {
-        console.log('👤 No user account associated');
-      }
-
-      console.log('🏢 Creating client with user ID:', finalUserId);
-
-      const insertData: any = {
+      const insertData: TablesInsert<'clients'> = {
         customer: client.customer,
         contact_email: client.email || null,
         contact_phone: client.phone || null,
@@ -411,23 +338,26 @@ export default function NewClient() {
         insertData.last_service_date = client.last_service_date;
       }
 
-      console.log('📝 Inserting client data:', insertData);
 
       // Admin creation establishes business scope in the same server transaction. Tech
       // creation retains its existing path and does not enroll/provision billing.
+      const creation=recovered??{requestId:crypto.randomUUID(),payload:null,clientId:null,account:null};
+      if(isAdmin){creation.payload=insertData;creation.account=account;creationStore?.write(creation);setRecovery(true);}
       const { data, error } = isAdmin
-        ? { data: (await billingInvoke<{client: typeof createdClient}>({action:'create_client',scopeId:creationRequestId,client:insertData})).client, error: null }
+        ? { data: (await billingInvoke<{client: Tables<'clients'>}>({action:'create_client',scopeId:creation.requestId,client:insertData,account:account??undefined})).client, error: null }
         : await supabase.from('clients').insert(insertData).select().single();
 
-      console.log('✅ Client creation result:', { data, error });
 
       if (error) throw error;
 
+      if(!data?.id)throw new Error('Customer save not confirmed');
+      if(isAdmin){creation.clientId=data.id;creationStore?.write(creation);}
       setCreatedClient(data);
       if (isAdmin) {
         try { await saveNewClientEnrollment(billingInvoke, data.id, enrollmentDraft); }
         catch (enrollmentError) {
           toast({ title: 'Customer created — invoicing not saved', description: enrollmentError instanceof Error ? enrollmentError.message : 'Backend setup pending; automatic invoicing remains off', variant: 'destructive' });
+          creationStore?.clear();
           navigate(`/admin/clients/${data.id}/edit`);
           return; // Do not show a false combined success or repeat client creation.
         }
@@ -439,6 +369,7 @@ export default function NewClient() {
         commercialCreated = await createCommercialRecords(data.id);
       }
 
+      if(isAdmin)creationStore?.clear();setRecovery(false);
       toast({
         title: "Success",
         description: isCommercial
@@ -473,11 +404,11 @@ export default function NewClient() {
         variant: "destructive"
       });
     } finally {
-      setSaving(false);
+      saveLock.current=false;setSaving(false);
     }
   };
 
-  const handleInputChange = (field: keyof ClientFormData, value: any) => {
+  const handleInputChange = <K extends keyof ClientFormData>(field: K, value: ClientFormData[K]) => {
     setClient({ ...client, [field]: value });
   };
 
@@ -602,6 +533,7 @@ export default function NewClient() {
         {/* Client Information */}
         <Card>
           <CardHeader>
+            {isAdmin&&recovery&&<p role="status" className="text-sm text-destructive">A customer save is pending recovery. Save retries the original request; changed fields will not create another customer.</p>}
             <CardTitle className="flex items-center space-x-2">
               <User className="h-5 w-5" />
               <span>Client Information</span>
@@ -741,7 +673,7 @@ export default function NewClient() {
               <Switch
                 id="isMultiProperty"
                 checked={client.is_multi_property}
-                onCheckedChange={(checked) => handleInputChange('is_multi_property', checked)}
+                onCheckedChange={(checked) => handleInputChange('is_multi_property', checked===true)}
               />
               <Label htmlFor="isMultiProperty" className="text-sm">
                 Multi-property client (manages multiple pool properties)
@@ -758,8 +690,7 @@ export default function NewClient() {
                     account_type: value,
                     user_id: value === 'existing' ? client.user_id : '',
                     new_user_username: value === 'new' ? client.new_user_username : '',
-                    new_user_email: value === 'new' ? client.new_user_email : '',
-                    new_user_password: value === 'new' ? client.new_user_password : ''
+                    new_user_email: value === 'new' ? client.new_user_email : ''
                   });
                 }}>
                   <SelectTrigger>
@@ -768,7 +699,7 @@ export default function NewClient() {
                   <SelectContent>
                     <SelectItem value="none">No associated user</SelectItem>
                     <SelectItem value="existing">Select existing user</SelectItem>
-                    <SelectItem value="new">Create new user account</SelectItem>
+                    <SelectItem value="new">Create customer profile for invitation</SelectItem>
                   </SelectContent>
                 </Select>
 
@@ -806,42 +737,11 @@ export default function NewClient() {
                         type="email"
                         value={client.new_user_email}
                         onChange={(e) => handleInputChange('new_user_email', e.target.value)}
-                        placeholder="Enter client's email (optional)"
+                        placeholder="Enter client's email"
                       />
                     </div>
                     
-                    <div className="space-y-2">
-                      <Label htmlFor="newUserPassword">Password *</Label>
-                      <div className="flex space-x-2">
-                        <Input
-                          id="newUserPassword"
-                          type="password"
-                          value={client.new_user_password}
-                          onChange={(e) => handleInputChange('new_user_password', e.target.value)}
-                          placeholder="Enter password"
-                        />
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          onClick={generateRandomPassword}
-                        >
-                          <Shuffle className="h-4 w-4 mr-1" />
-                          Generate
-                        </Button>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center space-x-2">
-                      <Checkbox
-                        id="sendLoginEmail"
-                        checked={client.send_login_email}
-                        onCheckedChange={(checked) => handleInputChange('send_login_email', checked)}
-                      />
-                      <Label htmlFor="sendLoginEmail" className="text-sm">
-                        Automatically send customer email to change password and login
-                      </Label>
-                    </div>
+                    <p className="text-sm text-muted-foreground">Customer profile saved with the pool. Login access requires a separately confirmed invitation; no password or email is sent by saving.</p>
                   </div>
                 )}
               </div>

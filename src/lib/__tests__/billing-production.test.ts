@@ -9,7 +9,7 @@ function snapshot():Snapshot {
  const scope={businessId:'b1',environment:'sandbox' as const,realmId:'123'};
  const s=readinessRow({id:'c1',customer:'Synthetic',status:'Active',service_rate:200,contact_phone:'6015550100',contact_email:'synthetic@example.test'},'2026-10',{
  ...scope,enrollment:{enabled:true,firstServicePeriod:'2026-11',revision:1,updatedBy:'owner',updatedAt:'2026-10-25T12:00:00Z'},
- mapping:{...scope,clientId:'c1',customerId:'114',verified:true,revision:'1'},provider:{itemId:'1',incomeAccountId:'2',taxCode:'NON',taxMode:'non_taxable',verified:true,revision:'1'},smsConsent:true,smsOptedOut:false,consentRevision:'1'}).snapshot;
+ mapping:{...scope,clientId:'c1',customerId:'114',verified:true,revision:'1'},provider:{itemId:'1',incomeAccountId:'2',taxCode:'NON',taxMode:'non_taxable',verified:true,revision:'1',taxReview:{confirmed:true,actor:'00000000-0000-4000-8000-000000000001',reviewedAt:'2026-10-25T12:00:00Z',revision:'1',itemId:'1',incomeAccountId:'2'}},smsConsent:true,smsOptedOut:false,consentRevision:'1'}).snapshot;
  if(!s)throw new Error('fixture');return s;
 }
 function raw(s:Snapshot){return {Id:'901',CustomerRef:{value:'114'},TotalAmt:200,Balance:200,DueDate:s.dueDate,TxnDate:'2026-10-26',PrivateNote:`Aqua Clear service ${s.serviceStart} through ${s.serviceEnd}; monthly; billing-run:abc`,InvoiceLink:'https://connect.intuit.com/pay/test',Line:[{Amount:200,DetailType:'SalesItemLineDetail',Description:`Pool service ${s.serviceStart} through ${s.serviceEnd}`,SalesItemLineDetail:{ItemRef:{value:'1'},TaxCodeRef:{value:'NON'}}}]};}

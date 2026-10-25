@@ -1,0 +1,61 @@
+import React from 'react';
+import {describe,it,expect,vi,beforeEach} from 'vitest';
+import {act,create,type ReactTestRenderer} from 'react-test-renderer';
+import {MemoryRouter} from 'react-router-dom';
+import {readinessRow,snapshotCanonical} from '../billing-readiness';
+import {hasUnsavedWork} from '../unsaved-work';
+const mock=vi.hoisted(()=>({invoke:vi.fn(),from:vi.fn(),navigate:vi.fn(),toast:vi.fn()}));
+vi.mock('@/lib/billing-transport',()=>({billingInvoke:mock.invoke,authenticatedEnrollmentAdapter:{ready:true}}));
+vi.mock('@/integrations/supabase/client',()=>({supabase:{from:mock.from}}));
+vi.mock('@/hooks/useAuth',()=>({useAuth:()=>({user:{id:'admin'},isAdmin:true,isTech:false})}));
+vi.mock('@/hooks/use-toast',()=>({useToast:()=>({toast:mock.toast})}));
+vi.mock('react-router-dom',async()=>({...await vi.importActual('react-router-dom'),useNavigate:()=>mock.navigate}));
+vi.mock('@/components/ui/tabs',()=>({Tabs:({children}:React.PropsWithChildren)=> <div>{children}</div>,TabsContent:({children}:React.PropsWithChildren)=><div>{children}</div>,TabsList:({children}:React.PropsWithChildren)=><div>{children}</div>,TabsTrigger:({children}:React.PropsWithChildren)=><span>{children}</span>}));
+vi.mock('@/components/ui/checkbox',()=>({Checkbox:(props:Record<string,unknown>)=><input {...props}/> }));
+vi.mock('@/components/ui/switch',()=>({Switch:(props:Record<string,unknown>)=><input {...props}/> }));
+vi.mock('@/components/ui/select',()=>({Select:(props:Record<string,unknown>)=><select {...props}/>,SelectTrigger:({children}:React.PropsWithChildren)=><div>{children}</div>,SelectValue:()=>null,SelectContent:({children}:React.PropsWithChildren)=><div>{children}</div>,SelectItem:({children}:React.PropsWithChildren)=><span>{children}</span>}));
+vi.mock('@/components/admin/ClientInviteDialog',()=>({ClientInviteDialog:()=>null}));
+vi.mock('@/components/admin/CommercialPortalInviteDialog',()=>({CommercialPortalInviteDialog:()=>null}));
+vi.mock('@/components/admin/CommercialClientFields',()=>({CommercialClientFields:()=>null,emptyCommercial:()=>({})}));
+vi.mock('@/components/ui/username-input',()=>({UsernameInput:(p:Record<string,unknown>)=><input {...p}/>}));
+vi.mock('@/components/ui/address-input',()=>({AddressInput:()=>null}));
+vi.mock('@/components/common/PhoneField',()=>({PhoneField:()=>null}));
+import InvoiceDelivery from '@/pages/admin/InvoiceDelivery';
+import NewClient from '@/pages/admin/NewClient';
+import {AutomaticInvoicing} from '@/components/billing/AutomaticInvoicing';
+function row(month:string){const scope={businessId:'b1',realmId:'123',environment:'sandbox' as const};return readinessRow({id:'c1',customer:'Synthetic monthly',status:'Active',service_rate:200,contact_email:'synthetic@example.test'},month,{...scope,enrollment:{enabled:true,firstServicePeriod:'2026-11',revision:1,updatedBy:'owner',updatedAt:'2026-10-25T12:00:00Z'},mapping:{...scope,clientId:'c1',customerId:'114',verified:true,revision:'1'},provider:{itemId:'1',incomeAccountId:'2',taxMode:'non_taxable',taxCode:'NON',verified:true,revision:'1',taxReview:{confirmed:true,actor:'00000000-0000-4000-8000-000000000001',reviewedAt:'2026-10-25T12:00:00Z',revision:'1',itemId:'1',incomeAccountId:'2'}},smsConsent:false,smsOptedOut:false,consentRevision:'1'});}
+const result=(month:string)=>{const r=row(month);return {sendMonth:month,rows:[r],policy:{billingMode:'off',invoiceEnabled:false,announcementEnabled:false,migrationVerified:true,deploymentVerified:true},approvals:r.snapshot?[{clientId:'c1',fingerprint:snapshotCanonical(r.snapshot)}]:[]};};
+const drain=async()=>{await act(async()=>{await new Promise(r=>setTimeout(r,0));});};
+const mount=async(node:React.ReactNode)=>{let tree:ReactTestRenderer|undefined;await act(async()=>{tree=create(<MemoryRouter>{node}</MemoryRouter>);});if(!tree)throw new Error('mount');return tree;};
+beforeEach(()=>{vi.clearAllMocks();mock.from.mockImplementation(()=>{const q={select:()=>q,order:()=>q,range:()=>Promise.resolve({data:[],error:null}),then:(resolve:(v:unknown)=>unknown)=>resolve({data:[],error:null})};return q;});const store=new Map();vi.stubGlobal('localStorage',{getItem:(k:string)=>store.get(k)??null,setItem:(k:string,v:string)=>store.set(k,v),removeItem:(k:string)=>store.delete(k)});});
+describe('rendered billing readiness with offline transport',()=>{
+ it('reload loads stored fresh approval totals and actual policy instead of local approval state',async()=>{mock.invoke.mockImplementation(async(b)=>b.action==='runs'?{runs:[]}:result(b.sendMonth));let t=await mount(<InvoiceDelivery/>);await drain();expect(JSON.stringify(t.toJSON())).toContain('200.00');expect(t.root.findAllByType('button').some(b=>b.children.join('')==='Approval saved')).toBe(true);await act(async()=>t.unmount());t=await mount(<InvoiceDelivery/>);await drain();expect(t.root.findAllByType('button').some(b=>b.children.join('')==='Approval saved')).toBe(true);await act(async()=>t.unmount());});
+ it('late old-month responses cannot replace current month or approval/history',async()=>{let resolveOld:((v:unknown)=>void)|undefined;let first=true;mock.invoke.mockImplementation((b)=>{if(b.action==='runs')return Promise.resolve({runs:[]});if(first){first=false;return new Promise(r=>{resolveOld=r;});}return Promise.resolve(result(b.sendMonth));});const t=await mount(<InvoiceDelivery/>);const input=t.root.findByProps({'aria-label':'Send month'});await act(async()=>input.props.onChange({target:{value:'2026-11'}}));await drain();await act(async()=>resolveOld?.(result('2026-10')));expect(t.root.findByProps({'aria-label':'Send month'}).props.value).toBe('2026-11');expect(JSON.stringify(t.toJSON())).toContain('2026-12-01');expect(JSON.stringify(t.toJSON())).not.toContain('2026-11-01');await act(async()=>t.unmount());});
+ it('refresh failure clears saved approvals and previous run evidence',async()=>{let failed=false;mock.invoke.mockImplementation(async(b)=>{if(failed)throw new Error('unavailable');return b.action==='runs'?{runs:[{id:'prior-run',state:'reconcile',channels:{sms:'unknown'},code:'timeout',provider_invoice_id:null}]}:result(b.sendMonth);});const t=await mount(<InvoiceDelivery/>);await drain();failed=true;const refresh=t.root.findAllByType('button').find(b=>b.children.join('')==='Refresh roster');await act(async()=>refresh?.props.onClick());await drain();expect(JSON.stringify(t.toJSON())).not.toContain('prior-run');expect(t.root.findAllByType('button').some(b=>b.children.join('')==='Approval saved')).toBe(false);await act(async()=>t.unmount());});
+});
+describe('rendered customer save and enrollment correction',()=>{
+ it('missing endpoint does not save a customer or create earlier profile',async()=>{mock.invoke.mockRejectedValue(new Error('Backend missing'));const t=await mount(<NewClient/>);await act(async()=>t.root.findByProps({id:'customer'}).props.onChange({target:{value:'Synthetic'}}));const selects=t.root.findAllByType('select');const pool=selects.find(s=>s.props.value==='');await act(async()=>pool?.props.onValueChange('Chlorine'));const save=t.root.findAllByType('button').find(b=>b.children.some((x:unknown)=>typeof x==='string'&&x.includes('Save Client')));expect(save).toBeDefined();await act(async()=>save?.props.onClick());expect(mock.invoke.mock.calls.some(([b])=>b.action==='create_client')).toBe(false);expect(mock.navigate).not.toHaveBeenCalled();await act(async()=>t.unmount());});
+ it('crash/remount retries frozen request and navigates to actual saved customer, never false enrollment success',async()=>{localStorage.setItem('aqua-client-create:admin',JSON.stringify({requestId:'00000000-0000-4000-8000-000000000004',payload:{customer:'Synthetic'},clientId:null}));mock.invoke.mockResolvedValue({client:{id:'actual-client'}});const t=await mount(<NewClient/>);await drain();const save=t.root.findAllByType('button').find(b=>b.children.some((x:unknown)=>typeof x==='string'&&x.includes('Save Client')));await act(async()=>save?.props.onClick());expect(mock.invoke).toHaveBeenCalledWith(expect.objectContaining({action:'create_client',scopeId:'00000000-0000-4000-8000-000000000004',client:{customer:'Synthetic'}}));expect(mock.navigate).toHaveBeenCalledWith('/admin/clients/actual-client/edit');expect(localStorage.getItem('aqua-client-create:admin')).toBeNull();await act(async()=>t.unmount());});
+ it('new customer success uses actual ID; partial enrollment failure never reports combined success',async()=>{
+  mock.invoke.mockImplementation(async(b)=>{if(b.action==='policy')return {policy:{invoiceEnabled:false}};if(b.action==='create_client')return {client:{id:'actual-created'}};if(b.action==='register_new_client')throw new Error('Enrollment failed');throw new Error('unexpected');});
+  const t=await mount(<NewClient/>);await act(async()=>t.root.findByProps({id:'customer'}).props.onChange({target:{value:'Synthetic'}}));
+  const pool=t.root.findAllByType('select').find(s=>s.props.value==='');await act(async()=>pool?.props.onValueChange('Chlorine'));
+  const save=t.root.findAllByType('button').find(b=>b.children.some((x:unknown)=>typeof x==='string'&&x.includes('Save Client')));
+  await act(async()=>{save?.props.onClick();save?.props.onClick();});await drain();
+  expect(mock.invoke.mock.calls.filter(([b])=>b.action==='create_client')).toHaveLength(1);
+  expect(mock.invoke).toHaveBeenCalledWith(expect.objectContaining({action:'register_new_client',clientId:'actual-created',enabled:false}));
+  expect(mock.navigate).toHaveBeenCalledWith('/admin/clients/actual-created/edit');expect(mock.toast).toHaveBeenCalledWith(expect.objectContaining({title:'Customer created — invoicing not saved'}));await act(async()=>t.unmount());
+ });
+ it('unsaved enrollment blocks reload; late save for old client cannot overwrite current client',async()=>{
+  let resolve:((v:unknown)=>void)|undefined;const enrollment={enabled:false,firstServicePeriod:null,revision:1,updatedBy:'owner',updatedAt:'2026-10-25T12:00:00Z'};
+  const adapter={ready:true,load:async()=>enrollment,save:()=>new Promise<typeof enrollment>(r=>{resolve=r as (v:unknown)=>void;})};
+  const scope={businessId:'b1',realmId:'123',environment:'sandbox' as const,clientId:'c1'};
+  const t=await mount(<AutomaticInvoicing clientId="c1" scope={scope} adapter={adapter}/>);await drain();
+  const month=t.root.findByProps({id:'first-invoice-c1'});await act(async()=>month.props.onChange({target:{value:'2026-11'}}));
+  expect(hasUnsavedWork()).toBe(true);const save=t.root.findAllByType('button').find(b=>b.children.join('')==='Save enrollment');
+  await act(async()=>{void save?.props.onClick();});
+  await act(async()=>t.update(<MemoryRouter><AutomaticInvoicing clientId="c2" scope={{...scope,clientId:'c2'}} adapter={adapter}/></MemoryRouter>));await drain();
+  await act(async()=>resolve?.({...enrollment,firstServicePeriod:'2026-11',revision:2}));
+  expect(t.root.findByProps({id:'first-invoice-c2'}).props.value).toBe('');await act(async()=>t.unmount());expect(hasUnsavedWork()).toBe(false);
+ });
+});

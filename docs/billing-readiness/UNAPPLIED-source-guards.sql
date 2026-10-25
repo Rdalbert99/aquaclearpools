@@ -37,6 +37,12 @@ ALTER TABLE public.qbo_billing_runs ADD COLUMN delivery_intents jsonb NOT NULL D
 ALTER TABLE public.qbo_billing_announcements ADD COLUMN snapshot jsonb;
 ALTER TABLE public.qbo_billing_announcements ADD COLUMN approved_text text;
 ALTER TABLE public.qbo_billing_announcements ADD COLUMN provider_id text;
+CREATE TABLE public.qbo_billing_customer_creations (
+ business_id uuid NOT NULL, actor uuid NOT NULL, request_id uuid NOT NULL,
+ payload_hash text NOT NULL, client_id uuid NOT NULL, PRIMARY KEY(business_id,actor,request_id)
+);
+GRANT ALL ON public.qbo_billing_customer_creations TO service_role;
+ALTER TABLE public.qbo_billing_customer_creations ENABLE ROW LEVEL SECURITY;
 
 CREATE FUNCTION public.qbo_billing_admin(_business uuid,_actor uuid) RETURNS void
 LANGUAGE plpgsql SECURITY DEFINER SET search_path=public,extensions AS $$
@@ -130,19 +136,27 @@ RETURNS boolean LANGUAGE plpgsql SECURITY DEFINER SET search_path=public,extensi
  IF NOT public.qbo_billing_client_in_scope(_business,_environment,_realm,_client) THEN RAISE EXCEPTION 'customer_scope_review_required'; END IF;
  RETURN true;
 END $$;
-CREATE FUNCTION public.qbo_billing_create_scoped_client(_business uuid,_environment text,_realm text,_actor uuid,_client jsonb)
+CREATE FUNCTION public.qbo_billing_create_scoped_client(_business uuid,_environment text,_realm text,_actor uuid,_client jsonb,_request_id uuid)
 RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path=public,extensions AS $$
 DECLARE cols text; expressions text; row_value jsonb; client_id uuid;
 BEGIN
  PERFORM public.qbo_billing_admin(_business,_actor);
+ IF _request_id IS NULL THEN RAISE EXCEPTION 'create_request_id_required'; END IF;
+ PERFORM pg_advisory_xact_lock(hashtextextended('client-create:'||_business||':'||_actor||':'||_request_id,0));
+ SELECT x.client_id INTO client_id FROM public.qbo_billing_customer_creations x WHERE x.business_id=_business AND x.actor=_actor AND x.request_id=_request_id;
+ IF FOUND THEN
+  IF NOT EXISTS(SELECT 1 FROM public.qbo_billing_customer_creations WHERE business_id=_business AND actor=_actor AND request_id=_request_id AND payload_hash=md5(_client::text)) THEN RAISE EXCEPTION 'create_payload_changed'; END IF;
+  SELECT to_jsonb(c) INTO row_value FROM public.clients c WHERE id=client_id; RETURN row_value;
+ END IF;
  IF _environment IS NULL OR _environment NOT IN ('sandbox','production') OR _realm IS NULL OR _realm !~ '^\d+$' OR NOT EXISTS(SELECT 1 FROM public.businesses WHERE id=_business) THEN RAISE EXCEPTION 'invalid_scope'; END IF;
  IF jsonb_typeof(_client)<>'object' OR coalesce(trim(_client->>'customer'),'')='' THEN RAISE EXCEPTION 'invalid_client'; END IF;
- IF EXISTS(SELECT 1 FROM jsonb_object_keys(_client) k WHERE k NOT IN ('customer','contact_email','contact_phone','contact_address','street_address','city','state','zip_code','address_validated','pool_size','pool_type','liner_type','status','in_balance','last_service_date','user_id','service_rate','service_frequency','next_service_date','included_services','service_notes','service_days','company_name','is_multi_property','join_date','created_at','updated_at')) THEN RAISE EXCEPTION 'invalid_client_field'; END IF;
+ IF EXISTS(SELECT 1 FROM jsonb_object_keys(_client) k WHERE k NOT IN ('customer','contact_email','contact_phone','contact_address','pool_size','pool_type','liner_type','status','in_balance','last_service_date','user_id','service_rate','service_frequency','next_service_date','included_services','service_notes','service_days','company_name','is_multi_property','join_date','created_at','updated_at')) THEN RAISE EXCEPTION 'invalid_client_field'; END IF;
  SELECT string_agg(format('%I',k),',' ORDER BY k),string_agg(format('(jsonb_populate_record(NULL::public.clients,$1)).%I',k),',' ORDER BY k)
  INTO cols,expressions FROM jsonb_object_keys(_client) k;
  EXECUTE format('INSERT INTO public.clients (%s) SELECT %s RETURNING to_jsonb(clients)',cols,expressions) INTO row_value USING _client;
  client_id:=(row_value->>'id')::uuid;
  INSERT INTO public.qbo_billing_client_scope(business_id,environment,realm_id,client_id) VALUES(_business,_environment,_realm,client_id);
+ INSERT INTO public.qbo_billing_customer_creations VALUES(_business,_actor,_request_id,md5(_client::text),client_id);
  -- No runtime auto-on; actual-ID separate enrollment save is mandatory.
  RETURN row_value;
 END $$;

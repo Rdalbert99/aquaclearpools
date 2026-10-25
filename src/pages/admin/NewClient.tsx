@@ -70,6 +70,7 @@ export default function NewClient() {
   const { toast } = useToast();
   const [saving, setSaving] = useState(false);
   const [enrollmentDraft, setEnrollmentDraft] = useState(defaultEnrollment);
+  const [creationRequestId] = useState(() => crypto.randomUUID());
   const [users, setUsers] = useState<any[]>([]);
   const [showInviteDialog, setShowInviteDialog] = useState(false);
   const [createdClient, setCreatedClient] = useState<any>(null);
@@ -415,7 +416,7 @@ export default function NewClient() {
       // Admin creation establishes business scope in the same server transaction. Tech
       // creation retains its existing path and does not enroll/provision billing.
       const { data, error } = isAdmin
-        ? { data: (await billingInvoke<{client: typeof createdClient}>({action:'create_client',client:insertData})).client, error: null }
+        ? { data: (await billingInvoke<{client: typeof createdClient}>({action:'create_client',scopeId:creationRequestId,client:insertData})).client, error: null }
         : await supabase.from('clients').insert(insertData).select().single();
 
       console.log('✅ Client creation result:', { data, error });

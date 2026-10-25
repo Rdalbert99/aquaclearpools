@@ -118,7 +118,7 @@ export function createBillingApplication(options: {
       }
       if(body.action==='schedule_announcements')return reply({results:await scopedAnnouncements(credential)});
       const actor=await admin(credential);
-      if(body.action==='create_client'&&body.client)return reply({client:await query('qbo_billing_create_scoped_client',{...scoped,_actor:actor.id,_client:body.client})});
+      if(body.action==='create_client'&&body.client&&body.scopeId)return reply({client:await query('qbo_billing_create_scoped_client',{...scoped,_actor:actor.id,_client:body.client,_request_id:body.scopeId})});
       if(body.action==='register_new_client'&&body.clientId){
         await query('qbo_billing_register_new_client',{...scoped,_client:body.clientId,_actor:actor.id});
         return reply({enrollment:await enrollment.save(credential,{clientId:body.clientId,enabled:body.enabled,firstServicePeriod:body.firstServicePeriod,expectedRevision:body.expectedRevision})});

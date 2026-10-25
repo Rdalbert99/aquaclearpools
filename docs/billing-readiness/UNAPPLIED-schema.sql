@@ -5,7 +5,7 @@ BEGIN;
 CREATE TABLE public.qbo_billing_config (
   business_id uuid NOT NULL, environment text NOT NULL, realm_id text NOT NULL,
   client_id uuid NOT NULL, service_period text NOT NULL,
-  current_snapshot jsonb, revision bigint NOT NULL DEFAULT 1,
+  current_snapshot jsonb, canonical_fingerprint text, revision bigint NOT NULL DEFAULT 1,
   PRIMARY KEY (business_id, environment, realm_id, client_id, service_period)
 );
 GRANT ALL ON public.qbo_billing_config TO service_role;
@@ -83,7 +83,9 @@ BEGIN
   SELECT * INTO c FROM public.qbo_billing_config WHERE business_id=_business AND environment=_environment
     AND realm_id=_realm AND client_id=_client AND service_period=_period FOR UPDATE;
   IF c.current_snapshot IS NULL OR c.revision IS DISTINCT FROM _expected_revision OR _actor IS NULL THEN RAISE EXCEPTION 'Stale/unavailable approval'; END IF;
-  IF c.current_snapshot->>'frequency' NOT IN ('annual','monthly') THEN RAISE EXCEPTION 'Invalid type'; END IF;
+  IF coalesce(c.current_snapshot->>'frequency','') NOT IN ('annual','monthly') THEN RAISE EXCEPTION 'Invalid type'; END IF;
+  IF c.canonical_fingerprint IS DISTINCT FROM _fingerprint THEN RAISE EXCEPTION 'Invalid fingerprint'; END IF;
+  IF c.current_snapshot->>'businessId' IS DISTINCT FROM _business::text OR c.current_snapshot->>'environment' IS DISTINCT FROM _environment OR c.current_snapshot->>'realmId' IS DISTINCT FROM _realm OR c.current_snapshot->>'clientId' IS DISTINCT FROM _client::text OR c.current_snapshot->>'servicePeriod' IS DISTINCT FROM _period THEN RAISE EXCEPTION 'Scope mismatch'; END IF;
   INSERT INTO public.qbo_billing_approvals(business_id,environment,realm_id,client_id,service_period,invoice_type,snapshot,approved_by,fingerprint,config_revision)
     VALUES (_business,_environment,_realm,_client,_period,c.current_snapshot->>'frequency',c.current_snapshot,_actor,_fingerprint,c.revision) RETURNING * INTO a;
   RETURN a;
@@ -97,12 +99,17 @@ DECLARE a public.qbo_billing_approvals; c public.qbo_billing_config; r public.qb
 BEGIN
   SELECT * INTO a FROM public.qbo_billing_approvals WHERE id=_approval AND business_id=_business;
   IF a.id IS NULL THEN RAISE EXCEPTION 'Unauthorized approval'; END IF;
+  -- Serialize coverage checks across ALL periods for this customer (annual overlap safety).
+  PERFORM pg_advisory_xact_lock(hashtextextended(a.business_id::text||':'||a.environment||':'||a.realm_id||':'||a.client_id::text,0));
   SELECT * INTO c FROM public.qbo_billing_config WHERE business_id=a.business_id AND environment=a.environment AND realm_id=a.realm_id
     AND client_id=a.client_id AND service_period=a.service_period FOR UPDATE;
   SELECT invoice_enabled AND migration_verified AND deployment_verified AND provider_verified INTO enabled
     FROM public.qbo_billing_activation WHERE business_id=a.business_id AND environment=a.environment AND realm_id=a.realm_id FOR SHARE;
   IF enabled IS DISTINCT FROM true THEN RAISE EXCEPTION 'Disabled'; END IF;
   IF c.revision IS DISTINCT FROM a.config_revision OR c.current_snapshot IS DISTINCT FROM a.snapshot THEN RAISE EXCEPTION 'Stale approval'; END IF;
+  IF c.canonical_fingerprint IS DISTINCT FROM a.fingerprint THEN RAISE EXCEPTION 'Invalid fingerprint'; END IF;
+  IF EXISTS (SELECT 1 FROM public.qbo_billing_runs prior WHERE prior.business_id=a.business_id AND prior.environment=a.environment AND prior.realm_id=a.realm_id AND prior.client_id=a.client_id
+    AND (prior.snapshot->>'serviceStart')::date <= (a.snapshot->>'serviceEnd')::date AND (a.snapshot->>'serviceStart')::date <= (prior.snapshot->>'serviceEnd')::date) THEN RETURN NULL; END IF;
   INSERT INTO public.qbo_billing_runs(business_id,environment,realm_id,client_id,service_period,invoice_type,approval_id,snapshot,channels)
     VALUES(a.business_id,a.environment,a.realm_id,a.client_id,a.service_period,a.invoice_type,a.id,a.snapshot,
       (SELECT coalesce(jsonb_object_agg(ch,'pending'), '{}'::jsonb) FROM jsonb_array_elements_text(a.snapshot->'channels') ch))
@@ -119,7 +126,7 @@ DECLARE r public.qbo_billing_runs;
 BEGIN
   SELECT * INTO r FROM public.qbo_billing_runs WHERE id=_run FOR UPDATE;
   IF r.id IS NULL OR r.provider_invoice_id IS NULL OR _channel NOT IN ('sms','email')
-    OR r.channels->>_channel NOT IN ('pending','failed') THEN RETURN false; END IF;
+    OR coalesce(r.channels->>_channel,'') NOT IN ('pending','failed') THEN RETURN false; END IF;
   UPDATE public.qbo_billing_runs SET channels=jsonb_set(channels,ARRAY[_channel],'"sending"'),updated_at=now() WHERE id=_run;
   INSERT INTO public.qbo_billing_events(business_id,run_id,audit_id,code) VALUES(r.business_id,r.id,r.audit_id,'channel_claimed_'||_channel);
   RETURN true;

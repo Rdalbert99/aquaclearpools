@@ -143,6 +143,9 @@ export function readinessRow(client: BillingClient, sendMonth: string, context: 
 /** Annual/monthly share a collision slot, so two different kinds cannot invoice the same month. */
 export const invoiceSlot = (s: Pick<Snapshot, 'businessId' | 'environment' | 'realmId' | 'clientId' | 'servicePeriod'>) =>
   `${s.businessId}:${s.environment}:${s.realmId}:${s.clientId}:${s.servicePeriod}`;
+export const coverageOverlaps = (a: Snapshot, b: Snapshot) =>
+  a.businessId === b.businessId && a.environment === b.environment && a.realmId === b.realmId && a.clientId === b.clientId &&
+  a.serviceStart <= b.serviceEnd && b.serviceStart <= a.serviceEnd;
 export const executionKey = (s: Snapshot) => `${invoiceSlot(s)}:${s.frequency}`;
 export function snapshotCanonical(s: Snapshot): string {
   // Explicit ordering; every approval-relevant value is included, independent of object insertion order.
@@ -162,10 +165,10 @@ export function scheduleDue(now: Date, config: { invoiceEnabled: boolean; announ
   const day = chicagoDate(now); const dates = batchDates(day.slice(0, 7));
   const minute = now.getTime();
   const at = new Date(dates.sendAt).getTime();
-  const invoice = config.invoiceEnabled && day === dates.sendDay && minute >= at && minute < at + 60000;
+  const invoice = config.invoiceEnabled && day === dates.sendDay && minute >= at;
   const hour = config.announcementHour;
   const validHour = hour != null && Number.isInteger(hour) && hour >= 0 && hour < 12;
   const morning = validHour ? chicagoToUtc(dates.sendDay, hour).getTime() : NaN;
-  return { invoice, announcement: config.announcementEnabled && validHour && day === dates.sendDay && minute >= morning && minute < morning + 60000,
+  return { invoice, announcement: config.announcementEnabled && validHour && day === dates.sendDay && minute >= morning,
     announcementBlocker: validHour ? null : 'Announcement morning hour requires owner approval', dates };
 }

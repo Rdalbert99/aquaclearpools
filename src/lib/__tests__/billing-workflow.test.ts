@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { readinessRow, invoiceSlot, snapshotCanonical, type Snapshot } from '../billing-readiness';
+import { readinessRow, invoiceSlot, snapshotCanonical, coverageOverlaps, type Snapshot } from '../billing-readiness';
 import { executeInvoice, invoicePayload, resumeDelivery, type Authority, type Store, type Run, type Provider, type Approval, type Policy, type ProviderInvoice } from '../../../docs/billing-readiness/server/workflow';
 import { qboWriteAdapter } from '../../../docs/billing-readiness/server/qbo-adapter';
 import { scheduledTick, dispatchAnnouncement } from '../../../docs/billing-readiness/server/scheduler';
@@ -25,7 +25,7 @@ function harness() {
   const store: Store = {
     claim: async a => {
       const slot = invoiceSlot(a.snapshot);
-      if (records.has(slot)) return null;
+      if (records.has(slot) || [...records.values()].some(r => coverageOverlaps(r.snapshot, a.snapshot))) return null;
       const run: Run = { id: 'run1', auditId: 'audit1', snapshot: a.snapshot, requestId: 'stable-request-1', state: 'claimed', providerInvoiceId: null, channels: { sms: 'pending', email: 'pending' } };
       records.set(slot, run); events.push('claim'); return run;
     },
@@ -121,7 +121,7 @@ describe('mocked server-only QBO workflow', () => {
     await expect(adapter.create(s, invoicePayload(s), 'request-1')).rejects.toThrow(); expect(fetch).toHaveBeenCalledTimes(1);
   });
   it('scheduler disabled and unauthorized do not enqueue', async () => {
-    const deps = { authenticateScheduler: async (s: string) => s === 'mock', config: async () => ({ billingMode: 'off', invoiceEnabled: false, announcementEnabled: false, announcementHour: null, approvedScopeId: null }), enqueueApprovedInvoices: vi.fn(), enqueueAnnouncement: vi.fn() };
+    const deps = { authenticateScheduler: async (s: string) => s === 'mock', config: async () => ({ billingMode: 'off', invoiceEnabled: false, announcementEnabled: false, announcementHour: null, approvedScopeId: null, migrationVerified: false, deploymentVerified: false, providerVerified: false }), enqueueApprovedInvoices: vi.fn(), enqueueAnnouncement: vi.fn() };
     await expect(scheduledTick(deps, 'bad', new Date('2026-10-26T17:00:00Z'))).rejects.toThrow('unauthorized');
     await expect(scheduledTick(deps, 'mock', new Date('2026-10-26T17:00:00Z'))).rejects.toThrow('disabled'); expect(deps.enqueueApprovedInvoices).not.toHaveBeenCalled();
   });

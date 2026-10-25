@@ -2,14 +2,14 @@ import { scheduleDue, DISABLED_SCHEDULE, type SendChannel } from '../../../src/l
 export const scheduleConfiguration = { ...DISABLED_SCHEDULE };
 export interface ScheduleDependencies {
   authenticateScheduler(credential: string): Promise<boolean>;
-  config(): Promise<{ billingMode: string; invoiceEnabled: boolean; announcementEnabled: boolean; announcementHour: number | null; approvedScopeId: string | null }>;
+  config(): Promise<{ billingMode: string; invoiceEnabled: boolean; announcementEnabled: boolean; announcementHour: number | null; approvedScopeId: string | null; migrationVerified: boolean; deploymentVerified: boolean; providerVerified: boolean }>;
   enqueueApprovedInvoices(servicePeriod: string): Promise<void>; // durable unique invoice slots
   enqueueAnnouncement(scopeId: string, day: string): Promise<void>; // unique business/env/realm/client/day/channel
 }
 export async function scheduledTick(deps: ScheduleDependencies, credential: string, now: Date) {
   if (!await deps.authenticateScheduler(credential)) throw new Error('unauthorized');
   const config = await deps.config();
-  if (config.billingMode !== 'qbo') throw new Error('disabled');
+  if (config.billingMode !== 'qbo' || !config.migrationVerified || !config.deploymentVerified || !config.providerVerified) throw new Error('disabled');
   const due = scheduleDue(now, config);
   if (due.invoice) await deps.enqueueApprovedInvoices(due.dates.servicePeriod);
   if (due.announcement) {

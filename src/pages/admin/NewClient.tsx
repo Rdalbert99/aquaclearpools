@@ -1,7 +1,8 @@
 import { AutomaticInvoicing } from '@/components/billing/AutomaticInvoicing';
 import { defaultEnrollment, saveNewClientEnrollment } from '@/lib/billing-enrollment';
 import { billingInvoke } from '@/lib/billing-transport';
-import { useState, useEffect } from 'react';
+import { createDraftStore } from '@/lib/client-create-draft';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
@@ -70,7 +71,10 @@ export default function NewClient() {
   const { toast } = useToast();
   const [saving, setSaving] = useState(false);
   const [enrollmentDraft, setEnrollmentDraft] = useState(defaultEnrollment);
-  const [creationRequestId] = useState(() => crypto.randomUUID());
+  const creationStore=useMemo(()=>user?.id?createDraftStore(sessionStorage,user.id):null,[user?.id]);
+  const saveLock=useRef(false);
+  const [recovery,setRecovery]=useState(false);
+  useEffect(()=>{setRecovery(!!creationStore?.read());},[creationStore]);
   const [users, setUsers] = useState<any[]>([]);
   const [showInviteDialog, setShowInviteDialog] = useState(false);
   const [createdClient, setCreatedClient] = useState<any>(null);
@@ -226,7 +230,17 @@ export default function NewClient() {
 
 
   const handleSave = async () => {
-    console.log('🚀 Starting handleSave, client data:', client);
+    if(saveLock.current)return;
+    const recovered=isAdmin?creationStore?.read():null;
+    if(recovered?.payload){
+      saveLock.current=true;setSaving(true);
+      try{const result=await billingInvoke<{client:{id:string}}>({action:'create_client',scopeId:recovered.requestId,client:recovered.payload});
+        if(!result.client?.id)throw new Error('Customer save not confirmed');
+        creationStore?.clear();navigate(`/admin/clients/${result.client.id}/edit`);
+        toast({title:'Customer save recovered',description:'Review and save automatic invoicing separately.'});
+      }catch(error){toast({title:'Customer save unconfirmed',description:error instanceof Error?error.message:'Retry the pending save; no new customer request was started.',variant:'destructive'});}
+      finally{saveLock.current=false;setSaving(false);}return;
+    }
     
     if (!client.customer.trim()) {
       toast({
@@ -296,8 +310,11 @@ export default function NewClient() {
       }
     }
 
-    setSaving(true);
+    if(isAdmin&&client.account_type==='new'){toast({title:'Account setup requires invitation',description:'Save the customer without a new account, then use the verified invitation flow.',variant:'destructive'});return;}
+    saveLock.current=true;setSaving(true);
     try {
+      // Verify the scoped endpoint BEFORE any customer/account mutation.
+      if(isAdmin){if(!creationStore)throw new Error('Sign in before saving');await billingInvoke({action:'policy'});}
       let finalUserId = null;
 
       // Create new user if requested
@@ -415,24 +432,30 @@ export default function NewClient() {
 
       // Admin creation establishes business scope in the same server transaction. Tech
       // creation retains its existing path and does not enroll/provision billing.
+      const creation=recovered??{requestId:crypto.randomUUID(),payload:null,clientId:null};
+      if(isAdmin){creation.payload=insertData;creationStore?.write(creation);setRecovery(true);}
       const { data, error } = isAdmin
-        ? { data: (await billingInvoke<{client: typeof createdClient}>({action:'create_client',scopeId:creationRequestId,client:insertData})).client, error: null }
+        ? { data: (await billingInvoke<{client: typeof createdClient}>({action:'create_client',scopeId:creation.requestId,client:insertData})).client, error: null }
         : await supabase.from('clients').insert(insertData).select().single();
 
       console.log('✅ Client creation result:', { data, error });
 
       if (error) throw error;
 
+      if(!data?.id)throw new Error('Customer save not confirmed');
+      if(isAdmin){creation.clientId=data.id;creationStore?.write(creation);}
       setCreatedClient(data);
       if (isAdmin) {
         try { await saveNewClientEnrollment(billingInvoke, data.id, enrollmentDraft); }
         catch (enrollmentError) {
           toast({ title: 'Customer created — invoicing not saved', description: enrollmentError instanceof Error ? enrollmentError.message : 'Backend setup pending; automatic invoicing remains off', variant: 'destructive' });
+          creationStore?.clear();
           navigate(`/admin/clients/${data.id}/edit`);
           return; // Do not show a false combined success or repeat client creation.
         }
       }
 
+      if(isAdmin)creationStore?.clear();
       let commercialCreated: { organizationId: string; organizationName: string; facilityId: string; facilityName: string } | null = null;
 
       if (isCommercial) {
@@ -473,7 +496,7 @@ export default function NewClient() {
         variant: "destructive"
       });
     } finally {
-      setSaving(false);
+      saveLock.current=false;setSaving(false);
     }
   };
 
@@ -602,6 +625,7 @@ export default function NewClient() {
         {/* Client Information */}
         <Card>
           <CardHeader>
+            {isAdmin&&recovery&&<p role="status" className="text-sm text-destructive">A customer save is pending recovery. Save retries the original request; changed fields will not create another customer.</p>}
             <CardTitle className="flex items-center space-x-2">
               <User className="h-5 w-5" />
               <span>Client Information</span>

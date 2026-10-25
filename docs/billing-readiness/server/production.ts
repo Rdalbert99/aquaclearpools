@@ -134,8 +134,9 @@ export function createBillingApplication(options: {
         if(error||!data)throw new Error('cross_business');return {...data,address:data.contact_address} as AppCustomer;
       };
       if(body.action==='discover_provider'&&body.itemId)return reply({scope,provider:await discoverProvider(qboGet,scope.realmId,body.itemId)});
-      if(body.action==='verify_provider'&&body.itemId&&body.fingerprint){
+      if(body.action==='verify_provider'&&body.itemId){
         if(!body.taxReview)throw new Error('tax_review_required');
+        if(!body.fingerprint)throw new Error('provider_evidence_required');
         const live=await discoverProvider(qboGet,scope.realmId,body.itemId); // re-read on save
         if(live.fingerprint!==body.fingerprint)throw new Error('stale_provider_evidence');
         if(!live.taxSupported)throw new Error('provider_setup_review_required');

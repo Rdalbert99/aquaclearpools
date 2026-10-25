@@ -68,7 +68,7 @@ describe('customer identity evidence', () => {
 
 describe('server handler', () => {
   it('unauthorized setup requests fail before any QuickBooks call', async () => {
-    const fetch = vi.fn(async () => new Response(JSON.stringify({ message: 'bad' }), { status: 401, headers: { 'Content-Type': 'application/json' } }));
+    const fetch = vi.fn(async (_u: string | URL | Request) => new Response(JSON.stringify({ message: 'bad' }), { status: 401, headers: { 'Content-Type': 'application/json' } }));
     const h = createBillingApplication({ secret: n => n === 'SUPABASE_URL' ? 'https://synthetic.invalid' : 'k', fetch, scope: { businessId: 'b1', environment: 'production', realmId: REALM }, allowedOrigins: ['https://getaquaclear.com'] });
     for (const body of [{ action: 'discover_provider', itemId: '1010000001' }, { action: 'confirm_mapping', clientId: '00000000-0000-4000-8000-000000000001', customerId: '58', fingerprint: 'x', confirmed: true }]) {
       const r = await h.handler(new Request('https://x', { method: 'POST', headers: { Authorization: 'Bearer bad', 'Content-Type': 'application/json' }, body: JSON.stringify(body) }));

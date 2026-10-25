@@ -1,6 +1,7 @@
 // Read-only QuickBooks setup discovery. GET only; returns minimum safe fields, never tokens.
 // Every confirm/save re-reads live records and compares an evidence fingerprint.
 import { validProviderId } from '../../../src/lib/billing-readiness';
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- untyped provider JSON, validated field-by-field
 export type Get = (path: string) => Promise<Record<string, any>>;
 const s = (v: unknown) => (typeof v === 'string' ? v : v == null ? '' : String(v));
 const fp = (parts: unknown[]) => JSON.stringify(parts);
@@ -43,6 +44,7 @@ export interface QbCustomer { id: string; displayName: string; active: boolean; 
 export const normEmail = (e?: string | null) => (e ?? '').trim().toLowerCase();
 export const normPhone = (p?: string | null) => (p ?? '').replace(/\D/g, '').slice(-10);
 export const normText = (t?: string | null) => (t ?? '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- untyped provider JSON
 function qbCustomer(c: Record<string, any>): QbCustomer {
   const a = c.BillAddr ?? {};
   return { id: s(c.Id), displayName: s(c.DisplayName), active: c.Active !== false, email: s(c.PrimaryEmailAddr?.Address),

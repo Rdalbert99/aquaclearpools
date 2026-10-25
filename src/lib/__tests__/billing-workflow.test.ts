@@ -7,7 +7,7 @@ function snapshot(): Snapshot {
   const row = readinessRow({ id: 'c1', customer: 'Robert Boswell', status: 'Active', service_rate: 200, contact_phone: '6015551234', contact_email: 'a@b.com' }, '2026-10', {
     enrollment: { enabled: true, firstServicePeriod: '2026-11', revision: 1, updatedBy: 'owner', updatedAt: '2026-10-25T12:09:00Z' }, businessId: 'b1', realmId: '123', environment: 'sandbox', smsConsent: true, smsOptedOut: false, consentRevision: '1',
     mapping: { businessId: 'b1', realmId: '123', environment: 'sandbox', clientId: 'c1', customerId: '114', verified: true, revision: '1' },
-    provider: { verified: true, itemId: '1', incomeAccountId: '2', taxMode: 'non_taxable', taxCode: 'NON', revision: '1' },
+    provider: { verified: true, itemId: '1', incomeAccountId: '2', taxMode: 'non_taxable', taxCode: 'NON', revision: '1' , taxReview:{confirmed:true,actor:'00000000-0000-4000-8000-000000000001',reviewedAt:'2026-10-25T12:00:00Z',revision:'1',itemId:'1',incomeAccountId:'2'} },
   });
   if (!row.snapshot) throw new Error('bad_fixture'); return row.snapshot;
 }

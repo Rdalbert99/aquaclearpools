@@ -5,7 +5,7 @@ const scope = { businessId: 'b1', environment: 'sandbox' as const, realmId: '123
 const enrollment = { enabled: true, firstServicePeriod: '2026-11', revision: 1, updatedBy: 'owner', updatedAt: '2026-10-25T12:09:00Z' };
 const source = { client: { id: 'c1', customer: 'Monthly', status: 'Active', service_rate: 200, contact_email: 'a@b.com' },
   mapping: { ...scope, clientId: 'c1', customerId: '114', verified: true, revision: '1' },
-  provider: { itemId: '1', incomeAccountId: '2', taxCode: 'NON', taxMode: 'non_taxable' as const, verified: true, revision: '1' },
+  provider: { itemId: '1', incomeAccountId: '2', taxCode: 'NON', taxMode: 'non_taxable' as const, verified: true, revision: '1' , taxReview:{confirmed:true,actor:'00000000-0000-4000-8000-000000000001',reviewedAt:'2026-10-25T12:00:00Z',revision:'1',itemId:'1',incomeAccountId:'2'} },
   smsConsent: false, smsOptedOut: false, consentRevision: '1' };
 function bindings(response: unknown, failure = false) {
   const calls: { name: string; args: Record<string, unknown> }[] = [];

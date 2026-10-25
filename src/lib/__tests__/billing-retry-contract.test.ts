@@ -8,7 +8,7 @@ function fixtureSnapshot() {
  const s = readinessRow({ id: 'c1', customer: 'Monthly', status: 'Active', service_rate: 200, contact_email: 'a@b.com' }, '2026-10', { ...scope,
  enrollment: { enabled: true, firstServicePeriod: '2026-11', revision: 1, updatedBy: 'owner', updatedAt: '2026-10-25T12:09:00Z' },
  mapping: { ...scope, clientId: 'c1', customerId: '114', verified: true, revision: '1' },
- provider: { itemId: '1', incomeAccountId: '2', taxMode: 'non_taxable', taxCode: 'NON', verified: true, revision: '1' }, smsConsent: false, smsOptedOut: false, consentRevision: '1' }).snapshot;
+ provider: { itemId: '1', incomeAccountId: '2', taxMode: 'non_taxable', taxCode: 'NON', verified: true, revision: '1' , taxReview:{confirmed:true,actor:'00000000-0000-4000-8000-000000000001',reviewedAt:'2026-10-25T12:00:00Z',revision:'1',itemId:'1',incomeAccountId:'2'} }, smsConsent: false, smsOptedOut: false, consentRevision: '1' }).snapshot;
  if (!s) throw new Error('bad_fixture'); return s;
 }
 it('strict transition rejects state regression and unknown outcome resends', () => {

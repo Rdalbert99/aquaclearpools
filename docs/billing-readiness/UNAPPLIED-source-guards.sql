@@ -37,6 +37,8 @@ ALTER TABLE public.qbo_billing_runs ADD COLUMN delivery_intents jsonb NOT NULL D
 ALTER TABLE public.qbo_billing_announcements ADD COLUMN snapshot jsonb;
 ALTER TABLE public.qbo_billing_announcements ADD COLUMN approved_text text;
 ALTER TABLE public.qbo_billing_announcements ADD COLUMN provider_id text;
+ALTER TABLE public.qbo_billing_announcements ADD COLUMN approved_by uuid NOT NULL;
+ALTER TABLE public.qbo_billing_announcements ADD COLUMN approved_at timestamptz NOT NULL DEFAULT now();
 CREATE TABLE public.qbo_billing_customer_creations (
  business_id uuid NOT NULL, actor uuid NOT NULL, request_id uuid NOT NULL,
  payload_hash text NOT NULL, client_id uuid NOT NULL, PRIMARY KEY(business_id,actor,request_id)
@@ -283,8 +285,8 @@ RETURNS boolean LANGUAGE plpgsql SECURITY DEFINER SET search_path=public,extensi
  IF _text NOT LIKE 'Aqua Clear Pools:%' OR _text NOT LIKE '%Reply STOP to opt out.' THEN RAISE EXCEPTION 'announcement_review_required'; END IF;
  IF EXISTS(SELECT 1 FROM public.qbo_billing_announcements WHERE business_id=_business AND environment=_environment AND realm_id=_realm AND client_id=_client AND send_day=((_snapshot->>'sendAt')::timestamptz AT TIME ZONE 'America/Chicago')::date AND (scope_id IS DISTINCT FROM _scope_id OR snapshot IS DISTINCT FROM _snapshot OR approved_text IS DISTINCT FROM _text)) THEN RAISE EXCEPTION 'immutable_announcement'; END IF;
  IF _scope_id IS NULL OR _text IS NULL OR length(_text)<1 OR length(_text)>2000 THEN RAISE EXCEPTION 'announcement_review_required'; END IF;
- INSERT INTO public.qbo_billing_announcements(business_id,environment,realm_id,client_id,send_day,channel,scope_id,snapshot,approved_text)
- SELECT _business,_environment,_realm,_client,((_snapshot->>'sendAt')::timestamptz AT TIME ZONE 'America/Chicago')::date,ch,_scope_id,_snapshot,_text
+ INSERT INTO public.qbo_billing_announcements(business_id,environment,realm_id,client_id,send_day,channel,scope_id,snapshot,approved_text,approved_by)
+ SELECT _business,_environment,_realm,_client,((_snapshot->>'sendAt')::timestamptz AT TIME ZONE 'America/Chicago')::date,ch,_scope_id,_snapshot,_text,_actor
  FROM jsonb_array_elements_text(_snapshot->'channels') ch ON CONFLICT DO NOTHING;
  RETURN true;
 END $$;
@@ -315,7 +317,7 @@ BEGIN
 END $$;
 CREATE FUNCTION public.qbo_billing_announcement_immutable() RETURNS trigger
 LANGUAGE plpgsql SET search_path=public,extensions AS $$ BEGIN
- IF NEW.business_id IS DISTINCT FROM OLD.business_id OR NEW.environment IS DISTINCT FROM OLD.environment OR NEW.realm_id IS DISTINCT FROM OLD.realm_id OR NEW.client_id IS DISTINCT FROM OLD.client_id OR NEW.channel IS DISTINCT FROM OLD.channel OR NEW.send_day IS DISTINCT FROM OLD.send_day OR NEW.scope_id IS DISTINCT FROM OLD.scope_id OR NEW.snapshot IS DISTINCT FROM OLD.snapshot OR NEW.approved_text IS DISTINCT FROM OLD.approved_text THEN RAISE EXCEPTION 'immutable_announcement'; END IF; RETURN NEW;
+ IF NEW.business_id IS DISTINCT FROM OLD.business_id OR NEW.environment IS DISTINCT FROM OLD.environment OR NEW.realm_id IS DISTINCT FROM OLD.realm_id OR NEW.client_id IS DISTINCT FROM OLD.client_id OR NEW.channel IS DISTINCT FROM OLD.channel OR NEW.send_day IS DISTINCT FROM OLD.send_day OR NEW.scope_id IS DISTINCT FROM OLD.scope_id OR NEW.snapshot IS DISTINCT FROM OLD.snapshot OR NEW.approved_text IS DISTINCT FROM OLD.approved_text OR NEW.approved_by IS DISTINCT FROM OLD.approved_by OR NEW.approved_at IS DISTINCT FROM OLD.approved_at THEN RAISE EXCEPTION 'immutable_announcement'; END IF; RETURN NEW;
 END $$;
 CREATE TRIGGER immutable_announcement BEFORE UPDATE ON public.qbo_billing_announcements FOR EACH ROW EXECUTE FUNCTION public.qbo_billing_announcement_immutable();
 CREATE FUNCTION public.qbo_billing_announcement_outcome(_business uuid,_environment text,_realm text,_id uuid,_outcome jsonb)

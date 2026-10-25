@@ -1,4 +1,4 @@
-import { readinessRow, approvalIsFresh, type Enrollment, type Snapshot, type BillingClient, type AnnualConfig, type ExactMapping, type ProviderSetup } from '../../../src/lib/billing-readiness';
+import { readinessRow, type Enrollment, type Snapshot, type BillingClient, type AnnualConfig, type ExactMapping, type ProviderSetup } from '../../../src/lib/billing-readiness';
 import type { EnrollmentScope } from '../../../src/lib/billing-enrollment';
 import type { Authority, Store, Run, Approval, Policy, Actor } from './workflow';
 import type { EnrollmentRepository } from './enrollment';
@@ -55,12 +55,5 @@ export function concreteBillingBindings(deps: {
   };
   return { repository, authority, store,
     claimResume: async (id: string) => (await rpc<boolean>('qbo_billing_resume_scoped', { _id: id })) === true,
-    // Configuration synchronization is internal to approve_current's locked transaction;
-    // no service-executable standalone sync bypass is exposed.
-    synchronize: async (snapshot: Snapshot) => {
-      checkScope(snapshot);
-      if (!approvalIsFresh(snapshot, await authority.current(snapshot))) throw new Error('stale_approval');
-      throw new Error('approval_actor_required');
-    },
   };
 }

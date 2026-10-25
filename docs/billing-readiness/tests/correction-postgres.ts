@@ -78,3 +78,24 @@ denies(`SET ROLE service_role;SELECT qbo_billing_announcement_dispatch(${scope},
 // Actual concurrent adapter invocation: one new attempt, one provider POST.
 sql(`INSERT INTO qbo_billing_activation VALUES('${b}','sandbox','123',true,false,NULL,NULL,true,true,true);UPDATE qbo_billing_runs SET state='created',channels='{"sms":"sending"}',delivery_intents='{}' WHERE id='${run}';UPDATE qbo_billing_config SET current_snapshot=${json(s)} WHERE client_id='${c}'`);outcome='reject';assert(await p.provider.deliver(s,'901','sms',key)==='failed','fixture rejection');const before=sends;outcome='success';const results=await Promise.all([p.provider.deliver(s,'901','sms',key),p.provider.deliver(s,'901','sms',key)]);assert(results.filter(x=>x==='sent').length===1&&sends===before+1,'duplicate concrete retry sent');ok('concurrent concrete adapter retries plus SQL reserve exactly one provider POST');
 console.log(`FINAL ${count} correction PostgreSQL/concrete-provider contracts passed`);
+// Real SDK -> mocked PostgREST -> real disposable SQL: no production URLs or API acceptance.
+const {createBillingApplication}=await import('../server/production');
+const syntheticFetch=async(input:string|URL|Request,init?:RequestInit)=>{
+ const u=new URL(typeof input==='string'?input:input instanceof URL?input.href:input.url);
+ if(u.hostname!=='synthetic.invalid')return fetcher(u.href);
+ const respond=(data:unknown,status=200)=>new Response(JSON.stringify(data),{status,headers:{'Content-Type':'application/json'}});
+ if(u.pathname==='/auth/v1/user')return respond({id:actor});
+ if(u.pathname==='/rest/v1/users')return respond(JSON.parse(sql(`SELECT to_jsonb(x) FROM users x WHERE id='${actor}'`)));
+ if(u.pathname==='/rest/v1/business_members')return respond({role:'owner'});
+ if(u.pathname.startsWith('/rest/v1/rpc/')){const name=u.pathname.split('/').at(-1);if(!name||!/^qbo_billing_[a-z_]+$/.test(name))throw new Error('invalid fixture RPC');const args=JSON.parse(String(init?.body));const response=await rpc.rpc(name,args);return response.error?respond({message:response.error.message},400):respond(response.data);}
+ throw new Error('unexpected synthetic SDK call');
+};
+const app=createBillingApplication({secret:n=>n==='SUPABASE_URL'?'https://synthetic.invalid':'synthetic-fixture-key',fetch:syntheticFetch,scope:{businessId:b,environment:'sandbox',realmId:'123'},allowedOrigins:[]});
+const invoke=async(body:Record<string,unknown>)=>{const response=await app.handler(new Request('https://synthetic.invalid',{method:'POST',headers:{Authorization:'Bearer synthetic-admin','Content-Type':'application/json'},body:JSON.stringify(body)}));const data=await response.json() as Record<string,unknown>;if(response.status!==200)throw new Error(JSON.stringify(data));return data;};
+const read=await invoke({action:'readiness',sendMonth:'2026-10'});const monthly=(read.rows as {client:{id:string};snapshot:Snapshot|null}[]).find(r=>r.client.id===c);assert(!!monthly?.snapshot,'SDK source preview');
+if(!monthly?.snapshot)throw new Error('SDK fixture');await invoke({action:'approve',clientId:c,sendMonth:'2026-10',fingerprint:snapshotCanonical(monthly.snapshot)});
+const reload=await invoke({action:'readiness',sendMonth:'2026-10'});assert((reload.approvals as {fingerprint:string}[]).some(a=>a.fingerprint===snapshotCanonical(monthly.snapshot as Snapshot)),'SDK persisted approval');ok('authenticated mocked SDK/PostgREST to real SQL readiness/approval/reload roundtrip');
+const requestId=crypto.randomUUID();const newPayload={...payload,customer:'SDK synthetic created'};
+const saved=await invoke({action:'create_client',scopeId:requestId,client:newPayload});const savedAgain=await invoke({action:'create_client',scopeId:requestId,client:newPayload});const id=(saved.client as {id:string}).id;assert(id===(savedAgain.client as {id:string}).id,'SDK duplicate');
+await invoke({action:'register_new_client',clientId:id,enabled:false,firstServicePeriod:null,expectedRevision:0});const enrollment=await invoke({action:'read_enrollment',clientId:id});assert((enrollment.enrollment as {enabled:boolean;revision:number}).enabled===false,'SDK enrollment');ok('authenticated mocked SDK/PostgREST actual-ID create/retry/enrollment readback');
+console.log(`FINAL ${count} correction PostgreSQL/concrete-provider/SDK contracts passed`);

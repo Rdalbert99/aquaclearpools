@@ -35,7 +35,7 @@ describe('concrete source-only RPC bindings', () => {
     expect(await bindings(enrollment).b.authority.current(snapshot)).toMatchObject({ amountCents: 20000, enrollment });
     expect(await bindings({ ...enrollment, enabled: false, revision: 2 }).b.authority.current(snapshot)).toBeNull();
     const b = bindings(enrollment); b.sourceReader.mockResolvedValue({ ...source, client: { ...source.client, service_rate: 210 } });
-    await expect(b.b.synchronize(snapshot)).rejects.toThrow('stale_approval');
+    expect((await b.b.authority.current(snapshot))?.amountCents).toBe(21000);
   });
   it('channel and resume are scoped atomic RPC contracts', async () => {
     const { b, calls } = bindings(true);

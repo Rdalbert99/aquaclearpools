@@ -1,6 +1,7 @@
 # Roadmap
 
 ## In progress
+- [ ] Grouped final billing corrections from b5d887a: retry attempts, announcement channel/STOP, explicit reviewed tax, real-role isolation, durable customer create, fresh UI approvals/policy, executable inactive schedule template and final isolated verification.
 - [x] Third billing source wiring: authenticated transport/factory/host, real-schema atomic source guards, provider/evidence adapters, frozen 33-customer unapplied bootstrap and 18 isolated PostgreSQL contracts. Production unchanged; remaining release/config/verification gates in docs/billing-readiness/COMPLETION.md.
 - [x] Second billing source pass: unsaved customer enrollment/first service month controls, confirmed Peggy annual, atomic enrollment SQL guards and concrete RPC/endpoint source adapters, frozen unapproved cohort contract; 255 mocked tests pass. No live effects.
 - [ ] Enrollment activation — BLOCKED: reviewed SQL/privileges and server deployment, scoped-create release coordination, provider/company configuration and full isolated HTTP/UI integration verification. Exact frozen cohort and initial PostgreSQL proof now prepared; no live activation approved.

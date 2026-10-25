@@ -1,10 +1,10 @@
 import {describe,it,expect,vi} from 'vitest';
-import {fixtureSnapshot} from './billing-readiness.test';
 import {billingProviders} from '../../../docs/billing-readiness/server/providers';
 import {createBillingApplication} from '../../../docs/billing-readiness/server/production';
 import {reviewedNonTaxable,readinessRow,snapshotCanonical} from '../billing-readiness';
 import {invoicePayload} from '../../../docs/billing-readiness/server/workflow';
 import {createDraftStore} from '../client-create-draft';
+function fixtureSnapshot(){const scope={businessId:'b1',realmId:'123',environment:'sandbox' as const};const s=readinessRow({id:'c1',customer:'Synthetic',status:'Active',service_rate:200,contact_phone:'6015551234',contact_email:'synthetic@example.test'},'2026-10',{...scope,enrollment:{enabled:true,firstServicePeriod:'2026-11',revision:1,updatedBy:'owner',updatedAt:'2026-10-25T12:00:00Z'},mapping:{...scope,clientId:'c1',customerId:'114',verified:true,revision:'1'},provider:{itemId:'1',incomeAccountId:'2',taxMode:'non_taxable',taxCode:'NON',verified:true,revision:'1',taxReview:{confirmed:true,actor:'00000000-0000-4000-8000-000000000001',reviewedAt:'2026-10-25T12:00:00Z',revision:'1',itemId:'1',incomeAccountId:'2'}},smsConsent:true,smsOptedOut:false,consentRevision:'1'}).snapshot;if(!s)throw new Error('fixture');return s;}
 const actor='00000000-0000-4000-8000-000000000001';
 describe('release correction provider and transport contracts (offline)',()=>{
  it('unreviewed US configuration never yields an invoice payload or ready snapshot',()=>{
@@ -19,7 +19,7 @@ describe('release correction provider and transport contracts (offline)',()=>{
   expect(await p.sendAnnouncement(s,channel,'Aqua Clear Pools: reviewed. Reply STOP to opt out.','id')).toEqual({status:'failed',providerId:null});expect(fetch).not.toHaveBeenCalled();expect(rpc).not.toHaveBeenCalled();
  });
  it('announcement fresh STOP/activation guard refuses dispatch and provider includes STOP on approved SMS',async()=>{
-  const s=fixtureSnapshot();const fetch=vi.fn(async()=>new Response(JSON.stringify({data:{id:'id',to:[{phone_number:'+16015551234'}]}})));let enabled=false;const rpc=vi.fn(async<T>()=>({data:enabled as T,error:null}));const p=billingProviders({businessId:s.businessId,environment:s.environment,realmId:s.realmId,fetch,authorization:async()=>'synthetic',secret:()=> 'synthetic',db:{rpc}});
+  const s=fixtureSnapshot();const fetch=vi.fn(async(_url:string,_init?:RequestInit)=>new Response(JSON.stringify({data:{id:'id',to:[{phone_number:'+16015551234'}]}})));let enabled=false;const rpc=vi.fn();rpc.mockImplementation(async()=>({data:enabled,error:null}));const p=billingProviders({businessId:s.businessId,environment:s.environment,realmId:s.realmId,fetch,authorization:async()=>'synthetic',secret:()=> 'synthetic',db:{rpc}});
   const text='Aqua Clear Pools: reviewed. Reply STOP to opt out.';expect((await p.sendAnnouncement(s,'sms',text,'id')).status).toBe('failed');expect(fetch).not.toHaveBeenCalled();enabled=true;expect((await p.sendAnnouncement(s,'sms',text,'id')).status).toBe('sent');expect(JSON.parse(String(fetch.mock.calls[0]?.[1]?.body)).text).toBe(text);expect(rpc).toHaveBeenCalledWith('qbo_billing_announcement_dispatch',expect.objectContaining({_channel:'sms',_snapshot:s,_text:text}));
  });
  it('missing SMS setup performs neither HTTP nor intent reservation',async()=>{const s=fixtureSnapshot();const fetch=vi.fn();const rpc=vi.fn();const p=billingProviders({businessId:s.businessId,environment:s.environment,realmId:s.realmId,fetch,authorization:async()=>'synthetic',secret:()=>undefined,db:{rpc}});expect(await p.provider.deliver(s,'901','sms','key')).toBe('failed');expect(fetch).not.toHaveBeenCalled();expect(rpc).not.toHaveBeenCalled();});

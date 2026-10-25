@@ -1,5 +1,5 @@
 INSERT INTO businesses VALUES ('a34bd007-c8b1-455c-8063-2ff0236e5181','off');
-INSERT INTO users VALUES ('00000000-0000-4000-8000-000000000001','admin','active');
+INSERT INTO users(id,role,status) VALUES ('00000000-0000-4000-8000-000000000001','admin','active');
 INSERT INTO business_members(business_id,user_id,role) VALUES ('a34bd007-c8b1-455c-8063-2ff0236e5181','00000000-0000-4000-8000-000000000001','owner');
 INSERT INTO clients(id,customer,status,service_rate,contact_phone,contact_email) VALUES ('031f318d-5df5-4295-aba2-415089197496','Synthetic monthly',' Active ',200,'6015550100','synthetic@example.test');
 INSERT INTO qbo_billing_client_scope VALUES ('a34bd007-c8b1-455c-8063-2ff0236e5181','sandbox','123','031f318d-5df5-4295-aba2-415089197496',false,now());

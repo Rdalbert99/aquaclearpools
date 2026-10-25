@@ -105,7 +105,7 @@ export function createBillingApplication(options: {
     if(request.method==='OPTIONS')return new Response(null,{status:204,headers});if(request.method!=='POST')return reply({error:'method_not_allowed'},405);
     const credential=request.headers.get('authorization')??'';
     try{
-      const body=z.object({action:z.string(),text:z.string().max(2000).optional(),scopeId:z.string().uuid().optional(),client:z.record(z.unknown()).optional(),clientId:z.string().uuid().optional(),approvalId:z.string().uuid().optional(),runId:z.string().uuid().optional(),sendMonth:z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/).optional(),fingerprint:z.string().optional(),enabled:z.boolean().optional(),firstServicePeriod:z.string().nullable().optional(),expectedRevision:z.number().int().nonnegative().optional(),providerId:z.string().optional(),channel:z.enum(['sms','email']).optional(),customerId:z.string().regex(/^\d{1,20}$/).optional(),itemId:z.string().regex(/^\d{1,20}$/).optional(),incomeAccountId:z.string().regex(/^\d{1,20}$/).optional(),taxReview:z.object({confirmed:z.literal(true),taxMode:z.literal('non_taxable'),taxCode:z.literal('NON')}).strict().optional()}).strict().parse(await request.json());
+      const body=z.object({action:z.string(),text:z.string().max(2000).optional(),scopeId:z.string().uuid().optional(),account:z.record(z.unknown()).optional(),client:z.record(z.unknown()).optional(),clientId:z.string().uuid().optional(),approvalId:z.string().uuid().optional(),runId:z.string().uuid().optional(),sendMonth:z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/).optional(),fingerprint:z.string().optional(),enabled:z.boolean().optional(),firstServicePeriod:z.string().nullable().optional(),expectedRevision:z.number().int().nonnegative().optional(),providerId:z.string().optional(),channel:z.enum(['sms','email']).optional(),customerId:z.string().regex(/^\d{1,20}$/).optional(),itemId:z.string().regex(/^\d{1,20}$/).optional(),incomeAccountId:z.string().regex(/^\d{1,20}$/).optional(),taxReview:z.object({confirmed:z.literal(true),taxMode:z.literal('non_taxable'),taxCode:z.literal('NON')}).strict().optional()}).strict().parse(await request.json());
       if(body.action==='schedule'){
         const actor=await authenticate(credential);if(actor?.kind!=='scheduler')throw new Error('unauthorized');const p=await policy();
         if(p.billingMode!=='qbo'||!p.invoiceEnabled||!p.migrationVerified||!p.deploymentVerified||!p.providerVerified)throw new Error('disabled');
@@ -114,7 +114,7 @@ export function createBillingApplication(options: {
       }
       if(body.action==='schedule_announcements')return reply({results:await scopedAnnouncements(credential)});
       const actor=await admin(credential);
-      if(body.action==='create_client'&&body.client&&body.scopeId)return reply({client:await query('qbo_billing_create_scoped_client',{...scoped,_actor:actor.id,_client:body.client,_request_id:body.scopeId})});
+      if(body.action==='create_client'&&body.client&&body.scopeId)return reply({client:await query('qbo_billing_create_scoped_client',{...scoped,_actor:actor.id,_client:body.client,_request_id:body.scopeId,_account:body.account??null})});
       if(body.action==='register_new_client'&&body.clientId){
         await query('qbo_billing_register_new_client',{...scoped,_client:body.clientId,_actor:actor.id});
         return reply({enrollment:await enrollment.save(credential,{clientId:body.clientId,enabled:body.enabled,firstServicePeriod:body.firstServicePeriod,expectedRevision:body.expectedRevision})});

@@ -1,6 +1,6 @@
 // Session-local recovery is a request correlation draft, never billing authority.
 // No password/token is stored. Exact frozen payload is retried through the scoped server.
-export interface CreateDraft { requestId:string; payload:Record<string,unknown>|null; clientId:string|null }
+export interface CreateDraft { requestId:string; payload:Record<string,unknown>|null; clientId:string|null; account?:Record<string,unknown>|null }
 export function createDraftStore(storage:Pick<Storage,'getItem'|'setItem'|'removeItem'>,actor:string){
  const key=`aqua-client-create:${actor}`;
  return {

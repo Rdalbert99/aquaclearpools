@@ -234,7 +234,7 @@ export default function NewClient() {
     const recovered=isAdmin?creationStore?.read():null;
     if(recovered?.payload){
       saveLock.current=true;setSaving(true);
-      try{const result=await billingInvoke<{client:{id:string}}>({action:'create_client',scopeId:recovered.requestId,client:recovered.payload});
+      try{const result=await billingInvoke<{client:{id:string}}>({action:'create_client',scopeId:recovered.requestId,client:recovered.payload,account:recovered.account??undefined});
         if(!result.client?.id)throw new Error('Customer save not confirmed');
         creationStore?.clear();navigate(`/admin/clients/${result.client.id}/edit`);
         toast({title:'Customer save recovered',description:'Review and save automatic invoicing separately.'});
@@ -283,7 +283,6 @@ export default function NewClient() {
 
     // Validate new user creation fields
     if (isAdmin && client.account_type === 'new') {
-      console.log('🔍 Validating new user creation fields...');
       if (!client.new_user_username.trim()) {
         toast({
           title: "Error",
@@ -310,89 +309,20 @@ export default function NewClient() {
       }
     }
 
-    if(isAdmin&&client.account_type==='new'){toast({title:'Account setup requires invitation',description:'Save the customer without a new account, then use the verified invitation flow.',variant:'destructive'});return;}
     saveLock.current=true;setSaving(true);
     try {
       // Verify the scoped endpoint BEFORE any customer/account mutation.
       if(isAdmin){if(!creationStore)throw new Error('Sign in before saving');await billingInvoke({action:'policy'});}
       let finalUserId = null;
 
-      // Create new user if requested
-      if (isAdmin && client.account_type === 'new') {
-        console.log('👤 Creating new user account...');
-        console.log('📧 User email:', client.new_user_email);
-        
-        // First check if email already exists
-        const { data: existingUser, error: checkError } = await supabase
-          .from('users')
-          .select('id, email')
-          .eq('email', client.new_user_email)
-          .maybeSingle();
-          
-        console.log('🔍 Email check result:', { existingUser, checkError });
-        
-        if (checkError) {
-          console.error('❌ Error checking existing email:', checkError);
-          throw checkError;
-        }
-        
-        if (existingUser) {
-          console.log('⚠️ Email already exists for user:', existingUser);
-          toast({
-            title: "Error",
-            description: `Email ${client.new_user_email} is already in use. Please use a different email or select the existing user.`,
-            variant: "destructive"
-          });
-          return;
-        }
-        
-        console.log('👤 User name:', client.customer);
-        console.log('🔐 User password length:', client.new_user_password.length);
-        
-        const userInsertData = {
-          email: client.new_user_email,
-          name: client.customer,
-          role: 'client',
-          login: client.new_user_username,
-          street_address: client.street_address || null,
-          city: client.city || null,
-          state: client.state || null,
-          zip_code: client.zip_code || null,
-          address_validated: client.address_validated,
-          phone: client.phone || null,
-          must_change_password: true
-        };
-        
-        console.log('📝 Inserting user data:', userInsertData);
-        
-        const { data: userData, error: userError } = await supabase
-          .from('users')
-          .insert(userInsertData)
-          .select()
-          .single();
-
-        console.log('✅ User creation result:', { userData, userError });
-
-        if (userError) {
-          console.error('❌ User creation failed:', userError);
-          throw userError;
-        }
-        
-        finalUserId = userData.id;
-        console.log('✅ User created successfully with ID:', finalUserId);
-
-        // TODO: Send login email if requested (requires edge function)
-        if (client.send_login_email) {
-          console.log('📧 Email sending not implemented yet');
-        }
-      } else if (client.account_type === 'existing' && client.user_id) {
-        console.log('👤 Using existing user ID:', client.user_id);
-        finalUserId = client.user_id;
+      // A new customer profile is created atomically with the scoped client, never before it.
+      // No password or auth account is created here; existing verified invitation flow follows.
+      const account=isAdmin&&client.account_type==='new'?{email:client.new_user_email||null,name:client.customer,login:client.new_user_username,street_address:client.street_address||null,city:client.city||null,state:client.state||null,zip_code:client.zip_code||null,address_validated:client.address_validated,phone:client.phone||null}:null;
+      if(account){finalUserId=null;      } else if (client.account_type === 'existing' && client.user_id) {
+          finalUserId = client.user_id;
       } else {
-        console.log('👤 No user account associated');
-      }
+        }
 
-      console.log('🏢 Creating client with user ID:', finalUserId);
 
       const insertData: any = {
         customer: client.customer,
@@ -428,17 +358,15 @@ export default function NewClient() {
         insertData.last_service_date = client.last_service_date;
       }
 
-      console.log('📝 Inserting client data:', insertData);
 
       // Admin creation establishes business scope in the same server transaction. Tech
       // creation retains its existing path and does not enroll/provision billing.
-      const creation=recovered??{requestId:crypto.randomUUID(),payload:null,clientId:null};
-      if(isAdmin){creation.payload=insertData;creationStore?.write(creation);setRecovery(true);}
+      const creation=recovered??{requestId:crypto.randomUUID(),payload:null,clientId:null,account:null};
+      if(isAdmin){creation.payload=insertData;creation.account=account;creationStore?.write(creation);setRecovery(true);}
       const { data, error } = isAdmin
-        ? { data: (await billingInvoke<{client: typeof createdClient}>({action:'create_client',scopeId:creation.requestId,client:insertData})).client, error: null }
+        ? { data: (await billingInvoke<{client: typeof createdClient}>({action:'create_client',scopeId:creation.requestId,client:insertData,account:account??undefined})).client, error: null }
         : await supabase.from('clients').insert(insertData).select().single();
 
-      console.log('✅ Client creation result:', { data, error });
 
       if (error) throw error;
 

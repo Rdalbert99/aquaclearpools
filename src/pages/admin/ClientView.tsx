@@ -1,3 +1,4 @@
+import { AutomaticInvoicing } from '@/components/billing/AutomaticInvoicing';
 import { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
@@ -403,6 +404,8 @@ export default function ClientView() {
           </Button>
         </div>
       </div>
+
+      <AutomaticInvoicing clientId={id} customerName={client.customer} readOnly />
 
       {/* Overview Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">

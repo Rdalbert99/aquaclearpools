@@ -1,3 +1,4 @@
+import { AutomaticInvoicing } from '@/components/billing/AutomaticInvoicing';
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
@@ -930,6 +931,8 @@ export default function NewClient() {
             </div>
           </CardContent>
         </Card>
+
+        <AutomaticInvoicing customerName={client.customer} />
 
         {/* Service Configuration */}
         <Card className="lg:col-span-2">

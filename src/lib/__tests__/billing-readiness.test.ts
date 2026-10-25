@@ -1,7 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import { batchDates, initialSendMonth, isActiveClient, OWNER_IDS, proposeForClient, readinessRow, approvedTotals, approvalIsFresh, invoiceSlot, scheduleDue, type Snapshot, type BillingClient } from '../billing-readiness';
 const client: BillingClient = { id: 'c1', customer: 'Monthly Customer', status: 'Active', service_rate: 200, contact_phone: '6015551234', contact_email: 'a@b.com' };
-const context = { businessId: 'b1', environment: 'sandbox' as const, realmId: '123', mapping: { businessId: 'b1', environment: 'sandbox' as const, realmId: '123', clientId: 'c1', customerId: '114', verified: true, revision: '1' }, provider: { itemId: '1', incomeAccountId: '2', taxCode: 'NON', taxMode: 'non_taxable' as const, verified: true, revision: '1' }, smsConsent: true, smsOptedOut: false, consentRevision: '1' };
+const enrolled = { enabled: true, firstServicePeriod: '2026-11', revision: 1, updatedBy: 'owner', updatedAt: '2026-10-25T12:09:00Z' };
+const context = { enrollment: enrolled, businessId: 'b1', environment: 'sandbox' as const, realmId: '123', mapping: { businessId: 'b1', environment: 'sandbox' as const, realmId: '123', clientId: 'c1', customerId: '114', verified: true, revision: '1' }, provider: { itemId: '1', incomeAccountId: '2', taxCode: 'NON', taxMode: 'non_taxable' as const, verified: true, revision: '1' }, smsConsent: true, smsOptedOut: false, consentRevision: '1' };
 export function fixtureSnapshot(): Snapshot {
   const s = readinessRow(client, '2026-10', context).snapshot;
   if (!s) throw new Error('fixture_not_ready'); return s;
@@ -13,7 +14,7 @@ describe('owner billing rules', () => {
   });
   it('Laken stable ID is held without changing $125 rate', () => {
     const c = { ...client, id: OWNER_IDS.laken, customer: 'Renamed Customer', service_rate: 125 };
-    const p = proposeForClient(c, '2026-11');
+    const p = proposeForClient(c, '2026-11', undefined, enrolled);
     expect(p.excluded).toContain('Owner hold'); expect(p.amountCents).toBe(12500); expect(c.service_rate).toBe(125);
   });
   it('Laken exact name fallback holds without matching unrelated names', () => {
@@ -29,17 +30,17 @@ describe('owner billing rules', () => {
     expect(initialSendMonth(new Date('2027-01-01T02:00:00Z'))).toBe('2026-12');
   });
   it('Peggy one annual November renewal preserving reviewable $3000', () => {
-    const p = proposeForClient({ ...client, id: OWNER_IDS.peggy, customer: 'Peggy McQuarter', service_rate: 250 }, '2026-11');
+    const p = proposeForClient({ ...client, id: OWNER_IDS.peggy, customer: 'Peggy McQuarter', service_rate: 250 }, '2026-11', undefined, enrolled);
     expect(p).toMatchObject({ frequency: 'annual', amountCents: 300000, channelOverride: 'sms', serviceStart: '2026-11-01', serviceEnd: '2027-10-31', dueDate: '2026-11-01', excluded: null });
-    expect(p.blockers).toContain('Confirm annual amount (never monthly rate × 12)');
+    expect(p.blockers).toEqual([]);
   });
-  it('annual nonrenewal never gets extra monthly bill', () => expect(proposeForClient({ ...client, id: OWNER_IDS.peggy }, '2026-12')).toMatchObject({ frequency: 'annual', excluded: 'Annual non-renewal month — no monthly invoice' }));
+  it('annual nonrenewal never gets extra monthly bill', () => expect(proposeForClient({ ...client, id: OWNER_IDS.peggy }, '2026-12', undefined, enrolled)).toMatchObject({ frequency: 'annual', excluded: 'Annual non-renewal month — no monthly invoice' }));
   it.each([OWNER_IDS.shelby, OWNER_IDS.jennifer])('prepaid %s unknown config stays excluded', id => {
-    const p = proposeForClient({ ...client, id }, '2026-11');
+    const p = proposeForClient({ ...client, id }, '2026-11', undefined, enrolled);
     expect(p.frequency).toBe('annual'); expect(p.amountCents).toBeNull(); expect(p.blockers).toHaveLength(2); expect(p.excluded).toContain('preserve exclusion');
   });
   it('confirmed annual config uses its amount, not monthly multiplication', () => {
-    const p = proposeForClient({ ...client, id: OWNER_IDS.shelby }, '2026-11', { frequency: 'annual', renewalMonth: 11, renewalConfirmed: true, amountCents: 270000, amountConfirmed: true, revision: '2' });
+    const p = proposeForClient({ ...client, id: OWNER_IDS.shelby }, '2026-11', { frequency: 'annual', renewalMonth: 11, renewalConfirmed: true, amountCents: 270000, amountConfirmed: true, revision: '2' }, enrolled);
     expect(p.amountCents).toBe(270000); expect(p.excluded).toBeNull();
   });
   it('missing mapping is a blocker, cross realm mapping refused', () => {

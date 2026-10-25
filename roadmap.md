@@ -1,6 +1,7 @@
 # Roadmap
 
 ## In progress
+- [ ] Third billing completion: authenticated transport/factory, real-schema atomic source guards, provider/evidence adapters, frozen 33-customer unapplied bootstrap, isolated PostgreSQL and contract tests; no deployment or customer effects.
 - [x] Second billing source pass: unsaved customer enrollment/first service month controls, confirmed Peggy annual, atomic enrollment SQL guards and concrete RPC/endpoint source adapters, frozen unapproved cohort contract; 255 mocked tests pass. No live effects.
 - [ ] Enrollment activation — BLOCKED: unapplied SQL/database concurrency verification, complete frozen cohort IDs/as-of, concrete authoritative source-row locking/consent/mapping/provider adapters and verified frontend/server bindings, separate deployment/activation approval. Customer enrollment remains not saved/backend setup pending.
 - [x] Consolidated billing readiness source preparation (Oct 25 2026): roster, next-month dates, annual review, guarded mocked QBO workflow, durable claim SQL and disabled schedule source prepared; 235 tests pass.

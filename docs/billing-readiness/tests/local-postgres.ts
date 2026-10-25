@@ -10,6 +10,8 @@ const {readFileSync}=await import('node:fs');
 psql(readFileSync('docs/billing-readiness/tests/fixture.sql','utf8').replace(/CREATE ROLE \w+;/g,''));
 psql(readFileSync('docs/billing-readiness/UNAPPLIED-schema.sql','utf8'));
 psql(readFileSync('docs/billing-readiness/UNAPPLIED-source-guards.sql','utf8'));
+psql(readFileSync('docs/billing-readiness/UNAPPLIED-delta-2026-10-25-setup.sql','utf8'));
+psql(readFileSync('docs/billing-readiness/UNAPPLIED-delta-2026-10-25-announcement-channels.sql','utf8'));
 psql(readFileSync('docs/billing-readiness/tests/seed.sql','utf8'));
 const b='a34bd007-c8b1-455c-8063-2ff0236e5181',c='031f318d-5df5-4295-aba2-415089197496',actor='00000000-0000-4000-8000-000000000001';
 const scope=`'${b}','sandbox','123'`,sourceCall=`qbo_billing_source(${scope},'${c}')`;

@@ -162,11 +162,14 @@ export function createBillingApplication(options: {
       if(body.action==='read_enrollment'&&body.clientId)return reply({scope,enrollment:await enrollment.read(credential,body.clientId)});
       if(body.action==='save_enrollment'&&body.clientId)return reply({enrollment:await enrollment.save(credential,{clientId:body.clientId,enabled:body.enabled,firstServicePeriod:body.firstServicePeriod,expectedRevision:body.expectedRevision})});
       if(body.action==='approve'&&body.clientId&&body.fingerprint)return reply({approval:await approve(credential,body.clientId,body.sendMonth??initialSendMonth(),body.fingerprint)});
-      if(body.action==='approve_announcement'&&body.clientId&&body.scopeId&&body.text&&body.fingerprint){
-        if(!body.text.startsWith('Aqua Clear Pools:')||!body.text.endsWith('Reply STOP to opt out.'))throw new Error('announcement_review_required');
+      if(body.action==='approve_announcement'&&body.clientId&&body.scopeId&&body.channel&&body.text&&body.fingerprint){
+        if(body.channel!=='sms'&&body.channel!=='email')throw new Error('announcement_review_required');
+        if(body.channel==='sms'&&(!body.text.startsWith('Aqua Clear Pools:')||!body.text.endsWith('Reply STOP to opt out.')))throw new Error('announcement_review_required');
+        if(body.channel==='email'&&body.text.includes('Reply STOP to opt out.'))throw new Error('announcement_review_required'); // SMS wrapper never stored on email
         const row=await source.preview(body.clientId,body.sendMonth??initialSendMonth());
         if(!row.snapshot||snapshotCanonical(row.snapshot)!==body.fingerprint)throw new Error('stale_approval');
-        return reply({approved:await query('qbo_billing_approve_announcement',{...scoped,_client:body.clientId,_actor:actor.id,_scope_id:body.scopeId,_text:body.text,_snapshot:row.snapshot})});
+        if(!row.snapshot.channels.includes(body.channel))throw new Error('announcement_review_required');
+        return reply({approved:await query('qbo_billing_approve_announcement',{...scoped,_client:body.clientId,_actor:actor.id,_scope_id:body.scopeId,_channel:body.channel,_text:body.text,_snapshot:row.snapshot})});
       }
       if(body.action==='execute'&&body.approvalId)return reply(await executeInvoice({...bindings,provider:providers.provider},credential,body.approvalId));
       if(body.action==='resume'&&body.approvalId)return reply({state:await resumeDelivery({...bindings,provider:providers.provider},credential,body.approvalId)});

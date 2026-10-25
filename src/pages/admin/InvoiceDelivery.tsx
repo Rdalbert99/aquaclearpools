@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { fromCents } from '@/lib/billing';
-import { ANNOUNCEMENT_SMS, invoiceMessage } from '@/lib/invoice-delivery';
+import { ANNOUNCEMENT_EMAIL_BODY, ANNOUNCEMENT_EMAIL_SUBJECT, ANNOUNCEMENT_SMS, invoiceMessage } from '@/lib/invoice-delivery';
 import { batchDates, initialSendMonth, isActiveClient, readinessRow, snapshotCanonical, type BillingClient, type ExactMapping, type Enrollment } from '@/lib/billing-readiness';
 import { batchSummary, enrollmentLabel, announcementAudience } from '@/lib/billing-batch';
 import { ProviderSetup, CustomerMapping } from '@/components/billing/BillingSetup';
@@ -164,8 +164,13 @@ export default function InvoiceDelivery() {
           <h2 className="font-semibold">Announcement — {policy?.announcementEnabled ? 'enabled on server' : 'disabled'} (8 AM Chicago target, not active)</h2>
           <p>Audience is only this month's eligible invoice batch ({audience.size}); excluded and blocked customers never get it. Channels and STOP are checked again before any send.</p>
           <ul className="list-disc pl-5">{rows.filter(r => audience.has(r.client.id)).map(r => <li key={r.client.id}>{r.client.customer} · {channelLabel(r.delivery.channels)}</li>)}</ul>
-          <p className="font-medium">Draft wording — NOT approved; owner must approve final text separately:</p>
-          <p className="bg-muted p-3">{ANNOUNCEMENT_SMS}</p>
+          <p className="font-medium">Draft wording — pending owner approval in the system; nothing is saved, queued or sent:</p>
+          <div className="space-y-2">
+            <p className="font-medium">Email — subject “{ANNOUNCEMENT_EMAIL_SUBJECT}” — exact approved body, no text-message wrapper:</p>
+            <p className="whitespace-pre-wrap bg-muted p-3">{ANNOUNCEMENT_EMAIL_BODY}</p>
+            <p className="font-medium">Text message — same approved body with the required “Aqua Clear Pools:” prefix and “Reply STOP to opt out.” footer:</p>
+            <p className="whitespace-pre-wrap bg-muted p-3">{ANNOUNCEMENT_SMS}</p>
+          </div>
           <Button disabled>Schedule announcement — not activated</Button>
         </TabsContent>
       </Tabs>

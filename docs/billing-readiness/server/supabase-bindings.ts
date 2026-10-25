@@ -59,7 +59,9 @@ export function concreteBillingBindings(deps: {
     synchronize: async (snapshot: Snapshot) => {
       checkScope(snapshot);
       if (!approvalIsFresh(snapshot, await authority.current(snapshot))) throw new Error('stale_approval');
-      return rpc('qbo_billing_sync_config', { _client: snapshot.clientId, _period: snapshot.servicePeriod, _snapshot: snapshot, _fingerprint: snapshotCanonical(snapshot), _enrollment_revision: snapshot.enrollment.revision });
+      const revision = await rpc<number>('qbo_billing_sync_config', { _client: snapshot.clientId, _period: snapshot.servicePeriod, _snapshot: snapshot, _fingerprint: snapshotCanonical(snapshot), _enrollment_revision: snapshot.enrollment.revision });
+      if (revision == null || revision < 1) throw new Error('persistence_failed');
+      return revision;
     },
   };
 }

@@ -1,11 +1,12 @@
 import { z } from 'zod';
 import type { enrollmentService } from './enrollment';
-import type { executeInvoice } from './workflow';
+import type { executeInvoice, resumeDelivery } from './workflow';
 // Prepared Request/Response binding only. No Deno.serve, entrypoint, credentials or default deps.
 // Host must supply exact allowed origin(s), verified service bindings and deployed-name mapping.
 export function billingEndpoint(deps: {
   enabled: boolean; allowedOrigins: string[];
   enrollment: ReturnType<typeof enrollmentService>;
+  resume?: (credential: string, approvalId: string) => ReturnType<typeof resumeDelivery>;
   execute: (credential: string, approvalId: string) => ReturnType<typeof executeInvoice>;
 }) {
   return async (request: Request) => {
@@ -28,8 +29,13 @@ export function billingEndpoint(deps: {
         z.object({ action: z.literal('read_enrollment'), clientId: z.string().uuid() }).strict(),
         z.object({ action: z.literal('save_enrollment'), clientId: z.string().uuid(), enabled: z.boolean(), firstServicePeriod: z.string().nullable(), expectedRevision: z.number().int().nonnegative() }).strict(),
         z.object({ action: z.literal('execute'), approvalId: z.string().uuid() }).strict(),
+        z.object({ action: z.literal('resume'), approvalId: z.string().uuid() }).strict(),
       ]).parse(await request.json());
       if (body.action === 'execute') return reply(await deps.execute(credential, body.approvalId), 200);
+      if (body.action === 'resume') {
+        if (!deps.resume) return reply({ error: 'resume_setup_pending' }, 503);
+        return reply({ state: await deps.resume(credential, body.approvalId) }, 200);
+      }
       if (body.action === 'read_enrollment') return reply({ enrollment: await deps.enrollment.read(credential, body.clientId) }, 200);
       const { action, ...input } = body;
       return reply({ enrollment: await deps.enrollment.save(credential, input) }, 200);

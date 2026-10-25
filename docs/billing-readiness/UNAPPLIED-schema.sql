@@ -86,6 +86,7 @@ BEGIN
   IF coalesce(c.current_snapshot->>'frequency','') NOT IN ('annual','monthly') THEN RAISE EXCEPTION 'Invalid type'; END IF;
   IF c.canonical_fingerprint IS DISTINCT FROM _fingerprint THEN RAISE EXCEPTION 'Invalid fingerprint'; END IF;
   IF c.current_snapshot->>'businessId' IS DISTINCT FROM _business::text OR c.current_snapshot->>'environment' IS DISTINCT FROM _environment OR c.current_snapshot->>'realmId' IS DISTINCT FROM _realm OR c.current_snapshot->>'clientId' IS DISTINCT FROM _client::text OR c.current_snapshot->>'servicePeriod' IS DISTINCT FROM _period THEN RAISE EXCEPTION 'Scope mismatch'; END IF;
+  PERFORM public.qbo_billing_assert_enrollment(_business,_environment,_realm,_client,c.current_snapshot);
   INSERT INTO public.qbo_billing_approvals(business_id,environment,realm_id,client_id,service_period,invoice_type,snapshot,approved_by,fingerprint,config_revision)
     VALUES (_business,_environment,_realm,_client,_period,c.current_snapshot->>'frequency',c.current_snapshot,_actor,_fingerprint,c.revision) RETURNING * INTO a;
   RETURN a;
@@ -99,6 +100,7 @@ DECLARE a public.qbo_billing_approvals; c public.qbo_billing_config; r public.qb
 BEGIN
   SELECT * INTO a FROM public.qbo_billing_approvals WHERE id=_approval AND business_id=_business;
   IF a.id IS NULL THEN RAISE EXCEPTION 'Unauthorized approval'; END IF;
+  PERFORM public.qbo_billing_assert_enrollment(a.business_id,a.environment,a.realm_id,a.client_id,a.snapshot);
   -- Serialize coverage checks across ALL periods for this customer (annual overlap safety).
   PERFORM pg_advisory_xact_lock(hashtextextended(a.business_id::text||':'||a.environment||':'||a.realm_id||':'||a.client_id::text,0));
   SELECT * INTO c FROM public.qbo_billing_config WHERE business_id=a.business_id AND environment=a.environment AND realm_id=a.realm_id
@@ -124,6 +126,9 @@ CREATE FUNCTION public.qbo_billing_claim_channel(_run uuid, _channel text)
 RETURNS boolean LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, extensions AS $$
 DECLARE r public.qbo_billing_runs;
 BEGIN
+  SELECT * INTO r FROM public.qbo_billing_runs WHERE id=_run;
+  IF r.id IS NULL THEN RETURN false; END IF;
+  PERFORM public.qbo_billing_assert_run(r.business_id,r.environment,r.realm_id,_run);
   SELECT * INTO r FROM public.qbo_billing_runs WHERE id=_run FOR UPDATE;
   IF r.id IS NULL OR r.provider_invoice_id IS NULL OR _channel NOT IN ('sms','email')
     OR coalesce(r.channels->>_channel,'') NOT IN ('pending','failed') THEN RETURN false; END IF;
@@ -250,8 +255,8 @@ BEGIN
  SELECT * INTO a FROM public.qbo_billing_approvals WHERE id=_approval AND business_id=_business AND environment=_environment AND realm_id=_realm;
  IF NOT FOUND THEN RAISE EXCEPTION 'cross_business'; END IF;
  PERFORM public.qbo_billing_assert_enrollment(_business,_environment,_realm,a.client_id,a.snapshot);
- IF (a.snapshot->>'sendAt')::timestamptz AT TIME ZONE 'America/Chicago' IS NULL OR
-   ((a.snapshot->>'sendAt')::timestamptz AT TIME ZONE 'America/Chicago')::date < (now() AT TIME ZONE 'America/Chicago')::date THEN RAISE EXCEPTION 'missed_send_day_review_required'; END IF;
+ IF a.snapshot->>'sendAt' IS NULL OR ((a.snapshot->>'sendAt')::timestamptz AT TIME ZONE 'America/Chicago')::date IS DISTINCT FROM (now() AT TIME ZONE 'America/Chicago')::date THEN RAISE EXCEPTION 'send_day_review_required'; END IF;
+ IF (a.snapshot->>'sendAt')::timestamptz > now() THEN RAISE EXCEPTION 'send_time_not_due'; END IF;
  r:=public.qbo_billing_claim(_approval,_business);
  RETURN public.qbo_billing_run_json(r);
 END $$;
@@ -291,14 +296,22 @@ CREATE FUNCTION public.qbo_billing_update_run(_business uuid,_environment text,_
 RETURNS boolean LANGUAGE plpgsql SECURITY DEFINER SET search_path=public,extensions AS $$
 DECLARE r public.qbo_billing_runs; target text; ch text; outcome text;
 BEGIN
- SELECT * INTO r FROM public.qbo_billing_runs WHERE id=_id AND business_id=_business AND environment=_environment AND realm_id=_realm FOR UPDATE;
+ SELECT * INTO r FROM public.qbo_billing_runs WHERE id=_id AND business_id=_business AND environment=_environment AND realm_id=_realm;
  IF NOT FOUND THEN RAISE EXCEPTION 'cross_business'; END IF;
+ PERFORM pg_advisory_xact_lock(hashtextextended(_business::text||':'||_environment||':'||_realm||':'||r.client_id::text,0));
+ SELECT * INTO r FROM public.qbo_billing_runs WHERE id=_id FOR UPDATE;
  target:=coalesce(_patch->>'state',r.state); ch:=_patch->>'channel'; outcome:=_patch->>'channelState';
+ IF EXISTS(SELECT 1 FROM jsonb_object_keys(_patch) key WHERE key NOT IN ('state','providerInvoiceId','channel','channelState','code','auditId')) THEN RAISE EXCEPTION 'invalid_patch'; END IF;
  IF target NOT IN ('claimed','created','complete','blocked','reconcile') OR r.state='complete' THEN RAISE EXCEPTION 'invalid_transition'; END IF;
+ IF NOT (target=r.state OR (r.state='claimed' AND target IN ('reconcile','created','blocked','complete')) OR
+ (r.state='reconcile' AND target='created' AND r.provider_invoice_id IS NULL AND _patch ? 'providerInvoiceId' AND r.code='create_in_flight') OR
+ (r.state='created' AND target IN ('blocked','reconcile','complete')) OR (r.state='blocked' AND target='reconcile')) THEN RAISE EXCEPTION 'invalid_transition'; END IF;
  -- Persist external outcomes even if owner disabled during request. NEVER authorize an effect here.
  IF target='reconcile' AND _patch->>'code'='create_in_flight' THEN PERFORM public.qbo_billing_assert_run(_business,_environment,_realm,_id); END IF;
+ IF _patch ? 'providerInvoiceId' AND coalesce(_patch->>'providerInvoiceId','') !~ '^[0-9]+$' THEN RAISE EXCEPTION 'invalid_provider_id'; END IF;
  IF _patch ? 'providerInvoiceId' AND (r.provider_invoice_id IS NOT NULL AND r.provider_invoice_id IS DISTINCT FROM _patch->>'providerInvoiceId') THEN RAISE EXCEPTION 'provider_id_immutable'; END IF;
  IF ch IS NOT NULL AND (ch NOT IN ('sms','email') OR outcome NOT IN ('sent','failed','unknown') OR r.channels->>ch IS DISTINCT FROM 'sending') THEN RAISE EXCEPTION 'invalid_channel_transition'; END IF;
+ IF target='complete' AND (r.provider_invoice_id IS NULL OR r.channels='{}'::jsonb) THEN RAISE EXCEPTION 'incomplete_channels'; END IF;
  IF target='complete' AND EXISTS(SELECT 1 FROM jsonb_each_text(r.channels) c WHERE c.value <> 'sent') THEN RAISE EXCEPTION 'incomplete_channels'; END IF;
  UPDATE public.qbo_billing_runs SET state=target,provider_invoice_id=coalesce(provider_invoice_id,_patch->>'providerInvoiceId'),
  channels=CASE WHEN ch IS NULL THEN channels ELSE jsonb_set(channels,ARRAY[ch],to_jsonb(outcome)) END,

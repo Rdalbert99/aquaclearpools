@@ -139,35 +139,38 @@ export function billingProviders(deps: {
     },
     reconcileInvoice: async (s: Snapshot,id: string,requestId:string) => verifiedInvoice(await invoice(s,id),s,requestId),
     payment: async (s: Snapshot,id:string) => { const raw=await invoice(s,id); return {invoiceId:id,customerId:s.customerId,balanceCents:Math.round(Number(raw.Balance)*100),totalCents:Math.round(Number(raw.TotalAmt)*100),readAt:new Date().toISOString()}; },
-    deliveryEvidence: async (s:Snapshot,channel:SendChannel,id:string) => {
+    deliveryEvidence: async (s:Snapshot,channel:SendChannel,id:string,correlation?:string) => {
       if (channel==='email') {
         const [uuid,numericId]=id.split(':');
         const key=deps.secret('MAILJET_API_KEY'),secret=deps.secret('MAILJET_API_SECRET');
         if(!key||!secret||!uuid||!/^\d+$/.test(numericId??''))throw new Error('email_evidence_setup');
         const headers={Authorization:`Basic ${btoa(`${key}:${secret}`)}`};
         const record=await external(`https://api.mailjet.com/v3/REST/message/${numericId}`,{headers});
-        const rows=record.Data as {UUID?:string;ContactID?:number;Status?:string;CustomID?:string}[]|undefined;
-        if(rows?.length!==1||rows[0].UUID!==uuid)throw new Error('evidence_mismatch');
+        const rows=record.Data as {ID?:string|number;ContactID?:number;Status?:string}[]|undefined;
+        if(rows?.length!==1||String(rows[0].ID)!==numericId||!correlation)throw new Error('evidence_mismatch');
+        const correlated=await external(`https://api.mailjet.com/v3/REST/message?CustomID=${encodeURIComponent(correlation)}`,{headers});
+        const matching=correlated.Data as {ID?:string|number}[]|undefined;
+        if(matching?.length!==1||String(matching[0].ID)!==numericId)throw new Error('evidence_mismatch');
         if(!rows[0].ContactID)throw new Error('recipient_evidence_pending');
         const contact=await external(`https://api.mailjet.com/v3/REST/contact/${rows[0].ContactID}`,{headers});
         const contacts=contact.Data as {Email?:string}[]|undefined;
         if(contacts?.length!==1||contacts[0].Email?.toLowerCase()!==s.contactEmail?.toLowerCase())throw new Error('evidence_mismatch');
         const history=await external(`https://api.mailjet.com/v3/REST/messagehistory/${numericId}`,{headers});
-        const events=history.Data as {EventType?:string;Event?:string}[]|undefined;
+        const events=history.Data as {EventType?:string;EventAt?:number}[]|undefined;
         if(!Array.isArray(events))throw new Error('delivery_evidence_pending');
-        const kinds=events.map(e=>(e.EventType??e.Event??'').toLowerCase());
-        if(kinds.some(k=>['bounce','blocked'].includes(k)))return {status:'failed',channel,providerId:id,correlation:rows[0].CustomID};
-        if(kinds.includes('sent'))return {status:'sent',channel,providerId:id,correlation:rows[0].CustomID};
+        const kinds=events.map(e=>(e.EventType??'').toLowerCase());
+        if(kinds.some(k=>['bounced','blocked'].includes(k)))return {status:'failed',channel,providerId:id,correlation};
+        if(kinds.includes('sent'))return {status:'sent',channel,providerId:id,correlation};
         throw new Error('delivery_evidence_pending');
       }
       const token=deps.secret('TELNYX_API_KEY'); if(!token || !/^[a-zA-Z0-9-]+$/.test(id)) throw new Error('sms_setup');
       const data=await external(`https://api.telnyx.com/v2/messages/${id}`,{headers:{Authorization:`Bearer ${token}`}});
-      const message=data.data as {id?:string;text?:string;from?:{phone_number?:string};to?:{phone_number?:string;status?:string}[]} | undefined;
+      const message=data.data as {id?:string;direction?:string;text?:string;from?:{phone_number?:string};to?:{phone_number?:string;status?:string}[]} | undefined;
       const digits=(s.contactPhone??'').replace(/\D/g,''); const expected=digits.length===10?`+1${digits}`:`+${digits}`;
-      if(message?.id!==id || message.to?.length!==1 || message.to[0].phone_number!==expected || message.from?.phone_number!=='+16014198527' || !message.text) throw new Error('evidence_mismatch');
+      if(message?.id!==id || message.direction!=='outbound' || message.to?.length!==1 || message.to[0].phone_number!==expected || message.from?.phone_number!=='+16014198527' || !message.text) throw new Error('evidence_mismatch');
       const status=message.to[0].status;
-      if(!['delivered','delivery_failed','sending_failed'].includes(status??'')) throw new Error('delivery_evidence_pending');
-      return {status:status==='delivered'?'sent':'failed',channel,providerId:id,textHash:await digestText(message.text)};
+      if(!['delivered','read','expired','delivery_failed','sending_failed'].includes(status??'')) throw new Error('delivery_evidence_pending');
+      return {status:['delivered','read'].includes(status??'')?'sent':'failed',channel,providerId:id,textHash:await digestText(message.text)};
     },
   };
 }

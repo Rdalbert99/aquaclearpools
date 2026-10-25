@@ -4,6 +4,7 @@ import { billingProviders,verifiedInvoice,validatedPaymentLink } from '../../../
 import { sourceAuthority } from '../../../docs/billing-readiness/server/source';
 import { saveNewClientEnrollment } from '../billing-enrollment';
 import { bootstrapReview } from '../../../docs/billing-readiness/server/bootstrap';
+import { createBillingApplication } from '../../../docs/billing-readiness/server/production';
 function snapshot():Snapshot {
  const scope={businessId:'b1',environment:'sandbox' as const,realmId:'123'};
  const s=readinessRow({id:'c1',customer:'Synthetic',status:'Active',service_rate:200,contact_phone:'6015550100',contact_email:'synthetic@example.test'},'2026-10',{
@@ -21,4 +22,10 @@ describe('concrete production source package (offline)',()=>{
  it('paid manual invoices block automatic duplicate creation',async()=>{const s=snapshot();const fetch=vi.fn(async()=>new Response(JSON.stringify({QueryResponse:{Invoice:[{...raw(s),Balance:0}]}})));const p=billingProviders({businessId:'b1',environment:'sandbox',realmId:'123',fetch,authorization:async()=>'synthetic',secret:()=>undefined,db:{rpc:async()=>({data:null,error:null})}});expect((await p.provider.existing(s)).status).toBe('ambiguous');});
  it('uncertain provider submission is not retried',async()=>{const s=snapshot();let sends=0;const fetch=vi.fn(async(url:string)=>{if(url.includes('telnyx')){sends++;throw new Error('timeout');}return new Response(JSON.stringify(url.includes('/query')?{QueryResponse:{Invoice:[raw(s)]}}:{Invoice:raw(s)}));});const p=billingProviders({businessId:'b1',environment:'sandbox',realmId:'123',fetch,authorization:async()=>'synthetic',secret:()=> 'synthetic',db:{rpc:async()=>({data:null,error:null})}});expect(await p.provider.deliver(s,'901','sms','b1:sandbox:123:c1:2026-11:monthly:sms')).toBe('unknown');expect(sends).toBe(1);});
  it('due/send rollover retains exact owner dates',()=>{expect(batchDates('2026-10')).toMatchObject({sendAt:'2026-10-26T17:00:00.000Z',dueDate:'2026-11-01'});expect(batchDates('2026-11')).toMatchObject({sendAt:'2026-11-30T18:00:00.000Z',dueDate:'2026-12-01'});expect(batchDates('2026-12').servicePeriod).toBe('2027-01');});
+ it('runnable factory denies invalid JWT before any privileged query or provider call',async()=>{
+  const fetch=vi.fn(async()=>new Response(JSON.stringify({message:'invalid jwt'}),{status:401,headers:{'Content-Type':'application/json'}}));
+  const app=createBillingApplication({secret:n=>n==='SUPABASE_URL'?'https://synthetic.invalid':'synthetic-test-key',fetch,scope:{businessId:'b1',environment:'sandbox',realmId:'123'},allowedOrigins:['https://app.example.test']});
+  const response=await app.handler(new Request('https://app.example.test',{method:'POST',headers:{Authorization:'Bearer invalid-test','Content-Type':'application/json'},body:JSON.stringify({action:'readiness'})}));
+  expect(response.status).toBe(401);expect(fetch).toHaveBeenCalledTimes(1);expect(String(fetch.mock.calls[0]?.[0])).toContain('/auth/v1/user');
+ });
 });

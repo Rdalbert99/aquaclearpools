@@ -1,5 +1,6 @@
 import { AutomaticInvoicing } from '@/components/billing/AutomaticInvoicing';
 import { defaultEnrollment, saveNewClientEnrollment } from '@/lib/billing-enrollment';
+import type { Tables, TablesInsert } from '@/integrations/supabase/types';
 import { billingInvoke } from '@/lib/billing-transport';
 import { createDraftStore } from '@/lib/client-create-draft';
 import { useState, useEffect, useRef, useMemo } from 'react';
@@ -72,9 +73,9 @@ export default function NewClient() {
   const saveLock=useRef(false);
   const [recovery,setRecovery]=useState(false);
   useEffect(()=>{setRecovery(!!creationStore?.read());},[creationStore]);
-  const [users, setUsers] = useState<any[]>([]);
+  const [users, setUsers] = useState<Pick<Tables<'users'>,'id'|'name'|'email'>[]>([]);
   const [showInviteDialog, setShowInviteDialog] = useState(false);
-  const [createdClient, setCreatedClient] = useState<any>(null);
+  const [createdClient, setCreatedClient] = useState<Tables<'clients'>|null>(null);
   const [clientType, setClientType] = useState<'residential' | 'commercial'>('residential');
   const [commercial, setCommercial] = useState<CommercialFormData>(emptyCommercial);
   const [organizations, setOrganizations] = useState<{ id: string; name: string }[]>([]);
@@ -300,7 +301,7 @@ export default function NewClient() {
       if (!account && client.account_type === 'existing' && client.user_id) finalUserId = client.user_id;
 
 
-      const insertData: any = {
+      const insertData: TablesInsert<'clients'> = {
         customer: client.customer,
         contact_email: client.email || null,
         contact_phone: client.phone || null,
@@ -340,7 +341,7 @@ export default function NewClient() {
       const creation=recovered??{requestId:crypto.randomUUID(),payload:null,clientId:null,account:null};
       if(isAdmin){creation.payload=insertData;creation.account=account;creationStore?.write(creation);setRecovery(true);}
       const { data, error } = isAdmin
-        ? { data: (await billingInvoke<{client: typeof createdClient}>({action:'create_client',scopeId:creation.requestId,client:insertData,account:account??undefined})).client, error: null }
+        ? { data: (await billingInvoke<{client: Tables<'clients'>}>({action:'create_client',scopeId:creation.requestId,client:insertData,account:account??undefined})).client, error: null }
         : await supabase.from('clients').insert(insertData).select().single();
 
 
@@ -404,7 +405,7 @@ export default function NewClient() {
     }
   };
 
-  const handleInputChange = (field: keyof ClientFormData, value: any) => {
+  const handleInputChange = <K extends keyof ClientFormData>(field: K, value: ClientFormData[K]) => {
     setClient({ ...client, [field]: value });
   };
 
@@ -669,7 +670,7 @@ export default function NewClient() {
               <Switch
                 id="isMultiProperty"
                 checked={client.is_multi_property}
-                onCheckedChange={(checked) => handleInputChange('is_multi_property', checked)}
+                onCheckedChange={(checked) => handleInputChange('is_multi_property', checked===true)}
               />
               <Label htmlFor="isMultiProperty" className="text-sm">
                 Multi-property client (manages multiple pool properties)

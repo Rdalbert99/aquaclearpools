@@ -98,8 +98,9 @@ export default function InvoiceDelivery() {
     catch(error) { if(sequence.current===request&&activeMonth.current===month)setErrors(e=>[...e,error instanceof Error?error.message:'Approval not saved']); }
   };
   const reconcile = async (runId:string,channel?:'sms'|'email') => {
-    try { await billingInvoke({action:channel?'reconcile_delivery':'reconcile_invoice',runId,providerId:evidenceIds[runId],...(channel?{channel}:{})}); await load(); }
-    catch(error) { setErrors(e=>[...e,error instanceof Error?error.message:'Provider evidence could not be verified']); }
+    const request=sequence.current;const month=sendMonth;
+    try { await billingInvoke({action:channel?'reconcile_delivery':'reconcile_invoice',runId,providerId:evidenceIds[runId],...(channel?{channel}:{})}); if(sequence.current===request&&activeMonth.current===month)await load(); }
+    catch(error) { if(sequence.current===request&&activeMonth.current===month)setErrors(e=>[...e,error instanceof Error?error.message:'Provider evidence could not be verified']); }
   };
   return (
     <div className="space-y-5 p-4 md:p-6">
@@ -144,7 +145,7 @@ export default function InvoiceDelivery() {
                 {proposal.excluded && <p className="font-medium">Excluded: {proposal.excluded}</p>}
                 {row.blockers.map(blocker => <p key={blocker} className="text-destructive">Needs review: {blocker}</p>)}
                 {summary && <AccountBalancePanel summary={summary} newLabel="Proposed new service invoice" />}
-                {summary && !proposal.excluded && proposal.amountCents != null && <details><summary className="cursor-pointer">Unsent invoice notice draft</summary>{delivery.channels.map(ch => <p key={ch} className="mt-2 whitespace-pre-wrap bg-muted p-2">{invoiceMessage(client.customer, proposal.amountCents ?? 0, dates?.servicePeriod ?? '', ch, balanceDraftLines(summary))} Due {proposal.dueDate}. Earlier balance unavailable; no combined total.</p>)}</details>}
+                {summary && !proposal.excluded && proposal.amountCents != null && <details><summary className="cursor-pointer">Unsent invoice notice draft</summary>{delivery.channels.map(ch => <p key={ch} className="mt-2 whitespace-pre-wrap bg-muted p-2">{invoiceMessage(client.customer, proposal.amountCents ?? 0, dates?.servicePeriod ?? '', ch, balanceDraftLines(summary))} Due {proposal.dueDate}. </p>)}</details>}
                 <Button size="sm" variant="outline" disabled={loading||loadedMonth!==sendMonth||!backendReady || !row.snapshot} onClick={()=>void approveRow(row)} title="Approval stores a reviewed snapshot; it does not send">{approvals[client.id] ? 'Approval saved' : backendReady ? 'Approve snapshot — no send' : 'Approve — unavailable'}</Button>
               </article>;
             })}

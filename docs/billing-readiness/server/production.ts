@@ -155,7 +155,7 @@ export function createBillingApplication(options: {
         const comparison=compareIdentity(app,qb);
         if(customerFingerprint(scope.realmId,app,qb)!==body.fingerprint)throw new Error('stale_identity_evidence');
         if(!comparison.supported)throw new Error('identity_review_required');
-        return reply({verified:await query('qbo_billing_confirm_mapping',{...scoped,_client:body.clientId,_customer:body.customerId,_actor:actor.id,_evidence:{supported:true,active:qb.active,evidence:comparison.evidence,displayName:qb.displayName},_fingerprint:body.fingerprint})});
+        return reply({verified:await query('qbo_billing_confirm_mapping',{...scoped,_client:body.clientId,_customer:body.customerId,_actor:actor.id,_evidence:{supported:true,active:qb.active,evidence:comparison.evidence,displayName:qb.displayName,app:{id:app.id,customer:app.customer,status:app.status,contact_email:app.contact_email??null,contact_phone:app.contact_phone??null,address:app.address??null},customer:qb},_fingerprint:body.fingerprint})});
       }
       if(body.action==='readiness'){const month=body.sendMonth??initialSendMonth();const approvals=await hostRead('approvals',batchDates(month).servicePeriod);return reply({scope,sendMonth:month,policy:await policy(),rows:await roster(month),approvals});}
       if(body.action==='policy')return reply({policy:await policy()});

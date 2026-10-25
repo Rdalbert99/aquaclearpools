@@ -33,8 +33,8 @@ describe('provider setup discovery (GET-only, derived refs)', () => {
     expect(e.item.incomeAccountId).toBe('79'); expect(e.account.type).toBe('Income'); expect(e.taxSupported).toBe(true);
     expect(q.calls).toEqual(['/item/1010000001', '/account/79', `/companyinfo/${REALM}`]);
   });
-  it('fails closed for taxable item, non-income account, non-US and wrong company', async () => {
-    expect((await discoverProvider(qbo({ item: { ...item, Taxable: true } }).get, REALM, '1010000001')).taxSupported).toBe(false);
+  it('permits catalog taxable default with later NON attestation, blocks non-income/non-US/wrong company', async () => {
+    expect((await discoverProvider(qbo({ item: { ...item, Taxable: true } }).get, REALM, '1010000001')).taxSupported).toBe(true);
     expect((await discoverProvider(qbo({ account: { Id: '79', AccountType: 'Expense' } }).get, REALM, '1010000001')).taxSupported).toBe(false);
     expect((await discoverProvider(qbo({ company: { Id: REALM, Country: 'CA' } }).get, REALM, '1010000001')).taxSupported).toBe(false);
     await expect(discoverProvider(qbo({ company: { Id: '1', Country: 'US' } }).get, REALM, '1010000001')).rejects.toThrow('company_mismatch');
@@ -153,7 +153,7 @@ describe('rendered setup flows (mocked transport)', () => {
     expect(t.root.findAll(n => n.props['data-testid'] === 'provider-evidence')).toHaveLength(0);
     expect(mock.invoke).toHaveBeenCalledTimes(1);
   });
-  it('provider: taxable item cannot be confirmed or saved', async () => {
+  it('provider: unsupported setup cannot be confirmed or saved', async () => {
     mock.invoke.mockResolvedValue({ provider: { ...evidence, taxSupported: false, blockers: ['Item is marked taxable'] } });
     let t!: ReactTestRenderer; await act(async () => { t = create(<ProviderSetup />); });
     await act(async () => button(t, 'Look up').props.onClick()); await flush();

@@ -36,5 +36,26 @@ describe('rendered billing readiness with offline transport',()=>{
 describe('rendered customer save and enrollment correction',()=>{
  it('missing endpoint does not save a customer or create earlier profile',async()=>{mock.invoke.mockRejectedValue(new Error('Backend missing'));const t=await mount(<NewClient/>);await act(async()=>t.root.findByProps({id:'customer'}).props.onChange({target:{value:'Synthetic'}}));const selects=t.root.findAllByType('select');const pool=selects.find(s=>s.props.value==='');await act(async()=>pool?.props.onValueChange('Chlorine'));const save=t.root.findAllByType('button').find(b=>b.children.some((x:unknown)=>typeof x==='string'&&x.includes('Save Client')));expect(save).toBeDefined();await act(async()=>save?.props.onClick());expect(mock.invoke.mock.calls.some(([b])=>b.action==='create_client')).toBe(false);expect(mock.navigate).not.toHaveBeenCalled();await act(async()=>t.unmount());});
  it('crash/remount retries frozen request and navigates to actual saved customer, never false enrollment success',async()=>{sessionStorage.setItem('aqua-client-create:admin',JSON.stringify({requestId:'00000000-0000-4000-8000-000000000004',payload:{customer:'Synthetic'},clientId:null}));mock.invoke.mockResolvedValue({client:{id:'actual-client'}});const t=await mount(<NewClient/>);await drain();const save=t.root.findAllByType('button').find(b=>b.children.some((x:unknown)=>typeof x==='string'&&x.includes('Save Client')));await act(async()=>save?.props.onClick());expect(mock.invoke).toHaveBeenCalledWith(expect.objectContaining({action:'create_client',scopeId:'00000000-0000-4000-8000-000000000004',client:{customer:'Synthetic'}}));expect(mock.navigate).toHaveBeenCalledWith('/admin/clients/actual-client/edit');expect(sessionStorage.getItem('aqua-client-create:admin')).toBeNull();await act(async()=>t.unmount());});
- it('unsaved enrollment prevents automatic reload and stale client response cannot save into another client',async()=>{let resolve:((v:unknown)=>void)|undefined;const adapter={ready:true,load:async()=>null,save:()=>new Promise<ReturnType<typeof row>['snapshot']>(r=>{resolve=r;})};const t=await mount(<AutomaticInvoicing clientId="c1" scope={{businessId:'b1',realmId:'123',environment:'sandbox',clientId:'c1'}} adapter={adapter as never}/>);await drain();const toggle=t.root.findAllByType('input').find(i=>i.props.onCheckedChange);await act(async()=>toggle?.props.onCheckedChange(true));expect(hasUnsavedWork()).toBe(true);await act(async()=>t.unmount());expect(hasUnsavedWork()).toBe(false);expect(resolve).toBeUndefined();});
+ it('new customer success uses actual ID; partial enrollment failure never reports combined success',async()=>{
+  mock.invoke.mockImplementation(async(b)=>{if(b.action==='policy')return {policy:{invoiceEnabled:false}};if(b.action==='create_client')return {client:{id:'actual-created'}};if(b.action==='register_new_client')throw new Error('Enrollment failed');throw new Error('unexpected');});
+  const t=await mount(<NewClient/>);await act(async()=>t.root.findByProps({id:'customer'}).props.onChange({target:{value:'Synthetic'}}));
+  const pool=t.root.findAllByType('select').find(s=>s.props.value==='');await act(async()=>pool?.props.onValueChange('Chlorine'));
+  const save=t.root.findAllByType('button').find(b=>b.children.some((x:unknown)=>typeof x==='string'&&x.includes('Save Client')));
+  await act(async()=>{save?.props.onClick();save?.props.onClick();});await drain();
+  expect(mock.invoke.mock.calls.filter(([b])=>b.action==='create_client')).toHaveLength(1);
+  expect(mock.invoke).toHaveBeenCalledWith(expect.objectContaining({action:'register_new_client',clientId:'actual-created',enabled:false}));
+  expect(mock.navigate).toHaveBeenCalledWith('/admin/clients/actual-created/edit');expect(mock.toast).toHaveBeenCalledWith(expect.objectContaining({title:'Customer created — invoicing not saved'}));await act(async()=>t.unmount());
+ });
+ it('unsaved enrollment blocks reload; late save for old client cannot overwrite current client',async()=>{
+  let resolve:((v:unknown)=>void)|undefined;const enrollment={enabled:false,firstServicePeriod:null,revision:1,updatedBy:'owner',updatedAt:'2026-10-25T12:00:00Z'};
+  const adapter={ready:true,load:async()=>enrollment,save:()=>new Promise<typeof enrollment>(r=>{resolve=r as (v:unknown)=>void;})};
+  const scope={businessId:'b1',realmId:'123',environment:'sandbox' as const,clientId:'c1'};
+  const t=await mount(<AutomaticInvoicing clientId="c1" scope={scope} adapter={adapter}/>);await drain();
+  const month=t.root.findByProps({id:'first-invoice-c1'});await act(async()=>month.props.onChange({target:{value:'2026-11'}}));
+  expect(hasUnsavedWork()).toBe(true);const save=t.root.findAllByType('button').find(b=>b.children.join('')==='Save enrollment');
+  await act(async()=>{void save?.props.onClick();});
+  await act(async()=>t.update(<MemoryRouter><AutomaticInvoicing clientId="c2" scope={{...scope,clientId:'c2'}} adapter={adapter}/></MemoryRouter>));await drain();
+  await act(async()=>resolve?.({...enrollment,firstServicePeriod:'2026-11',revision:2}));
+  expect(t.root.findByProps({id:'first-invoice-c2'}).props.value).toBe('');await act(async()=>t.unmount());expect(hasUnsavedWork()).toBe(false);
+ });
 });

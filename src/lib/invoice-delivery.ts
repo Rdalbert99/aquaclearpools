@@ -66,49 +66,8 @@ export function chicagoToUtc(dateIso: string, hour: number, minute = 0): Date {
 export const idempotencyKey = (kind: 'invoice' | 'announcement', clientId: string, periodKey: string) =>
   `${kind}:${periodKey}:${clientId}`;
 
-export interface RosterRule {
-  match: string; // lower-case customer name contains
-  action: 'exclude' | 'override';
-  reason: string;
-  amountCents?: number;
-  frequency?: string;
-  channel?: InvoiceChannel;
-  /** Only applies in this period (YYYY-MM); other periods excluded with reason. */
-  period?: string;
-}
-
-/** Roster corrections from the owner (Oct 2026). Applied as proposals for review, never written to customer records. */
-export const ROSTER_RULES: RosterRule[] = [
-  { match: 'peggy mcquarter', action: 'override', amountCents: 300000, frequency: 'annual', channel: 'sms', period: '2026-10',
-    reason: 'Annual prepaid at full rate $3,000, text only, no monthly invoice' },
-  { match: 'shelby thames', action: 'exclude', reason: 'Annual prepaid, due late November' },
-  { match: 'jennifer robinson', action: 'exclude', reason: 'Annual prepaid, due late November' },
-  { match: 'laken ford ramey', action: 'exclude', reason: 'Rate pending' },
-  { match: 'laken ramey', action: 'exclude', reason: 'Rate pending' },
-];
-
-export interface ProposedItem {
-  amountCents: number | null;
-  frequency: string;
-  channelOverride: InvoiceChannel | null;
-  excluded: string | null;
-  note: string | null;
-}
-
-/** Proposes an invoice for one customer and period. $0 / missing rates are excluded as uncertain. */
-export function proposeInvoice(name: string, monthlyRateDollars: number | null | undefined, periodKey: string): ProposedItem {
-  const n = name.toLowerCase();
-  const rule = ROSTER_RULES.find((r) => n.includes(r.match));
-  if (rule?.action === 'exclude') return { amountCents: null, frequency: 'monthly', channelOverride: null, excluded: rule.reason, note: null };
-  if (rule?.action === 'override') {
-    if (rule.period && rule.period !== periodKey)
-      return { amountCents: null, frequency: rule.frequency ?? 'monthly', channelOverride: null, excluded: `${rule.reason} (billed ${rule.period})`, note: null };
-    return { amountCents: rule.amountCents ?? null, frequency: rule.frequency ?? 'monthly', channelOverride: rule.channel ?? null, excluded: null, note: rule.reason };
-  }
-  const rate = Number(monthlyRateDollars);
-  if (!isFinite(rate) || rate <= 0) return { amountCents: null, frequency: 'monthly', channelOverride: null, excluded: 'No confirmed rate', note: null };
-  return { amountCents: Math.round(rate * 100), frequency: 'monthly', channelOverride: null, excluded: null, note: null };
-}
+/** Legacy callers delegate to the identity-aware readiness proposal; period means SERVICE month. */
+export { proposeInvoice } from './billing-readiness';
 
 export const ANNOUNCEMENT_SMS =
   'Aqua Clear Pools: Starting today, your pool service invoices will arrive by text and email. To choose just one, sign in at getaquaclear.com/auth/login → Profile → Billing notifications. No account yet? Use the invite link we sent or reply to request one. Reply STOP to opt out.';

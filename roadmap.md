@@ -1,6 +1,8 @@
 # Roadmap
 
 ## In progress
+- [x] Consolidated billing readiness source preparation (Oct 25 2026): roster, next-month dates, annual review, guarded mocked QBO workflow, durable claim SQL and disabled schedule source prepared; 235 tests pass.
+- [ ] Consolidated billing activation — BLOCKED: reviewed unapplied schema, concrete transactional/provider/authorization bindings, confirmed annual and tax/mapping setup, isolated integration verification and separate deployment/activation approvals. See docs/billing-readiness/README.md; no live effects permitted.
 - [ ] QuickBooks read-only test (/admin/quickbooks): built; waiting on Intuit app keys QBO_CLIENT_ID + QBO_CLIENT_SECRET and redirect URI registration, then admin connects and tests invoice #350154860. Full QBO billing plan (preferences, prepaid discount, promo note) drafted, not built
 - [ ] getaquaclear.app: checked available ($9.99 first year, renews $14.80/yr) — user deferred the purchase to later; when bought, connect it and set primary so getaquaclear.com redirects
 - [ ] Billing & accounting system: plan approved (plan only). Waiting on: processor choice, invoice style, tech cash/check, QuickBooks exports + subscription cost. Phase 1 foundation BUILT in preview (billing off, admin-only /admin/billing). Next: Phase 2 QuickBooks import (needs exports + subscription cost); payment provider = check Lovable built-in (must be enabled from Lovable editor chat)
@@ -30,7 +32,7 @@
 ## Invoice delivery rollout (Mon Oct 26 2026)
 - [x] Invoice Text/Email/Both preferences, admin overrides, audit, approval screen, announcement preview (sending off)
 - [ ] Monday announcement send — blocked: send function not built/enabled; needs user approval of preview + test send
-- [ ] Monday 12:00 PM CDT invoices — blocked: QuickBooks live keys rejected (invalid_client) and QBO writes not approved; Laken Ford Ramey rate pending
+- [ ] Monday noon Chicago invoices for next month's service, due the first — blocked: billing activation and provider verification not approved; Laken Ford Ramey remains on explicit owner hold (preserve $125 rate). Live connection health is not rechecked in this source-only task.
 - [x] Outstanding balances: read-only QuickBooks open invoices by linked customer ID, shown separately from the new invoice + account total in admin review, portal and message drafts (preview only)
 - [ ] Link each customer to their QuickBooks customer ID (Invoice Delivery → Link QuickBooks) — waiting on: working live QuickBooks connection (last live attempt rejected the keys)
 - [x] App auto-update on iPhone: fresh pages online, safe update when nothing unsaved, visit drafts, version label (preview only, not published)

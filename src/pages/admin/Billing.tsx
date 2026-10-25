@@ -138,7 +138,7 @@ export default function Billing() {
         <AlertTitle>Billing mode: {business.billing_mode.toUpperCase()}</AlertTitle>
         <AlertDescription>
           QuickBooks remains the official record. Nothing here is sent to customers or charged, and customers can't see these invoices.
-          Use this to practice and to build shadow invoices for reconciliation.
+          Shadow practice / reconciliation only — not the official invoice source. Official QuickBooks invoice readiness is reviewed separately in Invoice Delivery; its schedules remain disabled.
         </AlertDescription>
       </Alert>
 

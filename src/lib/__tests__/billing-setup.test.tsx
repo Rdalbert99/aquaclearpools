@@ -145,7 +145,7 @@ describe('rendered setup flows (mocked transport)', () => {
   });
   it('provider: cancel makes no write; switching item discards a late response', async () => {
     let resolve!: (v: unknown) => void;
-    mock.invoke.mockImplementation(() => new Promise(r => { resolve = r; }));
+    mock.invoke.mockImplementation((b?: unknown) => b ? new Promise(r => { resolve = r; }) : Promise.resolve({}));
     let t!: ReactTestRenderer; await act(async () => { t = create(<ProviderSetup />); });
     await act(async () => { void button(t, 'Look up').props.onClick(); });
     await act(async () => byLabel(t, 'QuickBooks item ID').props.onChange({ target: { value: '22' } }));
@@ -167,7 +167,7 @@ describe('rendered setup flows (mocked transport)', () => {
     await act(async () => byLabel(t, 'App customer').props.onChange({ target: { value: 'c1' } }));
     await act(async () => byLabel(t, 'QuickBooks customer ID').props.onChange({ target: { value: '58' } })); return t; };
   it('mapping: lookup → confirm → save sends fingerprint; server rejection shows not saved', async () => {
-    mock.invoke.mockImplementation(async (b?: { action: string }) => { if (b?.action === 'discover_customer') return discovery(); throw new Error('stale_identity_evidence'); });
+    mock.invoke.mockImplementation(async (b?: { action: string }) => { if (!b) return {}; if (b.action === 'discover_customer') return discovery(); throw new Error('stale_identity_evidence'); });
     const t = await mapping();
     await act(async () => button(t, 'Look up').props.onClick()); await flush();
     await act(async () => byLabel(t, 'Confirm identity match').props.onClick());
@@ -182,7 +182,7 @@ describe('rendered setup flows (mocked transport)', () => {
     expect(button(t, 'Save verified link').props.disabled).toBe(true);
   });
   it('mapping: switching customer while lookup is pending discards the stale result', async () => {
-    let resolve!: (v: unknown) => void; mock.invoke.mockImplementation(() => new Promise(r => { resolve = r; }));
+    let resolve!: (v: unknown) => void; mock.invoke.mockImplementation((b?: unknown) => b ? new Promise(r => { resolve = r; }) : Promise.resolve({}));
     const t = await mapping(); await act(async () => { void button(t, 'Look up').props.onClick(); });
     await act(async () => byLabel(t, 'App customer').props.onChange({ target: { value: 'c2' } }));
     await act(async () => { resolve(discovery()); }); await flush();

@@ -1,5 +1,6 @@
 import { AutomaticInvoicing } from '@/components/billing/AutomaticInvoicing';
 import { defaultEnrollment, saveNewClientEnrollment } from '@/lib/billing-enrollment';
+import { setUnsavedWork } from '@/lib/unsaved-work';
 import type { Tables, TablesInsert } from '@/integrations/supabase/types';
 import { billingInvoke } from '@/lib/billing-transport';
 import { createDraftStore } from '@/lib/client-create-draft';
@@ -69,7 +70,7 @@ export default function NewClient() {
   const { toast } = useToast();
   const [saving, setSaving] = useState(false);
   const [enrollmentDraft, setEnrollmentDraft] = useState(defaultEnrollment);
-  const creationStore=useMemo(()=>user?.id?createDraftStore(sessionStorage,user.id):null,[user?.id]);
+  const creationStore=useMemo(()=>user?.id?createDraftStore(localStorage,user.id):null,[user?.id]);
   const saveLock=useRef(false);
   const [recovery,setRecovery]=useState(false);
   useEffect(()=>{setRecovery(!!creationStore?.read());},[creationStore]);
@@ -110,6 +111,8 @@ export default function NewClient() {
     new_user_email: '',
 
   });
+
+  useEffect(()=>{const id='admin-new-client';setUnsavedWork(id,isAdmin&&(saving||recovery||!!client.customer.trim()));return()=>setUnsavedWork(id,false);},[isAdmin,saving,recovery,client.customer]);
 
   useEffect(() => {
     if (isAdmin) {

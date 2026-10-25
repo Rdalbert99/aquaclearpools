@@ -1,5 +1,7 @@
 import { chicagoToUtc, finalWeekMonday, resolveInvoiceChannels, type InvoiceChannel, type SendChannel } from './invoice-delivery';
 
+export type { SendChannel } from './invoice-delivery';
+
 export const OWNER_IDS = {
   laken: '15d8a7d0-769c-4b46-954a-e23f3f07c5d8',
   peggy: '6d228b42-7306-467f-9a9d-89f31ad4f599',

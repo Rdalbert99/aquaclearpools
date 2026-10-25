@@ -64,7 +64,7 @@ describe('owner billing rules', () => {
     expect(approvedTotals([{ snapshot: s, current: s }])).toEqual({ count: 1, amountCents: 20000 });
   });
   it('monthly and annual collide in same durable slot', () => {
-    const s = fixtureSnapshot(); expect(invoiceSlot(s)).toBe(invoiceSlot({ ...s, frequency: 'annual' }));
+    const s = fixtureSnapshot(); const annual: Snapshot = { ...s, frequency: 'annual' }; expect(invoiceSlot(s)).toBe(invoiceSlot(annual));
   });
   it('schedule defaults off and unresolved morning blocks announcement', () => {
     const at = new Date('2026-10-26T17:00:00Z');

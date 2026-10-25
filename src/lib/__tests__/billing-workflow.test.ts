@@ -44,8 +44,8 @@ function harness() {
   };
   const invoice: ProviderInvoice = { id: '901', customerId: s.customerId, amountCents: 20000, dueDate: s.dueDate, serviceStart: s.serviceStart, serviceEnd: s.serviceEnd, frequency: 'monthly' };
   const provider: Provider = {
-    existing: vi.fn(async () => ({ status: 'clear', exact: [] })), verifySetup: vi.fn(async () => true), balances: vi.fn(async () => ({ available: true })),
-    create: vi.fn(async () => invoice), deliver: vi.fn(async () => 'sent'),
+    existing: vi.fn(async () => ({ status: 'clear' as const, exact: [] })), verifySetup: vi.fn(async () => true), balances: vi.fn(async () => ({ available: true })),
+    create: vi.fn(async () => invoice), deliver: vi.fn(async () => 'sent' as const),
   };
   return { authority, store, provider, s, invoice, events, records, approval, change: (value: Snapshot | null) => { current = value; }, policy: (value: Partial<Policy>) => { policy = { ...policy, ...value }; } };
 }
@@ -88,15 +88,15 @@ describe('mocked server-only QBO workflow', () => {
     expect(deliver.mock.calls.filter(call => call[2] === 'email')).toHaveLength(2);
   });
   it('unknown channel needs reconciliation not resend', async () => {
-    const h = harness(); h.provider.deliver = vi.fn(async () => 'unknown');
+    const h = harness(); h.provider.deliver = vi.fn(async () => 'unknown' as const);
     expect((await executeInvoice(h, 'mock-admin', 'a1')).state).toBe('reconcile');
     await expect(resumeDelivery({ ...h, claimResume: async () => true }, 'mock-admin', 'a1')).rejects.toThrow('reconciliation_required');
     expect(h.provider.deliver).toHaveBeenCalledTimes(1);
   });
   it('existing manual exact invoice is adopted not recreated; ambiguous invoices block', async () => {
-    const h = harness(); h.provider.existing = vi.fn(async () => ({ status: 'clear', exact: [h.invoice] }));
+    const h = harness(); h.provider.existing = vi.fn(async () => ({ status: 'clear' as const, exact: [h.invoice] }));
     expect((await executeInvoice(h, 'mock-admin', 'a1')).state).toBe('complete'); expect(h.provider.create).not.toHaveBeenCalled();
-    const other = harness(); other.provider.existing = vi.fn(async () => ({ status: 'ambiguous', exact: [] }));
+    const other = harness(); other.provider.existing = vi.fn(async () => ({ status: 'ambiguous' as const, exact: [] }));
     expect((await executeInvoice(other, 'mock-admin', 'a1')).state).toBe('blocked'); expect(other.provider.create).not.toHaveBeenCalled();
   });
   it('unknown balance/read errors never become zero', async () => {

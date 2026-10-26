@@ -2773,6 +2773,45 @@ export type Database = {
           },
         ]
       }
+      qbo_billing_mapping_audit: {
+        Row: {
+          actor: string
+          business_id: string
+          client_id: string
+          created_at: string
+          customer_id: string
+          environment: string
+          evidence: Json
+          fingerprint: string
+          id: string
+          realm_id: string
+        }
+        Insert: {
+          actor: string
+          business_id: string
+          client_id: string
+          created_at?: string
+          customer_id: string
+          environment: string
+          evidence: Json
+          fingerprint: string
+          id?: string
+          realm_id: string
+        }
+        Update: {
+          actor?: string
+          business_id?: string
+          client_id?: string
+          created_at?: string
+          customer_id?: string
+          environment?: string
+          evidence?: Json
+          fingerprint?: string
+          id?: string
+          realm_id?: string
+        }
+        Relationships: []
+      }
       qbo_billing_provider_setup: {
         Row: {
           business_id: string
@@ -4007,6 +4046,12 @@ export type Database = {
         Args: { p_identifier: string }
         Returns: boolean
       }
+      aqua_telnyx_ingest: { Args: { _event: Json }; Returns: string }
+      aqua_telnyx_install_signing_key: {
+        Args: { _public_key: string; _sha256: string }
+        Returns: Json
+      }
+      aqua_telnyx_read_signing_key: { Args: never; Returns: Json }
       billing_issue_invoice: {
         Args: { _due_date?: string; _invoice_id: string }
         Returns: {
@@ -4236,6 +4281,7 @@ export type Database = {
         Args: {
           _actor: string
           _business: string
+          _channel: string
           _client: string
           _environment: string
           _realm: string
@@ -4408,6 +4454,19 @@ export type Database = {
         }
         Returns: boolean
       }
+      qbo_billing_confirm_mapping: {
+        Args: {
+          _actor: string
+          _business: string
+          _client: string
+          _customer: string
+          _environment: string
+          _evidence: Json
+          _fingerprint: string
+          _realm: string
+        }
+        Returns: boolean
+      }
       qbo_billing_create_scoped_client: {
         Args: {
           _account?: Json
@@ -4456,6 +4515,24 @@ export type Database = {
           _realm: string
         }
         Returns: Json
+      }
+      qbo_billing_owner_test_outcome: {
+        Args: {
+          _business: string
+          _channel: string
+          _provider: string
+          _state: string
+          _test: string
+        }
+        Returns: boolean
+      }
+      qbo_billing_owner_test_reserve: {
+        Args: { _business: string; _channel: string; _test: string }
+        Returns: boolean
+      }
+      qbo_billing_owner_test_sms_ready: {
+        Args: { _business: string }
+        Returns: boolean
       }
       qbo_billing_read_approval: {
         Args: {
@@ -4555,6 +4632,7 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      qbo_billing_scheduler_pending: { Args: { _scope: string }; Returns: Json }
       qbo_billing_set_enrollment: {
         Args: {
           _actor: string
@@ -4620,6 +4698,19 @@ export type Database = {
           _setup: Json
         }
         Returns: boolean
+      }
+      qbo_billing_verify_scheduler: {
+        Args: {
+          _action: string
+          _business: string
+          _environment: string
+          _issued: number
+          _nonce: string
+          _proof: string
+          _realm: string
+          _scope: string
+        }
+        Returns: Json
       }
       secure_admin_user_lookup: {
         Args: { admin_reason: string; lookup_email: string }

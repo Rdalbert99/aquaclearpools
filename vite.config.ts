@@ -39,7 +39,7 @@ export default defineConfig(({ mode }) => ({
         runtimeCaching: [
           {
             // App shell / page navigations
-            urlPattern: ({ request }) => request.mode === "navigate",
+            urlPattern: ({ request, url }) => request.mode === "navigate" && url.pathname !== "/invoice",
             handler: "NetworkFirst",
             options: {
               cacheName: "acp-pages",

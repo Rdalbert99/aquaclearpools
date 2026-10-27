@@ -4046,6 +4046,30 @@ export type Database = {
         Args: { p_identifier: string }
         Returns: boolean
       }
+      aqua_owner_test_complete: {
+        Args: { _claim: string; _step: string; _test: string; _value: Json }
+        Returns: boolean
+      }
+      aqua_owner_test_observe: {
+        Args: { _claim: string; _ids: Json; _step: string; _test: string }
+        Returns: boolean
+      }
+      aqua_owner_test_preflight: { Args: never; Returns: boolean }
+      aqua_owner_test_provider_setup: { Args: never; Returns: Json }
+      aqua_owner_test_read: {
+        Args: { _step: string; _test: string }
+        Returns: Json
+      }
+      aqua_owner_test_reserve: {
+        Args: { _step: string; _test: string }
+        Returns: string
+      }
+      aqua_owner_test_sms_allowed: { Args: never; Returns: boolean }
+      aqua_owner_test_sms_evidence: { Args: never; Returns: Json }
+      aqua_owner_test_uncertain: {
+        Args: { _claim: string; _step: string; _test: string }
+        Returns: undefined
+      }
       aqua_telnyx_ingest: { Args: { _event: Json }; Returns: string }
       aqua_telnyx_install_signing_key: {
         Args: { _public_key: string; _sha256: string }

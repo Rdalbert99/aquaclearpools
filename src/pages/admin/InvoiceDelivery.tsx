@@ -1,3 +1,5 @@
+import { BillingOverview } from '@/components/billing/BillingOverview';
+import { invoicePreviewGate, type ExistingInvoiceCheck } from '@/lib/invoice-preview';
 import { OwnerInvoiceTest } from '@/components/billing/OwnerInvoiceTest';
 import { Link } from 'react-router-dom';
 import { useCallback, useEffect, useMemo, useState, useRef } from 'react';
@@ -8,7 +10,7 @@ import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { fromCents } from '@/lib/billing';
 import { ANNOUNCEMENT_EMAIL_BODY, ANNOUNCEMENT_EMAIL_SUBJECT, ANNOUNCEMENT_SMS, invoiceMessage } from '@/lib/invoice-delivery';
-import { batchDates, initialSendMonth, isActiveClient, readinessRow, snapshotCanonical, type BillingClient, type ExactMapping, type Enrollment } from '@/lib/billing-readiness';
+import { batchDates, chicagoDate, initialSendMonth, isActiveClient, readinessRow, snapshotCanonical, type BillingClient, type ExactMapping, type Enrollment } from '@/lib/billing-readiness';
 import { batchSummary, enrollmentLabel, announcementAudience } from '@/lib/billing-batch';
 import { ProviderSetup, CustomerMapping } from '@/components/billing/BillingSetup';
 import { billingInvoke } from '@/lib/billing-transport';
@@ -22,6 +24,7 @@ const last10 = (s?: string | null) => (s ?? '').replace(/\D/g, '').slice(-10);
 const channelLabel = (s: string[]) => s.map(ch => ch === 'sms' ? 'Text' : 'Email').join(' + ') || 'None';
 
 export default function InvoiceDelivery() {
+  const [technicalOpen, setTechnicalOpen] = useState(false);
   const [clients, setClients] = useState<BillingClient[]>([]);
   const [prefs, setPrefs] = useState<Preference[]>([]);
   const [optOuts, setOptOuts] = useState<OptOut[]>([]);
@@ -29,7 +32,7 @@ export default function InvoiceDelivery() {
   const [errors, setErrors] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const [sendMonth, setSendMonth] = useState(initialSendMonth);
-  const [authoritativeRows, setAuthoritativeRows] = useState<(ReturnType<typeof readinessRow> & {balance?:BalanceLookup;enrollment?:Enrollment|null})[] | null>(null);
+  const [authoritativeRows, setAuthoritativeRows] = useState<(ReturnType<typeof readinessRow> & {balance?:BalanceLookup;enrollment?:Enrollment|null;existingInvoiceCheck?:ExistingInvoiceCheck})[] | null>(null);
   const [backendReady, setBackendReady] = useState(false);
   const [approvals, setApprovals] = useState<Record<string, string>>({});
   const [runs, setRuns] = useState<{id:string;state:string;provider_invoice_id:string|null;code:string;channels:Record<string,string>}[]>([]);
@@ -49,7 +52,7 @@ export default function InvoiceDelivery() {
         if(!current()||result.sendMonth!==sendMonth)return;
         const history=await billingInvoke<{runs:typeof runs}>({action:'runs',sendMonth}).catch(()=>{failures.push('Provider history unavailable for this month.');return {runs:[]};});
         if(!current())return;
-        setAuthoritativeRows(result.rows);setPolicy(result.policy);setLoadedMonth(sendMonth);setBackendReady(result.policy.migrationVerified&&result.policy.deploymentVerified);
+        setAuthoritativeRows(result.rows.map(row => invoicePreviewGate(row, ('existingInvoiceCheck' in row ? row.existingInvoiceCheck : undefined) as ExistingInvoiceCheck | undefined ?? {status:'unavailable',exact:[]})));setPolicy(result.policy);setLoadedMonth(sendMonth);setBackendReady(result.policy.migrationVerified&&result.policy.deploymentVerified);
         setApprovals(Object.fromEntries(result.rows.filter(r=>r.snapshot&&result.approvals.some(a=>a.clientId===r.client.id&&a.fingerprint===snapshotCanonical(r.snapshot as NonNullable<typeof r.snapshot>))).map(r=>[r.client.id,snapshotCanonical(r.snapshot as NonNullable<typeof r.snapshot>)])));
         setRuns(history.runs);return;
       } catch { if(!current())return;failures.push('Saved billing readiness unavailable — server deployment or setup pending. Below is an unapproved fallback only.'); }
@@ -80,7 +83,7 @@ export default function InvoiceDelivery() {
       failures.push(error instanceof Error ? error.message : 'Roster could not be read');
     } finally { if(current()){setErrors(failures);setLoading(false);} }
   }, [sendMonth]);
-  useEffect(() => { const counter=sequence;void load();return()=>{counter.current++;}; }, [load]);
+  useEffect(() => { const counter=sequence;if(technicalOpen)void load();return()=>{counter.current++;}; }, [load, technicalOpen]);
   const dates = useMemo(() => { try { return batchDates(sendMonth); } catch { return null; } }, [sendMonth]);
   const rows = useMemo(() => loadedMonth!==sendMonth ? [] : authoritativeRows ?? (dates ? clients.map(client => {
     const pref = prefs.find(p => p.client_id === client.id);
@@ -109,6 +112,10 @@ export default function InvoiceDelivery() {
   };
   return (
     <div className="space-y-5 p-4 md:p-6">
+      <BillingOverview />
+      <details className="border-t pt-4" onToggle={e=>setTechnicalOpen(e.currentTarget.open)}>
+        <summary className="cursor-pointer text-sm font-medium">Billing setup, preview review &amp; owner test</summary>
+        {technicalOpen && <div className="mt-4 space-y-5">
       <OwnerInvoiceTest />
       <div><h1 className="text-2xl font-bold">Invoice delivery readiness</h1><p className="text-sm text-muted-foreground">QuickBooks official invoices · billing mode {policy?.billingMode ?? 'unavailable'}</p></div>
       <section className="space-y-2 border-y py-4 text-sm">
@@ -143,20 +150,23 @@ export default function InvoiceDelivery() {
               const { client, proposal, delivery } = row;
               const candidateLinks = links.filter(l => l.client_id === client.id);
               const savedBalance = 'balance' in row ? row.balance as BalanceLookup : undefined;
-              const summary = proposal.amountCents == null ? null : accountSummary(proposal.amountCents, savedBalance ?? { status: 'unavailable', reason: 'Live QuickBooks lookup not performed; exact realm mapping and verification pending' }, dates?.sendDay ?? '');
+              const check = 'existingInvoiceCheck' in row ? row.existingInvoiceCheck as ExistingInvoiceCheck : undefined;
+              const alreadyIssued = check?.status === 'clear' && check.exact.length === 1;
+              const newProposal = check?.status === 'clear' && check.exact.length === 0 && !proposal.excluded;
+              const summary = accountSummary(newProposal ? proposal.amountCents ?? 0 : 0, savedBalance ?? { status: 'unavailable', reason: 'Live QuickBooks lookup not performed; exact realm mapping and verification pending' }, chicagoDate());
               return <article key={client.id} className="space-y-2 py-4 text-sm">
                 <div className="flex flex-wrap items-center justify-between gap-2"><h2 className="font-semibold">{client.customer}</h2><Badge variant={proposal.excluded ? 'outline' : 'secondary'}>{proposal.frequency}</Badge></div>
                 <p className="break-all text-xs text-muted-foreground">Client {client.id}</p>
                 {(() => { const e = enrollmentLabel(row); return <p>Automatic invoicing: {e.state === 'on' ? 'saved ON' : e.state === 'off' ? 'saved OFF' : 'not saved'} · First service month {e.firstMonth ?? 'not set'} · Server sender {policy ? policy.invoiceEnabled ? 'enabled' : 'disabled' : 'unavailable'}</p>; })()}
                 <Link className="text-primary underline" to={`/admin/clients/${client.id}/edit`}>Review customer enrollment</Link>
-                <p>{proposal.amountCents == null ? 'Amount needs review' : fromCents(proposal.amountCents)} · Coverage {proposal.serviceStart} – {proposal.serviceEnd} · Due {proposal.dueDate}</p>
+                <p>{alreadyIssued ? 'Already invoiced — no new charge proposed' : !newProposal ? 'Reference service rate (not a new charge): ' + (proposal.amountCents == null ? 'needs review' : fromCents(proposal.amountCents)) : 'Proposed new service invoice: ' + fromCents(proposal.amountCents ?? 0)} · Coverage {proposal.serviceStart} – {proposal.serviceEnd} · Due {proposal.dueDate}</p>
                 {proposal.note && <p className="text-muted-foreground">{proposal.note}</p>}
                 <p>{channelLabel(delivery.channels)}{delivery.defaulted && !proposal.channelOverride ? ' · default both, consent required' : ''}{delivery.skipped.map(s => ` · ${s.channel}: ${s.reason}`).join('')}</p>
-                <p>QuickBooks: {row.snapshot ? `${row.snapshot.environment} realm ${row.snapshot.realmId} customer ${row.snapshot.customerId}; item ${row.snapshot.provider.itemId}` : candidateLinks.length ? candidateLinks.map(l => `${l.environment} customer ${l.qbo_customer_id} (realm / business not verified)`).join('; ') : 'Exact customer mapping missing'} · Provider verification required</p>
+                <p>QuickBooks: {row.snapshot ? `${row.snapshot.environment} realm ${row.snapshot.realmId} customer ${row.snapshot.customerId}; item ${row.snapshot.provider.itemId}` : candidateLinks.length ? candidateLinks.map(l => `${l.environment} customer ${l.qbo_customer_id} (realm / business not verified)`).join('; ') : alreadyIssued ? 'Service coverage verified against existing QuickBooks invoice' : 'Exact customer mapping or proposal unavailable'}</p>
                 {proposal.excluded && <p className="font-medium">Excluded: {proposal.excluded}</p>}
                 {row.blockers.map(blocker => <p key={blocker} className="text-destructive">Needs review: {blocker}</p>)}
-                {summary && <AccountBalancePanel summary={summary} newLabel="Proposed new service invoice" />}
-                {summary && !proposal.excluded && proposal.amountCents != null && <details><summary className="cursor-pointer">Unsent invoice notice draft</summary>{delivery.channels.map(ch => <p key={ch} className="mt-2 whitespace-pre-wrap bg-muted p-2">{invoiceMessage(client.customer, proposal.amountCents ?? 0, dates?.servicePeriod ?? '', ch, balanceDraftLines(summary))} Due {proposal.dueDate}. </p>)}</details>}
+                {summary && <AccountBalancePanel summary={summary} newLabel="Proposed new service invoice" previousLabel="Existing QuickBooks invoice" totalLabel={newProposal ? "Projected balance including proposed invoice" : "Outstanding QuickBooks balance"} />}
+                {summary && newProposal && proposal.amountCents != null && <details><summary className="cursor-pointer">Unsent invoice notice draft</summary>{delivery.channels.map(ch => <p key={ch} className="mt-2 whitespace-pre-wrap bg-muted p-2">{invoiceMessage(client.customer, proposal.amountCents ?? 0, proposal.frequency === 'annual' ? proposal.serviceStart + ' through ' + proposal.serviceEnd : proposal.serviceStart.slice(0, 7), ch, balanceDraftLines(summary))} Due {proposal.dueDate}. </p>)}</details>}
                 <Button size="sm" variant="outline" disabled={loading||loadedMonth!==sendMonth||!backendReady || !row.snapshot} onClick={()=>void approveRow(row)} title="Approval stores a reviewed snapshot; it does not send">{approvals[client.id] ? 'Approval saved' : backendReady ? 'Approve snapshot — no send' : 'Approve — unavailable'}</Button>
               </article>;
             })}
@@ -184,6 +194,8 @@ export default function InvoiceDelivery() {
           {(['sms','email'] as const).map(channel=><Button key={channel} variant="outline" disabled={!backendReady||!evidenceIds[run.id]||!['unknown','sending'].includes(run.channels[channel])} onClick={()=>void reconcile(run.id,channel)}>Verify {channel} evidence</Button>)}</div>
         </article>)}
       </section>
+        </div>}
+      </details>
     </div>
   );
 }

@@ -11,6 +11,7 @@ vi.mock('@/components/pwa/RefreshButton', () => ({ RefreshButton: () => null, us
 const Pass = vi.hoisted(() => ({ children }: { children?: unknown }) => children as never);
 vi.mock('@/components/ui/sheet', () => ({ Sheet: Pass, SheetTrigger: Pass, SheetContent: ({ children, style }: React.PropsWithChildren<{ style?: React.CSSProperties }>) => <div data-sheet style={style}>{children}</div> }));
 vi.mock('@/components/ui/dropdown-menu', () => ({ DropdownMenu: Pass, DropdownMenuTrigger: Pass, DropdownMenuContent: Pass, DropdownMenuItem: Pass, DropdownMenuLabel: Pass, DropdownMenuSeparator: () => null }));
+vi.mock('@/releaseNotes', () => ({ APP_VERSION: 'test' }));
 import { Navbar } from '@/components/layout/Navbar';
 
 const render = async () => { let t!: ReactTestRenderer; await act(async () => { t = create(<MemoryRouter><Navbar /></MemoryRouter>); }); return t; };

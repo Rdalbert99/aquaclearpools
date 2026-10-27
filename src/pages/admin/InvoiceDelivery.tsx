@@ -1,3 +1,4 @@
+import { OwnerInvoiceTest } from '@/components/billing/OwnerInvoiceTest';
 import { Link } from 'react-router-dom';
 import { useCallback, useEffect, useMemo, useState, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
@@ -108,10 +109,11 @@ export default function InvoiceDelivery() {
   };
   return (
     <div className="space-y-5 p-4 md:p-6">
+      <OwnerInvoiceTest />
       <div><h1 className="text-2xl font-bold">Invoice delivery readiness</h1><p className="text-sm text-muted-foreground">QuickBooks official invoices · billing mode {policy?.billingMode ?? 'unavailable'}</p></div>
       <section className="space-y-2 border-y py-4 text-sm">
         <p className="font-semibold text-destructive">Invoice schedule: {policy ? policy.invoiceEnabled ? 'enabled on server' : 'disabled on server' : 'unavailable'} · Announcement: {policy ? policy.announcementEnabled ? 'enabled on server' : 'disabled on server' : 'unavailable'}</p>
-        <p>Server policy and saved approvals are read below. This page has no invoice-send, message-send or activation controls.</p>
+        <p>Server policy and saved approvals are read below. Customer batches have no invoice-send, message-send or activation controls. The separate owner-only test does not activate them.</p>
         <ul className="list-disc space-y-1 pl-5" aria-label="Installed policy">
           <li>Billing server: {policy ? 'installed and responding' : 'unavailable'}</li>
           <li>Migration verification: {flag(policy?.migrationVerified)} · Deployment verification: {flag(policy?.deploymentVerified)} · Provider verification: {flag(policy?.providerVerified)}</li>

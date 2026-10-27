@@ -145,6 +145,19 @@ export const Navbar = () => {
                   </Link>
                 </Button>
               ))}
+              {testingItems.length > 0 && (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild><Button variant="ghost" size="sm">Advanced</Button></DropdownMenuTrigger>
+                  <DropdownMenuContent>
+                    <DropdownMenuLabel>Testing</DropdownMenuLabel>
+                    {testingItems.map(item => (
+                      <DropdownMenuItem key={item.path} asChild>
+                        <Link to={item.path}>{testingLabel(item.label)}</Link>
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              )}
             </div>
 
             {/* Mobile Hamburger Menu */}
@@ -162,7 +175,8 @@ export const Navbar = () => {
                 </SheetTrigger>
                 <SheetContent 
                   side="right" 
-                  className="bg-background border-l w-80 z-[201]"
+                  className="bg-background border-l w-80 max-w-full z-[201] [&>button]:top-[calc(1rem+env(safe-area-inset-top,0px))]"
+                  style={{ paddingTop: 'calc(1.5rem + env(safe-area-inset-top, 0px))', paddingBottom: 'calc(1.5rem + env(safe-area-inset-bottom, 0px))' }}
                 >
                   <div className="flex flex-col h-full min-h-0 overflow-y-auto overscroll-contain pt-8">
                     <nav className="flex shrink-0 flex-col space-y-2 mb-8">
@@ -186,6 +200,21 @@ export const Navbar = () => {
                           </Link>
                         </Button>
                       ))}
+                      {testingItems.length > 0 && (
+                        <details className="px-2">
+                          <summary className="cursor-pointer rounded-md p-3 text-lg focus-visible:outline focus-visible:outline-2">Advanced</summary>
+                          <details className="pl-3">
+                            <summary className="cursor-pointer rounded-md p-3 text-lg focus-visible:outline focus-visible:outline-2">Testing</summary>
+                            <div className="flex flex-col space-y-2">
+                              {testingItems.map(item => (
+                                <Button key={item.path} variant="ghost" size="lg" asChild className="w-full justify-start" onClick={() => setIsMobileMenuOpen(false)}>
+                                  <Link to={item.path}>{testingLabel(item.label)}</Link>
+                                </Button>
+                              ))}
+                            </div>
+                          </details>
+                        </details>
+                      )}
                     </nav>
 
                     <div className="flex shrink-0 flex-col space-y-3 mt-auto border-t pt-4">

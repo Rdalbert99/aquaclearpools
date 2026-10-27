@@ -5,11 +5,10 @@ import { MemoryRouter } from 'react-router-dom';
 
 const auth = vi.hoisted(() => ({ value: { user: { email: 'a@x.test' }, signOut: vi.fn(), isAdmin: true, isTech: false, isClient: false } as Record<string, unknown> }));
 vi.mock('@/hooks/useAuth', () => ({ useAuth: () => auth.value }));
-const q = { select: () => q, is: async () => ({ count: 0 }) };
-vi.mock('@/integrations/supabase/client', () => ({ supabase: { from: () => q } }));
+vi.mock('@/integrations/supabase/client', () => { const q: Record<string, unknown> = { is: async () => ({ count: 0 }) }; q.select = () => q; return { supabase: { from: () => q } }; });
 vi.mock('@/components/notifications/NotificationBell', () => ({ NotificationBell: () => null }));
 vi.mock('@/components/pwa/RefreshButton', () => ({ RefreshButton: () => null, useRefreshApp: () => ({ refresh: vi.fn(), busy: false }) }));
-const Pass = ({ children }: React.PropsWithChildren) => <div>{children}</div>;
+const Pass = vi.hoisted(() => ({ children }: { children?: unknown }) => children as never);
 vi.mock('@/components/ui/sheet', () => ({ Sheet: Pass, SheetTrigger: Pass, SheetContent: ({ children, style }: React.PropsWithChildren<{ style?: React.CSSProperties }>) => <div data-sheet style={style}>{children}</div> }));
 vi.mock('@/components/ui/dropdown-menu', () => ({ DropdownMenu: Pass, DropdownMenuTrigger: Pass, DropdownMenuContent: Pass, DropdownMenuItem: Pass, DropdownMenuLabel: Pass, DropdownMenuSeparator: () => null }));
 import { Navbar } from '@/components/layout/Navbar';

@@ -6,7 +6,7 @@ import {readinessRow,snapshotCanonical} from '../billing-readiness';
 import {hasUnsavedWork} from '../unsaved-work';
 const mock=vi.hoisted(()=>({invoke:vi.fn(),from:vi.fn(),navigate:vi.fn(),toast:vi.fn()}));
 vi.mock('@/lib/billing-transport',()=>({billingInvoke:mock.invoke,authenticatedEnrollmentAdapter:{ready:true}}));
-vi.mock('@/integrations/supabase/client',()=>({supabase:{from:mock.from}}));
+vi.mock('@/integrations/supabase/client',()=>({supabase:{from:mock.from,auth:{getUser:async()=>({data:{user:{id:'admin'}},error:null}),onAuthStateChange:()=>({data:{subscription:{unsubscribe:()=>{}}}})}}}));
 vi.mock('@/hooks/useAuth',()=>({useAuth:()=>({user:{id:'admin'},isAdmin:true,isTech:false})}));
 vi.mock('@/hooks/use-toast',()=>({useToast:()=>({toast:mock.toast})}));
 vi.mock('react-router-dom',async()=>({...await vi.importActual('react-router-dom'),useNavigate:()=>mock.navigate}));

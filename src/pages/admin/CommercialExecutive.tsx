@@ -1,6 +1,5 @@
 import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Navbar } from '@/components/layout/Navbar';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -157,7 +156,6 @@ const CommercialExecutive = () => {
 
   return (
     <div className="min-h-screen bg-muted/30">
-      <Navbar />
       <main className="mx-auto max-w-6xl px-3 py-4 sm:px-6 sm:py-8">
         <header className="mb-4 flex flex-wrap items-end justify-between gap-3">
           <div>

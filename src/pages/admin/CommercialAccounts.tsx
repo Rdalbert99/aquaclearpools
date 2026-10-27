@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { Navbar } from '@/components/layout/Navbar';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -78,7 +77,6 @@ const CommercialAccounts = () => {
 
   return (
     <div className="min-h-screen bg-muted/30">
-      <Navbar />
       <main className="mx-auto max-w-6xl px-3 py-6 sm:px-6">
         <div className="mb-5 flex items-center gap-3">
           <Building2 className="h-6 w-6 text-primary" />

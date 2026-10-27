@@ -82,7 +82,7 @@ const CommercialPortal = () => {
   if (data.memberships.length === 0) {
     return (
       <div className="min-h-screen bg-muted/30">
-        <Navbar />
+        {!isAuthenticated && <Navbar />}
         <main className="mx-auto max-w-xl px-4 py-16">
           <Card>
             <CardContent className="space-y-3 p-8 text-center">
@@ -102,7 +102,7 @@ const CommercialPortal = () => {
 
   return (
     <div className="min-h-screen bg-muted/30">
-      <Navbar />
+      {!isAuthenticated && <Navbar />}
       <main className="mx-auto max-w-6xl px-3 py-4 sm:px-6 sm:py-8">
         <header className="mb-4 space-y-2">
           <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">

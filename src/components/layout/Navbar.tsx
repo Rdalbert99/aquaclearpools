@@ -110,9 +110,13 @@ export const Navbar = () => {
   };
 
   const navigationItems = getNavigationItems();
+  const testingPaths = new Set(['/admin/billing', '/admin/mailjet-test', '/admin/telnyx-status']);
+  const mainNavigationItems = navigationItems.filter(item => !testingPaths.has(item.path));
+  const testingItems = navigationItems.filter(item => testingPaths.has(item.path));
+  const testingLabel = (label: string) => (label === 'Billing' ? 'Practice Billing' : label);
 
   return (
-    <nav className="bg-white shadow-sm border-b">
+    <nav className="bg-white shadow-sm border-b" style={{ paddingTop: 'env(safe-area-inset-top, 0px)' }}>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between h-16">
           <div className="flex items-center">
@@ -128,7 +132,7 @@ export const Navbar = () => {
           <div className="flex items-center space-x-4">
             {/* Desktop Navigation Links */}
             <div className="hidden lg:flex items-center space-x-1">
-              {navigationItems.map((item) => (
+              {mainNavigationItems.map((item) => (
                 <Button key={item.path} variant="ghost" size="sm" asChild>
                   <Link to={item.path} className="flex items-center space-x-1 relative">
                     <item.icon className="h-4 w-4" />
@@ -160,9 +164,9 @@ export const Navbar = () => {
                   side="right" 
                   className="bg-background border-l w-80 z-[201]"
                 >
-                  <div className="flex flex-col h-full pt-8">
-                    <nav className="flex flex-col space-y-2 mb-8">
-                      {navigationItems.map((item) => (
+                  <div className="flex flex-col h-full min-h-0 overflow-y-auto overscroll-contain pt-8">
+                    <nav className="flex shrink-0 flex-col space-y-2 mb-8">
+                      {mainNavigationItems.map((item) => (
                         <Button
                           key={item.path}
                           variant="ghost"
@@ -184,7 +188,7 @@ export const Navbar = () => {
                       ))}
                     </nav>
 
-                    <div className="flex flex-col space-y-3 mt-auto border-t pt-4">
+                    <div className="flex shrink-0 flex-col space-y-3 mt-auto border-t pt-4">
                       <Button
                         variant="ghost"
                         size="lg"

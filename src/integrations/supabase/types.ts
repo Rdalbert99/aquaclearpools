@@ -4951,7 +4951,10 @@ export type Database = {
         }
         Returns: boolean
       }
-      website_analytics_report: { Args: { _days: number }; Returns: Json }
+      website_analytics_report: {
+        Args: { _actor: string; _days: number }
+        Returns: Json
+      }
     }
     Enums: {
       commercial_status:

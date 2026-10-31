@@ -22,20 +22,22 @@ export function trackHomepage(event: AnalyticsEvent, referral: Referral) {
 }
 
 // Microtask coalesces StrictMode's immediate setup/cleanup/setup, not real later visits.
-export function installHomepageAnalytics(root: HTMLElement, send = trackHomepage) {
-  if (window.location.pathname !== '/') return () => {};
+export function installHomepageAnalytics(root: HTMLElement, send = trackHomepage): { dispose: () => void; click: (target: EventTarget | null) => void } {
+  if (window.location.pathname !== '/') return { dispose: () => {}, click: () => {} };
   let active = true;
   const referral = referralCategory(document.referrer);
   queueMicrotask(() => { if (active) send('page_view', referral); });
-  const click = (event: MouseEvent) => {
-    const link = event.target instanceof Element ? event.target.closest('a') : null;
-    if (!link || !root.contains(link)) return;
+  const click = (target: EventTarget | null) => {
+    const link = target instanceof Element ? target.closest('a') : null;
+    if (!active || !link) return;
     const href = link.getAttribute('href') || '';
     if (/^tel:/i.test(href)) send('call_click', referral);
     else if (/^sms:/i.test(href)) send('text_click', referral);
   };
-  root.addEventListener('click', click, true);
-  return () => { active = false; root.removeEventListener('click', click, true); };
+  // React capture on the homepage root also reaches its mobile Sheet portal.
+  // No global/document listener, so unrelated route controls cannot be tracked.
+  void root;
+  return { dispose: () => { active = false; }, click };
 }
 export interface AnalyticsReport {
   trackingStartedAt: string; asOf: string; days: number; today: string;

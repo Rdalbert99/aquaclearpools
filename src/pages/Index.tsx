@@ -28,9 +28,11 @@ import { BrandLogo } from "@/components/layout/BrandLogo";
 
 const Index = () => {
   const homepage = useRef<HTMLDivElement>(null);
+  const analytics = useRef<ReturnType<typeof installHomepageAnalytics> | null>(null);
   useEffect(() => {
     if (!homepage.current) return;
-    return installHomepageAnalytics(homepage.current);
+    analytics.current = installHomepageAnalytics(homepage.current);
+    return () => { analytics.current?.dispose(); analytics.current = null; };
   }, []);
   const [showRequestForm, setShowRequestForm] = useState(false);
   const beforeAfterPairs = [
@@ -42,7 +44,7 @@ const Index = () => {
   ];
 
   return (
-    <div ref={homepage} className="min-h-screen bg-background">
+    <div ref={homepage} onClickCapture={event => analytics.current?.click(event.target)} className="min-h-screen bg-background">
       {/* Header/Navigation */}
       <PublicNavbar onRequestService={() => setShowRequestForm(true)} />
       {/* Hero Section */}

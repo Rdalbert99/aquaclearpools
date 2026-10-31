@@ -35,22 +35,22 @@ describe('homepage-only analytics', () => {
     const listeners = new Set<(e: unknown) => void>();
     const root = { contains:() => true,addEventListener:(_n:string,f:(e:unknown)=>void) => listeners.add(f),removeEventListener:(_n:string,f:(e:unknown)=>void) => listeners.delete(f) } as unknown as HTMLElement;
     const send = vi.fn();
-    const stop = installHomepageAnalytics(root,send); stop();
+    const stop = installHomepageAnalytics(root,send); stop.dispose();
     const stop2 = installHomepageAnalytics(root,send);
     await Promise.resolve(); expect(send.mock.calls).toEqual([['page_view','direct']]);
     const preventDefault = vi.fn();
-    for (const href of ['tel:6014470399','sms:6014470399']) for (const f of listeners) f({ target:new Target(href),preventDefault });
+    for (const href of ['tel:6014470399','sms:6014470399']) stop2.click(new Target(href) as unknown as EventTarget);
     expect(send.mock.calls).toEqual([['page_view','direct'],['call_click','direct'],['text_click','direct']]);
     expect(preventDefault).not.toHaveBeenCalled();
-    stop2(); expect(listeners.size).toBe(0);
-    const stop3 = installHomepageAnalytics(root,send); await Promise.resolve(); stop3();
+    stop2.dispose(); expect(listeners.size).toBe(0);
+    const stop3 = installHomepageAnalytics(root,send); await Promise.resolve(); stop3.dispose();
     expect(send.mock.calls.filter(([event]) => event==='page_view')).toHaveLength(2);
   });
   it('never installs on portals, auth, admin, profile or invoice, and skips localhost/preview transport', async () => {
     const send = vi.fn();
     for (const pathname of ['/invoice','/admin','/tech','/client','/profile','/commercial/portal','/auth/login']) {
       vi.stubGlobal('window',{ location:{ pathname,origin:'https://getaquaclear.com' } });
-      installHomepageAnalytics({} as HTMLElement,send)();
+      installHomepageAnalytics({} as HTMLElement,send).dispose();
     }
     expect(send).not.toHaveBeenCalled();
     const fetcher = vi.fn(); vi.stubGlobal('fetch',fetcher);

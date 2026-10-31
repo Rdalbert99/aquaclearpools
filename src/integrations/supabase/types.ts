@@ -3935,6 +3935,66 @@ export type Database = {
         }
         Relationships: []
       }
+      website_analytics_budget: {
+        Row: {
+          daily_count: number
+          day: string
+          minute: string
+          minute_count: number
+          singleton: boolean
+        }
+        Insert: {
+          daily_count: number
+          day: string
+          minute: string
+          minute_count: number
+          singleton?: boolean
+        }
+        Update: {
+          daily_count?: number
+          day?: string
+          minute?: string
+          minute_count?: number
+          singleton?: boolean
+        }
+        Relationships: []
+      }
+      website_analytics_daily: {
+        Row: {
+          count: number
+          day: string
+          event: Database["public"]["Enums"]["website_analytics_event"]
+          referral: Database["public"]["Enums"]["website_analytics_referral"]
+        }
+        Insert: {
+          count?: number
+          day: string
+          event: Database["public"]["Enums"]["website_analytics_event"]
+          referral: Database["public"]["Enums"]["website_analytics_referral"]
+        }
+        Update: {
+          count?: number
+          day?: string
+          event?: Database["public"]["Enums"]["website_analytics_event"]
+          referral?: Database["public"]["Enums"]["website_analytics_referral"]
+        }
+        Relationships: []
+      }
+      website_analytics_metadata: {
+        Row: {
+          singleton: boolean
+          tracking_started_at: string
+        }
+        Insert: {
+          singleton?: boolean
+          tracking_started_at?: string
+        }
+        Update: {
+          singleton?: boolean
+          tracking_started_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
@@ -4883,6 +4943,15 @@ export type Database = {
         Returns: Json
       }
       validate_user_access_policies: { Args: never; Returns: boolean }
+      website_analytics_ingest: {
+        Args: {
+          _event: Database["public"]["Enums"]["website_analytics_event"]
+          _page: string
+          _referral: Database["public"]["Enums"]["website_analytics_referral"]
+        }
+        Returns: boolean
+      }
+      website_analytics_report: { Args: { _days: number }; Returns: Json }
     }
     Enums: {
       commercial_status:
@@ -4899,6 +4968,13 @@ export type Database = {
         | "waiting_on_parts"
         | "repair_in_progress"
         | "completed"
+      website_analytics_event: "page_view" | "call_click" | "text_click"
+      website_analytics_referral:
+        | "direct"
+        | "search"
+        | "social"
+        | "referral"
+        | "internal"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -5041,6 +5117,14 @@ export const Constants = {
         "waiting_on_parts",
         "repair_in_progress",
         "completed",
+      ],
+      website_analytics_event: ["page_view", "call_click", "text_click"],
+      website_analytics_referral: [
+        "direct",
+        "search",
+        "social",
+        "referral",
+        "internal",
       ],
     },
   },

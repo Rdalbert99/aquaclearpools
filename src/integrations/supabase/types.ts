@@ -3935,6 +3935,66 @@ export type Database = {
         }
         Relationships: []
       }
+      website_analytics_budget: {
+        Row: {
+          daily_count: number
+          day: string
+          minute: string
+          minute_count: number
+          singleton: boolean
+        }
+        Insert: {
+          daily_count: number
+          day: string
+          minute: string
+          minute_count: number
+          singleton?: boolean
+        }
+        Update: {
+          daily_count?: number
+          day?: string
+          minute?: string
+          minute_count?: number
+          singleton?: boolean
+        }
+        Relationships: []
+      }
+      website_analytics_daily: {
+        Row: {
+          count: number
+          day: string
+          event: Database["public"]["Enums"]["website_analytics_event"]
+          referral: Database["public"]["Enums"]["website_analytics_referral"]
+        }
+        Insert: {
+          count?: number
+          day: string
+          event: Database["public"]["Enums"]["website_analytics_event"]
+          referral: Database["public"]["Enums"]["website_analytics_referral"]
+        }
+        Update: {
+          count?: number
+          day?: string
+          event?: Database["public"]["Enums"]["website_analytics_event"]
+          referral?: Database["public"]["Enums"]["website_analytics_referral"]
+        }
+        Relationships: []
+      }
+      website_analytics_metadata: {
+        Row: {
+          singleton: boolean
+          tracking_started_at: string
+        }
+        Insert: {
+          singleton?: boolean
+          tracking_started_at?: string
+        }
+        Update: {
+          singleton?: boolean
+          tracking_started_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
@@ -4069,6 +4129,130 @@ export type Database = {
       aqua_owner_test_uncertain: {
         Args: { _claim: string; _step: string; _test: string }
         Returns: undefined
+      }
+      aqua_reminder_acquire: {
+        Args: { _campaign: string; _manifest_sha256: string; _slot: number }
+        Returns: string
+      }
+      aqua_reminder_artifact_complete: {
+        Args: {
+          _bucket: string
+          _campaign: string
+          _invoice: string
+          _lease: string
+          _path: string
+          _sha256: string
+        }
+        Returns: boolean
+      }
+      aqua_reminder_artifact_reserve: {
+        Args: {
+          _campaign: string
+          _client: string
+          _customer: string
+          _invoice: string
+          _sha256: string
+        }
+        Returns: string
+      }
+      aqua_reminder_close: {
+        Args: { _campaign: string; _lease: string }
+        Returns: boolean
+      }
+      aqua_reminder_finalize_text: {
+        Args: {
+          _campaign: string
+          _invoice: string
+          _lease: string
+          _template_sha256: string
+          _text_sha256: string
+        }
+        Returns: boolean
+      }
+      aqua_reminder_load: {
+        Args: { _campaign: string; _lease: string }
+        Returns: Json
+      }
+      aqua_reminder_outcome: {
+        Args: {
+          _attempt: string
+          _campaign: string
+          _invoice: string
+          _phone: string
+          _provider: string
+          _state: string
+        }
+        Returns: boolean
+      }
+      aqua_reminder_pdf_mint: {
+        Args: {
+          _campaign: string
+          _hash: string
+          _invoice: string
+          _lease: string
+        }
+        Returns: Json
+      }
+      aqua_reminder_pdf_read_budget: { Args: never; Returns: boolean }
+      aqua_reminder_pdf_resolve: { Args: { _hash: string }; Returns: Json }
+      aqua_reminder_predispatch: {
+        Args: {
+          _attempt: string
+          _campaign: string
+          _invoice: string
+          _lease: string
+          _phone: string
+        }
+        Returns: boolean
+      }
+      aqua_reminder_preflight_source: {
+        Args: { _invoice: string; _phone?: string }
+        Returns: boolean
+      }
+      aqua_reminder_reserve: {
+        Args: {
+          _campaign: string
+          _invoice: string
+          _lease: string
+          _pdf_sha256: string
+          _phone: string
+          _proof: Json
+          _text_sha256: string
+        }
+        Returns: string
+      }
+      aqua_reminder_source_allowed_check: {
+        Args: {
+          _campaign: string
+          _invoice: string
+          _lease: string
+          _phone?: string
+        }
+        Returns: boolean
+      }
+      aqua_reminder_status: { Args: { _campaign: string }; Returns: Json }
+      aqua_reminder_verify_preflight: {
+        Args: { _issued: number; _nonce: string; _proof: string }
+        Returns: Json
+      }
+      aqua_reminder_verify_scheduler: {
+        Args: {
+          _action: string
+          _issued: number
+          _nonce: string
+          _proof: string
+        }
+        Returns: Json
+      }
+      aqua_reminder_verify_stage: {
+        Args: {
+          _invoice: string
+          _issued: number
+          _nonce: string
+          _payload_sha256: string
+          _proof: string
+        }
+        Returns: Json
       }
       aqua_telnyx_ingest: { Args: { _event: Json }; Returns: string }
       aqua_telnyx_install_signing_key: {
@@ -4759,6 +4943,18 @@ export type Database = {
         Returns: Json
       }
       validate_user_access_policies: { Args: never; Returns: boolean }
+      website_analytics_ingest: {
+        Args: {
+          _event: Database["public"]["Enums"]["website_analytics_event"]
+          _page: string
+          _referral: Database["public"]["Enums"]["website_analytics_referral"]
+        }
+        Returns: boolean
+      }
+      website_analytics_report: {
+        Args: { _actor: string; _days: number }
+        Returns: Json
+      }
     }
     Enums: {
       commercial_status:
@@ -4775,6 +4971,13 @@ export type Database = {
         | "waiting_on_parts"
         | "repair_in_progress"
         | "completed"
+      website_analytics_event: "page_view" | "call_click" | "text_click"
+      website_analytics_referral:
+        | "direct"
+        | "search"
+        | "social"
+        | "referral"
+        | "internal"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -4917,6 +5120,14 @@ export const Constants = {
         "waiting_on_parts",
         "repair_in_progress",
         "completed",
+      ],
+      website_analytics_event: ["page_view", "call_click", "text_click"],
+      website_analytics_referral: [
+        "direct",
+        "search",
+        "social",
+        "referral",
+        "internal",
       ],
     },
   },

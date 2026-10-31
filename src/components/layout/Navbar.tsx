@@ -73,6 +73,7 @@ export const Navbar = () => {
         { label: 'Reviews', icon: Star, path: '/admin/reviews' },
         { label: 'Calculator', icon: Calculator, path: '/admin/calculator' },
         { label: 'Reports', icon: BarChart3, path: '/admin/reports' },
+        { label: 'Website Analytics', icon: BarChart3, path: '/admin/analytics' },
         { label: 'Billing', icon: Receipt, path: '/admin/billing' },
         { label: 'Invoice Delivery', icon: Receipt, path: '/admin/invoice-delivery' },
         { label: 'QuickBooks', icon: PlugZap, path: '/admin/quickbooks' },

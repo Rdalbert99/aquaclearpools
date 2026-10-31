@@ -27,6 +27,7 @@ const ChangePassword = lazy(() => import("./pages/auth/ChangePassword"));
 const ForgotPassword = lazy(() => import("./pages/auth/ForgotPassword"));
 const ResetPassword = lazy(() => import("./pages/auth/ResetPassword"));
 const AdminDashboard = lazy(() => import("./pages/admin/Dashboard"));
+const WebsiteAnalytics = lazy(() => import("./pages/admin/Analytics"));
 const TechDashboard = lazy(() => import("./pages/tech/Dashboard"));
 const FieldService = lazy(() => import("./pages/tech/FieldService"));
 const TechSchedule = lazy(() => import("./pages/tech/Schedule"));
@@ -153,6 +154,7 @@ const AppRoutes = () => {
         />
         
         {/* Admin routes */}
+        <Route path="/admin/analytics" element={<ProtectedRoute allowedRoles={['admin']}><WebsiteAnalytics /></ProtectedRoute>} />
         <Route 
           path="/admin" 
           element={

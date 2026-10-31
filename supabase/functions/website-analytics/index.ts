@@ -1,6 +1,12 @@
-import { createClient } from 'npm:@supabase/supabase-js@2';
-import { corsHeaders } from 'npm:@supabase/supabase-js@2/cors';
+import { createClient } from 'npm:@supabase/supabase-js@2.53.0';
 import { validEvent, validReport } from './validation.ts';
+
+// 2.53.0 has no /cors export. Match collector fetch and SDK invoke headers.
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+};
 
 // Gateway JWT verification remains enabled. Public anon JWT is not visitor proof.
 Deno.serve(async req => {

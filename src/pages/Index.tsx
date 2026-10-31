@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
+import { installHomepageAnalytics } from '@/lib/website-analytics';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Phone, Mail, MapPin, Star, CheckCircle, LogIn, User, Users, Shield, Droplets, TestTube, Sparkles, Calendar } from 'lucide-react';
@@ -26,6 +27,11 @@ import { BrandLogo } from "@/components/layout/BrandLogo";
 
 
 const Index = () => {
+  const homepage = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!homepage.current) return;
+    return installHomepageAnalytics(homepage.current);
+  }, []);
   const [showRequestForm, setShowRequestForm] = useState(false);
   const beforeAfterPairs = [
     { before: "/lovable-uploads/a5900411-fa64-46b8-af48-acf6bf1b1a50.png", after: "/lovable-uploads/f52d8304-05ae-44c4-b5b2-f1b5bdc742c8.png", title: "Complete Pool Restoration" },
@@ -36,7 +42,7 @@ const Index = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-background">
+    <div ref={homepage} className="min-h-screen bg-background">
       {/* Header/Navigation */}
       <PublicNavbar onRequestService={() => setShowRequestForm(true)} />
       {/* Hero Section */}

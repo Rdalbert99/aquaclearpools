@@ -1,5 +1,8 @@
 project_id = "tbqqigqkbogibwumjyol"
 
+[functions.website-analytics]
+verify_jwt = true
+
 [auth.email]
 # Enable custom SMTP
 enable_signup = true

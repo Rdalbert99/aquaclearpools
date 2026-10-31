@@ -4070,6 +4070,130 @@ export type Database = {
         Args: { _claim: string; _step: string; _test: string }
         Returns: undefined
       }
+      aqua_reminder_acquire: {
+        Args: { _campaign: string; _manifest_sha256: string; _slot: number }
+        Returns: string
+      }
+      aqua_reminder_artifact_complete: {
+        Args: {
+          _bucket: string
+          _campaign: string
+          _invoice: string
+          _lease: string
+          _path: string
+          _sha256: string
+        }
+        Returns: boolean
+      }
+      aqua_reminder_artifact_reserve: {
+        Args: {
+          _campaign: string
+          _client: string
+          _customer: string
+          _invoice: string
+          _sha256: string
+        }
+        Returns: string
+      }
+      aqua_reminder_close: {
+        Args: { _campaign: string; _lease: string }
+        Returns: boolean
+      }
+      aqua_reminder_finalize_text: {
+        Args: {
+          _campaign: string
+          _invoice: string
+          _lease: string
+          _template_sha256: string
+          _text_sha256: string
+        }
+        Returns: boolean
+      }
+      aqua_reminder_load: {
+        Args: { _campaign: string; _lease: string }
+        Returns: Json
+      }
+      aqua_reminder_outcome: {
+        Args: {
+          _attempt: string
+          _campaign: string
+          _invoice: string
+          _phone: string
+          _provider: string
+          _state: string
+        }
+        Returns: boolean
+      }
+      aqua_reminder_pdf_mint: {
+        Args: {
+          _campaign: string
+          _hash: string
+          _invoice: string
+          _lease: string
+        }
+        Returns: Json
+      }
+      aqua_reminder_pdf_read_budget: { Args: never; Returns: boolean }
+      aqua_reminder_pdf_resolve: { Args: { _hash: string }; Returns: Json }
+      aqua_reminder_predispatch: {
+        Args: {
+          _attempt: string
+          _campaign: string
+          _invoice: string
+          _lease: string
+          _phone: string
+        }
+        Returns: boolean
+      }
+      aqua_reminder_preflight_source: {
+        Args: { _invoice: string; _phone?: string }
+        Returns: boolean
+      }
+      aqua_reminder_reserve: {
+        Args: {
+          _campaign: string
+          _invoice: string
+          _lease: string
+          _pdf_sha256: string
+          _phone: string
+          _proof: Json
+          _text_sha256: string
+        }
+        Returns: string
+      }
+      aqua_reminder_source_allowed_check: {
+        Args: {
+          _campaign: string
+          _invoice: string
+          _lease: string
+          _phone?: string
+        }
+        Returns: boolean
+      }
+      aqua_reminder_status: { Args: { _campaign: string }; Returns: Json }
+      aqua_reminder_verify_preflight: {
+        Args: { _issued: number; _nonce: string; _proof: string }
+        Returns: Json
+      }
+      aqua_reminder_verify_scheduler: {
+        Args: {
+          _action: string
+          _issued: number
+          _nonce: string
+          _proof: string
+        }
+        Returns: Json
+      }
+      aqua_reminder_verify_stage: {
+        Args: {
+          _invoice: string
+          _issued: number
+          _nonce: string
+          _payload_sha256: string
+          _proof: string
+        }
+        Returns: Json
+      }
       aqua_telnyx_ingest: { Args: { _event: Json }; Returns: string }
       aqua_telnyx_install_signing_key: {
         Args: { _public_key: string; _sha256: string }

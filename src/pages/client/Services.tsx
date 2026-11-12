@@ -1,3 +1,4 @@
+import { serviceMinutes, durationLabel } from '@/lib/service-duration';
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
@@ -463,9 +464,9 @@ export default function ClientServices() {
                       {service.cost && (
                         <p className="text-sm font-medium mt-1">${service.cost}</p>
                       )}
-                      {service.duration && (
+                      {serviceMinutes(service) !== null && (
                         <p className="text-xs text-muted-foreground mt-1">
-                          {service.duration} min
+                          {durationLabel(service)}
                         </p>
                       )}
                     </div>

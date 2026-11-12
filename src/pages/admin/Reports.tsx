@@ -1,3 +1,5 @@
+import TechnicianVisitReport from '@/components/admin/TechnicianVisitReport';
+import { durationLabel } from '@/lib/service-duration';
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -182,6 +184,7 @@ export default function Reports() {
       </div>
 
       {/* Key Metrics */}
+      <TechnicianVisitReport />
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <Card>
           <CardContent className="p-6">
@@ -336,7 +339,7 @@ export default function Reports() {
                       {service.users?.name || 'Unknown'}
                     </td>
                     <td className="p-4">
-                      {service.duration_minutes ? `${service.duration_minutes} min` : '-'}
+                      {durationLabel(service)}
                     </td>
                     <td className="p-4">
                       {service.cost ? `$${service.cost}` : '-'}

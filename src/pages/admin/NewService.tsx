@@ -266,6 +266,7 @@ export default function NewService() {
         ...rest,
         chemicals_added: combinedChemicals,
         duration: Number(rest.duration),
+        duration_minutes: Number(rest.duration),
         cost: Number(rest.cost),
         ph_level: rest.ph_level ? Number(rest.ph_level) : null,
         chlorine_level: rest.chlorine_level ? Number(rest.chlorine_level) : null,

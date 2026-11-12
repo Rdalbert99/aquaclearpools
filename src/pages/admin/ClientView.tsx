@@ -1,3 +1,4 @@
+import { serviceMinutes, durationLabel } from '@/lib/service-duration';
 import { AutomaticInvoicing } from '@/components/billing/AutomaticInvoicing';
 import { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
@@ -964,10 +965,10 @@ export default function ClientView() {
                       <span>{service.notes}</span>
                     </div>
                   )}
-                  {service.duration && (
+                  {serviceMinutes(service) !== null && (
                     <div>
                       <span className="font-medium">Duration: </span>
-                      <span>{service.duration} minutes</span>
+                      <span>{durationLabel(service)}</span>
                     </div>
                   )}
                 </div>

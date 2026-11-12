@@ -1,3 +1,4 @@
+import { serviceMinutes, durationLabel } from '@/lib/service-duration';
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
@@ -379,9 +380,7 @@ export default function ClientDashboard() {
                 <div>
                   <p className="text-sm text-muted-foreground">Duration</p>
                   <p className="font-medium">
-                    {dashboardData.lastService.duration_minutes 
-                      ? `${dashboardData.lastService.duration_minutes} minutes`
-                      : 'Not recorded'}
+                    {durationLabel(dashboardData.lastService)}
                   </p>
                 </div>
               </div>
@@ -470,7 +469,7 @@ export default function ClientDashboard() {
                 </div>
                 <p className="text-sm text-muted-foreground mt-1">
                   {svc.users?.name ? `Technician: ${svc.users.name}` : 'Technician: unassigned'}
-                  {svc.duration_minutes ? ` • ${svc.duration_minutes} min` : ''}
+                  {serviceMinutes(svc) !== null ? ` • ${durationLabel(svc)}` : ''}
                 </p>
                 {svc.services_performed && (
                   <p className="text-sm mt-2"><span className="text-muted-foreground">Performed: </span>{svc.services_performed}</p>

@@ -1,3 +1,4 @@
+import { serviceMinutes, durationLabel } from '@/lib/service-duration';
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
@@ -27,6 +28,7 @@ interface Service {
   id: string;
   service_date: string;
   duration: number;
+  duration_minutes?: number | null;
   cost: number;
   status: string;
   ph_level: number;
@@ -191,7 +193,7 @@ export default function ServiceHistory() {
         service.clients?.customer || '',
         service.users?.name || '',
         service.status,
-        service.duration || '',
+        serviceMinutes(service) ?? '',
         service.cost || '',
         service.ph_level || '',
         service.chlorine_level || '',
@@ -286,7 +288,7 @@ export default function ServiceHistory() {
           <CardContent>
             <div className="text-2xl font-bold">
               {filteredServices.length > 0 
-                ? Math.round(filteredServices.reduce((sum, s) => sum + (s.duration || 0), 0) / filteredServices.length)
+                ? Math.round(filteredServices.reduce((sum, s) => sum + (serviceMinutes(s) ?? 0), 0) / Math.max(1, filteredServices.filter(s => serviceMinutes(s) !== null).length))
                 : 0
               } min
             </div>
@@ -412,7 +414,7 @@ export default function ServiceHistory() {
                       </div>
                       <div className="flex items-center space-x-2">
                         <Clock className="h-4 w-4 text-muted-foreground" />
-                        <span>{service.duration ? `${service.duration} min` : 'N/A'}</span>
+                        <span>{durationLabel(service)}</span>
                       </div>
                       <div className="flex items-center space-x-2">
                         <DollarSign className="h-4 w-4 text-muted-foreground" />

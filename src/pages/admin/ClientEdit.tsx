@@ -1,3 +1,4 @@
+import { durationLabel } from '@/lib/service-duration';
 import { AutomaticInvoicing } from '@/components/billing/AutomaticInvoicing';
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
@@ -1198,7 +1199,7 @@ export default function ClientEdit() {
                 </div>
                 <div>
                   <Label className="text-sm font-medium">Duration</Label>
-                  <p className="text-sm">{lastTechVisit.duration_minutes ? `${lastTechVisit.duration_minutes} minutes` : 'Not recorded'}</p>
+                  <p className="text-sm">{durationLabel(lastTechVisit)}</p>
                 </div>
               </div>
               {lastTechVisit.notes && (

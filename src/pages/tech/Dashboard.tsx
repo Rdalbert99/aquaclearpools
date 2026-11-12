@@ -1,3 +1,4 @@
+import { durationLabel } from '@/lib/service-duration';
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
@@ -404,7 +405,7 @@ export default function TechDashboard() {
                     {new Date(service.service_date).toLocaleDateString()}
                   </p>
                   <p className="text-sm text-muted-foreground">
-                    Duration: {service.duration ? `${service.duration} min` : 'Not recorded'}
+                    Duration: {durationLabel(service)}
                   </p>
                 </div>
                 <div className="text-right">

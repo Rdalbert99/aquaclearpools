@@ -1,3 +1,4 @@
+import { serviceMinutes, durationLabel } from '@/lib/service-duration';
 import { useEffect, useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
@@ -23,6 +24,7 @@ interface Service {
   service_date: string;
   status: string;
   duration_minutes: number | null;
+  duration?: number | null;
   cost: number | null;
   ph_level: number | null;
   chlorine_level: number | null;
@@ -198,12 +200,12 @@ export default function ClientServices() {
               <CardContent className="space-y-4">
                 {/* Service Details */}
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                  {service.duration_minutes && (
+                  {serviceMinutes(service) !== null && (
                     <div className="flex items-center space-x-2">
                       <Clock className="h-4 w-4 text-muted-foreground" />
                       <div>
                         <p className="text-sm font-medium">Duration</p>
-                        <p className="text-sm text-muted-foreground">{service.duration_minutes} min</p>
+                        <p className="text-sm text-muted-foreground">{durationLabel(service)}</p>
                       </div>
                     </div>
                   )}

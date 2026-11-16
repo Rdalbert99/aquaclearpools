@@ -7,10 +7,10 @@ import { ChevronLeft, ChevronRight, CalendarDays, Users, Eye, RotateCcw, CheckCi
 import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { isServiceWeek, seasonLabel, type SeasonFields } from "@/lib/service-season";
+import { isActiveServiceAccount, isRecurringServiceOn, scheduledWeekdays, seasonLabel, type RouteScheduleFields } from "@/lib/service-season";
 
 
-export interface CalendarClient extends SeasonFields {
+export interface CalendarClient extends RouteScheduleFields {
   id: string;
   customer: string;
   pool_size?: number | null;
@@ -27,23 +27,10 @@ interface Props {
   adminMode?: boolean;
 }
 
-const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 const DAY_SHORT = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
 
-function scheduledDows(client: CalendarClient): number[] {
-  if (!client.service_days?.length) return [];
-  const out = new Set<number>();
-  client.service_days.forEach(d => {
-    const v = (d || '').toLowerCase().slice(0, 3);
-    const idx = DAY_NAMES.findIndex(n => n.toLowerCase().startsWith(v));
-    if (idx >= 0) out.add(idx);
-  });
-  return [...out];
-}
-
 function clientScheduledOn(client: CalendarClient, date: Date): boolean {
-  const dows = scheduledDows(client);
-  return dows.includes(date.getDay()) && isServiceWeek(client, date);
+  return isRecurringServiceOn(client, date);
 }
 
 /** Minimum gap (in days) between scheduled visits. Defaults to 7 if single/none. */
@@ -74,7 +61,7 @@ function isCovered(client: CalendarClient, date: Date): boolean {
   if (!client.last_service_date) return false;
   const last = startOfDay(new Date(client.last_service_date));
   const d = startOfDay(date);
-  const gap = minScheduleGap(scheduledDows(client));
+  const gap = minScheduleGap(scheduledWeekdays(client.service_days));
   const windowStart = new Date(d);
   windowStart.setDate(d.getDate() - gap);
   return last > windowStart && last <= d;
@@ -148,6 +135,7 @@ export function ClientsCalendarView({ clients, adminMode = false }: Props) {
 
 
   function saltCellDueOn(client: CalendarClient, date: Date): boolean {
+    if (!isActiveServiceAccount(client)) return false;
     const due = saltCellDueDate(client);
     if (!due) return false;
     const d = startOfDay(date);

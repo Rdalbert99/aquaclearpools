@@ -43,7 +43,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { TechnicianPicker } from '@/components/admin/TechnicianPicker';
 import { POOL_TESTS, normalizeDefaultTests, sortTests, type TestId } from '@/lib/pool-tests';
 import { TestGuideDialog } from '@/components/pool/TestGuideDialog';
-import { IN_SEASON_FREQUENCIES, OFF_SEASON_FREQUENCIES, OFF_SEASON_WEEK_OPTIONS, effectiveServiceMode } from '@/lib/service-season';
+import { IN_SEASON_FREQUENCIES, OFF_SEASON_FREQUENCIES, OFF_SEASON_WEEK_OPTIONS, recurringScheduleIssue, effectiveServiceMode } from '@/lib/service-season';
 
 interface ClientFormData {
   customer: string;
@@ -64,6 +64,7 @@ interface ClientFormData {
   service_notes: string;
   service_days: string[];
   service_mode: string;
+  biweekly_anchor_date: string;
   in_season_frequency: string;
   off_season_frequency: string;
   off_season_weeks: string;
@@ -136,6 +137,7 @@ export default function ClientEdit() {
   const [creatingUser, setCreatingUser] = useState(false);
   const [notifyingCustomer, setNotifyingCustomer] = useState(false);
   const [originalStatus, setOriginalStatus] = useState<string>('Active');
+  const [originalAnchor, setOriginalAnchor] = useState<string | null>(null);
   
   const { isValidating: isValidatingUsername, isAvailable: isUsernameAvailable } = useUsernameValidation({
     username: newUserLogin
@@ -190,6 +192,7 @@ export default function ClientEdit() {
         service_notes: (data as any).service_notes || '',
         service_days: (data as any).service_days || [],
         service_mode: (data as any).service_mode || 'in_season',
+        biweekly_anchor_date: data.biweekly_anchor_date || '',
         in_season_frequency: (data as any).in_season_frequency || 'weekly',
         off_season_frequency: (data as any).off_season_frequency || 'twice_monthly',
         off_season_weeks: (data as any).off_season_weeks || '1_3',
@@ -213,6 +216,7 @@ export default function ClientEdit() {
 
       setMustChangePassword(userData?.must_change_password || false);
       setOriginalStatus(data.status || 'Active');
+      setOriginalAnchor(data.biweekly_anchor_date || null);
 
     } catch (error) {
       console.error('Error loading client data:', error);
@@ -356,15 +360,22 @@ export default function ClientEdit() {
         updateData.last_service_date = client.last_service_date;
       }
 
-      // Update client data
-      console.log('Attempting to update client with data:', updateData);
-      const { error } = await supabase
-        .from('clients')
-        .update(updateData)
-        .eq('id', id);
-
-      console.log('Client update result:', { error });
+      // Only write the anchor on an explicit edit. A stale page must not
+      // overwrite a different current anchor while saving contact or pool details.
+      const requestedAnchor = client.biweekly_anchor_date || null;
+      const anchorChanged = requestedAnchor !== originalAnchor;
+      if (anchorChanged) updateData.biweekly_anchor_date = requestedAnchor;
+      let updateQuery = supabase.from('clients').update(updateData).eq('id', id);
+      if (anchorChanged) {
+        updateQuery = originalAnchor
+          ? updateQuery.eq('biweekly_anchor_date', originalAnchor)
+          : updateQuery.is('biweekly_anchor_date', null);
+      }
+      const { data: saved, error } = await updateQuery.select('id').maybeSingle();
       if (error) throw error;
+      if (!saved) throw new Error(anchorChanged
+        ? 'The service week changed while this page was open. Reload before saving.'
+        : 'This customer could not be updated. Reload and try again.');
 
       // Sync contact details to the linked login ONLY when that account is a
       // pure client account. Techs/admins can also be customers — their staff
@@ -1261,6 +1272,7 @@ export default function ClientEdit() {
                   value={client.next_service_date}
                   onChange={(e) => handleInputChange('next_service_date', e.target.value)}
                 />
+                <p className="text-xs text-muted-foreground">Date on file. Use a service request or follow-up to book a one-off visit.</p>
               </div>
             </div>
 
@@ -1341,6 +1353,14 @@ export default function ClientEdit() {
                     </SelectContent>
                   </Select>
                 </div>
+                {(client.in_season_frequency === 'biweekly' || client.off_season_frequency === 'biweekly') && (
+                  <div className="space-y-2">
+                    <Label htmlFor="biweeklyAnchor">Known service-week date</Label>
+                    <Input id="biweeklyAnchor" type="date" value={client.biweekly_anchor_date}
+                      onChange={(e) => setClient({ ...client, biweekly_anchor_date: e.target.value })} />
+                    <p className="text-xs text-muted-foreground">Choose a date in a confirmed regular service week, not a one-off visit.</p>
+                  </div>
+                )}
                 {client.off_season_frequency === 'twice_monthly' && (
                   <div className="space-y-2">
                     <Label>Off-Season Weeks</Label>
@@ -1368,6 +1388,12 @@ export default function ClientEdit() {
                 </div>
                 <Switch id="autoReturn" checked={client.auto_return_in_season} onCheckedChange={(v) => setClient({ ...client, auto_return_in_season: v })} />
               </div>
+              {recurringScheduleIssue(client) === 'confirm_rotation' && (
+                <p className="text-sm text-amber-700 dark:text-amber-400">
+                  Confirm the recurrence settings and, for every-other-week routes, enter a known service-week date.
+                  Unconfirmed rotations will not create recurring visits.
+                </p>
+              )}
               <p className="text-xs text-muted-foreground">
                 Currently active: <span className="font-medium">{effectiveServiceMode(client) === 'off_season' ? 'Off-Season' : 'In-Season'}</span>
                 {' '}· Weeks are counted by day of month (days 1–7 = 1st week, 8–14 = 2nd, and so on).

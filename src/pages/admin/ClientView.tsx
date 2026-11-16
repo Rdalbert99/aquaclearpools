@@ -34,7 +34,7 @@ import {
   Activity,
   MoreVertical
 } from 'lucide-react';
-import { getPoolServiceStatus, getBalanceStatus, getNextDueDate, getBalanceTolerances, type BalanceTolerances } from '@/lib/pool-status';
+import { getPoolServiceStatus, getBalanceStatus, getBalanceTolerances, type BalanceTolerances } from '@/lib/pool-status';
 import { BalanceExplanation } from '@/components/pool/BalanceExplanation';
 import { ClientReadingsChart } from '@/components/admin/ClientReadingsChart';
 import { ServiceCostChart } from '@/components/admin/ServiceCostChart';
@@ -45,6 +45,8 @@ import { IdealChemistryChart } from '@/components/chemistry/IdealChemistryChart'
 import { ChemistryLab } from '@/components/chemistry/ChemistryLab';
 import { latestFromService, profileFromClient } from '@/lib/ideal-chemistry';
 import type { ChemicalId } from '@/lib/pool-chemistry';
+
+import { nextScheduledServiceDate, recurringScheduleIssue } from '@/lib/service-season';
 
 interface ClientData {
   client: any;
@@ -200,7 +202,7 @@ export default function ClientView() {
     return getPoolServiceStatus(
       clientData?.client?.service_days,
       clientData?.lastServiceDate,
-      clientData?.client?.next_service_date,
+      null, // A stored profile date is not a confirmed booking.
       new Date(),
       clientData?.client as any,
     );
@@ -364,7 +366,12 @@ export default function ClientView() {
   }
 
   const { client, services, serviceRequests, totalRevenue, loginHistory, clientUsers } = clientData;
-  const poolStatus = getPoolStatus();
+  const scheduleIssue = recurringScheduleIssue(client);
+  const poolStatus = scheduleIssue ? null : getPoolStatus();
+  const poolStatusLabel = scheduleIssue === 'inactive' ? 'Not active'
+    : scheduleIssue === 'paused' ? 'Paused'
+    : scheduleIssue === 'confirm_rotation' ? 'Confirm rotation'
+    : poolStatus === 'current' ? 'Current' : 'Needs Service';
 
   return (
     <div className="p-6 space-y-6">
@@ -421,7 +428,7 @@ export default function ClientView() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {poolStatus === 'current' ? 'Current' : 'Needs Service'}
+              {poolStatusLabel}
             </div>
           </CardContent>
         </Card>
@@ -724,7 +731,7 @@ export default function ClientView() {
             </div>
 
             {(() => {
-              const next = getNextDueDate(client.service_days, new Date(), client as any);
+              const next = nextScheduledServiceDate(client);
               return next ? (
                 <div>
                   <p className="text-sm font-medium text-muted-foreground">Next Service Due</p>

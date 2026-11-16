@@ -1,4 +1,4 @@
-import { isServiceWeek } from '@/lib/service-season';
+import { isActiveServiceAccount, isRecurringServiceOn, isCurrentWeekVisitOverdue } from '@/lib/service-season';
 import { useState, useEffect, lazy, Suspense } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
@@ -34,7 +34,7 @@ interface ScheduleData {
 }
 
 const daysOfWeek = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-const shortDays = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
+
 
 export default function TechSchedule() {
   const { user } = useAuth();
@@ -54,12 +54,6 @@ export default function TechSchedule() {
       const today = new Date();
       const tomorrow = new Date(today);
       tomorrow.setDate(tomorrow.getDate() + 1);
-      const weekEnd = new Date(today);
-      weekEnd.setDate(weekEnd.getDate() + 7);
-
-      const todayDayName = daysOfWeek[today.getDay()].toLowerCase();
-      const tomorrowDayName = daysOfWeek[tomorrow.getDay()].toLowerCase();
-
       // Load clients assigned to this technician
       const { data: assignedClients, error: clientsError } = await supabase
         .from('clients')
@@ -71,43 +65,21 @@ export default function TechSchedule() {
 
       if (clientsError) throw clientsError;
 
-      // Filter clients by service days (all lowercase matching)
-      const todayClients = assignedClients?.filter(client => 
-        client.service_days?.includes(todayDayName) || 
-        client.service_days?.includes(todayDayName.substring(0, 3))
-      ).filter(client => isServiceWeek(client, today)) || [];
+      const clients = (assignedClients ?? []).filter(isActiveServiceAccount);
+      const clientsOn = (date: Date) => clients.filter((client) =>
+        isRecurringServiceOn(client, date));
 
-      const tomorrowClients = assignedClients?.filter(client => 
-        client.service_days?.includes(tomorrowDayName) ||
-        client.service_days?.includes(tomorrowDayName.substring(0, 3))
-      ).filter(client => isServiceWeek(client, tomorrow)) || [];
-
-      // Build weekly schedule starting from today for next 7 days
+      // Use the same recurring rule as the team and customer calendars.
+      const todayClients = clientsOn(today);
+      const tomorrowClients = clientsOn(tomorrow);
       const weeklySchedule: { [key: string]: any[] } = {};
       for (let i = 0; i < 7; i++) {
         const date = new Date(today);
         date.setDate(date.getDate() + i);
-        const dayName = daysOfWeek[date.getDay()];
-        const dayNameLower = dayName.toLowerCase();
-        const shortDay = dayName.substring(0, 3).toLowerCase();
-        
-        weeklySchedule[dayName] = assignedClients?.filter(client => 
-          client.service_days?.includes(dayNameLower) || 
-          client.service_days?.includes(shortDay)
-        ).filter(client => isServiceWeek(client, date)) || [];
+        weeklySchedule[daysOfWeek[date.getDay()]] = clientsOn(date);
       }
 
-      // Get clients needing service (no service in last 7 days)
-      const { data: recentServices } = await supabase
-        .from('services')
-        .select('client_id, service_date')
-        .eq('technician_id', user.id)
-        .gte('service_date', new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString());
-
-      const recentClientIds = recentServices?.map(s => s.client_id) || [];
-      const weekClients = assignedClients?.filter(client => 
-        !recentClientIds.includes(client.id)
-      ) || [];
+      const weekClients = clients.filter((client) => isCurrentWeekVisitOverdue(client, today));
 
       // Load service requests - both assigned to this tech AND unassigned ones they can accept
       const { data: assignedRequests } = await supabase
@@ -166,7 +138,7 @@ export default function TechSchedule() {
         weekClients: weekClients.slice(0, 10), // Limit to 10 for display
         pendingRequests: allPendingRequests,
         weeklySchedule,
-        allClients: assignedClients || [],
+        allClients: clients,
       });
     } catch (error) {
       console.error('Error loading schedule data:', error);

@@ -38,10 +38,11 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Label } from '@/components/ui/label';
 
 import { ClientInviteDialog } from '@/components/admin/ClientInviteDialog';
+import { nextScheduledServiceDate, recurringScheduleIssue, type RouteScheduleFields } from '@/lib/service-season';
 import { ClientsCalendarView } from '@/components/clients/ClientsCalendarView';
 import { AllClientsMap } from '@/components/maps/AllClientsMap';
 
-interface Client {
+interface Client extends RouteScheduleFields {
   id: string;
   customer: string;
   pool_size: number;
@@ -158,6 +159,7 @@ export default function ManageClients() {
         .select(`
           id, customer, pool_size, pool_type, status, user_id, assigned_technician_id, secondary_technician_id,
           last_service_date, next_service_date, service_days, service_frequency, created_at,
+          service_mode, biweekly_anchor_date, in_season_frequency, off_season_frequency, off_season_weeks, off_season_start, off_season_end, auto_return_in_season,
           salt_cell_last_cleaned,
           contact_email, contact_phone, contact_address,
 
@@ -337,63 +339,15 @@ export default function ManageClients() {
     }
   };
 
-  // Map common day names to JS Date.getDay() index (0=Sun..6=Sat)
-  const dayNameToIndex = (name: string): number | null => {
-    const n = name.trim().toLowerCase();
-    switch (n) {
-      case 'sun':
-      case 'sunday':
-        return 0;
-      case 'mon':
-      case 'monday':
-        return 1;
-      case 'tue':
-      case 'tues':
-      case 'tuesday':
-        return 2;
-      case 'wed':
-      case 'wednesday':
-        return 3;
-      case 'thu':
-      case 'thur':
-      case 'thurs':
-      case 'thursday':
-        return 4;
-      case 'fri':
-      case 'friday':
-        return 5;
-      case 'sat':
-      case 'saturday':
-        return 6;
-      default:
-        return null;
+  const getNextServiceDateString = (client: Client) => {
+    const next = nextScheduledServiceDate(client);
+    if (next) return next.toLocaleDateString();
+    switch (recurringScheduleIssue(client)) {
+      case 'confirm_rotation': return 'Confirm rotation';
+      case 'inactive': return 'Not active';
+      case 'paused': return 'Paused';
+      default: return '—';
     }
-  };
-
-  const getNextServiceDateFromDays = (serviceDays?: string[] | null): Date | null => {
-    if (!serviceDays || serviceDays.length === 0) return null;
-    const today = new Date();
-    const todayDow = today.getDay();
-
-    let minDiff = 8; // more than a week
-    for (const d of serviceDays) {
-      const idx = dayNameToIndex(d);
-      if (idx == null) continue;
-      let diff = (idx - todayDow + 7) % 7;
-      if (diff === 0) diff = 7; // next occurrence, not today
-      if (diff < minDiff) minDiff = diff;
-    }
-
-    if (minDiff === 8) return null;
-    const next = new Date(today);
-    next.setDate(today.getDate() + minDiff);
-    next.setHours(0, 0, 0, 0);
-    return next;
-  };
-
-  const getNextServiceDateString = (serviceDays?: string[] | null) => {
-    const d = getNextServiceDateFromDays(serviceDays);
-    return d ? d.toLocaleDateString() : '-';
   };
 
   const handleDeleteClient = async (clientId: string) => {
@@ -797,7 +751,7 @@ export default function ManageClients() {
                         
                         <td className="p-4">
                           <div>
-                            <p className="text-sm">{getNextServiceDateString(client.service_days)}</p>
+                            <p className="text-sm">{getNextServiceDateString(client)}</p>
                           </div>
                         </td>
                         

@@ -7,22 +7,22 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
-import { isServiceWeek } from '@/lib/service-season';
+import { isRecurringServiceOn, recurringScheduleIssue } from '@/lib/service-season';
 import { CalendarDays, ChevronLeft, ChevronRight, ClipboardList, PlayCircle } from 'lucide-react';
 
-const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 const DAY_SHORT = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
 type Client = {
   id: string;
   customer: string;
   service_days: string[] | null;
-  next_service_date: string | null;
+  service_frequency: string | null;
   last_service_date: string | null;
   status: string | null;
   assigned_technician_id: string | null;
   secondary_technician_id: string | null;
   service_mode?: string | null;
+  biweekly_anchor_date?: string | null;
   in_season_frequency?: string | null;
   off_season_frequency?: string | null;
   off_season_weeks?: string | null;
@@ -53,21 +53,15 @@ type ServiceRequest = {
 const dayKey = (d: Date) =>
   `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 
-const clientDueOnDay = (c: Client, date: Date): boolean => {
-  if (c.status && c.status !== 'Active') return false;
-  const key = dayKey(date);
-  if (c.next_service_date && dayKey(new Date(c.next_service_date)) === key) return true;
-  const full = DAYS[date.getDay()].toLowerCase();
-  const short = DAY_SHORT[date.getDay()].toLowerCase();
-  if (c.service_days?.some((d) => d.toLowerCase() === full || d.toLowerCase() === short) && isServiceWeek(c, date)) return true;
-  return false;
-};
+const clientDueOnDay = (c: Client, date: Date): boolean =>
+  isRecurringServiceOn(c, date);
 
 export default function ServiceDashboard() {
   const { user } = useAuth();
   const isAdmin = user?.role === 'admin';
 
   const [loading, setLoading] = useState(true);
+  const [routeReadFailed, setRouteReadFailed] = useState(false);
   const [clients, setClients] = useState<Client[]>([]);
   const [followUps, setFollowUps] = useState<FollowUp[]>([]);
   const [requests, setRequests] = useState<ServiceRequest[]>([]);
@@ -86,8 +80,8 @@ export default function ServiceDashboard() {
       setLoading(true);
 
       const clientFilter = isAdmin
-        ? supabase.from('clients').select('id, customer, service_days, next_service_date, last_service_date, status, assigned_technician_id, secondary_technician_id, service_mode, in_season_frequency, off_season_frequency, off_season_weeks, off_season_start, off_season_end, auto_return_in_season')
-        : supabase.from('clients').select('id, customer, service_days, next_service_date, last_service_date, status, assigned_technician_id, secondary_technician_id, service_mode, in_season_frequency, off_season_frequency, off_season_weeks, off_season_start, off_season_end, auto_return_in_season')
+        ? supabase.from('clients').select('id, customer, service_days, service_frequency, last_service_date, status, assigned_technician_id, secondary_technician_id, service_mode, biweekly_anchor_date, in_season_frequency, off_season_frequency, off_season_weeks, off_season_start, off_season_end, auto_return_in_season')
+        : supabase.from('clients').select('id, customer, service_days, service_frequency, last_service_date, status, assigned_technician_id, secondary_technician_id, service_mode, biweekly_anchor_date, in_season_frequency, off_season_frequency, off_season_weeks, off_season_start, off_season_end, auto_return_in_season')
             .or(`assigned_technician_id.eq.${user.id},secondary_technician_id.eq.${user.id}`);
 
       const [cRes, fRes, rRes, tRes] = await Promise.all([
@@ -98,6 +92,7 @@ export default function ServiceDashboard() {
         supabase.from('users').select('id, name').in('role', ['tech', 'admin']),
       ]);
 
+      setRouteReadFailed(!!cRes.error);
       setClients((cRes.data ?? []) as Client[]);
       setFollowUps((fRes.data ?? []) as FollowUp[]);
       setRequests((rRes.data ?? []) as ServiceRequest[]);
@@ -108,6 +103,7 @@ export default function ServiceDashboard() {
   }, [user?.id, isAdmin]);
 
   const todayKey = dayKey(new Date());
+  const needsRotationReview = clients.filter((c) => recurringScheduleIssue(c) === 'confirm_rotation');
 
   const techOf = (c: Client) => c.assigned_technician_id ?? c.secondary_technician_id ?? null;
   const passesTech = (techId: string | null) => techFilter === 'all' || techId === techFilter;
@@ -205,6 +201,16 @@ export default function ServiceDashboard() {
           )}
         </div>
 
+        {routeReadFailed && (
+          <p role="alert" className="mb-4 text-sm text-red-700 dark:text-red-400">
+            Recurring routes could not be loaded. The calendar is incomplete; reload before using it for dispatch.
+          </p>
+        )}
+        {isAdmin && needsRotationReview.length > 0 && (
+          <p className="mb-4 text-sm text-amber-700 dark:text-amber-400">
+            {needsRotationReview.length} customer rotation{needsRotationReview.length === 1 ? ' needs' : 's need'} confirmation in Customer Settings before recurring visits can be shown.
+          </p>
+        )}
         <div className="grid gap-4 lg:grid-cols-3">
           {/* Calendar */}
           <Card className="lg:col-span-2">

@@ -818,6 +818,7 @@ export type Database = {
           algaecide_product: string | null
           assigned_technician_id: string | null
           auto_return_in_season: boolean
+          biweekly_anchor_date: string | null
           chemistry_targets: Json | null
           company_name: string | null
           contact_address: string | null
@@ -865,6 +866,7 @@ export type Database = {
           algaecide_product?: string | null
           assigned_technician_id?: string | null
           auto_return_in_season?: boolean
+          biweekly_anchor_date?: string | null
           chemistry_targets?: Json | null
           company_name?: string | null
           contact_address?: string | null
@@ -912,6 +914,7 @@ export type Database = {
           algaecide_product?: string | null
           assigned_technician_id?: string | null
           auto_return_in_season?: boolean
+          biweekly_anchor_date?: string | null
           chemistry_targets?: Json | null
           company_name?: string | null
           contact_address?: string | null
